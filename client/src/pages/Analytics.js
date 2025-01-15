@@ -1,5 +1,6 @@
 // src/pages/Analytics.js
 import React, { useState, useEffect } from 'react';
+import Layout from '../components/Layout'; // Import the Layout component
 import '../styles/Analytics.css'; // Import the Analytics CSS
 
 const Analytics = () => {
@@ -12,17 +13,19 @@ const Analytics = () => {
   }, []);
 
   return (
-    <div className="analytics-container">
-      <h2>Analytics</h2>
-      {data ? (
-        <div>
-          <p>Performance: {data.performance}</p>
-          <p>Revenue: {data.revenue}</p>
-        </div>
-      ) : (
-        <p>Loading...</p>
-      )}
-    </div>
+    <Layout>
+      <div className="analytics-container">
+        <h2>Analytics</h2>
+        {data ? (
+          <div>
+            <p>Performance: {data.performance}</p>
+            <p>Revenue: {data.revenue}</p>
+          </div>
+        ) : (
+          <p>Loading...</p>
+        )}
+      </div>
+    </Layout>
   );
 };
 
