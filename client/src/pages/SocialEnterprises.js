@@ -1,18 +1,18 @@
 // src/pages/SocialEnterprises.js
 import React, { useState, useEffect } from 'react';
+import '../styles/SocialEnterprises.css'; // Import the Social Enterprises CSS
 
 const SocialEnterprises = () => {
   const [enterprises, setEnterprises] = useState([]);
 
   useEffect(() => {
-    // Fetch social enterprise data
     fetch("/api/social-enterprises")
       .then(response => response.json())
       .then(data => setEnterprises(data));
   }, []);
 
   return (
-    <div>
+    <div className="social-enterprises-container">
       <h2>Social Enterprises</h2>
       {enterprises.length === 0 ? (
         <p>Loading...</p>

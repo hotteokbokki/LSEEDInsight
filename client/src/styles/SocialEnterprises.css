@@ -1,0 +1,15 @@
+/* src/styles/SocialEnterprises.css */
+.social-enterprises-container {
+    background-color: #fafafa;
+    padding: 20px;
+  }
+  
+  .social-enterprises-container ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .social-enterprises-container li {
+    margin: 10px 0;
+  }
+  

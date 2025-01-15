@@ -1,0 +1,11 @@
+/* src/styles/Home.css */
+.home-container {
+    background-color: #f4f4f4;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+  }
+  
+  .home-container h2 {
+    color: #333;
+  }
+  

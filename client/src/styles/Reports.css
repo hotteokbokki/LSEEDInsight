@@ -1,0 +1,11 @@
+/* src/styles/Reports.css */
+.reports-container {
+    background-color: #e0e0e0;
+    padding: 20px;
+  }
+  
+  .reports-container h2 {
+    font-size: 2em;
+    text-align: center;
+  }
+  

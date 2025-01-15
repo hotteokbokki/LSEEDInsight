@@ -1,0 +1,16 @@
+/* src/styles/Scheduling.css */
+.scheduling-container {
+    background-color: #f9f9f9;
+    padding: 20px;
+  }
+  
+  .scheduling-container ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .scheduling-container li {
+    margin: 15px 0;
+    font-size: 1.1em;
+  }
+  

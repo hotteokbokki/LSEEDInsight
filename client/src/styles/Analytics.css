@@ -1,0 +1,13 @@
+/* src/styles/Analytics.css */
+.analytics-container {
+    padding: 20px;
+  }
+  
+  .analytics-container h2 {
+    color: #007bff;
+  }
+  
+  .analytics-container p {
+    font-size: 1.1em;
+  }
+  
