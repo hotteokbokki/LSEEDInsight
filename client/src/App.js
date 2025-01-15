@@ -25,7 +25,7 @@ function App() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/social-enterprises" element={<SocialEnterprises />} />
         <Route path="/analytics" element={<Analytics />} />
-        <Route path="/scheduli`ng" element={<Scheduling />} />
+        <Route path="/scheduling" element={<Scheduling />} />
       </Routes>
     </Router>
   );

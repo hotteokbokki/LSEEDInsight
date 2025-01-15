@@ -1,29 +1,15 @@
 // src/pages/Scheduling.js
-import React, { useState, useEffect } from 'react';
-import '../styles/Scheduling.css'; // Import the Scheduling CSS
+import React from 'react';
+import Layout from '../components/Layout'; // Import the Layout component
+import '../styles/Scheduling.css';
 
 const Scheduling = () => {
-  const [schedule, setSchedule] = useState([]);
-
-  useEffect(() => {
-    fetch("/api/schedule")
-      .then(response => response.json())
-      .then(data => setSchedule(data));
-  }, []);
-
   return (
-    <div className="scheduling-container">
-      <h2>Scheduling</h2>
-      {schedule.length === 0 ? (
-        <p>Loading...</p>
-      ) : (
-        <ul>
-          {schedule.map((event, index) => (
-            <li key={index}>{event.name} - {event.date}</li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <Layout>
+      <div className="scheduling-container">
+        <h2>Scheduling</h2>
+      </div>
+    </Layout>
   );
 };
 
