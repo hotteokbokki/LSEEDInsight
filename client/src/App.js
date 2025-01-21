@@ -1,13 +1,18 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
-import Home from './pages/Home';
-import Reports from './pages/Reports';
-import SocialEnterprises from './pages/SocialEnterprises';
-import Analytics from './pages/Analytics';
-import Scheduling from './pages/Scheduling';
+import { ColorModeContext, useMode } from "./theme";
+import { CssBaseline, ThemeProvider } from "@mui/material";
+import Topbar from "./scenes/global/Topbar";
+import Sidebar from "./scenes/global/Sidebar";
+import Dashboard from "./scenes/dashboard";
+import SocialEnterprise from "./scenes/socialenterprise";
+import Mentors from "./scenes/mentors";
+import Analytics from "./scenes/analytics";
+import Reports from "./scenes/reports";
+import Scheduling from "./scenes/scheduling";
+import { Routes, Route } from "react-router-dom";
+
 
 function App() {
-  const [backendData, setBackendData] = useState({ users: [] }); // Default to an empty array for 'users'
+/*  const [backendData, setBackendData] = useState({ users: [] }); // Default to an empty array for 'users'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -37,6 +42,30 @@ function App() {
         <Route path="/scheduling" element={<Scheduling />} />
       </Routes>
     </Router>
+  );*/
+  const [theme, colorMode] = useMode();
+
+  return (
+    <ColorModeContext.Provider value={colorMode}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <div className="app">
+          <Sidebar />
+          <main className="content">
+            <Topbar />
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/socialenterprise" element={<SocialEnterprise />} />
+              <Route path="/mentors" element={<Mentors />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/scheduling" element={<Scheduling />} />
+            </Routes>
+
+          </main>
+        </div>
+      </ThemeProvider>
+    </ColorModeContext.Provider>
   );
 }
 
