@@ -8,8 +8,8 @@ import Mentors from "./scenes/mentors";
 import Analytics from "./scenes/analytics";
 import Reports from "./scenes/reports";
 import Scheduling from "./scenes/scheduling";
-import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
+import { Routes, Route, useLocation } from "react-router-dom";
 
 
 function App() {
@@ -45,13 +45,16 @@ function App() {
     </Router>
   );*/
   const [theme, colorMode] = useMode();
+  const location = useLocation;
+
+  const isLoginPage = location.pathname == '/login'; // Checks if user is in login page
 
   return (
     <ColorModeContext.Provider value={colorMode}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <div className="app">
-          <Sidebar />
+          {isLoginPage && <Sidebar />}
           <main className="content">
             <Topbar />
             <Routes>
