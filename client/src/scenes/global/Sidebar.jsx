@@ -88,13 +88,14 @@ const Sidebar = () => {
                     {/* USER */}
                     {!isCollapsed && (
                         <Box mb="25px">
-                            <Box display="flex" justifyContent="space-between" alignItems="center">
+                            <Box display="flex" justifyContent="center" alignItems="center">
                                 <img 
                                     alt="profile-user"
                                     width="100px"
                                     height="100px"
                                     src={`../../assets/user.png`}
                                     style={{ cursor: "pointer", borderRoutes:"50%"}}
+                                    
                                 /> 
                             </Box>
 
