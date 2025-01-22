@@ -45,16 +45,19 @@ function App() {
     </Router>
   );*/
   const [theme, colorMode] = useMode();
-  const location = useLocation;
+  const location = useLocation();
 
-  const isLoginPage = location.pathname == '/login'; // Checks if user is in login page
+  const isLoginPage = location.pathname === '/login'; // Checks if user is in login page
+  
+  console.log(location.pathname);
 
   return (
     <ColorModeContext.Provider value={colorMode}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <div className="app">
-          {isLoginPage && <Sidebar />}
+          {!isLoginPage && <Sidebar />}
+          
           <main className="content">
             <Topbar />
             <Routes>
