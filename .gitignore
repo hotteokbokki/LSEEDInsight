@@ -134,3 +134,7 @@ dist
 .yarn/unplugged
 .yarn/build
 
+client/package-lock.json
+client/package.json
+package-lock.json
+package.json

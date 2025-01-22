@@ -13,6 +13,7 @@
   "type": "commonjs",
   "description": "",
   "dependencies": {
+    "@mui/material": "^6.4.1",
     "@supabase/supabase-js": "^2.47.14",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
