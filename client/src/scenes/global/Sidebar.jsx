@@ -11,6 +11,7 @@ import AnalyticsOutlinedIcon from '@mui/icons-material/AnalyticsOutlined';
 import GradingOutlinedIcon from '@mui/icons-material/GradingOutlined';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
 import MenuOutlinedIcon from '@mui/icons-material/MenuOutlined';
+import ExitToAppOutlinedIcon from '@mui/icons-material/ExitToAppOutlined';
 
 const Item = ({ title, to, icon, selected, setSelected }) => {
     const theme = useTheme();
@@ -116,7 +117,7 @@ const Sidebar = () => {
                      <Box paddingLeft={isCollapsed ? undefined : "10%"}>
                         <Item
                         title="Dashboard"
-                        to="/"
+                        to="/dashboard"
                         icon={<GridViewOutlinedIcon />}
                         selected={selected}
                         setSelected={setSelected}
@@ -161,6 +162,13 @@ const Sidebar = () => {
                         title="Scheduling Matrix"
                         to="/scheduling"
                         icon={<CalendarMonthOutlinedIcon />}
+                        selected={selected}
+                        setSelected={setSelected}
+                        />
+                        <Item
+                        title="Logout"
+                        to="/"
+                        icon={<ExitToAppOutlinedIcon />}
                         selected={selected}
                         setSelected={setSelected}
                         />

@@ -8,7 +8,7 @@ import Mentors from "./scenes/mentors";
 import Analytics from "./scenes/analytics";
 import Reports from "./scenes/reports";
 import Scheduling from "./scenes/scheduling";
-import Login from "./pages/Login";
+import Login from "./scenes/login";
 import { Routes, Route, useLocation } from "react-router-dom";
 
 
@@ -47,7 +47,7 @@ function App() {
   const [theme, colorMode] = useMode();
   const location = useLocation();
 
-  const isLoginPage = location.pathname === '/login'; // Checks if user is in login page
+  const isLoginPage = location.pathname === '/'; // Checks if user is in login page
   
   console.log(location.pathname + "this is the console log");
 
@@ -61,13 +61,13 @@ function App() {
           <main className="content">
           {!isLoginPage && <Topbar />}
             <Routes>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<Login />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/socialenterprise" element={<SocialEnterprise />} />
               <Route path="/mentors" element={<Mentors />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/scheduling" element={<Scheduling />} />
-              <Route path="/login" element={<Login />} />
             </Routes>
 
           </main>

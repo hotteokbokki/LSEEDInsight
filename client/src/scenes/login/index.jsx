@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../styles/Login.css';
+import '../../styles/Login.css';
 
 const Login = () => {
   const [isFlipped, setIsFlipped] = useState(false);
@@ -49,7 +49,7 @@ const Login = () => {
               <div className="title">
                 <h2>LOGIN</h2>
               </div>
-              <form method="post" action="php/check_loginform.php">
+              <form action="/dashboard">
                 <div className="input-boxes">
                   <div className="input-box">
                     <i className="fas fa-envelope"></i>
@@ -73,7 +73,7 @@ const Login = () => {
                     <a href="forgot-password.js">Forgot password?</a>
                   </div>
                   <div className="button input-box">
-                    <input type="submit" value="Log-In" />
+                    <input type="submit" value="Log-In"/>
                   </div>
                   <div className="separator">OR</div>
                   <div className="google-btn" onClick={signInWithGoogle}>
