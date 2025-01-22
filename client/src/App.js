@@ -49,7 +49,7 @@ function App() {
 
   const isLoginPage = location.pathname === '/login'; // Checks if user is in login page
   
-  console.log(location.pathname);
+  console.log(location.pathname + "this is the console log");
 
   return (
     <ColorModeContext.Provider value={colorMode}>

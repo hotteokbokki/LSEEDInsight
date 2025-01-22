@@ -70,7 +70,7 @@ const Login = () => {
                     />
                   </div>
                   <div className="text">
-                    <a href="forgot-password.php">Forgot password?</a>
+                    <a href="forgot-password.js">Forgot password?</a>
                   </div>
                   <div className="button input-box">
                     <input type="submit" value="Log-In" />
