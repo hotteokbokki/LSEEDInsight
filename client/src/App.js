@@ -59,7 +59,7 @@ function App() {
           {!isLoginPage && <Sidebar />}
           
           <main className="content">
-            <Topbar />
+          {!isLoginPage && <Topbar />}
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/socialenterprise" element={<SocialEnterprise />} />
