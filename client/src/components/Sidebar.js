@@ -23,7 +23,7 @@ const Sidebar = () => {
           <Link to="/scheduling">Scheduling</Link>
         </li>
         <li>
-          <Link to="/Login">Logout</Link>
+          <Link to="/login">Logout</Link>
         </li>
       </ul>
     </div>

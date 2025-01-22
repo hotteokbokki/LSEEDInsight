@@ -9,6 +9,7 @@ import Analytics from "./scenes/analytics";
 import Reports from "./scenes/reports";
 import Scheduling from "./scenes/scheduling";
 import { Routes, Route } from "react-router-dom";
+import Login from "./pages/Login";
 
 
 function App() {
@@ -60,6 +61,7 @@ function App() {
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/scheduling" element={<Scheduling />} />
+              <Route path="/login" element={<Login />} />
             </Routes>
 
           </main>
