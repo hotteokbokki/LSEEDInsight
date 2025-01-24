@@ -10,10 +10,60 @@ import Header from "../../components/Header";
 import LineChart from "../../components/LineChart";
 import StatBox from "../../components/StatBox";
 import ProgressCircle from "../../components/ProgressCircle";
+import FullCalendar from "@fullcalendar/react";
+import { formatDate } from "@fullcalendar/core";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import listPlugin from "@fullcalendar/list";
+import { useState } from "react";
+import { DataGrid } from "@mui/x-data-grid";
+import { mockDataSEDB } from "../../sampledata/mockData";
 
 const Dashboard = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const [currentEvents, setCurrentEvents] = useState([]);
+
+  const columns = [
+    {
+      field: "socialEnterprise",
+      headerName: "Social Enterprise",
+      flex: 1,
+      cellClassName: "name-column--cell",
+    },
+    {
+      field: "mentor",
+      headerName: "Mentor",
+      flex: 1,
+    },
+  ];
+
+  const handleDateClick = (selected) => {
+    const title = prompt("Please enter a new title for your event");
+    const calendarApi = selected.view.calendar;
+    calendarApi.unselect();
+
+    if (title) {
+      calendarApi.addEvent({
+        id: `${selected.dateStr}-${title}`,
+        title,
+        start: selected.startStr,
+        end: selected.endStr,
+        allDay: selected.allDay,
+      });
+    }
+  };
+
+  const handleEventClick = (selected) => {
+    if (
+      window.confirm(
+        `Are you sure you want to delete the event '${selected.event.title}'`
+      )
+    ) {
+      selected.event.remove();
+    }
+  };
 
   return (
     <Box m="20px">
@@ -148,7 +198,91 @@ const Dashboard = () => {
             <LineChart isDashboard={true} />
           </Box>
         </Box>
+
         {/* ROW 3 */}
+        <Box
+          gridColumn="span 12"
+          gridRow="span 2"
+          display="grid"
+          gridTemplateColumns="repeat(12, 1fr)"
+          gap="20px"
+        >
+          {/* Left: Data Grid */}
+          <Box
+            gridColumn="span 6"
+            height="100%" // Match height to the parent's gridRow span
+            sx={{
+              "& .MuiDataGrid-root": {
+                border: "none",
+              },
+              "& .MuiDataGrid-cell": {
+                borderBottom: "none",
+              },
+              "& .name-column--cell": {
+                color: colors.greenAccent[300],
+              },
+              "& .MuiDataGrid-columnHeaders": {
+                backgroundColor: colors.blueAccent[700],
+                borderBottom: "none",
+              },
+              "& .MuiDataGrid-virtualScroller": {
+                backgroundColor: colors.primary[400],
+              },
+              "& .MuiDataGrid-footerContainer": {
+                borderTop: "none",
+                backgroundColor: colors.blueAccent[700],
+              },
+            }}
+          >
+            <DataGrid rows={mockDataSEDB} columns={columns} />
+          </Box>
+
+          {/* Right: Calendar */}
+          <Box
+            gridColumn="span 6"
+            backgroundColor={colors.primary[400]}
+            display="flex"
+            flexDirection="column"
+            alignItems="stretch"
+            justifyContent="stretch"
+            height="100%" // Match height to the parent's gridRow span
+          >
+            <FullCalendar
+              height="100%"
+              plugins={[
+                dayGridPlugin,
+                timeGridPlugin,
+                interactionPlugin,
+                listPlugin,
+              ]}
+              headerToolbar={{
+                left: "prev,next today",
+                center: "title",
+                right: "dayGridMonth,timeGridWeek,timeGridDay,listMonth",
+              }}
+              initialView="dayGridMonth"
+              editable={true}
+              selectable={true}
+              selectMirror={true}
+              dayMaxEvents={true}
+              select={handleDateClick}
+              eventClick={handleEventClick}
+              eventsSet={(events) => setCurrentEvents(events)}
+              initialEvents={[
+                {
+                  id: "12315",
+                  title: "All-day event",
+                  date: "2022-09-14",
+                },
+                {
+                  id: "5123",
+                  title: "Timed event",
+                  date: "2022-09-28",
+                },
+              ]}
+            />
+          </Box>
+        </Box>
       </Box>
     </Box>
   );

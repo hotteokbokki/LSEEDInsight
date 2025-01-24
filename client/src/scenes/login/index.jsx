@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import '../../styles/Login.css';
+import React, { useState } from "react";
+import "../../styles/Login.css";
 
 const Login = () => {
   const [isFlipped, setIsFlipped] = useState(false);
@@ -9,7 +9,7 @@ const Login = () => {
   };
 
   const signInWithGoogle = () => {
-    alert('Google Sign-In functionality goes here.');
+    alert("Google Sign-In functionality goes here.");
   };
 
   return (
@@ -19,7 +19,7 @@ const Login = () => {
         id="flip"
         checked={isFlipped}
         onChange={handleFlip}
-        style={{ display: 'none' }}
+        style={{ display: "none" }}
       />
       <div className="cover">
         <div className="front">
@@ -73,7 +73,7 @@ const Login = () => {
                     <a href="forgot-password.js">Forgot password?</a>
                   </div>
                   <div className="button input-box">
-                    <input type="submit" value="Log-In"/>
+                    <input type="submit" value="Log-In" />
                   </div>
                   <div className="separator">OR</div>
                   <div className="google-btn" onClick={signInWithGoogle}>
@@ -83,7 +83,7 @@ const Login = () => {
                     <p className="btn-text">Sign in with Google</p>
                   </div>
                   <div className="text sign-up-text">
-                    Don't have an account?{' '}
+                    Don't have an account?{" "}
                     <label htmlFor="flip">Sign up now</label>
                   </div>
                 </div>
@@ -151,7 +151,7 @@ const Login = () => {
                     <p className="btn-text">Sign up with Google</p>
                   </div>
                   <div className="text sign-up-text">
-                    Already have an account?{' '}
+                    Already have an account?{" "}
                     <label htmlFor="flip">Login now</label>
                   </div>
                 </div>
