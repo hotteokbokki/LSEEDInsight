@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate} from 'react-router-dom';
 import { AuthContextProvider, useAuth } from './context/authContext';
 import Login from './scenes/login';
 import Dashboard from './scenes/dashboard';
@@ -57,11 +57,11 @@ const MainContent = ({ isLoginPage }) => {
 
   return (
     <>
-      {!isLoginPage && user && <Sidebar />}
+      {user && <Sidebar />}
       <main className="content">
-        {!isLoginPage  && user && <Topbar />}
+        {user && <Topbar />}
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
           {/* If user is authenticated, show dashboard, else redirect to login */}
           <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" />} />
           <Route path="/socialenterprise" element={user ? <SocialEnterprise /> : <Navigate to="/" />} />

@@ -12,6 +12,7 @@ import GradingOutlinedIcon from '@mui/icons-material/GradingOutlined';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
 import MenuOutlinedIcon from '@mui/icons-material/MenuOutlined';
 import ExitToAppOutlinedIcon from '@mui/icons-material/ExitToAppOutlined';
+import { useAuth } from "../../context/authContext";
 
 const Item = ({ title, to, icon, selected, setSelected }) => {
     const theme = useTheme();
@@ -29,23 +30,22 @@ const Item = ({ title, to, icon, selected, setSelected }) => {
         <Link to={to} />
       </MenuItem>
     );
-  };
+};
 
 const Sidebar = () => {
     const theme = useTheme();
     const colors = tokens(theme.palette.mode);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [selected, setSelected] = useState("Dashboard");
+    const { logout } = useAuth();
     const navigate = useNavigate(); // Initialize useNavigate for redirection
 
     const handleLogout = () => {
-        // Clear any authentication data (e.g., localStorage, sessionStorage, or context)
-        localStorage.removeItem("user"); // Example, depending on your auth method
-        sessionStorage.removeItem("user");
-    
+        logout(); // Clear user state via AuthContext
+
         // Redirect the user to the login page
         navigate("/"); // Redirect to the login page
-      };
+    };
 
     return (
         <Box

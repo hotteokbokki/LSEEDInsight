@@ -16,7 +16,7 @@ export const AuthContextProvider = ({ children }) => {
   const [loading, setLoading] = useState(true); // Loading state while checking session
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
-
+  
   // Check for session in localStorage when the app loads
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem('user')); // Retrieve user from localStorage
