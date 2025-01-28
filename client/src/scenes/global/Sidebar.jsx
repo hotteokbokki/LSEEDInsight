@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ProSidebar, Menu, MenuItem } from "react-pro-sidebar";
 import 'react-pro-sidebar/dist/css/styles.css';
 import { Box, IconButton, Typography, useTheme } from "@mui/material";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { tokens } from "../../theme";
 import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined';
 import Diversity2OutlinedIcon from '@mui/icons-material/Diversity2Outlined';
@@ -36,6 +36,16 @@ const Sidebar = () => {
     const colors = tokens(theme.palette.mode);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [selected, setSelected] = useState("Dashboard");
+    const navigate = useNavigate(); // Initialize useNavigate for redirection
+
+    const handleLogout = () => {
+        // Clear any authentication data (e.g., localStorage, sessionStorage, or context)
+        localStorage.removeItem("user"); // Example, depending on your auth method
+        sessionStorage.removeItem("user");
+    
+        // Redirect the user to the login page
+        navigate("/"); // Redirect to the login page
+      };
 
     return (
         <Box
@@ -159,19 +169,21 @@ const Sidebar = () => {
                         setSelected={setSelected}
                         />
                         <Item
-                        title="Scheduling Matrix"
-                        to="/scheduling"
-                        icon={<CalendarMonthOutlinedIcon />}
-                        selected={selected}
-                        setSelected={setSelected}
+                            title="Scheduling Matrix"
+                            to="/scheduling"
+                            icon={<CalendarMonthOutlinedIcon />}
+                            selected={selected}
+                            setSelected={setSelected}
                         />
-                        <Item
-                        title="Logout"
-                        to="/"
-                        icon={<ExitToAppOutlinedIcon />}
-                        selected={selected}
-                        setSelected={setSelected}
-                        />
+                        <MenuItem
+                            onClick={handleLogout} // Call logout on click
+                            icon={<ExitToAppOutlinedIcon />}
+                            style={{
+                                color: colors.grey[100],
+                            }}
+                            >
+                            <Typography>Logout</Typography>
+                        </MenuItem>
                     </Box>
                 </Menu>
             </ProSidebar>

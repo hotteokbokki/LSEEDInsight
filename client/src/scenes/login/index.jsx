@@ -1,11 +1,76 @@
 import React, { useState } from "react";
 import "../../styles/Login.css";
+import { useAuth } from '../../context/authContext';
 
 const Login = () => {
+  const { login } = useAuth();
   const [isFlipped, setIsFlipped] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+  });
 
   const handleFlip = () => {
     setIsFlipped(!isFlipped);
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch("http://localhost:4000/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        login(data.user);
+        window.location.href = "/dashboard";
+      } else {
+        setErrorMessage(data.message || "Login failed");
+      }
+    } catch (error) {
+      setErrorMessage("An error occurred. Please try again.");
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch("http://localhost:4000/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert("Signup successful! Please log in.");
+        setIsFlipped(false);
+      } else {
+        setErrorMessage(data.message || "Signup failed");
+      }
+    } catch (error) {
+      setErrorMessage("An error occurred. Please try again.");
+    }
   };
 
   const signInWithGoogle = () => {
@@ -49,7 +114,7 @@ const Login = () => {
               <div className="title">
                 <h2>LOGIN</h2>
               </div>
-              <form action="/dashboard">
+              <form onSubmit={handleLogin}>
                 <div className="input-boxes">
                   <div className="input-box">
                     <i className="fas fa-envelope"></i>
@@ -57,6 +122,8 @@ const Login = () => {
                       type="email"
                       name="email"
                       placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       required
                     />
                   </div>
@@ -66,6 +133,8 @@ const Login = () => {
                       type="password"
                       name="password"
                       placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       required
                     />
                   </div>
@@ -75,6 +144,7 @@ const Login = () => {
                   <div className="button input-box">
                     <input type="submit" value="Log-In" />
                   </div>
+                  {errorMessage && <div className="error-message">{errorMessage}</div>}
                   <div className="separator">OR</div>
                   <div className="google-btn" onClick={signInWithGoogle}>
                     <div className="google-icon-wrapper">
@@ -94,33 +164,28 @@ const Login = () => {
               <div className="title">
                 <h2>SIGN UP</h2>
               </div>
-              <form method="post" action="php/register_user.php">
+              <form onSubmit={handleSubmit}>
                 <div className="input-boxes">
                   <div className="input-box">
                     <i className="fas fa-user"></i>
                     <input
                       type="text"
-                      name="first_name"
+                      name="firstName"
                       placeholder="Enter your first name"
                       required
+                      value={formData.firstName}
+                      onChange={handleInputChange}
                     />
                   </div>
                   <div className="input-box">
                     <i className="fas fa-user"></i>
                     <input
                       type="text"
-                      name="last_name"
+                      name="lastName"
                       placeholder="Enter your last name"
                       required
-                    />
-                  </div>
-                  <div className="input-box">
-                    <i className="fas fa-phone"></i>
-                    <input
-                      type="text"
-                      name="phone"
-                      placeholder="Enter your phone number"
-                      required
+                      value={formData.lastName}
+                      onChange={handleInputChange}
                     />
                   </div>
                   <div className="input-box">
@@ -130,6 +195,19 @@ const Login = () => {
                       name="email"
                       placeholder="Enter your email"
                       required
+                      value={formData.email}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="input-box">
+                    <i className="fas fa-lock"></i>
+                    <input
+                      type="password"
+                      name="password"
+                      placeholder="Enter your password"
+                      required
+                      value={formData.password}
+                      onChange={handleInputChange}
                     />
                   </div>
                   <div className="checkbox-wrapper terms-checkbox">
@@ -143,6 +221,7 @@ const Login = () => {
                   <div className="button input-box">
                     <input type="submit" value="Register" />
                   </div>
+                  {errorMessage && <div className="error-message">{errorMessage}</div>}
                   <div className="separator">OR</div>
                   <div className="google-btn" onClick={signInWithGoogle}>
                     <div className="google-icon-wrapper">

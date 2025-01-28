@@ -1,15 +1,16 @@
 const express = require("express");
 const session = require("express-session");
 const cors = require("cors");
-const authRoutes = require("./routes/authRoutes");
+const { router: authRoutes, requireAuth } = require("./routes/authRoutes");
 require("dotenv").config();
 
 const app = express();
 
+// Enable CORS with credentials
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
 
-// Configure sessions
+// Configure session handling
 app.use(
   session({
     secret: process.env.SESSION_SECRET, // Use a secure key
@@ -25,5 +26,10 @@ app.use(
 
 // Use authentication routes
 app.use("/auth", authRoutes);
+
+// Example of a protected route
+app.get("/protected", requireAuth, (req, res) => {
+  res.json({ message: "Access granted to protected route" });
+});
 
 module.exports = app;

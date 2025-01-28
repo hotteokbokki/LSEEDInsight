@@ -14,6 +14,16 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+const requireAuth = (req, res, next) => {
+  const sessionId = req.cookies.session_id; // Access the session cookie
+  if (!sessionId) {
+    return res.status(401).json({ message: "Unauthorized: No session ID" });
+  }
+
+  // Add additional validation, like checking the session ID in a database or store if needed.
+  next();
+};
+
 router.use(cookieParser()); // Middleware to parse cookies
 
 router.post('/login', async (req, res) => {
@@ -23,12 +33,21 @@ router.post('/login', async (req, res) => {
       // Fetch user data from Supabase
       const { data, error } = await supabase
         .from('Users')  // Assuming your table is named 'Users'
-        .select('id, email, password')  // Select the necessary fields
+        .select('user_id, email, password')  // Select the necessary fields
         .eq('email', email)
         .single();  // Expecting a single user (email should be unique)
   
       if (error || !data) {
         return res.status(401).json({ message: 'Invalid credentials' });
+      }
+
+      if (error) {
+          console.error('Supabase Error:', error);
+          return res.status(500).json({ message: 'Database error' });
+      }
+
+      if (!data || !data.password) {
+          return res.status(401).json({ message: 'Invalid credentials' });
       }
   
       // Verify password
@@ -53,6 +72,40 @@ router.post('/login', async (req, res) => {
     }
 });
 
+router.post("/signup", async (req, res) => {
+  const { firstName, lastName, email, password, role } = req.body;
+
+  try {
+    // Validate input
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Assign "Guest User" as the default role
+    const role = "Guest User";
+
+    // Insert the new user into the Users table
+    const { data, error } = await supabase
+      .from("Users")
+      .insert([
+        { firstName, lastName, email, password: hashedPassword, role },
+      ]);
+
+    if (error) {
+      console.error("Error inserting user:", error);
+      return res.status(500).json({ message: "Failed to register user" });
+    }
+
+    res.status(201).json({ message: "User registered successfully", user: data });
+  } catch (err) {
+    console.error("Error during signup:", err);
+    res.status(500).json({ message: "An error occurred during signup" });
+  }
+});
+
 // Logout route
 router.post('/logout', (req, res) => {
     // Clear the session cookie
@@ -62,4 +115,7 @@ router.post('/logout', (req, res) => {
     res.json({ message: 'Logout successful' });
 });
 
-module.exports = router;
+module.exports = {
+  router,
+  requireAuth,
+};
