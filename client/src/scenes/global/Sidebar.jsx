@@ -37,7 +37,7 @@ const Sidebar = () => {
   const colors = tokens(theme.palette.mode);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selected, setSelected] = useState("Dashboard");
-  const { logout } = useAuth();
+  const { user, logout } = useAuth(); // Fetch user from auth context
   const navigate = useNavigate(); // Initialize useNavigate for redirection
 
   return (
@@ -62,7 +62,7 @@ const Sidebar = () => {
     >
       <ProSidebar collapsed={isCollapsed}>
         <Menu iconShape="square">
-          {/* LOGO AND MENU ICON*/}
+          {/* LOGO AND MENU ICON */}
           <MenuItem
             onClick={() => setIsCollapsed(!isCollapsed)}
             icon={isCollapsed ? <MenuOutlinedIcon /> : undefined}
@@ -88,15 +88,15 @@ const Sidebar = () => {
             )}
           </MenuItem>
 
-          {/* USER */}
-          {!isCollapsed && (
+          {/* USER SECTION */}
+          {!isCollapsed && user && (
             <Box mb="25px">
               <Box display="flex" justifyContent="center" alignItems="center">
                 <img
                   alt="profile-user"
                   width="100px"
                   height="100px"
-                  src={`../../assets/user.png`}
+                  src="/assets/user.png" // ✅ Fixed image path
                   style={{ cursor: "pointer", borderRadius: "50%" }}
                 />
               </Box>
@@ -108,14 +108,16 @@ const Sidebar = () => {
                   fontWeight="bold"
                   sx={{ m: "10px 0 0 0" }}
                 >
-                  Norby Salonga
+                  {user.name || "User"} {/* ✅ Dynamically fetch user name */}
                 </Typography>
                 <Typography variant="h5" color={colors.greenAccent[500]}>
-                  LSEED User
+                  {user.role || "LSEED User"}
                 </Typography>
               </Box>
             </Box>
           )}
+
+          {/* MENU ITEMS */}
           <Box paddingLeft={isCollapsed ? undefined : "10%"}>
             <Item
               title="Dashboard"
@@ -124,14 +126,6 @@ const Sidebar = () => {
               selected={selected}
               setSelected={setSelected}
             />
-
-            {/* <Typography
-                        variant="h6"
-                        color={colors.grey[300]}
-                        sx={{ m: "15px 0 5px 20px" }}
-                        >
-                        Data
-                        </Typography> */}
             <Item
               title="Manage Social Enterprise"
               to="/socialenterprise"
@@ -168,6 +162,21 @@ const Sidebar = () => {
               setSelected={setSelected}
             />
           </Box>
+
+          {/* LOGOUT BUTTON */}
+          <MenuItem
+            onClick={() => {
+              logout(); // Logout user
+              navigate("/"); // Redirect to login
+            }}
+            icon={<ExitToAppOutlinedIcon />}
+            style={{
+              color: colors.redAccent[400],
+              marginTop: "20px",
+            }}
+          >
+            <Typography>Logout</Typography>
+          </MenuItem>
         </Menu>
       </ProSidebar>
     </Box>

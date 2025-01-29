@@ -16,6 +16,8 @@ import NotificationsOutlinedIcon from "@mui/icons-material/NotificationsOutlined
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import SearchIcon from "@mui/icons-material/Search";
+import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
+import { useAuth } from "../../context/authContext";
 
 const Topbar = () => {
   const theme = useTheme();
@@ -23,14 +25,10 @@ const Topbar = () => {
   const colorMode = useContext(ColorModeContext);
   const [anchorEl, setAnchorEl] = useState(null);
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
-
-  const handleLogout = () => {
-    setAnchorEl(null); // Close the dropdown
-    navigate("/"); // Redirect to the login page
-  };
 
   return (
     <Box display="flex" justifyContent="space-between" p={2}>
@@ -70,7 +68,19 @@ const Topbar = () => {
           onClose={handleMenuClose}
         >
           <MenuItem onClick={handleMenuClose}>Profile</MenuItem>
-          <MenuItem onClick={handleLogout}>Log Out</MenuItem>
+          <MenuItem
+            onClick={() => {
+              logout(); // Logout user
+              navigate("/"); // Redirect to login
+            }}
+            icon={<ExitToAppOutlinedIcon />}
+            style={{
+              color: colors.redAccent[400],
+              marginTop: "20px",
+            }}
+          >
+            <Typography>Logout</Typography>
+          </MenuItem>
         </Menu>
       </Box>
     </Box>
