@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet  } from "react-router-dom";
 import { AuthContextProvider, useAuth } from "./context/authContext";
 import Login from "./scenes/login";
 import Dashboard from "./scenes/dashboard";
@@ -10,6 +10,7 @@ import Reports from "./scenes/reports";
 import Scheduling from "./scenes/scheduling";
 import Sidebar from "./scenes/global/Sidebar";
 import Topbar from "./scenes/global/Topbar";
+import Unauthorized from "./scenes/unauthorized";
 import { ColorModeContext, useMode } from "./theme";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -32,15 +33,28 @@ const App = () => {
   );
 };
 
+const ProtectedRoute = ({ allowedRoles }) => {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  return <Outlet />;
+};
+
 const MainContent = () => {
   const { user, loading } = useAuth();
 
-  // useEffect(() => {
-  //   if (!loading && user) {
-  //     console.log('Logged in user:', user);
-  //     console.log('user role:', user.role);
-  //   }
-  // }, [user, loading]);
+  useEffect(() => {
+    if (!loading) {
+      console.log('Logged in user:', user);
+    }
+  }, [user, loading]);
 
   if (loading) return <div>Loading...</div>; // Show a loading screen while user authentication is being checked
 
@@ -52,27 +66,36 @@ const MainContent = () => {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
+
+          {/* <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
           <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" />} />
           <Route path="/socialenterprise" element={user ? <SocialEnterprise /> : <Navigate to="/" />} />
           <Route path="/mentors" element={user ? <Mentors /> : <Navigate to="/" />} />
           <Route path="/analytics" element={user ? <Analytics /> : <Navigate to="/" />} />
           <Route path="/reports" element={user ? <Reports /> : <Navigate to="/" />} />
-          <Route path="/scheduling" element={user ? <Scheduling /> : <Navigate to="/" />} />
+          <Route path="/scheduling" element={user ? <Scheduling /> : <Navigate to="/" />} /> */}
+          
           {/* Protected Routes - Only for Logged-in Users */}
-          {user ? (
-            <>
-              <Route path="/dashboard" element={<Dashboard />} />
-              {["LSEED", "Mentor"].includes(user.role) && (
-                <Route path="/socialenterprise" element={<SocialEnterprise />} />
-              )}
-              {user.role === "LSEED" && <Route path="/mentors" element={<Mentors />} />}
-              {["LSEED", "Guest User"].includes(user.role) && <Route path="/analytics" element={<Analytics />} />}
-              {["LSEED", "Guest User"].includes(user.role) && <Route path="/reports" element={<Reports />} />}
-              {["LSEED", "Mentor"].includes(user.role) && <Route path="/scheduling" element={<Scheduling />} />}
-            </>
-          ) : (
-            <Route path="*" element={<Navigate to="/" />} />
-          )}
+          <Route element={<ProtectedRoute allowedRoles={["LSEED", "Mentor"]} />}>
+            <Route path="/socialenterprise" element={<SocialEnterprise />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedRoles={["LSEED"]} />}>
+            <Route path="/mentors" element={<Mentors />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedRoles={["LSEED", "Guest User"]} />}>
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/reports" element={<Reports />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedRoles={["LSEED", "Mentor"]} />}>
+            <Route path="/scheduling" element={<Scheduling />} />
+          </Route>
+
+          {/* Catch-all: Redirect unauthorized access */}
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
     </>
