@@ -1,5 +1,5 @@
-import React from "react";
-import { Routes, Route, Navigate, Outlet  } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthContextProvider, useAuth } from "./context/authContext";
 import Login from "./scenes/login";
 import Dashboard from "./scenes/dashboard";
@@ -8,13 +8,13 @@ import Mentors from "./scenes/mentors";
 import Analytics from "./scenes/analytics";
 import Reports from "./scenes/reports";
 import Scheduling from "./scenes/scheduling";
+import AssessSEPage from "./scenes/assess";
 import Sidebar from "./scenes/global/Sidebar";
 import Topbar from "./scenes/global/Topbar";
 import Unauthorized from "./scenes/unauthorized";
 import { ColorModeContext, useMode } from "./theme";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import { useEffect } from "react";
 
 const App = () => {
   const [theme, colorMode] = useMode();
@@ -52,7 +52,7 @@ const MainContent = () => {
 
   useEffect(() => {
     if (!loading) {
-      console.log('Logged in user:', user);
+      console.log("Logged in user:", user);
     }
   }, [user, loading]);
 
@@ -68,14 +68,15 @@ const MainContent = () => {
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
-          {/* <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+          {/* User Routes */}
           <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" />} />
           <Route path="/socialenterprise" element={user ? <SocialEnterprise /> : <Navigate to="/" />} />
           <Route path="/mentors" element={user ? <Mentors /> : <Navigate to="/" />} />
           <Route path="/analytics" element={user ? <Analytics /> : <Navigate to="/" />} />
           <Route path="/reports" element={user ? <Reports /> : <Navigate to="/" />} />
-          <Route path="/scheduling" element={user ? <Scheduling /> : <Navigate to="/" />} /> */}
-          
+          <Route path="/scheduling" element={user ? <Scheduling /> : <Navigate to="/" />} />
+          <Route path="/assess" element={user ? <AssessSEPage /> : <Navigate to="/" />} />
+
           {/* Protected Routes - Only for Logged-in Users */}
           <Route element={<ProtectedRoute allowedRoles={["LSEED", "Mentor"]} />}>
             <Route path="/socialenterprise" element={<SocialEnterprise />} />
@@ -92,6 +93,7 @@ const MainContent = () => {
 
           <Route element={<ProtectedRoute allowedRoles={["LSEED", "Mentor"]} />}>
             <Route path="/scheduling" element={<Scheduling />} />
+            <Route path="/assess" element={<AssessSEPage />} />
           </Route>
 
           {/* Catch-all: Redirect unauthorized access */}

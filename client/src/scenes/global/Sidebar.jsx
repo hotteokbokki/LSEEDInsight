@@ -12,6 +12,7 @@ import GradingOutlinedIcon from "@mui/icons-material/GradingOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
+import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 import { useAuth } from "../../context/authContext";
 import { useEffect } from "react";
 
@@ -38,16 +39,8 @@ const Sidebar = () => {
   const colors = tokens(theme.palette.mode);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selected, setSelected] = useState("Dashboard");
-  const { user, logout } = useAuth(); // Fetch user from auth context
-  const navigate = useNavigate(); // Initialize useNavigate for redirection
-
-  // useEffect(() => {
-  //   if (user) {
-  //     console.log("User role in Sidebar:", user.role);
-  //   } else {
-  //     console.log("No user found in Sidebar");
-  //   }
-  // }, [user]);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <Box
@@ -71,7 +64,6 @@ const Sidebar = () => {
     >
       <ProSidebar collapsed={isCollapsed}>
         <Menu iconShape="square">
-          {/* LOGO AND MENU ICON */}
           <MenuItem
             onClick={() => setIsCollapsed(!isCollapsed)}
             icon={isCollapsed ? <MenuOutlinedIcon /> : undefined}
@@ -97,7 +89,6 @@ const Sidebar = () => {
             )}
           </MenuItem>
 
-          {/* USER SECTION */}
           {!isCollapsed && user && (
             <Box mb="25px">
               <Box display="flex" justifyContent="center" alignItems="center">
@@ -105,7 +96,7 @@ const Sidebar = () => {
                   alt="profile-user"
                   width="100px"
                   height="100px"
-                  src="/assets/user.png" // ✅ Fixed image path
+                  src="/assets/user.png"
                   style={{ cursor: "pointer", borderRadius: "50%" }}
                 />
               </Box>
@@ -117,7 +108,7 @@ const Sidebar = () => {
                   fontWeight="bold"
                   sx={{ m: "10px 0 0 0" }}
                 >
-                  {user.name || "User"} {/* ✅ Dynamically fetch user name */}
+                  {user.name || "User"}
                 </Typography>
                 <Typography variant="h5" color={colors.greenAccent[500]}>
                   {user.role || "LSEED User"}
@@ -126,9 +117,7 @@ const Sidebar = () => {
             </Box>
           )}
 
-          {/* MENU ITEMS */}
           <Box paddingLeft={isCollapsed ? undefined : "10%"}>
-            {/* Dashboard is visible to all users */}
             <Item
               title="Dashboard"
               to="/dashboard"
@@ -137,8 +126,17 @@ const Sidebar = () => {
               setSelected={setSelected}
             />
 
-            {/* Only LSEED and Mentors can see Manage Social Enterprise */}
-            {["LSEED", "Mentor"].includes(user?.role) && (
+            {user?.role === "Mentor" && (
+              <Item
+                title="Assess SE"
+                to="/assess"
+                icon={<AssignmentTurnedInOutlinedIcon />}
+                selected={selected}
+                setSelected={setSelected}
+              />
+            )}
+
+            {user?.role === "LSEED" && (
               <Item
                 title="Manage Social Enterprise"
                 to="/socialenterprise"
@@ -148,7 +146,6 @@ const Sidebar = () => {
               />
             )}
 
-            {/* Only LSEED can see the Mentors page */}
             {user?.role === "LSEED" && (
               <Item
                 title="LSEED Mentors"
@@ -159,8 +156,7 @@ const Sidebar = () => {
               />
             )}
 
-            {/* LSEED and Guest Users can see Analytics */}
-            {["LSEED", "Guest User"].includes(user?.role) && (
+            {user?.role === "LSEED" && (
               <Item
                 title="Show Analytics"
                 to="/analytics"
@@ -170,8 +166,7 @@ const Sidebar = () => {
               />
             )}
 
-            {/* LSEED and Guest Users can see Reports */}
-            {["LSEED", "Guest User"].includes(user?.role) && (
+            {user?.role === "LSEED" && (
               <Item
                 title="Show Reports"
                 to="/reports"
@@ -181,24 +176,22 @@ const Sidebar = () => {
               />
             )}
 
-            {/* LSEED and Mentors can see Scheduling */}
-            {["LSEED", "Mentor"].includes(user?.role) && (
-              <Item
-                title="Scheduling Matrix"
-                to="/scheduling"
-                icon={<CalendarMonthOutlinedIcon />}
-                selected={selected}
-                setSelected={setSelected}
-              />
-            )}
-
+            {user?.role === "LSEED" ||
+              (user?.role === "Mentor" && (
+                <Item
+                  title="Scheduling Matrix"
+                  to="/scheduling"
+                  icon={<CalendarMonthOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+              ))}
           </Box>
 
-          {/* LOGOUT BUTTON */}
           <MenuItem
             onClick={() => {
-              logout(); // Logout user
-              navigate("/"); // Redirect to login
+              logout();
+              navigate("/");
             }}
             icon={<ExitToAppOutlinedIcon />}
             style={{
