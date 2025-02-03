@@ -13,6 +13,7 @@ import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined
 import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import { useAuth } from "../../context/authContext";
+import { useEffect } from "react";
 
 const Item = ({ title, to, icon, selected, setSelected }) => {
   const theme = useTheme();
@@ -39,6 +40,14 @@ const Sidebar = () => {
   const [selected, setSelected] = useState("Dashboard");
   const { user, logout } = useAuth(); // Fetch user from auth context
   const navigate = useNavigate(); // Initialize useNavigate for redirection
+
+  // useEffect(() => {
+  //   if (user) {
+  //     console.log("User role in Sidebar:", user.role);
+  //   } else {
+  //     console.log("No user found in Sidebar");
+  //   }
+  // }, [user]);
 
   return (
     <Box
@@ -119,6 +128,7 @@ const Sidebar = () => {
 
           {/* MENU ITEMS */}
           <Box paddingLeft={isCollapsed ? undefined : "10%"}>
+            {/* Dashboard is visible to all users */}
             <Item
               title="Dashboard"
               to="/dashboard"
@@ -126,41 +136,62 @@ const Sidebar = () => {
               selected={selected}
               setSelected={setSelected}
             />
-            <Item
-              title="Manage Social Enterprise"
-              to="/socialenterprise"
-              icon={<Diversity2OutlinedIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
-            <Item
-              title="LSEED Mentors"
-              to="/mentors"
-              icon={<SettingsAccessibilityOutlinedIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
-            <Item
-              title="Show Analytics"
-              to="/analytics"
-              icon={<AnalyticsOutlinedIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
-            <Item
-              title="Show Reports"
-              to="/reports"
-              icon={<GradingOutlinedIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
-            <Item
-              title="Scheduling Matrix"
-              to="/scheduling"
-              icon={<CalendarMonthOutlinedIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
+
+            {/* Only LSEED and Mentors can see Manage Social Enterprise */}
+            {["LSEED", "Mentor"].includes(user?.role) && (
+              <Item
+                title="Manage Social Enterprise"
+                to="/socialenterprise"
+                icon={<Diversity2OutlinedIcon />}
+                selected={selected}
+                setSelected={setSelected}
+              />
+            )}
+
+            {/* Only LSEED can see the Mentors page */}
+            {user?.role === "LSEED" && (
+              <Item
+                title="LSEED Mentors"
+                to="/mentors"
+                icon={<SettingsAccessibilityOutlinedIcon />}
+                selected={selected}
+                setSelected={setSelected}
+              />
+            )}
+
+            {/* LSEED and Guest Users can see Analytics */}
+            {["LSEED", "Guest User"].includes(user?.role) && (
+              <Item
+                title="Show Analytics"
+                to="/analytics"
+                icon={<AnalyticsOutlinedIcon />}
+                selected={selected}
+                setSelected={setSelected}
+              />
+            )}
+
+            {/* LSEED and Guest Users can see Reports */}
+            {["LSEED", "Guest User"].includes(user?.role) && (
+              <Item
+                title="Show Reports"
+                to="/reports"
+                icon={<GradingOutlinedIcon />}
+                selected={selected}
+                setSelected={setSelected}
+              />
+            )}
+
+            {/* LSEED and Mentors can see Scheduling */}
+            {["LSEED", "Mentor"].includes(user?.role) && (
+              <Item
+                title="Scheduling Matrix"
+                to="/scheduling"
+                icon={<CalendarMonthOutlinedIcon />}
+                selected={selected}
+                setSelected={setSelected}
+              />
+            )}
+
           </Box>
 
           {/* LOGOUT BUTTON */}

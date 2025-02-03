@@ -35,11 +35,12 @@ const App = () => {
 const MainContent = () => {
   const { user, loading } = useAuth();
 
-  useEffect(() => {
-    if (!loading) {
-      console.log('Logged in user:', user);
-    }
-  }, [user, loading]);
+  // useEffect(() => {
+  //   if (!loading && user) {
+  //     console.log('Logged in user:', user);
+  //     console.log('user role:', user.role);
+  //   }
+  // }, [user, loading]);
 
   if (loading) return <div>Loading...</div>; // Show a loading screen while user authentication is being checked
 

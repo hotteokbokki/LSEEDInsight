@@ -23,8 +23,8 @@ exports.login = async (req, res) => {
     }
 
     // Set the session
-    req.session.user = { id: user.id, username: user.username };
-    res.json({ message: "Login successful", user: { id: user.id, username: user.username } });
+    req.session.user = { id: user.id, username: user.username, role: user.role};
+    res.json({ message: "Login successful", user: { id: user.id, username: user.username, role: user.role} });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal Server Error" });

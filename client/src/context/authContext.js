@@ -28,6 +28,8 @@ export const AuthContextProvider = ({ children }) => {
 
   // Login function to set session and update user state
   const login = async (userData) => {
+    console.log("Logging in user:", userData); // Log user data before storing
+    console.log("Parsed Stored User:", JSON.parse(localStorage.getItem("user")));
     localStorage.setItem('user', JSON.stringify(userData)); // Store user in localStorage
     setUser(userData); // Update user state
     navigate('/dashboard'); // Redirect to dashboard after login
