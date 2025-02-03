@@ -1704,3 +1704,10 @@ body {
     height: 600px; /* Set a fixed height, adjust as needed */
     max-height: 100vh;
 }
+
+.error-message {
+  color: red;
+  font-size: 14px;
+  margin-top: 10px;
+  text-align: center;
+}

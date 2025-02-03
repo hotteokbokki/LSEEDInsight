@@ -21,6 +21,7 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
     try {
       const response = await fetch("http://localhost:4000/auth/login", {
         method: "POST",
