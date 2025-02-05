@@ -1,9 +1,0 @@
-const supabase = require('../supabase.js');
-
-exports.getSampleData = async () => {
-  // Fetch all chemical data from Supabase
-  const { data: sampledata } = await supabase.from('Sample').select('*');
-
-  return sampledata;
-
-  };
