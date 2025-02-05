@@ -1,5 +1,6 @@
 const express = require("express");
 const bcrypt = require('bcrypt'); // For password hashing
+const session = require("express-session");
 const cookieParser = require('cookie-parser');
 const { createClient } = require('@supabase/supabase-js');
 const { login, logout, protectedRoute } = require("../controllers/authController");
@@ -56,13 +57,14 @@ router.post('/login', async (req, res) => {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
   
-      // Create a session
-      // Store the user ID or other session data in a cookie
-      res.cookie('session_id', data.id, data.role, {
-        httpOnly: true,  // Prevents JavaScript from accessing the cookie
-        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production (HTTPS)
-        maxAge: 24 * 60 * 60 * 1000,  // 1 day expiration
-      });
+      // ✅ Store user details in the session
+      req.session.user = {
+        id: data.user_id,
+        email: data.email,
+        role: data.role,
+        firstName: data.firstName,
+        lastName: data.lastName,
+      };
   
       // Return success message
       res.json({ message: 'Login successful', user: { email: data.email, role:data.role } });
