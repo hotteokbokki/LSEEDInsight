@@ -187,20 +187,6 @@ const Sidebar = () => {
                 />
               ))}
           </Box>
-
-          <MenuItem
-            onClick={() => {
-              logout();
-              navigate("/");
-            }}
-            icon={<ExitToAppOutlinedIcon />}
-            style={{
-              color: colors.redAccent[400],
-              marginTop: "20px",
-            }}
-          >
-            <Typography>Logout</Typography>
-          </MenuItem>
         </Menu>
       </ProSidebar>
     </Box>

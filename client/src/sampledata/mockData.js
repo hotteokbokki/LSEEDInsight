@@ -93,6 +93,38 @@ export const mockDataSE = [
   },
 ];
 
+export const mockDataEval = [
+  {
+    id: 1,
+    evaluationDate: "2024-01-15",
+    mentorName: "John Doe",
+    seName: "Eco Innovations",
+  },
+  {
+    id: 2,
+    evaluationDate: "2024-02-10",
+    mentorName: "Jane Smith",
+    seName: "Tech Solutions",
+  },
+  {
+    id: 3,
+    evaluationDate: "2024-03-05",
+    mentorName: "Alice Johnson",
+    seName: "Green Earth",
+  },
+  {
+    id: 4,
+    evaluationDate: "2024-04-20",
+    mentorName: "Michael Lee",
+    seName: "Future Builders",
+  },
+  {
+    id: 5,
+    evaluationDate: "2024-05-15",
+    mentorName: "Emily Brown",
+    seName: "Community Impact",
+  },
+];
 
 export const mockDataSEDB = [
   {
