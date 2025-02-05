@@ -1,4 +1,13 @@
-import { Box, useTheme } from "@mui/material";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  useTheme,
+} from "@mui/material";
 import { tokens } from "../../theme";
 import { DataGrid } from "@mui/x-data-grid";
 import { mockDataMentor } from "../../sampledata/mockData";
@@ -8,10 +17,18 @@ import EmailIcon from "@mui/icons-material/Email";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import TrafficIcon from "@mui/icons-material/Traffic";
+import { useState } from "react";
 
 const Mentors = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+
+  const [openDialog, setOpenDialog] = useState(false);
+  const [mentorData, setMentorData] = useState({
+    name: "",
+    email: "",
+    contactNumber: "",
+  });
 
   const columns = [
     {
@@ -32,7 +49,9 @@ const Mentors = () => {
     },
     {
       field: "numberOfSEsAssigned",
-      headerName: "Number of SEs Assigned",
+      headerName: "SEs Assigned",
+      headerAlign: "left",
+      align: "left",
       flex: 1,
       type: "number",
     },
@@ -54,6 +73,23 @@ const Mentors = () => {
       ),
     },
   ];
+
+  const handleDialogOpen = () => {
+    setOpenDialog(true);
+  };
+
+  const handleDialogClose = () => {
+    setOpenDialog(false);
+  };
+
+  const handleInputChange = (e) => {
+    setMentorData({ ...mentorData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = () => {
+    // Add mentor logic here
+    setOpenDialog(false);
+  };
 
   return (
     <Box m="20px">
@@ -146,6 +182,59 @@ const Mentors = () => {
           />
         </Box>
       </Box>
+
+      {/* ADD MENTOR BUTTON */}
+      <Box display="flex" justifyContent="flex-start" mt="20px" mb="20px">
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={handleDialogOpen}
+        >
+          Add Mentor
+        </Button>
+      </Box>
+
+      {/* DIALOG BOX */}
+      <Dialog open={openDialog} onClose={handleDialogClose}>
+        <DialogTitle>Add New Mentor</DialogTitle>
+        <DialogContent>
+          <TextField
+            name="name"
+            label="Mentor Name"
+            variant="outlined"
+            fullWidth
+            value={mentorData.name}
+            onChange={handleInputChange}
+            sx={{ marginBottom: "15px" }}
+          />
+          <TextField
+            name="email"
+            label="Email"
+            variant="outlined"
+            fullWidth
+            value={mentorData.email}
+            onChange={handleInputChange}
+            sx={{ marginBottom: "15px" }}
+          />
+          <TextField
+            name="contactNumber"
+            label="Contact Number"
+            variant="outlined"
+            fullWidth
+            value={mentorData.contactNumber}
+            onChange={handleInputChange}
+            sx={{ marginBottom: "15px" }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDialogClose} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} color="secondary">
+            Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ROW 2: DATA GRID */}
       <Box
