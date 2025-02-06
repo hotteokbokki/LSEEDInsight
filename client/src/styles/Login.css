@@ -494,47 +494,6 @@ body {
     margin-left: 1em;
 }
 
-.google-btn {
-    width: 100%;
-    height: 50px;
-    background-color: #fff;
-    border-radius: 2px;
-    box-shadow: 0 3px 4px 0 rgba(0,0,0,.25);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    padding: 0 15px;
-    transition: all .3s ease;
-}
-
-.google-btn:hover {
-    box-shadow: 0 0 6px #126636;
-    background-color: #f8f8f8;
-}
-
-.google-btn:active {
-    background-color: #eee;
-}
-
-.google-icon-wrapper {
-    width: 24px;
-    height: 24px;
-    margin-right: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.fab.fa-google {
-    font-size: 24px;
-    color:#1c9b53;
-  }
-
-.google-icon {
-    width: 24px;
-    height: 24px;
-}
-
 .btn-text {
     color: #757575;
     font-size: 14px;
@@ -542,10 +501,6 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
     margin: 0;
     padding: 0;
-}
-
-.signup-form .google-btn {
-    margin-bottom: 20px;
 }
 
 .alert {
@@ -896,22 +851,6 @@ body {
     text-decoration: underline;
     cursor: pointer;
     padding: 5px;
-}
-
-#googleSignupModal .modal-content {
-    max-width: 500px;
-}
-
-#googleSignupModal .input-boxes {
-    margin-top: 20px;
-}
-
-#googleSignupModal .input-box {
-    margin-bottom: 15px;
-}
-
-#googleSignupModal .password-requirements {
-    margin-top: 10px;
 }
 
 .valid {

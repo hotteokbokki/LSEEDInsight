@@ -74,10 +74,6 @@ const Login = () => {
     }
   };
 
-  const signInWithGoogle = () => {
-    alert("Google Sign-In functionality goes here.");
-  };
-
   return (
     <div className="container">
       <input
@@ -147,12 +143,6 @@ const Login = () => {
                   </div>
                   {errorMessage && <div className="error-message">{errorMessage}</div>}
                   <div className="separator">OR</div>
-                  <div className="google-btn" onClick={signInWithGoogle}>
-                    <div className="google-icon-wrapper">
-                      <i className="fab fa-google"></i>
-                    </div>
-                    <p className="btn-text">Sign in with Google</p>
-                  </div>
                   <div className="text sign-up-text">
                     Don't have an account?{" "}
                     <label htmlFor="flip">Sign up now</label>
@@ -224,12 +214,6 @@ const Login = () => {
                   </div>
                   {errorMessage && <div className="error-message">{errorMessage}</div>}
                   <div className="separator">OR</div>
-                  <div className="google-btn" onClick={signInWithGoogle}>
-                    <div className="google-icon-wrapper">
-                      <i className="fab fa-google"></i>
-                    </div>
-                    <p className="btn-text">Sign up with Google</p>
-                  </div>
                   <div className="text sign-up-text">
                     Already have an account?{" "}
                     <label htmlFor="flip">Login now</label>
