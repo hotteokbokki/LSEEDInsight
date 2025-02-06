@@ -138,3 +138,7 @@ client/package-lock.json
 client/package.json
 package-lock.json
 package.json
+
+Dockerfile
+.dockerignore
+
