@@ -9,6 +9,7 @@ const { getTelegramUsers } = require("./controllers/telegrambotController");
 const { getSocialEnterprisesByProgram } = require("./controllers/socialenterprisesController");
 require("dotenv").config();
 const { createClient } = require("@supabase/supabase-js");
+const { getUsers } = require("./controllers/usersController");
 
 const app = express();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -76,6 +77,13 @@ async function sendMessageWithInlineKeyboard(chatId, message, options) {
 app.get("/protected", requireAuth, (req, res) => {
   res.json({ message: "Access granted to protected route" });
 });
+
+app.get("/getUsers", async (req, res) => {
+  const data = await getUsers();
+
+  res.json(data);
+});
+
 
 app.post("/webhook", async (req, res) => {
   const message = req.body.message;
