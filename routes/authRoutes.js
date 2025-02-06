@@ -41,6 +41,21 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // ✅ Generate a unique session ID
+    const sessionId = crypto.randomUUID();
+    try {
+      console.log('Inserting session into active_sessions');
+      // ✅ Insert the session ID into `active_sessions`
+      const sessionInsertQuery = `
+        INSERT INTO active_sessions (session_id, user_id) VALUES ($1, $2)
+      `;
+      await pgDatabase.query(sessionInsertQuery, [sessionId, user.user_id]);
+      console.log('Session inserted');
+    } catch (error) {
+      console.error('Error inserting session:', error);
+    }
+    
+
     // ✅ Store user details in the session
     req.session.user = {
       id: user.user_id,
@@ -48,10 +63,18 @@ router.post('/login', async (req, res) => {
       role: user.roles,
       firstName: user.first_name,
       lastName: user.last_name,
+      sessionId: sessionId,
     };
 
+    // ✅ Set session ID in a cookie
+    res.cookie("session_id", sessionId, { httpOnly: true, secure: false });
+
     // Return success message
-    res.json({ message: 'Login successful', user: { email: user.email, role: user.roles } });
+    res.json({
+      message: "Login successful",
+      user: { id: user.user_id, email: user.email, role: user.roles },
+      session_id: sessionId,
+    });
   } catch (error) {
     console.error('Login Error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -96,12 +119,36 @@ router.post("/signup", async (req, res) => {
 });
 
 // Logout route
-router.post('/logout', (req, res) => {
+router.post('/logout',async  (req, res) => {
+  console.log("logging out");
+  try {
+    // Retrieve session ID from the cookie
+    const sessionId = req.session.user.session_id;
+    console.log('Session ID:', sessionId);
+
+    if (!sessionId) {
+        return res.status(400).json({ message: 'No session found' });
+    }
+
+    // Query to delete the session from active_sessions table
+    const deleteSessionQuery = `
+        DELETE FROM active_sessions WHERE session_id = $1
+    `;
+
+    // Execute the query
+    await pgDatabase.query(deleteSessionQuery, [sessionId]);
+    
+    console.log("Session ID Deleted");
+
     // Clear the session cookie
     res.clearCookie('session_id');
-  
+    
     // Return success message
     res.json({ message: 'Logout successful' });
+} catch (error) {
+    console.error('Error during logout:', error);
+    res.status(500).json({ message: 'An error occurred during logout' });
+}
 });
 
 module.exports = {

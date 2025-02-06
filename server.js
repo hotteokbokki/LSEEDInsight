@@ -10,6 +10,7 @@ const { getSocialEnterprisesByProgram } = require("./controllers/socialenterpris
 require("dotenv").config();
 const { getUsers } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
+const cookieParser = require("cookie-parser");
 
 const app = express();
 
@@ -21,11 +22,12 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 
 // Configure session handling
+app.use(cookieParser());
 app.use(
   session({
     secret: process.env.SESSION_SECRET, // Use a secure key
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
     cookie: {
       secure: process.env.NODE_ENV === "production", // Use HTTPS in production
       httpOnly: true,
