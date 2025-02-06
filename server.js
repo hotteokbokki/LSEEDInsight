@@ -10,6 +10,7 @@ const { getSocialEnterprisesByProgram } = require("./controllers/socialenterpris
 require("dotenv").config();
 const { createClient } = require("@supabase/supabase-js");
 const { getUsers } = require("./controllers/usersController");
+const pgDatabase = require("./database.js"); // Import PostgreSQL client
 
 const app = express();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -260,68 +261,65 @@ app.post("/send-message", async (req, res) => {
   // }
 
   try {
-      console.log(`🔍 Fetching user details for: ${userName}`);
+    console.log(`🔍 Fetching user details for: ${email}`);
 
-      // Query Supabase for user details
-      const { data, error } = await supabase
-      .from("Users") // Assuming your table is named "users"
-      .select("*")
-      .eq("email", email)
-      .single();
+    // Query PostgreSQL for user details
+    const query = 'SELECT * FROM "Users" WHERE email = $1';
+    const values = [email];
+    
+    const result = await pgDatabase.query(query, values);
 
-      if (error) {
-        console.error("❌ Error fetching user data from Supabase:", error.message);
-        return res.status(500).json({ error: "Failed to fetch user data." });
-      }
+    if (result.rows.length === 0) {
+      console.log(`⚠️ No user found for email: ${email}`);
+      return res.status(404).json({ error: "User not found." });
+    }
 
-      if (!data) {
-        console.log(`⚠️ No user found for email: ${email}`);
-        return res.status(404).json({ error: "User not found." });
-      }
+    const user = result.rows[0];
 
-      console.log("✅ User found:", data);
+    console.log("✅ User found:", user);
 
-      // Extract user details
-      const { firstName, lastName, email, telegramChatId } = data;
+    // Extract user details
+    const { first_name, last_name, telegramChatId } = user;
 
-      console.log(`📌 User Details:
-        - First Name: ${firstName}
-        - Last Name: ${lastName}
-        - Email: ${email}
-        - Telegram Chat ID: ${telegramChatId}
-      `);
+    console.log(`📌 User Details:
+      - First Name: ${first_name}
+      - Last Name: ${last_name}
+      - Email: ${email}
+      - Telegram Chat ID: ${telegramChatId}
+    `);
 
-      if (!telegramChatId) {
-        console.log("⚠️ User does not have a Telegram chat ID linked.");
-        return res.status(400).json({ error: "User has not linked their Telegram account." });
-      }
+    if (!telegramChatId) {
+      console.log("⚠️ User does not have a Telegram chat ID linked.");
+      return res.status(400).json({ error: "User has not linked their Telegram account." });
+    }
 
-        const message = `
-        *📢 Mentor Feedback Notification*
+    const message = `
+    *📢 Mentor Feedback Notification*
 
-        🌟 *Mentor Feedback Summary*
-        - **Mentor**: John Doe
-        - **Rating**: ⭐⭐⭐⭐⭐ (5/5)
-        - **Comments**:
-        \`\`\`
-        This mentor is fantastic! Keep up the great work.
-        \`\`\`
+    🌟 *Mentor Feedback Summary*
+    - **Mentor**: John Doe
+    - **Rating**: ⭐⭐⭐⭐⭐ (5/5)
+    - **Comments**:
+    \`\`\`
+    This mentor is fantastic! Keep up the great work.
+    \`\`\`
 
-        ✅ *Acknowledge Feedback*
-        Please click the link below to acknowledge that you have received this feedback:
+    ✅ *Acknowledge Feedback*
+    Please click the link below to acknowledge that you have received this feedback:
 
-        [✅ Acknowledge Feedback](http://example.com/acknowledge)
-        `;
+    [✅ Acknowledge Feedback](http://example.com/acknowledge)
+    `;
 
-      console.log(`🚀 Sending message to ${firstName} ${lastName} (${email}) on Telegram...`);
+    console.log(`🚀 Sending message to ${first_name} ${last_name} (${email}) on Telegram...`);
 
-      const response = await sendMessage(telegramChatId, message);
+    const response = await sendMessage(telegramChatId, message);
 
-      console.log("✅ Message sent successfully:", response);
-      console.error("❌ Error in /send-message route:", error.message);
-      res.json({ success: true, response });
+    console.log("✅ Message sent successfully:", response);
+    res.json({ success: true, response });
+    
   } catch (error) {
-      res.status(500).json({ error: error.message });
+    console.error("❌ Error in /send-feedback route:", error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 

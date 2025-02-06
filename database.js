@@ -19,7 +19,7 @@ const client = new Client({
 
 // Connect to the PostgreSQL database
 client.connect()
-    .then(() => console.log("Connected to PostgreSQL"))
+    .then(() => console.log("🔗 Connected to PostgreSQL"))
     .catch(err => console.error("Connection error", err.stack));
 
 // Export the client so it can be used in other files

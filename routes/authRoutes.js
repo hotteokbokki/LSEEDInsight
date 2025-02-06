@@ -2,18 +2,14 @@ const express = require("express");
 const bcrypt = require('bcrypt'); // For password hashing
 const session = require("express-session");
 const cookieParser = require('cookie-parser');
-const { createClient } = require('@supabase/supabase-js');
 const { login, logout, protectedRoute } = require("../controllers/authController");
+const pgDatabase = require("../database.js"); // Import PostgreSQL client
 
 const router = express.Router();
 
 router.post("/", login);
 router.get("/logout", logout);
 router.get("/protected", protectedRoute);
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const requireAuth = (req, res, next) => {
   const sessionId = req.cookies.session_id; // Access the session cookie
@@ -28,50 +24,38 @@ const requireAuth = (req, res, next) => {
 router.use(cookieParser()); // Middleware to parse cookies
 
 router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
-  
-    try {
-      // Fetch user data from Supabase
-      const { data, error } = await supabase
-        .from('Users')  // Assuming your table is named 'Users'
-        .select('*')  // Select the necessary fields
-        .eq('email', email)
-        .single();  // Expecting a single user (email should be unique)
-  
-      if (error || !data) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
+  const { email, password } = req.body;
 
-      if (error) {
-          console.error('Supabase Error:', error);
-          return res.status(500).json({ message: 'Database error' });
-      }
+  try {
+    // Query to fetch user data from PostgreSQL
+    const result = await pgDatabase.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = result.rows[0]; // Assuming email is unique, we take the first result
 
-      if (!data || !data.password) {
-          return res.status(401).json({ message: 'Invalid credentials' });
-      }
-  
-      // Verify password
-      const isPasswordValid = await bcrypt.compare(password, data.password);
-      if (!isPasswordValid) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
-  
-      // ✅ Store user details in the session
-      req.session.user = {
-        id: data.user_id,
-        email: data.email,
-        role: data.role,
-        firstName: data.firstName,
-        lastName: data.lastName,
-      };
-  
-      // Return success message
-      res.json({ message: 'Login successful', user: { email: data.email, role:data.role } });
-    } catch (error) {
-      console.error('Login Error:', error);
-      res.status(500).json({ message: 'Internal server error' });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // ✅ Store user details in the session
+    req.session.user = {
+      id: user.user_id,
+      email: user.email,
+      role: user.roles,
+      firstName: user.first_name,
+      lastName: user.last_name,
+    };
+
+    // Return success message
+    res.json({ message: 'Login successful', user: { email: user.email, role: user.roles } });
+  } catch (error) {
+    console.error('Login Error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
 router.post("/signup", async (req, res) => {
@@ -86,22 +70,25 @@ router.post("/signup", async (req, res) => {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Assign "Guest User" as the default role
-    const role = "Guest User";
+    // Assign "Guest User" as the default role if no role is provided
+    const userRole = role || "Guest User";
 
     // Insert the new user into the Users table
-    const { data, error } = await supabase
-      .from("Users")
-      .insert([
-        { firstName, lastName, email, password: hashedPassword, role },
-      ]);
+    const insertQuery = `
+      INSERT INTO users (first_name, last_name, email, password, roles)
+      VALUES ($1, $2, $3, $4, $5) RETURNING *;
+    `;
+    const values = [firstName, lastName, email, hashedPassword, userRole];
 
-    if (error) {
-      console.error("Error inserting user:", error);
+    const result = await pgDatabase.query(insertQuery, values);
+    const newUser = result.rows[0];
+
+    // Check if user is created successfully
+    if (!newUser) {
       return res.status(500).json({ message: "Failed to register user" });
     }
 
-    res.status(201).json({ message: "User registered successfully", user: data });
+    res.status(201).json({ message: "User registered successfully", user: newUser });
   } catch (err) {
     console.error("Error during signup:", err);
     res.status(500).json({ message: "An error occurred during signup" });
