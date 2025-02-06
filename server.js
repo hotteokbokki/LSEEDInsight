@@ -8,12 +8,10 @@ const { getPrograms, getProgramNameByID } = require("./controllers/programsContr
 const { getTelegramUsers } = require("./controllers/telegrambotController");
 const { getSocialEnterprisesByProgram } = require("./controllers/socialenterprisesController");
 require("dotenv").config();
-const { createClient } = require("@supabase/supabase-js");
 const { getUsers } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
 
 const app = express();
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 // Enable CORS with credentials
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
