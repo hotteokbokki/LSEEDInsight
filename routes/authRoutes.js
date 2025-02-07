@@ -11,6 +11,8 @@ router.post("/", login);
 router.get("/logout", logout);
 router.get("/protected", protectedRoute);
 
+const sessionId = crypto.randomUUID();
+
 const requireAuth = (req, res, next) => {
   const sessionId = req.cookies.session_id; // Access the session cookie
   if (!sessionId) {
@@ -42,7 +44,7 @@ router.post('/login', async (req, res) => {
     }
 
     // ✅ Generate a unique session ID
-    const sessionId = crypto.randomUUID();
+    // const sessionId = crypto.randomUUID();
     try {
       console.log('Inserting session into active_sessions');
       // ✅ Insert the session ID into `active_sessions`
@@ -50,7 +52,7 @@ router.post('/login', async (req, res) => {
         INSERT INTO active_sessions (session_id, user_id) VALUES ($1, $2)
       `;
       await pgDatabase.query(sessionInsertQuery, [sessionId, user.user_id]);
-      console.log('Session inserted');
+      
     } catch (error) {
       console.error('Error inserting session:', error);
     }
@@ -75,6 +77,7 @@ router.post('/login', async (req, res) => {
       user: { id: user.user_id, email: user.email, role: user.roles },
       session_id: sessionId,
     });
+    console.log('Session inserted: ', req.session.user.sessionId);
   } catch (error) {
     console.error('Login Error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -119,21 +122,18 @@ router.post("/signup", async (req, res) => {
 });
 
 // Logout route
-router.post('/logout',async  (req, res) => {
+router.post('/logout', async  (req, res) => {
   console.log("logging out");
   try {
     // Retrieve session ID from the cookie
-    const sessionId = req.session.user.session_id;
     console.log('Session ID:', sessionId);
 
-    if (!sessionId) {
+    if (sessionId === undefined) {
         return res.status(400).json({ message: 'No session found' });
     }
 
     // Query to delete the session from active_sessions table
-    const deleteSessionQuery = `
-        DELETE FROM active_sessions WHERE session_id = $1
-    `;
+    const deleteSessionQuery = `DELETE FROM active_sessions WHERE session_id = $1`;
 
     // Execute the query
     await pgDatabase.query(deleteSessionQuery, [sessionId]);

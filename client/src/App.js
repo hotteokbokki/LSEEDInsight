@@ -15,6 +15,7 @@ import Unauthorized from "./scenes/unauthorized";
 import { ColorModeContext, useMode } from "./theme";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import Cookies from 'js-cookie';  // You can use js-cookie to easily work with cookies
 
 const App = () => {
   const [theme, colorMode] = useMode();
@@ -53,6 +54,11 @@ const MainContent = () => {
   useEffect(() => {
     if (!loading) {
       console.log("Logged in user:", user);
+
+      console.log("All Cookies:", document.cookie);
+
+      const sessionId = Cookies.get('sessionId');  // js-cookie automatically decodes the cookie value
+      console.log("User session:", sessionId);
     }
   }, [user, loading]);
 

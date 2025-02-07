@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const AuthContext = createContext();
 
@@ -14,7 +15,7 @@ export const useAuth = () => {
 export const AuthContextProvider = ({ children }) => {
   const [user, setUser] = useState(null); // Store user session data
   const [loading, setLoading] = useState(true); // Loading state while checking session
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
   
   // Check for session in localStorage when the app loads
@@ -28,18 +29,41 @@ export const AuthContextProvider = ({ children }) => {
 
   // Login function to set session and update user state
   const login = async (userData) => {
-    console.log("Logging in user:", userData); // Log user data before storing
-    console.log("Parsed Stored User:", JSON.parse(localStorage.getItem("user")));
-    localStorage.setItem('user', JSON.stringify(userData)); // Store user in localStorage
-    setUser(userData); // Update user state
-    navigate('/dashboard'); // Redirect to dashboard after login
+    try{
+      console.log("Logging in user:", userData); // Log user data before storing
+      console.log("Parsed Stored User:", JSON.parse(localStorage.getItem("user")));
+      localStorage.setItem('user', JSON.stringify(userData)); // Store user in localStorage
+      setUser(userData); // Update user state
+      navigate('/dashboard'); // Redirect to dashboard after login
+    } catch(error) {
+      console.error('Login error: ', error);
+    }
+    
   };
 
    // Logout function to clear session and user state
-  const logout = () => {
-    localStorage.removeItem('user'); // Remove session from localStorage
-    setUser(null); // Clear user state
-    navigate('/'); // Redirect to login page after logout
+   const logout = async () => {
+    try {
+      // Make a request to the backend to log out
+      axios.post("http://localhost:3000/auth/logout", null, {
+        withCredentials: true, // Ensure cookies are sent along with the request
+      })
+      .then(response => {
+        console.log("Logout successful", response.data);
+      })
+      .catch(error => {
+        console.error("Error logging out:", error);
+      });
+  
+      // On successful logout, clear user data from local storage
+      localStorage.removeItem('user'); // Remove session from localStorage
+      setUser(null); // Clear user state
+  
+      navigate('/'); // Redirect to login page after logout
+    } catch (error) {
+      console.error('Error logging out:', error);
+      // Optionally handle the error, like showing an error message
+    }
   };
 
   if (loading) return <div>Loading...</div>;

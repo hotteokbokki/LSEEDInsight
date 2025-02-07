@@ -2,6 +2,9 @@ const bcrypt = require("bcryptjs");
 const pgDatabase = require("../database.js"); // Import PostgreSQL client
 const crypto = require("crypto"); // To generate session ID
 
+  // ✅ Generate a unique session ID
+  const sessionId = crypto.randomUUID();
+
 // Login route
 exports.login = async (req, res) => {
   const { email, password } = req.body;
@@ -23,9 +26,6 @@ exports.login = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
-
-    // ✅ Generate a unique session ID
-    const sessionId = crypto.randomUUID();
 
     try {
       // console.log('Inserting session into active_sessions');
@@ -69,7 +69,7 @@ exports.logout = async (req, res) => {
       return res.status(400).json({ error: "No active session" });
     }
 
-    const sessionId = req.session.user.sessionId;
+    const sessionId = req.session.user.session_id;
 
     console.log('Session ID:', req.cookies.session_id);
 
