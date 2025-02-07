@@ -324,6 +324,27 @@ app.post("/send-message", async (req, res) => {
   }
 });
 
+app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { role } = req.body; // 'admin' or 'user'
+
+  try {
+    // Update the user's role in the database
+    const query = 'UPDATE users SET role = $1 WHERE id = $2 RETURNING *';
+    const values = [role, id];
+    const result = await pgDatabase.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(result.rows[0]); // Respond with updated user data
+  } catch (error) {
+    console.error("Error updating user role:", error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Start the server
 const PORT = 4000;
 

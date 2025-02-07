@@ -5,6 +5,7 @@ import Login from "./scenes/login";
 import Dashboard from "./scenes/dashboard";
 import SocialEnterprise from "./scenes/socialenterprise";
 import Mentors from "./scenes/mentors";
+import Admin from "./scenes/admin";
 import Analytics from "./scenes/analytics";
 import Reports from "./scenes/reports";
 import Scheduling from "./scenes/scheduling";
@@ -72,6 +73,7 @@ const MainContent = () => {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+          <Route path="/admin" element={user ? <Navigate to="/admin" /> : <Admin />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           {/* User Routes */}
