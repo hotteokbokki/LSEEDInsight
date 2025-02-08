@@ -12,7 +12,7 @@ import {
   TextField,
   MenuItem,
 } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
 import { tokens } from "../../theme";
 import { mockDataSE } from "../../sampledata/mockData";
 import Header from "../../components/Header";
@@ -26,10 +26,9 @@ const SocialEnterprise = () => {
   // State for dialogs
   const [openAddSE, setOpenAddSE] = useState(false);
   const [openAddProgram, setOpenAddProgram] = useState(false);
-
-  // Form data
-  const [seData, setSeData] = useState({ name: "", members: "", sdg: "" });
-  const [programData, setProgramData] = useState({ name: "", se: "" });
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Handle dialog open/close
   const handleOpenAddSE = () => setOpenAddSE(true);
@@ -37,30 +36,49 @@ const SocialEnterprise = () => {
   const handleOpenAddProgram = () => setOpenAddProgram(true);
   const handleCloseAddProgram = () => setOpenAddProgram(false);
 
-  // Data grid columns
+  const handleRowClick = (params) => {
+    if (isEditing) {
+      setSelectedRow(params.row);
+      setOpenEditDialog(true);
+    }
+  };
+
+  const handleCloseEditDialog = () => setOpenEditDialog(false);
+
+  const handleEditChange = (e) => {
+    setSelectedRow({ ...selectedRow, [e.target.name]: e.target.value });
+  };
+
+  const toggleEditing = () => {
+    setIsEditing((prev) => !prev);
+  };
+
   const columns = [
-    { field: "id", headerName: "ID" },
+    { field: "id", headerName: "ID", editable: false },
     {
       field: "name",
       headerName: "Social Enterprise",
       flex: 1,
       cellClassName: "name-column--cell",
+      editable: isEditing,
     },
-    { field: "mentor", headerName: "Mentor", flex: 1 },
-    { field: "sdg", headerName: "SDG", flex: 1 },
-    { field: "contact", headerName: "Contact", flex: 1 },
+    { field: "mentor", headerName: "Mentor", flex: 1, editable: isEditing },
+    { field: "sdg", headerName: "SDG", flex: 1, editable: isEditing },
+    { field: "contact", headerName: "Contact", flex: 1, editable: isEditing },
     {
       field: "members",
       headerName: "No. of Members",
       type: "number",
       headerAlign: "left",
       align: "left",
+      editable: isEditing,
     },
-    { field: "program", headerName: "Program", flex: 1 },
+    { field: "program", headerName: "Program", flex: 1, editable: isEditing },
     {
       field: "status",
       headerName: "Status",
       flex: 1,
+      editable: isEditing, // Make status editable
       renderCell: (params) => (
         <Box
           sx={{
@@ -73,14 +91,29 @@ const SocialEnterprise = () => {
           {params.value}
         </Box>
       ),
+      renderEditCell: (params) => (
+        <TextField
+          select
+          value={params.value}
+          onChange={(e) =>
+            params.api.setEditCellValue({
+              id: params.id,
+              field: params.field,
+              value: e.target.value,
+            })
+          }
+          fullWidth
+        >
+          <MenuItem value="Active">Active</MenuItem>
+          <MenuItem value="Inactive">Inactive</MenuItem>
+        </TextField>
+      ),
     },
   ];
 
   return (
     <Box m="20px">
       <Header title="SOCIAL ENTERPRISE" subtitle="Manage Social Enterprises" />
-
-      {/* ROW 1: Line Chart */}
       <Box
         gridColumn="span 12"
         gridRow="span 2"
@@ -106,20 +139,11 @@ const SocialEnterprise = () => {
               Top Performer
             </Typography>
           </Box>
-          <Box>
-            <IconButton>
-              <DownloadOutlinedIcon
-                sx={{ fontSize: "26px", color: colors.greenAccent[500] }}
-              />
-            </IconButton>
-          </Box>
         </Box>
         <Box height="250px" m="-20px 0 0 0">
           <LineChart isDashboard={true} />
         </Box>
       </Box>
-
-      {/* BUTTONS: Below Chart, Above Data Grid */}
       <Box display="flex" gap="10px" mt="20px">
         <Button
           variant="contained"
@@ -128,6 +152,36 @@ const SocialEnterprise = () => {
         >
           Add SE
         </Button>
+        <Dialog open={openAddSE} onClose={handleCloseAddSE}>
+          <DialogTitle>Add Social Enterprise</DialogTitle>
+          <DialogContent>
+            <TextField label="Name" fullWidth margin="dense" />
+            <TextField label="Mentor" fullWidth margin="dense" />
+            <TextField label="SDG" fullWidth margin="dense" />
+            <TextField label="Contact" fullWidth margin="dense" />
+            <TextField
+              label="No. of Members"
+              type="number"
+              fullWidth
+              margin="dense"
+            />
+            <TextField label="Program" fullWidth margin="dense" />
+            <TextField select label="Status" fullWidth margin="dense">
+              <MenuItem value="Active">Active</MenuItem>
+              <MenuItem value="Inactive">Inactive</MenuItem>
+            </TextField>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseAddSE}>Cancel</Button>
+            <Button
+              onClick={handleCloseAddSE}
+              variant="contained"
+              color="primary"
+            >
+              Add
+            </Button>
+          </DialogActions>
+        </Dialog>
         <Button
           variant="contained"
           sx={{ backgroundColor: colors.greenAccent[500], color: "black" }}
@@ -135,9 +189,37 @@ const SocialEnterprise = () => {
         >
           Add Program
         </Button>
+        <Dialog open={openAddProgram} onClose={handleCloseAddProgram}>
+          <DialogTitle>Add Program</DialogTitle>
+          <DialogContent>
+            <TextField label="Program Name" fullWidth margin="dense" />
+            <TextField
+              label="Description"
+              fullWidth
+              margin="dense"
+              multiline
+              rows={3}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseAddProgram}>Cancel</Button>
+            <Button
+              onClick={handleCloseAddProgram}
+              variant="contained"
+              color="primary"
+            >
+              Add
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Button
+          variant="contained"
+          sx={{ backgroundColor: colors.blueAccent[500], color: "black" }}
+          onClick={toggleEditing}
+        >
+          {isEditing ? "Disable Editing" : "Enable Editing"}
+        </Button>
       </Box>
-
-      {/* Bottom Row: Data Grid */}
       <Box
         height="75vh"
         mt="20px"
@@ -158,85 +240,13 @@ const SocialEnterprise = () => {
           },
         }}
       >
-        <DataGrid rows={mockDataSE} columns={columns} />
+        <DataGrid
+          rows={mockDataSE}
+          columns={columns}
+          onRowClick={handleRowClick}
+          editMode="row" // Enable row editing
+        />
       </Box>
-
-      {/* Add SE Dialog */}
-      <Dialog open={openAddSE} onClose={handleCloseAddSE}>
-        <DialogTitle>Add Social Enterprise</DialogTitle>
-        <DialogContent>
-          <TextField
-            margin="dense"
-            label="Name"
-            fullWidth
-            value={seData.name}
-            onChange={(e) => setSeData({ ...seData, name: e.target.value })}
-          />
-          <TextField
-            margin="dense"
-            label="Number of Members"
-            fullWidth
-            type="number"
-            value={seData.members}
-            onChange={(e) => setSeData({ ...seData, members: e.target.value })}
-          />
-          <TextField
-            margin="dense"
-            label="SDGs Supported"
-            fullWidth
-            value={seData.sdg}
-            onChange={(e) => setSeData({ ...seData, sdg: e.target.value })}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseAddSE} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handleCloseAddSE} color="secondary">
-            Add
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Add Program Dialog */}
-      <Dialog open={openAddProgram} onClose={handleCloseAddProgram}>
-        <DialogTitle>Add Program</DialogTitle>
-        <DialogContent>
-          <TextField
-            margin="dense"
-            label="Program Name"
-            fullWidth
-            value={programData.name}
-            onChange={(e) =>
-              setProgramData({ ...programData, name: e.target.value })
-            }
-          />
-          <TextField
-            margin="dense"
-            label="Social Enterprise"
-            fullWidth
-            select
-            value={programData.se}
-            onChange={(e) =>
-              setProgramData({ ...programData, se: e.target.value })
-            }
-          >
-            {mockDataSE.map((se) => (
-              <MenuItem key={se.id} value={se.name}>
-                {se.name}
-              </MenuItem>
-            ))}
-          </TextField>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseAddProgram} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handleCloseAddProgram} color="secondary">
-            Add
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

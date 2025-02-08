@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogTitle,
   TextField,
+  MenuItem,
   useTheme,
 } from "@mui/material";
 import { tokens } from "../../theme";
@@ -23,12 +24,57 @@ const Mentors = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
+  // State for dialogs and data
   const [openDialog, setOpenDialog] = useState(false);
   const [mentorData, setMentorData] = useState({
     name: "",
     email: "",
     contactNumber: "",
   });
+  const [rows, setRows] = useState(mockDataMentor); // Local state for rows
+  const [isEditing, setIsEditing] = useState(false); // Toggle editing mode
+
+  // Handle dialog open/close
+  const handleDialogOpen = () => {
+    setOpenDialog(true);
+  };
+
+  const handleDialogClose = () => {
+    setOpenDialog(false);
+  };
+
+  // Handle input changes for dialog form
+  const handleInputChange = (e) => {
+    setMentorData({ ...mentorData, [e.target.name]: e.target.value });
+  };
+
+  // Submit new mentor data
+  const handleSubmit = () => {
+    const newMentor = {
+      id: rows.length + 1, // Generate a unique ID
+      mentorName: mentorData.name,
+      email: mentorData.email,
+      number: mentorData.contactNumber,
+      numberOfSEsAssigned: 0,
+      status: "Active",
+    };
+    setRows([...rows, newMentor]); // Add new mentor to rows
+    setOpenDialog(false); // Close dialog
+    setMentorData({ name: "", email: "", contactNumber: "" }); // Reset form
+  };
+
+  // Handle row updates
+  const handleRowEditCommit = (params) => {
+    const updatedRows = rows.map((row) =>
+      row.id === params.id ? { ...row, [params.field]: params.value } : row
+    );
+    setRows(updatedRows); // Update rows state
+  };
+
+  // Toggle editing mode
+  const toggleEditing = () => {
+    setIsEditing((prev) => !prev);
+  };
 
   const columns = [
     {
@@ -36,16 +82,19 @@ const Mentors = () => {
       headerName: "Mentor Name",
       flex: 1,
       cellClassName: "name-column--cell",
+      editable: isEditing, // Make editable when in edit mode
     },
     {
       field: "email",
       headerName: "Email",
       flex: 1,
+      editable: isEditing, // Make editable when in edit mode
     },
     {
       field: "number",
       headerName: "Contact Number",
       flex: 1,
+      editable: isEditing, // Make editable when in edit mode
     },
     {
       field: "numberOfSEsAssigned",
@@ -54,11 +103,13 @@ const Mentors = () => {
       align: "left",
       flex: 1,
       type: "number",
+      editable: isEditing, // Make editable when in edit mode
     },
     {
       field: "status",
       headerName: "Status",
       flex: 1,
+      editable: isEditing, // Make editable when in edit mode
       renderCell: (params) => (
         <Box
           sx={{
@@ -71,25 +122,25 @@ const Mentors = () => {
           {params.value}
         </Box>
       ),
+      renderEditCell: (params) => (
+        <TextField
+          select
+          value={params.value}
+          onChange={(e) =>
+            params.api.setEditCellValue({
+              id: params.id,
+              field: params.field,
+              value: e.target.value,
+            })
+          }
+          fullWidth
+        >
+          <MenuItem value="Active">Active</MenuItem>
+          <MenuItem value="Inactive">Inactive</MenuItem>
+        </TextField>
+      ),
     },
   ];
-
-  const handleDialogOpen = () => {
-    setOpenDialog(true);
-  };
-
-  const handleDialogClose = () => {
-    setOpenDialog(false);
-  };
-
-  const handleInputChange = (e) => {
-    setMentorData({ ...mentorData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = () => {
-    // Add mentor logic here
-    setOpenDialog(false);
-  };
 
   return (
     <Box m="20px">
@@ -183,14 +234,27 @@ const Mentors = () => {
         </Box>
       </Box>
 
-      {/* ADD MENTOR BUTTON */}
-      <Box display="flex" justifyContent="flex-start" mt="20px" mb="20px">
+      {/* ADD MENTOR BUTTON AND EDIT TOGGLE */}
+      <Box display="flex" gap="10px" mt="20px" mb="20px">
         <Button
           variant="contained"
-          color="secondary"
+          sx={{
+            backgroundColor: colors.greenAccent[500],
+            color: "black",
+          }}
           onClick={handleDialogOpen}
         >
           Add Mentor
+        </Button>
+        <Button
+          variant="contained"
+          sx={{
+            backgroundColor: colors.blueAccent[500],
+            color: "black",
+          }}
+          onClick={toggleEditing}
+        >
+          {isEditing ? "Disable Editing" : "Enable Editing"}
         </Button>
       </Box>
 
@@ -262,7 +326,13 @@ const Mentors = () => {
           },
         }}
       >
-        <DataGrid rows={mockDataMentor} columns={columns} autoHeight />
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          autoHeight
+          onCellEditCommit={handleRowEditCommit} // Handle row edits
+          editMode="row" // Enable row editing
+        />
       </Box>
     </Box>
   );
