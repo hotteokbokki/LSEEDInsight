@@ -582,6 +582,74 @@ export const mockLineData = [
   },
 ];
 
+export const mockRadarData = [
+  {
+    category: "Challenge A",
+    "Social Enterprise A": 80,
+    "Social Enterprise B": 60,
+    "Social Enterprise C": 70,
+  },
+  {
+    category: "Challenge B",
+    "Social Enterprise A": 40,
+    "Social Enterprise B": 90,
+    "Social Enterprise C": 50,
+  },
+  {
+    category: "Challenge C",
+    "Social Enterprise A": 70,
+    "Social Enterprise B": 50,
+    "Social Enterprise C": 60,
+  },
+  {
+    category: "Performance A",
+    "Social Enterprise A": 90,
+    "Social Enterprise B": 80,
+    "Social Enterprise C": 85,
+  },
+  {
+    category: "Performance B",
+    "Social Enterprise A": 60,
+    "Social Enterprise B": 75,
+    "Social Enterprise C": 70,
+  },
+];
+
+export const mockLikertData = [
+  {
+    question: "Q1: How satisfied are you with the program?",
+    "Strongly Disagree": 10,
+    Disagree: 20,
+    Neutral: 30,
+    Agree: 25,
+    "Strongly Agree": 15,
+  },
+  {
+    question: "Q2: How effective is the mentorship?",
+    "Strongly Disagree": 5,
+    Disagree: 15,
+    Neutral: 40,
+    Agree: 30,
+    "Strongly Agree": 10,
+  },
+  {
+    question: "Q3: How likely are you to recommend this program?",
+    "Strongly Disagree": 2,
+    Disagree: 10,
+    Neutral: 25,
+    Agree: 40,
+    "Strongly Agree": 23,
+  },
+  {
+    question: "Q4: How clear are the program goals?",
+    "Strongly Disagree": 8,
+    Disagree: 12,
+    Neutral: 35,
+    Agree: 30,
+    "Strongly Agree": 15,
+  },
+];
+
 export const mockDataMentor = [
   {
     id: 1,

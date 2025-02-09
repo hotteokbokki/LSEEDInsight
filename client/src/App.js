@@ -10,6 +10,7 @@ import Analytics from "./scenes/analytics";
 import Reports from "./scenes/reports";
 import Scheduling from "./scenes/scheduling";
 import AssessSEPage from "./scenes/assess";
+import SEAnalytics from "./scenes/seanalytics";
 import Sidebar from "./scenes/global/Sidebar";
 import Topbar from "./scenes/global/Topbar";
 import Unauthorized from "./scenes/unauthorized";
@@ -84,6 +85,7 @@ const MainContent = () => {
           <Route path="/reports" element={user ? <Reports /> : <Navigate to="/" />} />
           <Route path="/scheduling" element={user ? <Scheduling /> : <Navigate to="/" />} />
           <Route path="/assess" element={user ? <AssessSEPage /> : <Navigate to="/" />} />
+          <Route path="/se-analytics/:id" element={<SEAnalytics />} />
 
           {/* Protected Routes - Only for Logged-in Users */}
           <Route element={<ProtectedRoute allowedRoles={["LSEED", "Mentor"]} />}>
@@ -92,6 +94,7 @@ const MainContent = () => {
 
           <Route element={<ProtectedRoute allowedRoles={["LSEED"]} />}>
             <Route path="/mentors" element={<Mentors />} />
+            <Route path="/seanalytics" element={<SEAnalytics />} />
           </Route>
 
           <Route element={<ProtectedRoute allowedRoles={["LSEED", "Guest User"]} />}>

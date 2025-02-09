@@ -18,10 +18,12 @@ import { mockDataSE } from "../../sampledata/mockData";
 import Header from "../../components/Header";
 import LineChart from "../../components/LineChart";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
+import { useNavigate } from "react-router-dom"; // For navigation
 
 const SocialEnterprise = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const navigate = useNavigate(); // Initialize navigation
 
   // State for dialogs
   const [openAddSE, setOpenAddSE] = useState(false);
@@ -35,20 +37,16 @@ const SocialEnterprise = () => {
   const handleCloseAddSE = () => setOpenAddSE(false);
   const handleOpenAddProgram = () => setOpenAddProgram(true);
   const handleCloseAddProgram = () => setOpenAddProgram(false);
-
   const handleRowClick = (params) => {
     if (isEditing) {
       setSelectedRow(params.row);
       setOpenEditDialog(true);
     }
   };
-
   const handleCloseEditDialog = () => setOpenEditDialog(false);
-
   const handleEditChange = (e) => {
     setSelectedRow({ ...selectedRow, [e.target.name]: e.target.value });
   };
-
   const toggleEditing = () => {
     setIsEditing((prev) => !prev);
   };
@@ -107,6 +105,20 @@ const SocialEnterprise = () => {
           <MenuItem value="Active">Active</MenuItem>
           <MenuItem value="Inactive">Inactive</MenuItem>
         </TextField>
+      ),
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      width: 150,
+      renderCell: (params) => (
+        <Button
+          variant="contained"
+          size="small"
+          onClick={() => navigate(`/se-analytics/${params.row.id}`)}
+        >
+          View SE
+        </Button>
       ),
     },
   ];
