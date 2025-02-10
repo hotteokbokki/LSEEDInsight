@@ -11,6 +11,7 @@ require("dotenv").config();
 const { getUsers } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const cookieParser = require("cookie-parser");
+const { getMentorsBySocialEnterprises } = require("./controllers/mentorsController.js");
 
 const app = express();
 
@@ -61,6 +62,28 @@ async function sendMessage(chatId, message) {
 // Helper function to send messages with inline keyboard
 async function sendMessageWithInlineKeyboard(chatId, message, options) {
   try {
+    const inlineKeyboard = options.map(option => [option]);// Convert to 2D array inside the function
+    console.log("Inline Keyboard:", inlineKeyboard); // Debugging log
+
+      const response = await axios.post(TELEGRAM_API_URL, {
+          chat_id: chatId,
+          text: message,
+          parse_mode: 'Markdown',
+          reply_markup: {
+              inline_keyboard: inlineKeyboard,
+          },
+      });
+      return response.data;
+  } catch (error) {
+    console.error("Failed to send message with inline keyboard:", error.response?.data || error.message);
+  }
+}
+
+async function sendMessageWithOptions(chatId, message, options) {
+  try {
+    const inlineKeyboard = options.map(option => [option]);// Convert to 2D array inside the function
+    console.log("Inline Keyboard:", inlineKeyboard); // Debugging log
+
       const response = await axios.post(TELEGRAM_API_URL, {
           chat_id: chatId,
           text: message,
@@ -71,7 +94,7 @@ async function sendMessageWithInlineKeyboard(chatId, message, options) {
       });
       return response.data;
   } catch (error) {
-      throw new Error(`Failed to send message: ${error.message}`);
+    console.error("Failed to send message with inline keyboard:", error.response?.data || error.message);
   }
 }
 
@@ -82,13 +105,11 @@ app.get("/protected", requireAuth, (req, res) => {
 
 app.get("/getUsers", async (req, res) => {
   const data = await getUsers();
-
   res.json(data);
 });
 
-
 app.post("/webhook", async (req, res) => {
-  const message = req.body.message;
+  const message = req.body.message || req.body.edited_message;
   const callbackQuery = req.body.callback_query;
 
   // Handle text messages (Registration, Password Check)
@@ -150,6 +171,11 @@ app.post("/webhook", async (req, res) => {
     const data = callbackQuery.data;
   
     try {
+      // Check if the callbackQueryId is valid
+      if (!callbackQueryId || !data) {
+        console.error("Invalid callback query data.");
+        return res.sendStatus(400); // Bad request if the query is invalid
+    }
       if (data.startsWith("program_")) {
         // Handle program selection as before
         const programId = data.replace("program_", "");
@@ -179,15 +205,14 @@ app.post("/webhook", async (req, res) => {
         }));
 
         // Wrap in a 2D array (Telegram requires this)
-        const inlineKeyboard = [enterpriseOptions]; // ✅ Converts to 2D format
+        const inlineKeyboard = enterpriseOptions.map(option => [option]);
 
-        await sendMessageWithInlineKeyboard(
+        await sendMessageWithOptions(
           chatId,
           `✅ You selected *${selectedProgram}*!\n\nPlease choose a social enterprise:`,
           inlineKeyboard
         );
 
-  
         return res.sendStatus(200);
       } else if (data.startsWith("enterprise_")) {
         // Handle social enterprise selection
@@ -206,10 +231,53 @@ app.post("/webhook", async (req, res) => {
   
         // Send message to user confirming the social enterprise selection
         await sendMessage(chatId, `✅ You selected *${selectedEnterprise.name}*!`);
-  
+
         // Proceed with the next steps (e.g., show more details, options, etc.)
-        // ...
+        /*
+        //Mentor
+        const mentors = await getMentorsBySocialEnterprises(enterpriseId);
+
+        console.log("Fetched Mentors:", mentors);
+
+        if (mentors.length === 0) {
+          await sendMessage(chatId, `⚠️ No mentors available under *${selectedEnterprise.name}*.`);
+          return res.sendStatus(200);
+        }
+
+        // Map the data correctly
+        const mentorOptions = mentors.map(m => ({
+          text: `${m.mentor_firstName} ${m.mentor_lastName}`,
+          callback_data: m.callback_data
+        }));
+
+        // Wrap in a 2D array (Telegram requires this)
+        const inlineKeyboard = mentorOptions.map(option => [option]);
+
+        await sendMessageWithOptions(
+          chatId,
+          `✅ You selected *${socialEnterprises.name}*!\n\nPlease choose your Mentor:`,
+          inlineKeyboard
+        );
+
+        return res.sendStatus(200);
+      } else if (data.startsWith("mentor_")) {
+        // Handle social enterprise selection
+        const mentorId = data.replace("mentor_", "");
+        const selectedMentor = await getMentorById(mentorId);
   
+        if (!selectedMentor) {
+          return res.sendStatus(400); // Invalid selection
+        }
+  
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          callback_query_id: callbackQueryId,
+          text: "✅ Choice received!",
+          show_alert: false,
+        });
+  
+        await sendMessage(chatId, `✅ You selected *${selectedMentor.mentor_firstName} ${selectedMentor.mentor_lastName}*!`);
+        // ...
+        */
         return res.sendStatus(200);
       }
     } catch (error) {
@@ -221,46 +289,6 @@ app.post("/webhook", async (req, res) => {
 
 // Send Message to a User (using stored Telegram User ID)
 app.post("/send-message", async (req, res) => {
-  // const userName = "yesdayesdayes69"; // You can replace this with a dynamic username or logic based on your needs
-  // const message = `
-  // *📢 Mentor Feedback Notification*
-
-  // 🌟 *Mentor Feedback Summary*
-  // - **Mentor**: John Doe
-  // - **Rating**: ⭐⭐⭐⭐⭐ (5/5)
-  // - **Comments**:
-  // \`\`\`
-  // This mentor is fantastic! Keep up the great work.
-  // \`\`\`
-
-  // ✅ *Acknowledge Feedback*
-  // Please click the link below to acknowledge that you have received this feedback:
-
-  // [✅ Acknowledge Feedback](http://example.com/acknowledge)
-  // `;
-
-  // // userdata
-  // const { data, error } = await supabase
-  //     .from("Users") // Assuming your table is named "users"
-  //     .select("*")
-  //     .eq("email", email)
-  //     .single();
-
-  // console.log("✅ User found:", data);
-
-  // // Extract user details
-  // const { firstName, lastName, email } = data;
-
-  // console.log(`📌 User Details:
-  //   - First Name: ${firstName}
-  //   - Last Name: ${lastName}
-  //   - Email: ${email}
-  // `);
-
-  // if (!users[userName]) {
-  //     return res.status(400).json({ error: "User has not started the bot." });
-  // }
-
   try {
     console.log(`🔍 Fetching user details for: ${email}`);
 

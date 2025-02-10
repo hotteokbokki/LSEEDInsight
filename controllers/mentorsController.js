@@ -2,37 +2,47 @@ const pgDatabase = require('../database.js'); // Import PostgreSQL client
 
 exports.getMentorsBySocialEnterprises = async (se_id) => {
   try {
-    // Query to get social enterprises by program_id
+    console.log(`Fetching mentors for social enterprise ID: ${se_id}`);
+
+    // Query to get mentors by social enterprise ID
     const query = 'SELECT mentor_id, mentor_firstName, mentor_lastName FROM mentors WHERE se_id = $1';
     const values = [se_id];
 
     const result = await pgDatabase.query(query, values);
 
-    // If no social enterprises are found, return an empty array
+    console.log('Mentors query result:', result.rows);
+
     if (!result.rows.length) {
       return [];
     }
 
-    // Map the results to the desired format
+    // Map the results correctly
     return result.rows.map(mentor => ({
-      text: mentor.mentor_firstName, mentor_lastName, 
+      text: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`, // Fix: Properly format mentor name
       callback_data: `mentor_${mentor.mentor_id}`
     }));
   } catch (error) {
-    console.error("Error fetching Mentors:", error);
+    console.error("Error fetching mentors:", error);
     return [];
   }
 };
 
-/*exports.getMentors = async () => {
-    const { data, error } = await supabase
-        .from('Mentors')
-        .select('*');
-    
-    if (error) {
-        console.error("Error fetching mentors:", error);
-        return [];
+exports.getMentorById = async (mentor_id) => {
+  try {
+    console.log(`Fetching mentor by ID: ${mentor_id}`);
+
+    const query = 'SELECT mentor_id, mentor_firstName, mentor_lastName FROM mentors WHERE mentor_id = $1';
+    const values = [mentor_id];
+
+    const result = await pgDatabase.query(query, values);
+
+    if (result.rows.length === 0) {
+      return null;
     }
-    
-    return data;
-};*/
+
+    return result.rows[0];
+  } catch (error) {
+    console.error("Error fetching mentor by ID:", error);
+    return null;
+  }
+};
