@@ -11,7 +11,7 @@ require("dotenv").config();
 const { getUsers } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const cookieParser = require("cookie-parser");
-const { getMentorsBySocialEnterprises } = require("./controllers/mentorsController.js");
+const { getMentorsBySocialEnterprises, getMentorById } = require("./controllers/mentorsController.js");
 
 const app = express();
 
@@ -236,7 +236,45 @@ app.post("/webhook", async (req, res) => {
             }).catch(err => console.error("Failed to acknowledge callback:", err.response?.data || err.message));
 
             // Send message to user confirming the social enterprise selection
-            await sendMessage(chatId, `✅ You selected *${selectedEnterprise.team_name}*!`);
+            //await sendMessage(chatId, `✅ You selected *${selectedEnterprise.team_name}*!`);
+
+            //Mentor
+            const mentors = await getMentorsBySocialEnterprises(enterpriseId);
+            console.log("Fetched Mentors:", mentors);
+            if (mentors.length === 0) {
+              await sendMessage(chatId, `⚠️ No mentors available under *${selectedEnterprise.name}*.`);
+              return res.sendStatus(200);
+            }
+            // Map the data correctly
+            const mentorOptions = mentors.map(m => ({
+              text: m.text,
+              callback_data: m.callback_data
+            }));
+            // Wrap in a 2D array (Telegram requires this)
+            const inlineKeyboard = mentorOptions.map(option => [option]);
+            await sendMessageWithOptions(
+              chatId,
+              `✅ You selected *${selectedEnterprise.team_name}*!\n\nPlease choose your Mentor:`,
+              inlineKeyboard
+            );
+            return res.sendStatus(200);
+          } else if (data.startsWith("mentor_")) {
+            // Handle social enterprise selection
+            const mentorId = data.replace("mentor_", "");
+            const selectedMentor = await getMentorById(mentorId);
+      
+            if (!selectedMentor) {
+              return res.sendStatus(400); // Invalid selection
+            }
+      
+            await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+              callback_query_id: callbackQueryId,
+              text: "✅ Choice received!",
+              show_alert: false,
+            });
+      
+            await sendMessage(chatId, `✅ You selected *${selectedMentor.mentor_firstName} ${selectedMentor.mentor_lastName}*!`);
+            // ...
 
             return res.sendStatus(200);
         }
