@@ -16,7 +16,7 @@ exports.getSocialEnterprisesByProgram = async (programId) => {
     // Map the results to the desired format
     return result.rows.map(se => ({
       text: se.team_name, 
-      callback_data: `se_${se.se_id}`
+      callback_data: `enterprise_${se.se_id}`
     }));
   } catch (error) {
     console.error("Error fetching Social Enterprises:", error);
@@ -24,12 +24,25 @@ exports.getSocialEnterprisesByProgram = async (programId) => {
   }
 };
 
-// exports.getSocialEnterpriseByProgram = async (id) => {
-//     // Fetch a specific Social Enterprise by ID
-//     const { data, error } = await supabase.from('SocialEnterprises').select('*').eq('program_id', id);
-//     if (error) {
-//       console.error("Error fetching Social Enterprise by ID:", error);
-//       return null;
-//     }
-//     return data;
-//   }
+exports.getSocialEnterpriseByID = async (se_id) => {
+  try {
+    console.log(`🔍 Fetching social enterprise with ID: ${se_id}`);
+
+    // Query to get a social enterprise by se_id
+    const query = 'SELECT * FROM "socialenterprises" WHERE "se_id" = $1';
+    const values = [se_id];
+
+    const result = await pgDatabase.query(query, values);
+
+    // If no matching social enterprise is found, return null
+    if (!result.rows.length) {
+      console.log(`⚠️ No social enterprise found for ID: ${se_id}`);
+      return null;
+    }
+
+    return result.rows[0]; // Return the first (and only) matching row
+  } catch (error) {
+    console.error("❌ Error fetching social enterprise:", error);
+    return null;
+  }
+};

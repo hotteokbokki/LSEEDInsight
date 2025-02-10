@@ -6,7 +6,7 @@ const axios = require("axios");
 const ngrok = require("ngrok"); // Exposes your local server to the internet
 const { getPrograms, getProgramNameByID } = require("./controllers/programsController");
 const { getTelegramUsers } = require("./controllers/telegrambotController");
-const { getSocialEnterprisesByProgram } = require("./controllers/socialenterprisesController");
+const { getSocialEnterprisesByProgram, getSocialEnterpriseByID } = require("./controllers/socialenterprisesController");
 require("dotenv").config();
 const { getUsers } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
@@ -222,6 +222,8 @@ app.post("/webhook", async (req, res) => {
             const enterpriseId = data.replace("enterprise_", "");
             const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
 
+            console.log(selectedEnterprise);
+
             if (!selectedEnterprise) {
                 return res.sendStatus(400); // Invalid selection
             }
@@ -234,7 +236,7 @@ app.post("/webhook", async (req, res) => {
             }).catch(err => console.error("Failed to acknowledge callback:", err.response?.data || err.message));
 
             // Send message to user confirming the social enterprise selection
-            await sendMessage(chatId, `✅ You selected *${selectedEnterprise.name}*!`);
+            await sendMessage(chatId, `✅ You selected *${selectedEnterprise.team_name}*!`);
 
             return res.sendStatus(200);
         }
