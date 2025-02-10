@@ -5,7 +5,7 @@ const { router: authRoutes, requireAuth } = require("./routes/authRoutes");
 const axios = require("axios");
 const ngrok = require("ngrok"); // Exposes your local server to the internet
 const { getPrograms, getProgramNameByID } = require("./controllers/programsController");
-const { getTelegramUsers } = require("./controllers/telegrambotController");
+const { getTelegramUsers, insertTelegramUser } = require("./controllers/telegrambotController");
 const { getSocialEnterprisesByProgram, getSocialEnterpriseByID } = require("./controllers/socialenterprisesController");
 require("dotenv").config();
 const { getUsers } = require("./controllers/usersController");
@@ -44,6 +44,7 @@ app.use("/auth", authRoutes);
 // Store users who interacted with the bot
 let users = {}; // Consider using MongoDB or another database for persistence
 const PASSWORD = 'q@P#3_4)V5vUw+LJ!F'; // Set a secure password for authentication
+const userSelections = {}; // Store selections temporarily before final save
 
 // Helper function to send messages
 async function sendMessage(chatId, message) {
@@ -168,6 +169,8 @@ app.post("/webhook", async (req, res) => {
 
   if (callbackQuery) {
     const chatId = callbackQuery.message.chat.id;
+    const userName = callbackQuery.message.chat.username;
+    const firstName = callbackQuery.message.chat.first_name;
     const callbackQueryId = callbackQuery.id;
     const data = callbackQuery.data;
 
@@ -217,65 +220,104 @@ app.post("/webhook", async (req, res) => {
             );
 
             return res.sendStatus(200);
-        } else if (data.startsWith("enterprise_")) {
-            // Handle social enterprise selection
+          } else if (data.startsWith("enterprise_")) {
             const enterpriseId = data.replace("enterprise_", "");
             const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
-
-            console.log(selectedEnterprise);
-
+        
+            console.log(`🔍 Selected Enterprise:`, selectedEnterprise);
+        
             if (!selectedEnterprise) {
                 return res.sendStatus(400); // Invalid selection
             }
-
+        
+            // Store the SE selection temporarily
+            userSelections[chatId] = {
+                se_id: selectedEnterprise.se_id,
+                se_name: selectedEnterprise.team_name
+            };
+        
+            console.log(`✅ Stored SE selection for user ${chatId}:`, userSelections[chatId]);
+        
             // Acknowledge the callback query immediately
             axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
                 callback_query_id: callbackQueryId,
                 text: "✅ Choice received!",
                 show_alert: false,
             }).catch(err => console.error("Failed to acknowledge callback:", err.response?.data || err.message));
-
-            // Send message to user confirming the social enterprise selection
-            //await sendMessage(chatId, `✅ You selected *${selectedEnterprise.team_name}*!`);
-
-            //Mentor
+        
+            // Fetch mentors for the selected SE
             const mentors = await getMentorsBySocialEnterprises(enterpriseId);
             console.log("Fetched Mentors:", mentors);
+        
             if (mentors.length === 0) {
-              await sendMessage(chatId, `⚠️ No mentors available under *${selectedEnterprise.name}*.`);
-              return res.sendStatus(200);
+                await sendMessage(chatId, `⚠️ No mentors available under *${selectedEnterprise.team_name}*.`);
+                return res.sendStatus(200);
             }
-            // Map the data correctly
+        
+            // Map mentor options
             const mentorOptions = mentors.map(m => ({
-              text: m.text,
-              callback_data: m.callback_data
+                text: m.text,
+                callback_data: m.callback_data
             }));
-            // Wrap in a 2D array (Telegram requires this)
+        
+            // Wrap in a 2D array
             const inlineKeyboard = mentorOptions.map(option => [option]);
+        
             await sendMessageWithOptions(
-              chatId,
-              `✅ You selected *${selectedEnterprise.team_name}*!\n\nPlease choose your Mentor:`,
-              inlineKeyboard
+                chatId,
+                `✅ You selected *${selectedEnterprise.team_name}*!\n\nPlease choose your Mentor:`,
+                inlineKeyboard
             );
+        
             return res.sendStatus(200);
           } else if (data.startsWith("mentor_")) {
-            // Handle social enterprise selection
             const mentorId = data.replace("mentor_", "");
             const selectedMentor = await getMentorById(mentorId);
-      
+        
             if (!selectedMentor) {
-              return res.sendStatus(400); // Invalid selection
+                return res.sendStatus(400); // Invalid selection
             }
-      
-            await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-              callback_query_id: callbackQueryId,
-              text: "✅ Choice received!",
-              show_alert: false,
-            });
-      
-            await sendMessage(chatId, `✅ You selected *${selectedMentor.mentor_firstName} ${selectedMentor.mentor_lastName}*!`);
-            // ...
+        
+            // Ensure SE data is already stored
+            if (!userSelections[chatId]) {
+                console.error("❌ No SE selection found for user:", chatId);
+                return res.sendStatus(400);
+            }
+        
+            // Store the Mentor selection temporarily
+            userSelections[chatId].mentor_id = selectedMentor.mentor_id;
+            userSelections[chatId].mentor_name = `${selectedMentor.mentor_firstName} ${selectedMentor.mentor_lastName}`;
+        
+            console.log(`✅ Stored mentor selection for user ${chatId}:`, userSelections[chatId]);
+        
+            // Acknowledge the callback query immediately
+            axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+                callback_query_id: callbackQueryId,
+                text: "✅ Choice received!",
+                show_alert: false,
+            }).catch(err => console.error("Failed to acknowledge callback:", err.response?.data || err.message));
+        
+            // Final confirmation message
+            await sendMessage(chatId, `✅ You are now registered under *${userSelections[chatId].se_name}* with Mentor *${userSelections[chatId].mentor_name}*.\n\nWelcome to LSEED Insight!`);
+        
+            // Debugging logs
+            console.log("ChatID: ", chatId);
+            console.log("Username: ", userName);
+            console.log("First Name: ", firstName);
+            console.log("Selected SE Name:", userSelections[chatId].se_name);
+            console.log("Selected SE ID:", userSelections[chatId].se_id);
+            console.log("Selected Mentor Name:", userSelections[chatId].mentor_name);
+            console.log("Selected Mentor ID:", userSelections[chatId].mentor_id);
 
+            // Insert into Database
+            await insertTelegramUser(chatId,userName,firstName,userSelections);
+
+            delete userSelections[chatId];
+
+            console.log(`🗑️ Cleared stored selections for user ${chatId}`);
+
+            console.log(userSelections);
+        
             return res.sendStatus(200);
         }
     } catch (error) {

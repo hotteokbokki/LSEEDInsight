@@ -20,3 +20,40 @@ exports.getTelegramUsers = async (chatID) => {
     return null;
   }
 };
+
+exports.insertTelegramUser = async (chatid, username, firstname, userData) => {
+  try {
+    // SQL query to insert data into telegrambot table
+    const query = `
+      INSERT INTO "telegrambot" (
+        "username", "firstName", "lastName", "mentor_id", "rating", "comments", "isAcknowledge", "se_ID", "chatid"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *; -- Return the inserted row
+    `;
+
+    // Extract the values from the userData object
+    const values = [
+      username,                         // $1: username
+      firstname,                        // $2: firstName
+      '',                               // $3: lastName (optional, default to empty string)
+      userData[chatid].mentor_id,       // $4: mentor_id (UUID)
+      null,                             // $5: rating (default to null)
+      null,                             // $6: comments (default to null)
+      false,                            // $7: isAcknowledge (default to false)
+      userData[chatid].se_id,           // $8: se_ID (UUID)
+      chatid                            // $9: chatid (Primary Key)
+    ];
+
+    // Execute the query
+    const result = await pgDatabase.query(query, values);
+
+    // Log the inserted row
+    console.log("✅ User inserted successfully:", result.rows[0]);
+
+    // Return the inserted row
+    return result.rows[0];
+  } catch (error) {
+    console.error("❌ Error inserting user:", error);
+    throw error; // Propagate error for further handling
+  }
+};
