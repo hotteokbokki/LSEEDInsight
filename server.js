@@ -81,18 +81,17 @@ async function sendMessageWithInlineKeyboard(chatId, message, options) {
 
 async function sendMessageWithOptions(chatId, message, options) {
   try {
-    const inlineKeyboard = options.map(option => [option]);// Convert to 2D array inside the function
-    console.log("Inline Keyboard:", inlineKeyboard); // Debugging log
+    console.log("Inline Keyboard:", options); // Debugging log
 
-      const response = await axios.post(TELEGRAM_API_URL, {
-          chat_id: chatId,
-          text: message,
-          parse_mode: 'Markdown',
-          reply_markup: {
-              inline_keyboard: options,
-          },
-      });
-      return response.data;
+    const response = await axios.post(TELEGRAM_API_URL, {
+      chat_id: chatId,
+      text: message,
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: options, // Use directly without additional mapping
+      },
+    });
+    return response.data;
   } catch (error) {
     console.error("Failed to send message with inline keyboard:", error.response?.data || error.message);
   }
@@ -104,8 +103,10 @@ app.get("/protected", requireAuth, (req, res) => {
 });
 
 app.get("/getUsers", async (req, res) => {
-  const data = await getUsers();
-  res.json(data);
+  const enterpriseId = 'dc705825-6e77-4c2a-8ac0-c12baf56d6e0'
+  const mentors = await getMentorsBySocialEnterprises(enterpriseId);
+
+  res.json(mentors);
 });
 
 app.post("/webhook", async (req, res) => {
@@ -169,122 +170,80 @@ app.post("/webhook", async (req, res) => {
     const chatId = callbackQuery.message.chat.id;
     const callbackQueryId = callbackQuery.id;
     const data = callbackQuery.data;
-  
-    try {
-      // Check if the callbackQueryId is valid
-      if (!callbackQueryId || !data) {
-        console.error("Invalid callback query data.");
+
+    // Check if the callbackQueryId is valid
+    if (!callbackQueryId || !data) {
+        console.error("Invalid or expired callback query received.");
         return res.sendStatus(400); // Bad request if the query is invalid
     }
-      if (data.startsWith("program_")) {
-        // Handle program selection as before
-        const programId = data.replace("program_", "");
-        const selectedProgram = await getProgramNameByID(programId);
-  
-        if (!selectedProgram) {
-          return res.sendStatus(400); // Invalid selection
+
+    try {
+        if (data.startsWith("program_")) {
+            // Handle program selection as before
+            const programId = data.replace("program_", "");
+            const selectedProgram = await getProgramNameByID(programId);
+
+            if (!selectedProgram) {
+                return res.sendStatus(400); // Invalid selection
+            }
+
+            // Acknowledge the callback query immediately
+            axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+                callback_query_id: callbackQueryId,
+                text: "✅ Choice received!",
+                show_alert: false,
+            }).catch(err => console.error("Failed to acknowledge callback:", err.response?.data || err.message));
+
+            const socialEnterprises = await getSocialEnterprisesByProgram(programId);
+
+            if (socialEnterprises.length === 0) {
+                await sendMessage(chatId, `⚠️ No social enterprises available under *${selectedProgram}*.`);
+                return res.sendStatus(200);
+            }
+
+            // Map the data correctly
+            const enterpriseOptions = socialEnterprises.map(se => ({
+                text: se.text.replace(" - ", "\n"), // Break at " - " for better readability
+                callback_data: se.callback_data
+            }));
+
+            // Wrap in a 2D array (Telegram requires this)
+            const inlineKeyboard = enterpriseOptions.map(option => [option]);
+
+            await sendMessageWithOptions(
+                chatId,
+                `✅ You selected *${selectedProgram}*!\n\nPlease choose a social enterprise:`,
+                inlineKeyboard
+            );
+
+            return res.sendStatus(200);
+        } else if (data.startsWith("enterprise_")) {
+            // Handle social enterprise selection
+            const enterpriseId = data.replace("enterprise_", "");
+            const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
+
+            if (!selectedEnterprise) {
+                return res.sendStatus(400); // Invalid selection
+            }
+
+            // Acknowledge the callback query immediately
+            axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+                callback_query_id: callbackQueryId,
+                text: "✅ Choice received!",
+                show_alert: false,
+            }).catch(err => console.error("Failed to acknowledge callback:", err.response?.data || err.message));
+
+            // Send message to user confirming the social enterprise selection
+            await sendMessage(chatId, `✅ You selected *${selectedEnterprise.name}*!`);
+
+            return res.sendStatus(200);
         }
-  
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-          callback_query_id: callbackQueryId,
-          text: "✅ Choice received!",
-          show_alert: false,
-        });
-  
-        const socialEnterprises = await getSocialEnterprisesByProgram(programId);
-
-        if (socialEnterprises.length === 0) {
-          await sendMessage(chatId, `⚠️ No social enterprises available under *${selectedProgram}*.`);
-          return res.sendStatus(200);
-        }
-
-        // Map the data correctly
-        const enterpriseOptions = socialEnterprises.map(se => ({
-          text: se.text.replace(" - ", "\n"), // Break at " - " for better readability
-          callback_data: se.callback_data
-        }));
-
-        // Wrap in a 2D array (Telegram requires this)
-        const inlineKeyboard = enterpriseOptions.map(option => [option]);
-
-        await sendMessageWithOptions(
-          chatId,
-          `✅ You selected *${selectedProgram}*!\n\nPlease choose a social enterprise:`,
-          inlineKeyboard
-        );
-
-        return res.sendStatus(200);
-      } else if (data.startsWith("enterprise_")) {
-        // Handle social enterprise selection
-        const enterpriseId = data.replace("enterprise_", "");
-        const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
-  
-        if (!selectedEnterprise) {
-          return res.sendStatus(400); // Invalid selection
-        }
-  
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-          callback_query_id: callbackQueryId,
-          text: "✅ Choice received!",
-          show_alert: false,
-        });
-  
-        // Send message to user confirming the social enterprise selection
-        await sendMessage(chatId, `✅ You selected *${selectedEnterprise.name}*!`);
-
-        // Proceed with the next steps (e.g., show more details, options, etc.)
-        /*
-        //Mentor
-        const mentors = await getMentorsBySocialEnterprises(enterpriseId);
-
-        console.log("Fetched Mentors:", mentors);
-
-        if (mentors.length === 0) {
-          await sendMessage(chatId, `⚠️ No mentors available under *${selectedEnterprise.name}*.`);
-          return res.sendStatus(200);
-        }
-
-        // Map the data correctly
-        const mentorOptions = mentors.map(m => ({
-          text: `${m.mentor_firstName} ${m.mentor_lastName}`,
-          callback_data: m.callback_data
-        }));
-
-        // Wrap in a 2D array (Telegram requires this)
-        const inlineKeyboard = mentorOptions.map(option => [option]);
-
-        await sendMessageWithOptions(
-          chatId,
-          `✅ You selected *${socialEnterprises.name}*!\n\nPlease choose your Mentor:`,
-          inlineKeyboard
-        );
-
-        return res.sendStatus(200);
-      } else if (data.startsWith("mentor_")) {
-        // Handle social enterprise selection
-        const mentorId = data.replace("mentor_", "");
-        const selectedMentor = await getMentorById(mentorId);
-  
-        if (!selectedMentor) {
-          return res.sendStatus(400); // Invalid selection
-        }
-  
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-          callback_query_id: callbackQueryId,
-          text: "✅ Choice received!",
-          show_alert: false,
-        });
-  
-        await sendMessage(chatId, `✅ You selected *${selectedMentor.mentor_firstName} ${selectedMentor.mentor_lastName}*!`);
-        // ...
-        */
-        return res.sendStatus(200);
-      }
     } catch (error) {
-      console.error("Error processing callback query:", error);
-      return res.sendStatus(500); // Internal server error if callback fails
+        console.error("Error processing callback query:", error);
+        return res.sendStatus(500); // Internal server error if callback fails
     }
-  }
+}
+
 });
 
 // Send Message to a User (using stored Telegram User ID)
