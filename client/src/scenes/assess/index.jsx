@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios"; // Import Axios
+import axios from "axios";
 import {
   Box,
   Button,
@@ -12,284 +12,176 @@ import {
   TextField,
   Checkbox,
   FormControlLabel,
-  Rating,
+  Alert,
 } from "@mui/material";
 import { tokens } from "../../theme";
 import { DataGrid } from "@mui/x-data-grid";
 import Header from "../../components/Header";
-import { mockDataEval } from "../../sampledata/mockData"; // Assuming you have mock data for the evaluation dates
+import { mockDataEval } from "../../sampledata/mockData";
+
+const evaluationCriteria = {
+  1: [
+    "Lack of collaboration among team members.", 
+    "Frequent miscommunication leading to inefficiencies.", 
+    "Minimal participation in group discussions.", 
+    "Team members do not support or assist each other effectively.", 
+    "Poor delegation of tasks, leading to confusion and delays.", 
+    "No clear teamwork structure or coordination."
+  ],
+  2: [
+    "Occasional coordination issues causing inefficiencies.",
+    "Task delegation is inconsistent, leading to workload imbalances.",
+    "Collaboration efforts exist but lack effectiveness.",
+    "Communication is unclear, causing misunderstandings.",
+    "Team members work individually rather than as a unit.",
+    "Conflicts arise but are not effectively addressed."
+  ],
+  3: [
+    "Teamwork is functional but lacks refinement.",
+    "Collaboration happens but is not always proactive.",
+    "Communication is improving but still has gaps.",
+    "Team members assist each other but not consistently.",
+    "Conflicts are resolved, but not always smoothly.",
+    "Task management is structured but could be more efficient."
+  ],
+  4: [
+    "Team demonstrates strong collaboration and shared goals.",
+    "Communication is clear, with only minor misunderstandings.",
+    "Members actively support and motivate each other.",
+    "Task delegation is effective, with only small improvements needed.",
+    "Conflicts are handled well, with a positive resolution process.",
+    "The team works efficiently, with occasional areas for refinement."
+  ],
+  5: [
+    "Exceptional teamwork and seamless collaboration.",
+    "Crystal-clear communication, fostering productivity.",
+    "Leadership and unity create a highly efficient team.",
+    "Team members proactively support and uplift one another.",
+    "Problem-solving is highly effective, even under pressure.",
+    "Consistently surpasses teamwork expectations and goals."
+  ],
+};
+
 
 const AssessSEPage = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
-  // State for opening the dialog and storing form data
   const [openDialog, setOpenDialog] = useState(false);
-  const [rating, setRating] = useState(0); // Store star rating
-  const [strongCollab, setStrongCollab] = useState(false);
-  const [goodComm, setGoodComm] = useState(false);
-  const [taskDelegation, setTaskDelegation] = useState(false);
-  const [conflictResolution, setConflictResolution] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [selectedCriteria, setSelectedCriteria] = useState([]);
   const [comments, setComments] = useState("");
+  const [error, setError] = useState("");
 
-  const columns = [
-    {
-      field: "evaluationDate",
-      headerName: "Previous Evaluation Date",
-      flex: 1,
-    },
-    {
-      field: "mentorName",
-      headerName: "Mentor Name",
-      flex: 1,
-    },
-    {
-      field: "seName",
-      headerName: "Social Enterprise",
-      flex: 1,
-    },
-  ];
+  const handleRatingChange = (value) => {
+    setRating(rating === value ? 0 : value);
+    setSelectedCriteria([]);
+    setError("");
+  };
 
-  // Handle form submission and send data to the backend using GET request
+  const handleCriteriaChange = (criterion) => {
+    setSelectedCriteria((prev) =>
+      prev.includes(criterion) ? prev.filter((c) => c !== criterion) : [...prev, criterion]
+    );
+    setError("");
+  };
+
   const handleSubmit = async () => {
-    const formData = {
-      rating,
-      strongCollab,
-      goodComm,
-      taskDelegation,
-      conflictResolution,
-      comments,
-    };
+    if (selectedCriteria.length < 2) {
+      setError("Please select at least two predefined comments.");
+      return;
+    }
 
-    // Convert the form data to query string format
-    const queryParams = new URLSearchParams(formData).toString();
-
+    const formData = { rating, selectedCriteria, comments };
     try {
-      // Make a GET request to the backend with query parameters
-      const response = await axios.get(`YOUR_BACKEND_URL_HERE?${queryParams}`);
+      const response = await axios.post("YOUR_BACKEND_URL_HERE", formData);
       console.log("Form Data Sent to Backend:", response.data);
-
-      // Close the dialog after submitting
-      setOpenDialog(false);
+      handleClose();
     } catch (error) {
       console.error("Error submitting form data:", error);
     }
   };
 
+  const handleOpen = () => {
+    setOpenDialog(true);
+    setRating(0);
+    setSelectedCriteria([]);
+    setComments("");
+    setError("");
+  };
+
+  const handleClose = () => setOpenDialog(false);
+
+  const columns = [
+    { field: "evaluationDate", headerName: "Previous Evaluation Date", flex: 1 },
+    { field: "mentorName", headerName: "Mentor Name", flex: 1 },
+    { field: "seName", headerName: "Social Enterprise", flex: 1 },
+  ];
+
   return (
     <Box m="20px">
-      {/* Header */}
       <Header title="ASSESS SE" subtitle="Evaluate and manage SE performance" />
-
-      {/* Main Content */}
-      <Box
-        display="flex"
-        flexDirection="column"
-        justifyContent="center"
-        alignItems="center"
-        gap={4}
-      >
-        {/* First Row - Evaluate SE and File LOM Buttons */}
-        <Box
-          width="80%"
-          p={3}
-          textAlign="center"
-          border={`1px solid ${colors.grey[500]}`}
-          bgcolor={colors.primary[400]}
-          display="flex"
-          justifyContent="space-between"
-          gap={2}
-        >
-          <Button
-            variant="contained"
-            color="secondary"
-            sx={{
-              fontSize: "20px",
-              padding: "20px",
-              width: "48%",
-            }}
-            onClick={() => setOpenDialog(true)} // Open dialog when clicked
-          >
+      <Box display="flex" flexDirection="column" alignItems="center" gap={4}>
+        <Box width="80%" p={3} bgcolor={colors.primary[400]} display="flex" justifyContent="space-between">
+          <Button variant="contained" color="secondary" sx={{ fontSize: "20px", padding: "20px", width: "48%" }} onClick={handleOpen}>
             Evaluate SE
           </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            sx={{
-              fontSize: "20px",
-              padding: "20px",
-              width: "48%",
-            }}
-          >
+          <Button variant="contained" color="secondary" sx={{ fontSize: "20px", padding: "20px", width: "48%" }}>
             File LOM
           </Button>
         </Box>
-
-        {/* Second Row - DataGrid showing evaluation dates */}
-        <Box
-          width="80%"
-          height="250px"
-          sx={{
-            "& .MuiDataGrid-root": {
-              backgroundColor: colors.primary[400],
-              border: "none",
-            },
-            "& .MuiDataGrid-cell": {
-              borderBottom: "none",
-              color: colors.grey[100],
-            },
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: colors.blueAccent[700],
-              borderBottom: "none",
-            },
-            "& .MuiDataGrid-footerContainer": {
-              borderTop: "none",
-              backgroundColor: colors.blueAccent[700],
-            },
-          }}
-        >
+        <Box width="80%" height="250px">
           <DataGrid rows={mockDataEval} columns={columns} />
         </Box>
-
-        {/* Dialog Popup for SE Evaluation */}
-        <Dialog
-          open={openDialog}
-          onClose={() => setOpenDialog(false)}
-          sx={{
-            "& .MuiDialog-paper": {
-              backgroundColor: "white", // Set dialog background to white
-              color: "black", // Set text color to black
-              width: "600px", // Make the dialog wider
-              minHeight: "500px", // Make the dialog bigger
-              padding: "20px", // Add padding inside the dialog
-              borderRadius: "10px", // Optional: round corners
-            },
-          }}
-        >
-          <DialogTitle
-            sx={{
-              backgroundColor: "white", // Set title background to white
-              color: "black", // Set title text color to black
-              fontWeight: "bold", // Make the title bold
-            }}
-          >
-            Evaluate Social Enterprise
-          </DialogTitle>
+        <Dialog open={openDialog} onClose={handleClose} maxWidth="sm" fullWidth>
+          <DialogTitle>Evaluate Social Enterprise</DialogTitle>
           <DialogContent>
-            <Box display="flex" flexDirection="column" gap={2}>
-              {/* Star Rating with Individual Boxes for Each Star */}
-              <Box>
-                <Typography sx={{ color: "black" }}>
-                  Rate the performance of the SE
-                </Typography>
-                <Box display="flex" gap={1}>
-                  {[1, 2, 3, 4, 5].map((value) => (
-                    <Box
-                      key={value}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        width: "40px",
-                        height: "40px",
-                        border: "1px solid black", // Border for each box
-                        borderRadius: "5px", // Rounded corners
-                        backgroundColor:
-                          value <= rating ? "gold" : "transparent",
-                        cursor: "pointer",
-                      }}
-                      onClick={() => setRating(value)} // Set the rating when clicked
-                    >
-                      <Typography sx={{ fontSize: "24px", color: "black" }}>
-                        ★
-                      </Typography>
-                    </Box>
-                  ))}
+            <Typography>Comments on the group's teamwork</Typography>
+            <Box display="flex" gap={1} justifyContent="center" mt={1}>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <Box
+                  key={value}
+                  width="40px"
+                  height="40px"
+                  border="1px solid black"
+                  display="flex"
+                  justifyContent="center"
+                  alignItems="center"
+                  borderRadius="5px"
+                  bgcolor={value <= rating ? "gold" : "transparent"}
+                  sx={{ cursor: "pointer" }}
+                  onClick={() => handleRatingChange(value)}
+                >
+                  <Typography fontSize="24px">★</Typography>
                 </Box>
-              </Box>
-
-              {/* Checkboxes for Evaluation Criteria */}
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={strongCollab}
-                    onChange={(e) => setStrongCollab(e.target.checked)}
-                    sx={{ color: "black" }}
-                  />
-                }
-                label="Strong Collaboration"
-                sx={{ color: "black" }}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={goodComm}
-                    onChange={(e) => setGoodComm(e.target.checked)}
-                    sx={{ color: "black" }}
-                  />
-                }
-                label="Good Communication Skills"
-                sx={{ color: "black" }}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={taskDelegation}
-                    onChange={(e) => setTaskDelegation(e.target.checked)}
-                    sx={{ color: "black" }}
-                  />
-                }
-                label="Needs Better Task Delegation"
-                sx={{ color: "black" }}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={conflictResolution}
-                    onChange={(e) => setConflictResolution(e.target.checked)}
-                    sx={{ color: "black" }}
-                  />
-                }
-                label="Conflict Resolution Could Improve"
-                sx={{ color: "black" }}
-              />
-
-              {/* Comments Section */}
-              <TextField
-                label="Comments"
-                multiline
-                rows={4}
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                variant="outlined"
-                fullWidth
-                sx={{
-                  input: {
-                    color: "black", // Set input text color to black
-                  },
-                  label: {
-                    color: "black", // Set label text color to black
-                  },
-                  border: "1px solid black", // Add black border to the comment box
-                }}
-              />
+              ))}
             </Box>
+            {rating > 0 && (
+              <Box sx={{ maxHeight: "150px", overflowY: "auto", mt: 2, p: 1, border: "1px solid #ccc", borderRadius: "5px" }}>
+                {evaluationCriteria[rating]?.map((criterion, index) => (
+                  <FormControlLabel
+                    key={index}
+                    control={<Checkbox checked={selectedCriteria.includes(criterion)} onChange={() => handleCriteriaChange(criterion)} />}
+                    label={criterion}
+                  />
+                ))}
+              </Box>
+            )}
+            {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+            <TextField
+              label="Additional Comments"
+              multiline
+              rows={3}
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              variant="outlined"
+              fullWidth
+              sx={{ mt: 2 }}
+            />
           </DialogContent>
-          <DialogActions sx={{ backgroundColor: "white" }}>
-            <Button
-              onClick={() => setOpenDialog(false)}
-              color="primary"
-              sx={{ color: "black" }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              color="primary"
-              sx={{ color: "black" }}
-            >
-              Submit
-            </Button>
+          <DialogActions>
+            <Button onClick={handleClose} color="primary">Cancel</Button>
+            <Button onClick={handleSubmit} color="primary">Submit</Button>
           </DialogActions>
         </Dialog>
       </Box>
