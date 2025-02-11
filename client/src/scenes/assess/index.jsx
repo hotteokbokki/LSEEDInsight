@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import {
   Box,
@@ -284,7 +284,7 @@ const AssessSEPage = () => {
   const [currentSEIndex, setCurrentSEIndex] = useState(0); // Index of the current SE being evaluated
   const [evaluations, setEvaluations] = useState({}); // Store evaluations for all SEs
   const [error, setError] = useState("");
-
+  
   // Handle SE selection checkbox change
   const handleSESelectionChange = (seId) => {
     setSelectedSEs((prev) =>
@@ -368,36 +368,53 @@ const AssessSEPage = () => {
     }));
   };
 
-  // Submit evaluation for the current SE
   const handleSubmit = async () => {
     const currentSEId = selectedSEs[currentSEIndex];
     const currentEvaluations = evaluations[currentSEId];
-
-    // Validate that at least two predefined comments are selected for each category
-    const isValid = Object.values(currentEvaluations).every(
-      (categoryEval) => categoryEval.selectedCriteria.length >= 2
-    );
-
-    if (!isValid) {
-      setError(
-        "Please select at least two predefined comments for each category."
-      );
+  
+    // Retrieve user session data
+    const userSession = JSON.parse(localStorage.getItem("user"));
+    if (!userSession || !userSession.id) {
+      console.error("❌ User session not found.");
       return;
     }
-
-    try {
-      // Simulate sending data to the backend
-      const formData = { seId: currentSEId, evaluations: currentEvaluations };
-      console.log("Form Data Sent to Backend:", formData);
-
-      // Move to the next SE or close the dialog if all SEs are evaluated
-      if (currentSEIndex < selectedSEs.length - 1) {
-        setCurrentSEIndex(currentSEIndex + 1);
-      } else {
-        handleCloseEvaluateDialog();
+  
+    // Validate that at least two predefined comments are selected for each category
+    const isValid = Object.values(currentEvaluations || {}).every(
+      (categoryEval) => categoryEval.selectedCriteria?.length >= 2
+    );
+  
+    if (!isValid) {
+      setError("Please select at least two predefined comments for each category.");
+      return;
+    }
+  
+    // Store the completed evaluation before moving to the next SE
+    setEvaluations((prev) => ({
+      ...prev,
+      [currentSEId]: currentEvaluations,
+    }));
+  
+    // Check if there are more SEs to evaluate
+    if (currentSEIndex < selectedSEs.length - 1) {
+      setCurrentSEIndex(currentSEIndex + 1);
+    } else {
+      // After evaluating the last SE, send all evaluations to the backend
+      try {
+        const formData = {
+          evaluatorId: userSession.id,
+          evaluations,
+        };
+  
+        console.log("📤 Sending ALL evaluations to server:", formData);
+  
+        const response = await axios.post("http://localhost:4000/evaluate", formData);
+        console.log("✅ Evaluations successfully sent to backend:", response.data);
+  
+        handleCloseEvaluateDialog(); // Close the dialog after final submission
+      } catch (error) {
+        console.error("❌ Error submitting evaluations:", error);
       }
-    } catch (error) {
-      console.error("Error submitting form data:", error);
     }
   };
 

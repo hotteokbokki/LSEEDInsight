@@ -6,9 +6,9 @@ const axios = require("axios");
 const ngrok = require("ngrok"); // Exposes your local server to the internet
 const { getPrograms, getProgramNameByID } = require("./controllers/programsController");
 const { getTelegramUsers, insertTelegramUser } = require("./controllers/telegrambotController");
-const { getSocialEnterprisesByProgram, getSocialEnterpriseByID } = require("./controllers/socialenterprisesController");
+const { getSocialEnterprisesByProgram, getSocialEnterpriseByID, getAllSocialEnterprises } = require("./controllers/socialenterprisesController");
 require("dotenv").config();
-const { getUsers } = require("./controllers/usersController");
+const { getUsers, getUserName } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const cookieParser = require("cookie-parser");
 const { getMentorsBySocialEnterprises, getMentorById } = require("./controllers/mentorsController.js");
@@ -154,11 +154,10 @@ app.get("/protected", requireAuth, (req, res) => {
   res.json({ message: "Access granted to protected route" });
 });
 
-app.get("/getUsers", async (req, res) => {
-  const enterpriseId = 'dc705825-6e77-4c2a-8ac0-c12baf56d6e0'
-  const mentors = await getMentorsBySocialEnterprises(enterpriseId);
+app.get("/getSocialEnterprises", async (req, res) => {
+  const SE = await getAllSocialEnterprises();
 
-  res.json(mentors);
+  res.json(SE);
 });
 
 app.post("/webhook", async (req, res) => {
@@ -443,6 +442,95 @@ app.post("/send-message", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+app.post("/evaluate", async (req, res) => {
+  try {
+    const { evaluations, evaluatorId } = req.body;
+
+    // Check if evaluations exist
+    if (!evaluations || Object.keys(evaluations).length === 0) {
+      return res.status(400).json({ error: "No evaluations received." });
+    }
+
+    console.log("📥 Received evaluations from:", evaluatorId, "Data:", evaluations);
+
+    // Get mentor's full name from evaluatorId
+    const mentorName = await getUserName(evaluatorId);
+    console.log("🧑‍🏫 Evaluator:", mentorName.full_name);
+
+    // Extract SE IDs from evaluations object
+    const seIds = Object.keys(evaluations);
+
+    console.log("📥 Evaluating SEs:", seIds.join(", "));
+
+    // Loop through each SE being evaluated
+    for (const seId of seIds) {
+      const evaluationData = evaluations[seId];
+
+      console.log(`📊 Processing evaluation for SE ${seId}:`, evaluationData);
+
+      // Here, store the evaluation in your database OR send it to the Telegram bot
+      // Example: sendToTelegramBot(mentorName.full_name, seId, evaluationData);
+
+      // // Insert the evaluation data into the database
+    // await pgDatabase.query(
+    //   `INSERT INTO evaluations (se_id, evaluator, evaluation_data) VALUES ($1, $2, $3)`,
+    //   [seId, evaluator, JSON.stringify(evaluations)]
+    // );
+
+    // console.log("✅ Evaluation successfully stored in database");
+
+    // // Fetch mentor assigned to this SE
+    // const mentorResult = await pgDatabase.query(
+    //   `SELECT m.mentor_id, m.mentor_firstName, m.mentor_lastName, u.telegramChatId
+    //    FROM mentors m
+    //    JOIN users u ON m.mentor_id = u.id
+    //    WHERE m.mentor_id = (SELECT mentor_id FROM social_enterprises WHERE se_id = $1)`,
+    //   [seId]
+    // );
+
+    // if (mentorResult.rows.length === 0) {
+    //   console.log("⚠️ No mentor found for this SE.");
+    //   return res.status(404).json({ error: "No mentor found." });
+    // }
+
+    // const { mentor_firstName, mentor_lastName, telegramChatId } = mentorResult.rows[0];
+
+    // if (!telegramChatId) {
+    //   console.log("⚠️ Mentor does not have a Telegram chat ID linked.");
+    //   return res.status(400).json({ error: "Mentor has not linked their Telegram account." });
+    // }
+
+    // // Construct the evaluation summary message
+    // let message = `📢 *New Evaluation Received*\n\n`;
+    // message += `👤 *Evaluator*: ${evaluator}\n`;
+    // message += `📌 *Social Enterprise*: ${seId}\n\n`;
+
+    // Object.keys(evaluations).forEach((category) => {
+    //   const { rating, selectedCriteria, comments } = evaluations[category];
+    //   message += `📝 *${category}*: ${"⭐".repeat(rating)} (${rating}/5)\n`;
+    //   message += `📌 *Key Points*:\n${selectedCriteria.map((c) => `- ${c}`).join("\n")}\n`;
+    //   if (comments) {
+    //     message += `💬 *Additional Comments*: ${comments}\n`;
+    //   }
+    //   message += `\n`;
+    // });
+
+    // // Send evaluation summary to the mentor on Telegram
+    // const response = await sendMessage(telegramChatId, message);
+
+    // console.log("✅ Message successfully sent to Telegram:", response);
+    // res.json({ success: true, message: "Evaluation submitted and mentor notified." });
+    }
+
+    res.json({ message: "Evaluations received successfully." });
+
+  } catch (error) {
+    console.error("❌ Error handling evaluation submission:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
