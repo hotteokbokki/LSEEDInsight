@@ -89,7 +89,7 @@ const MainContent = () => {
           <Route path="/scheduling" element={user ? <Scheduling /> : <Navigate to="/" />} />
           <Route path="/assess" element={user ? <AssessSEPage /> : <Navigate to="/" />} />
           <Route path="/se-analytics/:id" element={<SEAnalytics />} />
-          <Route path="/admin" element={user ? <Navigate to="/admin" /> : <Admin />} />
+          <Route path="/admin" element={user ? <Admin /> : <Navigate to="/" />} />
 
           {/* Protected Routes - Only for Logged-in Users */}
           <Route element={<ProtectedRoute allowedRoles={["Administrator"]} />}>

@@ -160,6 +160,16 @@ router.post('/logout', async  (req, res) => {
 }
 });
 
+router.get("/users", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT id, name, email, role FROM users");
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Server error fetching users" });
+  }
+});
+
 module.exports = {
   router,
   requireAuth,
