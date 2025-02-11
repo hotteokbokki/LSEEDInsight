@@ -71,13 +71,22 @@ router.post('/login', async (req, res) => {
     // ✅ Set session ID in a cookie
     res.cookie("session_id", sessionId, { httpOnly: true, secure: false });
 
-    // Return success message
-    res.json({
-      message: "Login successful",
-      user: { id: user.user_id, email: user.email, role: user.roles },
-      session_id: sessionId,
-    });
-    console.log('Session inserted: ', req.session.user.sessionId);
+    // Separate handling for admin and normal users
+    if (user.roles === "Administrator") {
+      return res.json({
+        message: "Admin login successful",
+        user: { id: user.user_id, email: user.email, role: user.roles },
+        session_id: sessionId,
+        redirect: "/admin",
+      });
+    } else {
+      return res.json({
+        message: "User login successful",
+        user: { id: user.user_id, email: user.email, role: user.roles },
+        session_id: sessionId,
+        redirect: "/dashboard", // Normal users go to their dashboard
+      });
+    }
   } catch (error) {
     console.error('Login Error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -123,7 +132,7 @@ router.post("/signup", async (req, res) => {
 
 // Logout route
 router.post('/logout', async  (req, res) => {
-  console.log("logging out");
+  console.log("logging out - authRoutes");
   try {
     // Retrieve session ID from the cookie
     console.log('Session ID:', sessionId);

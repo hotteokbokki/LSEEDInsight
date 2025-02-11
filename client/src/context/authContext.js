@@ -32,9 +32,15 @@ export const AuthContextProvider = ({ children }) => {
     try{
       console.log("Logging in user:", userData); // Log user data before storing
       console.log("Parsed Stored User:", JSON.parse(localStorage.getItem("user")));
-      localStorage.setItem('user', JSON.stringify(userData)); // Store user in localStorage
-      setUser(userData); // Update user state
-      navigate('/dashboard'); // Redirect to dashboard after login
+      if (userData.roles === "Administrator") {
+        localStorage.setItem("user", JSON.stringify(userData)); // Store user in localStorage
+        setUser(userData); // Update user state
+        navigate("/admin"); // Redirect to admin page if user is Administrator
+      } else {
+        localStorage.setItem("user", JSON.stringify(userData)); // Store user in localStorage
+        setUser(userData); // Update user state
+        navigate("/dashboard"); // Redirect to dashboard for non-admin users
+      }
     } catch(error) {
       console.error('Login error: ', error);
     }

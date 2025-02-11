@@ -1,0 +1,13 @@
+.admin-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #1a1a1a; /* Dark background */
+}
+  
+.admin-title {
+font-size: 2rem;
+font-weight: bold;
+color: white; /* White text */
+}

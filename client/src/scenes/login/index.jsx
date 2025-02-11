@@ -50,7 +50,7 @@ const Login = () => {
       const data = await response.json();
       if (response.ok) {
         login(data.user);
-        window.location.href = "/dashboard";
+        window.location.href = data.redirect || "/dashboard";
       } else {
         setErrorMessage(data.message || "Login failed");
       }
