@@ -19,10 +19,40 @@ import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import TrafficIcon from "@mui/icons-material/Traffic";
 import { useState } from "react";
+import { useEffect } from "react";
+
 
 const Mentors = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const [rows, setRows] = useState(mockDataMentor);
+
+  // Fetch mentors from the database
+useEffect(() => {
+  const fetchMentors = async () => {
+    try {
+      const response = await fetch("/api/mentors"); // Adjust based on your API route
+      const data = await response.json();
+      
+      const formattedData = data.map((mentor) => ({
+        id: mentor.mentor_id, // Use actual UUID
+        mentor_firstName: mentor.mentor_firstName,
+        mentor_lastName: mentor.mentor_lastName,
+        mentorName: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
+        email: mentor.email,
+        number: mentor.contactNum,
+        numberOfSEsAssigned: mentor.number_SE_assigned,
+        status: "Active", // Assuming active by default
+      }));
+
+      setRows(formattedData);
+    } catch (error) {
+      console.error("Error fetching mentors:", error);
+    }
+  };
+
+  fetchMentors();
+}, []);
 
   // State for dialogs and data
   const [openDialog, setOpenDialog] = useState(false);
@@ -31,7 +61,6 @@ const Mentors = () => {
     email: "",
     contactNumber: "",
   });
-  const [rows, setRows] = useState(mockDataMentor); // Local state for rows
   const [isEditing, setIsEditing] = useState(false); // Toggle editing mode
 
   // Handle dialog open/close
@@ -49,27 +78,94 @@ const Mentors = () => {
   };
 
   // Submit new mentor data
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const newMentor = {
-      id: rows.length + 1, // Generate a unique ID
-      mentorName: mentorData.name,
+      mentor_id: crypto.randomUUID(), // Generate a unique UUID
+      mentor_firstName: mentorData.firstName,
+      mentor_lastName: mentorData.lastName,
       email: mentorData.email,
-      number: mentorData.contactNumber,
-      numberOfSEsAssigned: 0,
-      status: "Active",
+      contactNum: mentorData.contactNumber,
+      number_SE_assigned: 0, // Default
     };
-    setRows([...rows, newMentor]); // Add new mentor to rows
-    setOpenDialog(false); // Close dialog
-    setMentorData({ name: "", email: "", contactNumber: "" }); // Reset form
+  
+    try {
+      const response = await fetch("/api/mentors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newMentor),
+      });
+  
+      if (response.ok) {
+        console.log("Mentor added successfully");
+  
+        // Fetch latest data from the backend
+        const updatedResponse = await fetch("/api/mentors");
+        const updatedData = await updatedResponse.json();
+        const formattedData = updatedData.map((mentor) => ({
+          id: mentor.mentor_id,
+          mentorName: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
+          email: mentor.email,
+          number: mentor.contactNum,
+          numberOfSEsAssigned: mentor.number_SE_assigned,
+          status: "Active", 
+        }));
+  
+        setRows(formattedData); // Update frontend with new data
+  
+        setOpenDialog(false);
+        setMentorData({ firstName: "", lastName: "", email: "", contactNumber: "" });
+      } else {
+        console.error("Error adding mentor");
+      }
+    } catch (error) {
+      console.error("Failed to add mentor:", error);
+    }
   };
-
+  
+  
   // Handle row updates
-  const handleRowEditCommit = (params) => {
+  const handleRowEditCommit = async (params) => {
+    const { id, field, value } = params;
+  
+    // Update state first for instant UI feedback
     const updatedRows = rows.map((row) =>
-      row.id === params.id ? { ...row, [params.field]: params.value } : row
+      row.id === id ? { ...row, [field]: value } : row
     );
-    setRows(updatedRows); // Update rows state
+    setRows(updatedRows);
+  
+    // Find the updated mentor
+    const updatedMentor = updatedRows.find((row) => row.id === id);
+    
+    if (!updatedMentor) return;
+  
+    // Send only the necessary fields to update
+    const updatedMentorData = {
+      mentor_id: id,
+      mentor_firstName: updatedMentor.mentor_firstName, 
+      mentor_lastName: updatedMentor.mentor_lastName,
+      email: updatedMentor.email,
+      contactNum: updatedMentor.number,
+      number_SE_assigned: updatedMentor.numberOfSEsAssigned,
+    };
+  
+    try {
+      const response = await fetch(`/api/mentors/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedMentorData),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to update mentor in database");
+      }
+  
+      console.log("Mentor updated successfully");
+    } catch (error) {
+      console.error("Error updating mentor:", error);
+    }
   };
+  
+  
 
   // Toggle editing mode
   const toggleEditing = () => {
@@ -263,11 +359,20 @@ const Mentors = () => {
         <DialogTitle>Add New Mentor</DialogTitle>
         <DialogContent>
           <TextField
-            name="name"
-            label="Mentor Name"
+            name="firstName"
+            label="First Name"
             variant="outlined"
             fullWidth
-            value={mentorData.name}
+            value={mentorData.mentor_lastName}
+            onChange={handleInputChange}
+            sx={{ marginBottom: "15px" }}
+          />
+          <TextField
+            name="lastName"
+            label="Last Name"
+            variant="outlined"
+            fullWidth
+            value={mentorData.mentor_lastName}
             onChange={handleInputChange}
             sx={{ marginBottom: "15px" }}
           />

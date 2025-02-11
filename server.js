@@ -98,6 +98,57 @@ async function sendMessageWithOptions(chatId, message, options) {
   }
 }
 
+app.get("/api/mentors", async (req, res) => {
+  try {
+    const result = await pgDatabase.query("SELECT * FROM mentors");
+    res.json(result.rows); // Send mentors as JSON
+  } catch (error) {
+    console.error("Error fetching mentors:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.post("/api/mentors", async (req, res) => {
+  try {
+    const { mentor_id, mentor_firstName, mentor_lastName, email, contactNum } = req.body;
+
+    await pgDatabase.query(
+      `INSERT INTO mentors ("mentor_id", "mentor_firstName", "mentor_lastName", "email", "contactNum", "number_SE_assigned") 
+       VALUES ($1, $2, $3, $4, $5, 0)`,
+      [mentor_id, mentor_firstName, mentor_lastName, email, contactNum]
+    );
+
+    res.status(201).json({ message: "Mentor added successfully" });
+  } catch (error) {
+    console.error("Error adding mentor:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.put("/api/mentors/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { mentor_firstName, mentor_lastName, email, contactNum, number_SE_assigned } = req.body;
+
+    const result = await pgDatabase.query(
+      `UPDATE mentors 
+       SET "mentor_firstName" = $1, "mentor_lastName" = $2, "email" = $3, "contactNum" = $4, "number_SE_assigned" = $5
+       WHERE "mentor_id" = $6`,
+      [mentor_firstName, mentor_lastName, email, contactNum, number_SE_assigned, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Mentor not found" });
+    }
+
+    res.json({ message: "Mentor updated successfully" });
+  } catch (error) {
+    console.error("Error updating mentor:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
 // Example of a protected route
 app.get("/protected", requireAuth, (req, res) => {
   res.json({ message: "Access granted to protected route" });
