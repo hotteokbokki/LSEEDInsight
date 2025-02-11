@@ -1650,3 +1650,30 @@ body {
   margin-top: 10px;
   text-align: center;
 }
+  .custom-dialog .MuiDialog-paper {
+    background-color: white;
+    color: black;
+  }
+  
+  .custom-dialog-title {
+    background-color: white;
+    color: black;
+    font-weight: bold;
+  }
+  
+  .custom-dialog-content {
+    background-color: white;
+  }
+  
+  .custom-dialog-text {
+    color: black;
+  }
+  
+  .custom-dialog-actions {
+    background-color: white;
+  }
+  
+  .custom-dialog-button {
+    color: black;
+  }
+  

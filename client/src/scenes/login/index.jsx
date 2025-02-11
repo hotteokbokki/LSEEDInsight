@@ -1,6 +1,18 @@
 import React, { useState } from "react";
 import "../../styles/Login.css";
 import { useAuth } from '../../context/authContext';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Box,
+  Typography,
+  FormControlLabel,
+  Checkbox,
+  TextField,
+  Button
+} from "@mui/material";
 
 const Login = () => {
   const { login } = useAuth();
@@ -14,6 +26,7 @@ const Login = () => {
     email: "",
     password: "",
   });
+  const [openDialog, setOpenDialog] = useState(false);
 
   const handleFlip = () => {
     setIsFlipped(!isFlipped);
@@ -203,11 +216,7 @@ const Login = () => {
                   </div>
                   <div className="checkbox-wrapper terms-checkbox">
                     <input type="checkbox" id="terms" name="terms" required />
-                    <label htmlFor="terms">
-                      <a href="#" onClick={(e) => e.preventDefault()}>
-                        Terms and Conditions
-                      </a>
-                    </label>
+                    <label htmlFor="terms" onClick={() => setOpenDialog(true)}>Terms and Conditions</label>
                   </div>
                   <div className="button input-box">
                     <input type="submit" value="Register" />
@@ -224,6 +233,16 @@ const Login = () => {
           )}
         </div>
       </div>
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} className="custom-dialog">
+        <DialogTitle className="custom-dialog-title">Terms and Conditions</DialogTitle>
+        <DialogContent className="custom-dialog-content">
+          <Typography className="custom-dialog-text">Here are the terms and conditions for using this service...</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>Accept</Button>
+        </DialogActions>
+      </Dialog>
+      
     </div>
   );
 };
