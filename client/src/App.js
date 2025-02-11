@@ -18,6 +18,8 @@ import { ColorModeContext, useMode } from "./theme";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import Cookies from 'js-cookie';  // You can use js-cookie to easily work with cookies
+import { useLocation } from "react-router-dom";
+
 
 const App = () => {
   const [theme, colorMode] = useMode();
@@ -52,6 +54,8 @@ const ProtectedRoute = ({ allowedRoles }) => {
 
 const MainContent = () => {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const isAdminPage = location.pathname === "/admin";
 
   useEffect(() => {
     if (!loading) {
@@ -68,13 +72,12 @@ const MainContent = () => {
 
   return (
     <>
-      {user && <Sidebar />}
+      {!isAdminPage && user && <Sidebar />}
       <main className="content">
-        {user && <Topbar />}
+        {!isAdminPage && user && <Topbar />}
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
-          <Route path="/admin" element={user ? <Navigate to="/admin" /> : <Admin />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           {/* User Routes */}
@@ -86,8 +89,13 @@ const MainContent = () => {
           <Route path="/scheduling" element={user ? <Scheduling /> : <Navigate to="/" />} />
           <Route path="/assess" element={user ? <AssessSEPage /> : <Navigate to="/" />} />
           <Route path="/se-analytics/:id" element={<SEAnalytics />} />
+          <Route path="/admin" element={user ? <Navigate to="/admin" /> : <Admin />} />
 
           {/* Protected Routes - Only for Logged-in Users */}
+          <Route element={<ProtectedRoute allowedRoles={["Administrator"]} />}>
+            <Route path="/admin" element={<Admin />} />
+          </Route>
+
           <Route element={<ProtectedRoute allowedRoles={["LSEED", "Mentor"]} />}>
             <Route path="/socialenterprise" element={<SocialEnterprise />} />
           </Route>

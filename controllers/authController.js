@@ -63,7 +63,7 @@ exports.login = async (req, res) => {
 
 // Logout route
 exports.logout = async (req, res) => {
-  console.log("logging out");
+  // console.log("logging out");
   try {
     if (!req.session.user) {
       return res.status(400).json({ error: "No active session" });
