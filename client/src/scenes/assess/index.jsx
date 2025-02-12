@@ -408,6 +408,7 @@ const AssessSEPage = () => {
           program_id: programsMap[se.program_id] || "Unknown Program",
           mentor_id: se.mentor_id, // ✅ Keep UUID here
           mentor_name: mentorMap[se.mentor_id] || "No Mentor Assigned", // ✅ Store name separately
+          sdg_id: se.sdg_id,
           sdg_name: Array.isArray(se.sdg_id) // ✅ Handle multiple SDGs
             ? se.sdg_id.map((id) => sdgMap[id] || "Unknown SDG").join(", ") // Convert array to string
             : sdgMap[se.sdg_id] || "No SDG Name",
@@ -433,6 +434,7 @@ const AssessSEPage = () => {
   const handleSubmit = async () => {
     const currentSEId = selectedSEs[currentSEIndex];
     const currentEvaluations = evaluations[currentSEId];
+    const getValidRating = (rating) => (rating && rating >= 1 && rating <= 5 ? rating : 1);
   
     // Retrieve user session data
     const userSession = JSON.parse(localStorage.getItem("user"));
@@ -442,9 +444,9 @@ const AssessSEPage = () => {
       return;
     }
   
-    // Find the selected SE to extract `mentor_id`
+    // Find the selected SE to extract `mentor_id` and `sdg_id`
     const selectedSE = socialEnterprises.find((se) => se.se_id === currentSEId);
-    console.log("🧐 Debug: Selected SE Data:", selectedSE); // Debugging
+    console.log("🧐 Debug: Selected SE Data:", selectedSE);
   
     if (!selectedSE) {
       console.error("❌ Selected SE not found.");
@@ -452,61 +454,18 @@ const AssessSEPage = () => {
       return;
     }
   
-    const formattedSeId = [currentSEId];
-
-    // Extract mentor ID from selected SE
-    const mentorId = selectedSE.mentor_id; 
-    const sdgName = selectedSE.sdg_name;
-    const formattedSdgId = [selectedSE.sdg_id];
-
-    const getValidRating = (rating) => (rating && rating >= 1 && rating <= 5 ? rating : 1);
-
-    const formData = {
-      mentor_id: mentorId,
-      se_id: formattedSeId,
-      sdg_name: formattedSdgId, // ✅ Backend will find `sdg_id`
-      teamwork_rating: getValidRating(currentEvaluations?.teamwork?.rating),
-      teamwork_selectedcriteria: currentEvaluations?.teamwork?.selectedCriteria || [],
-      teamwork_addtlcmt: currentEvaluations?.teamwork?.comments || "",
-      finance_rating: getValidRating(currentEvaluations?.financialPlanning?.rating),
-      finance_selectedcriteria: currentEvaluations?.financialPlanning?.selectedCriteria || [],
-      finance_addtlcmt: currentEvaluations?.financialPlanning?.comments || "",
-      marketing_rating: getValidRating(currentEvaluations?.marketingPlan?.rating),
-      marketing_selectedcriteria: currentEvaluations?.marketingPlan?.selectedCriteria || [],
-      marketing_addtlcmt: currentEvaluations?.marketingPlan?.comments || "",
-      productservice_rating: getValidRating(currentEvaluations?.productServiceDesign?.rating),
-      productservice_selectedcriteria: currentEvaluations?.productServiceDesign?.selectedCriteria || [],
-      productservice_addtlcmt: currentEvaluations?.productServiceDesign?.comments || "",
-      humanresource_rating: getValidRating(currentEvaluations?.humanResourceManagement?.rating),
-      humanresource_selectedcriteria: currentEvaluations?.humanResourceManagement?.selectedCriteria || [],
-      humanresource_addtlcmt: currentEvaluations?.humanResourceManagement?.comments || "",
-      logistics_rating: getValidRating(currentEvaluations?.logistics?.rating),
-      logistics_selectedcriteria: currentEvaluations?.logistics?.selectedCriteria || [],
-      logistics_addtlcmt: currentEvaluations?.logistics?.comments || "",
-    };
-
-    try {
-      console.log("📤 Sending evaluation:", formData);
-      const response = await axios.post("http://localhost:4000/api/evaluations", formData);
-      console.log("✅ Evaluation added successfully:", response.data);
-      alert("✅ Evaluation submitted successfully!");
-  
-      handleCloseEvaluateDialog(); // Close dialog after submission
-    } catch (error) {
-      console.error("❌ Error submitting evaluation:", error);
-      alert(`❌ Error: ${error.response?.data?.message || "Unknown error occurred"}`);
-    }
-  
-    // Debugging: Log mentorId
-    console.log("🔍 Selected SE ID:", currentSEId);
-    console.log("🔍 Mentor ID for Selected SE (Should be UUID):", mentorId);
-  
+    // ✅ Extract mentor ID and ensure it's valid
+    const mentorId = selectedSE.mentor_id;
     if (!mentorId || mentorId.includes(" ")) { // If mentorId has spaces, it's likely a name
       console.error("❌ ERROR: mentorId is not an ID!");
       return;
     }
   
-    // Validate that at least two predefined comments are selected for each category
+    // ✅ Extract `sdg_id` (Single or Multiple)
+    const sdgIds = Array.isArray(selectedSE.sdg_id) ? selectedSE.sdg_id : [selectedSE.sdg_id];
+    console.log("🔍 Extracted SDG IDs:", sdgIds);
+  
+    // Validate predefined comments selection
     const isValid = Object.values(currentEvaluations || {}).every(
       (categoryEval) => categoryEval.selectedCriteria?.length >= 2
     );
@@ -516,24 +475,40 @@ const AssessSEPage = () => {
       return;
     }
   
-    // Store the completed evaluation before moving to the next SE
-    const updatedEvaluations = {
-      ...evaluations,
-      [currentSEId]: currentEvaluations,
-    };
+    // Store evaluations before sending
+    const updatedEvaluations = { ...evaluations, [currentSEId]: currentEvaluations };
     setEvaluations(updatedEvaluations);
   
-    // Check if there are more SEs to evaluate
+    // If there are more SEs to evaluate, continue
     if (currentSEIndex < selectedSEs.length - 1) {
       setCurrentSEIndex(currentSEIndex + 1);
     } else {
-      // After evaluating the last SE, send all evaluations to the backend
+      // Send final evaluation data
       try {
         const formData = {
-          evaluatorId: userSession.id, // ID of the logged-in evaluator
-          seId: currentSEId,           // Social Enterprise being evaluated
-          mentorId: mentorId,          // Assigned Mentor ID (Should be a UUID)
-          evaluations: updatedEvaluations, // Updated evaluations
+          evaluatorId: userSession.id,
+          se_id: currentSEId,
+          mentorId: mentorId,
+          evaluations: updatedEvaluations,
+          sdg_id: sdgIds, // ✅ Send multiple or single SDGs
+          teamwork_rating: getValidRating(currentEvaluations?.teamwork?.rating),
+          teamwork_selectedcriteria: currentEvaluations?.teamwork?.selectedCriteria || [],
+          teamwork_addtlcmt: currentEvaluations?.teamwork?.comments || "",
+          finance_rating: getValidRating(currentEvaluations?.financialPlanning?.rating),
+          finance_selectedcriteria: currentEvaluations?.financialPlanning?.selectedCriteria || [],
+          finance_addtlcmt: currentEvaluations?.financialPlanning?.comments || "",
+          marketing_rating: getValidRating(currentEvaluations?.marketingPlan?.rating),
+          marketing_selectedcriteria: currentEvaluations?.marketingPlan?.selectedCriteria || [],
+          marketing_addtlcmt: currentEvaluations?.marketingPlan?.comments || "",
+          productservice_rating: getValidRating(currentEvaluations?.productServiceDesign?.rating),
+          productservice_selectedcriteria: currentEvaluations?.productServiceDesign?.selectedCriteria || [],
+          productservice_addtlcmt: currentEvaluations?.productServiceDesign?.comments || "",
+          humanresource_rating: getValidRating(currentEvaluations?.humanResourceManagement?.rating),
+          humanresource_selectedcriteria: currentEvaluations?.humanResourceManagement?.selectedCriteria || [],
+          humanresource_addtlcmt: currentEvaluations?.humanResourceManagement?.comments || "",
+          logistics_rating: getValidRating(currentEvaluations?.logistics?.rating),
+          logistics_selectedcriteria: currentEvaluations?.logistics?.selectedCriteria || [],
+          logistics_addtlcmt: currentEvaluations?.logistics?.comments || "",
         };
   
         console.log("📤 Sending ALL evaluations to server:", formData);
@@ -541,13 +516,13 @@ const AssessSEPage = () => {
         const response = await axios.post("http://localhost:4000/evaluate", formData);
         console.log("✅ Evaluations successfully sent to backend:", response.data);
   
-        handleCloseEvaluateDialog(); // Close the dialog after final submission
+        handleCloseEvaluateDialog();
       } catch (error) {
         console.error("❌ Error submitting evaluations:", error);
       }
     }
   };
-
+  
   // Close the evaluation dialog
   const handleCloseEvaluateDialog = () => {
     setOpenEvaluateDialog(false);
@@ -633,7 +608,7 @@ const AssessSEPage = () => {
                     onChange={() => handleSESelectionChange(se.se_id)}
                   />
                 }
-                label={`${se.team_name} (${se.sdg_id})`}
+                label={`${se.team_name} (${se.sdg_name})`}
               />
             ))}
             {error && (

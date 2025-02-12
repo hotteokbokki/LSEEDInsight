@@ -161,7 +161,7 @@ app.put("/api/mentors/:id", async (req, res) => {
 
 //API for evaluation
 
-app.post("/api/evaluations", async (req, res) => {
+app.post("/evaluate", async (req, res) => {
   try {
     console.log("📥 Received Evaluation Data:", req.body);
 
@@ -195,11 +195,21 @@ app.post("/api/evaluations", async (req, res) => {
       se_id = [se_id]; // Convert single value to an array
     }
 
-    console.log("🔹 Converted se_id:", se_id);
+    // ✅ Ensure `sdg_id` is always an array
+    if (!sdg_id) {
+      console.warn("⚠️ sdg_id is missing. Defaulting to empty array.");
+      sdg_id = [];
+    } else if (!Array.isArray(sdg_id)) {
+      console.warn("⚠️ sdg_id is not an array. Converting...");
+      sdg_id = [sdg_id]; // Convert single value to an array
+    }
 
-    // ✅ Convert `se_id` and `sdg_id` to PostgreSQL array format
+    console.log("🔹 Converted se_id:", se_id);
+    console.log("🔹 Converted sdg_id:", sdg_id);
+
+    // ✅ Format `se_id` and `sdg_id` for PostgreSQL array format
     const formattedSeId = `{${se_id.join(",")}}`;
-    const formattedSdgId = `{${sdg_id.join(",")}}`; // Convert `sdg_id` array to PostgreSQL format
+    const formattedSdgId = `{${sdg_id.join(",")}}`;
 
     console.log("📤 Formatted se_id:", formattedSeId);
     console.log("📤 Formatted sdg_id:", formattedSdgId);
@@ -266,6 +276,7 @@ app.post("/api/evaluations", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 });
+
 
 
 // Example of a protected route
@@ -584,98 +595,98 @@ app.post("/send-message", async (req, res) => {
   }
 });
 
-app.post("/evaluate", async (req, res) => {
-  try {
-    const { evaluations, evaluatorId, mentorId } = req.body;
+// app.post("/evaluate", async (req, res) => {
+//   try {
+//     const { evaluations, evaluatorId, mentorId } = req.body;
 
-    // Check if evaluations exist
-    if (!evaluations || Object.keys(evaluations).length === 0) {
-      return res.status(400).json({ error: "No evaluations received." });
-    }
+//     // Check if evaluations exist
+//     if (!evaluations || Object.keys(evaluations).length === 0) {
+//       return res.status(400).json({ error: "No evaluations received." });
+//     }
 
-    // Debugging: Log mentorId to confirm it is an ID
-    console.log("📥 Received evaluations from:", mentorId);
+//     // Debugging: Log mentorId to confirm it is an ID
+//     console.log("📥 Received evaluations from:", mentorId);
 
-    // Check if mentorId is actually an ID
-    if (mentorId.includes(" ")) { // A name has spaces, an ID does not
-      console.error("❌ ERROR: mentorId is a name, not an ID!");
-      return res.status(400).json({ error: "Invalid mentor ID format" });
-    }
+//     // Check if mentorId is actually an ID
+//     if (mentorId.includes(" ")) { // A name has spaces, an ID does not
+//       console.error("❌ ERROR: mentorId is a name, not an ID!");
+//       return res.status(400).json({ error: "Invalid mentor ID format" });
+//     }
 
-    // Get mentor's full name from evaluatorId
-    const mentorName = await getUserName(evaluatorId);
-    console.log("🧑‍🏫 Evaluator:", mentorName.full_name);
+//     // Get mentor's full name from evaluatorId
+//     const mentorName = await getUserName(evaluatorId);
+//     console.log("🧑‍🏫 Evaluator:", mentorName.full_name);
 
-    // Extract SE IDs from evaluations object
-    const seIds = Object.keys(evaluations);
-    console.log("📥 Evaluating SEs:", seIds.join(", "));
+//     // Extract SE IDs from evaluations object
+//     const seIds = Object.keys(evaluations);
+//     console.log("📥 Evaluating SEs:", seIds.join(", "));
 
-    // Loop through each SE being evaluated
-    for (const seId of seIds) {
-      const evaluationData = evaluations[seId];
-      console.log(`📊 Processing evaluation for SE ${seId}:`, evaluationData);
-    }
+//     // Loop through each SE being evaluated
+//     for (const seId of seIds) {
+//       const evaluationData = evaluations[seId];
+//       console.log(`📊 Processing evaluation for SE ${seId}:`, evaluationData);
+//     }
 
-    res.json({ message: "Evaluations received successfully." });
+//     res.json({ message: "Evaluations received successfully." });
 
-          // Here, store the evaluation in your database OR send it to the Telegram bot
-      // Example: sendToTelegramBot(mentorName.full_name, seId, evaluationData);
+//           // Here, store the evaluation in your database OR send it to the Telegram bot
+//       // Example: sendToTelegramBot(mentorName.full_name, seId, evaluationData);
 
-      // // Insert the evaluation data into the database
-    // await pgDatabase.query(
-    //   `INSERT INTO evaluations (se_id, evaluator, evaluation_data) VALUES ($1, $2, $3)`,
-    //   [seId, evaluator, JSON.stringify(evaluations)]
-    // );
+//       // // Insert the evaluation data into the database
+//     // await pgDatabase.query(
+//     //   `INSERT INTO evaluations (se_id, evaluator, evaluation_data) VALUES ($1, $2, $3)`,
+//     //   [seId, evaluator, JSON.stringify(evaluations)]
+//     // );
 
-    // console.log("✅ Evaluation successfully stored in database");
+//     // console.log("✅ Evaluation successfully stored in database");
 
-    // // Fetch mentor assigned to this SE
-    // const mentorResult = await pgDatabase.query(
-    //   `SELECT m.mentor_id, m.mentor_firstName, m.mentor_lastName, u.telegramChatId
-    //    FROM mentors m
-    //    JOIN users u ON m.mentor_id = u.id
-    //    WHERE m.mentor_id = (SELECT mentor_id FROM social_enterprises WHERE se_id = $1)`,
-    //   [seId]
-    // );
+//     // // Fetch mentor assigned to this SE
+//     // const mentorResult = await pgDatabase.query(
+//     //   `SELECT m.mentor_id, m.mentor_firstName, m.mentor_lastName, u.telegramChatId
+//     //    FROM mentors m
+//     //    JOIN users u ON m.mentor_id = u.id
+//     //    WHERE m.mentor_id = (SELECT mentor_id FROM social_enterprises WHERE se_id = $1)`,
+//     //   [seId]
+//     // );
 
-    // if (mentorResult.rows.length === 0) {
-    //   console.log("⚠️ No mentor found for this SE.");
-    //   return res.status(404).json({ error: "No mentor found." });
-    // }
+//     // if (mentorResult.rows.length === 0) {
+//     //   console.log("⚠️ No mentor found for this SE.");
+//     //   return res.status(404).json({ error: "No mentor found." });
+//     // }
 
-    // const { mentor_firstName, mentor_lastName, telegramChatId } = mentorResult.rows[0];
+//     // const { mentor_firstName, mentor_lastName, telegramChatId } = mentorResult.rows[0];
 
-    // if (!telegramChatId) {
-    //   console.log("⚠️ Mentor does not have a Telegram chat ID linked.");
-    //   return res.status(400).json({ error: "Mentor has not linked their Telegram account." });
-    // }
+//     // if (!telegramChatId) {
+//     //   console.log("⚠️ Mentor does not have a Telegram chat ID linked.");
+//     //   return res.status(400).json({ error: "Mentor has not linked their Telegram account." });
+//     // }
 
-    // // Construct the evaluation summary message
-    // let message = `📢 *New Evaluation Received*\n\n`;
-    // message += `👤 *Evaluator*: ${evaluator}\n`;
-    // message += `📌 *Social Enterprise*: ${seId}\n\n`;
+//     // // Construct the evaluation summary message
+//     // let message = `📢 *New Evaluation Received*\n\n`;
+//     // message += `👤 *Evaluator*: ${evaluator}\n`;
+//     // message += `📌 *Social Enterprise*: ${seId}\n\n`;
 
-    // Object.keys(evaluations).forEach((category) => {
-    //   const { rating, selectedCriteria, comments } = evaluations[category];
-    //   message += `📝 *${category}*: ${"⭐".repeat(rating)} (${rating}/5)\n`;
-    //   message += `📌 *Key Points*:\n${selectedCriteria.map((c) => `- ${c}`).join("\n")}\n`;
-    //   if (comments) {
-    //     message += `💬 *Additional Comments*: ${comments}\n`;
-    //   }
-    //   message += `\n`;
-    // });
+//     // Object.keys(evaluations).forEach((category) => {
+//     //   const { rating, selectedCriteria, comments } = evaluations[category];
+//     //   message += `📝 *${category}*: ${"⭐".repeat(rating)} (${rating}/5)\n`;
+//     //   message += `📌 *Key Points*:\n${selectedCriteria.map((c) => `- ${c}`).join("\n")}\n`;
+//     //   if (comments) {
+//     //     message += `💬 *Additional Comments*: ${comments}\n`;
+//     //   }
+//     //   message += `\n`;
+//     // });
 
-    // // Send evaluation summary to the mentor on Telegram
-    // const response = await sendMessage(telegramChatId, message);
+//     // // Send evaluation summary to the mentor on Telegram
+//     // const response = await sendMessage(telegramChatId, message);
 
-    // console.log("✅ Message successfully sent to Telegram:", response);
-    // res.json({ success: true, message: "Evaluation submitted and mentor notified." });
+//     // console.log("✅ Message successfully sent to Telegram:", response);
+//     // res.json({ success: true, message: "Evaluation submitted and mentor notified." });
 
-  } catch (error) {
-    console.error("❌ Error handling evaluation submission:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
+//   } catch (error) {
+//     console.error("❌ Error handling evaluation submission:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
 
 app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
