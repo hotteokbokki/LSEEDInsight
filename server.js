@@ -478,14 +478,21 @@ app.post("/send-message", async (req, res) => {
 
 app.post("/evaluate", async (req, res) => {
   try {
-    const { evaluations, evaluatorId } = req.body;
+    const { evaluations, evaluatorId, mentorId } = req.body;
 
     // Check if evaluations exist
     if (!evaluations || Object.keys(evaluations).length === 0) {
       return res.status(400).json({ error: "No evaluations received." });
     }
 
-    console.log("📥 Received evaluations from:", evaluatorId, "Data:", evaluations);
+    // Debugging: Log mentorId to confirm it is an ID
+    console.log("📥 Received evaluations from:", mentorId);
+
+    // Check if mentorId is actually an ID
+    if (mentorId.includes(" ")) { // A name has spaces, an ID does not
+      console.error("❌ ERROR: mentorId is a name, not an ID!");
+      return res.status(400).json({ error: "Invalid mentor ID format" });
+    }
 
     // Get mentor's full name from evaluatorId
     const mentorName = await getUserName(evaluatorId);
@@ -493,67 +500,12 @@ app.post("/evaluate", async (req, res) => {
 
     // Extract SE IDs from evaluations object
     const seIds = Object.keys(evaluations);
-
     console.log("📥 Evaluating SEs:", seIds.join(", "));
 
     // Loop through each SE being evaluated
     for (const seId of seIds) {
       const evaluationData = evaluations[seId];
-
       console.log(`📊 Processing evaluation for SE ${seId}:`, evaluationData);
-
-      // Here, store the evaluation in your database OR send it to the Telegram bot
-      // Example: sendToTelegramBot(mentorName.full_name, seId, evaluationData);
-
-      // // Insert the evaluation data into the database
-    // await pgDatabase.query(
-    //   `INSERT INTO evaluations (se_id, evaluator, evaluation_data) VALUES ($1, $2, $3)`,
-    //   [seId, evaluator, JSON.stringify(evaluations)]
-    // );
-
-    // console.log("✅ Evaluation successfully stored in database");
-
-    // // Fetch mentor assigned to this SE
-    // const mentorResult = await pgDatabase.query(
-    //   `SELECT m.mentor_id, m.mentor_firstName, m.mentor_lastName, u.telegramChatId
-    //    FROM mentors m
-    //    JOIN users u ON m.mentor_id = u.id
-    //    WHERE m.mentor_id = (SELECT mentor_id FROM social_enterprises WHERE se_id = $1)`,
-    //   [seId]
-    // );
-
-    // if (mentorResult.rows.length === 0) {
-    //   console.log("⚠️ No mentor found for this SE.");
-    //   return res.status(404).json({ error: "No mentor found." });
-    // }
-
-    // const { mentor_firstName, mentor_lastName, telegramChatId } = mentorResult.rows[0];
-
-    // if (!telegramChatId) {
-    //   console.log("⚠️ Mentor does not have a Telegram chat ID linked.");
-    //   return res.status(400).json({ error: "Mentor has not linked their Telegram account." });
-    // }
-
-    // // Construct the evaluation summary message
-    // let message = `📢 *New Evaluation Received*\n\n`;
-    // message += `👤 *Evaluator*: ${evaluator}\n`;
-    // message += `📌 *Social Enterprise*: ${seId}\n\n`;
-
-    // Object.keys(evaluations).forEach((category) => {
-    //   const { rating, selectedCriteria, comments } = evaluations[category];
-    //   message += `📝 *${category}*: ${"⭐".repeat(rating)} (${rating}/5)\n`;
-    //   message += `📌 *Key Points*:\n${selectedCriteria.map((c) => `- ${c}`).join("\n")}\n`;
-    //   if (comments) {
-    //     message += `💬 *Additional Comments*: ${comments}\n`;
-    //   }
-    //   message += `\n`;
-    // });
-
-    // // Send evaluation summary to the mentor on Telegram
-    // const response = await sendMessage(telegramChatId, message);
-
-    // console.log("✅ Message successfully sent to Telegram:", response);
-    // res.json({ success: true, message: "Evaluation submitted and mentor notified." });
     }
 
     res.json({ message: "Evaluations received successfully." });
@@ -563,7 +515,6 @@ app.post("/evaluate", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
   const { id } = req.params;

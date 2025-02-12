@@ -402,19 +402,22 @@ const AssessSEPage = () => {
           sdgMap[sdg.sdg_id] = sdg.name;
         });
   
-        // ✅ Replace program_id, mentor_id, and sdg_id with their actual names
+        // ✅ Handle multiple SDGs
         const updatedSocialEnterprises = seResponse.data.map((se) => ({
           ...se,
           program_id: programsMap[se.program_id] || "Unknown Program",
-          mentor_id: mentorMap[se.mentor_id] || "No Mentor Assigned",
-          sdg_id: sdgMap[se.sdg_id] || "No SDG Name",
+          mentor_id: se.mentor_id, // ✅ Keep UUID here
+          mentor_name: mentorMap[se.mentor_id] || "No Mentor Assigned", // ✅ Store name separately
+          sdg_id: Array.isArray(se.sdg_id) // ✅ Handle multiple SDGs
+            ? se.sdg_id.map((id) => sdgMap[id] || "Unknown SDG").join(", ") // Convert array to string
+            : sdgMap[se.sdg_id] || "No SDG Name",
         }));
   
         const dynamicColumns = [
           { field: "team_name", headerName: "Social Enterprise", flex: 1 },
-          { field: "mentor_id", headerName: "Assigned Mentor", flex: 1 }, // Now shows mentor name
-          { field: "program_id", headerName: "Program Name", flex: 1 }, // Now shows program name
-          { field: "sdg_id", headerName: "SDG", flex: 1 }, // Now shows SDG name
+          { field: "mentor_name", headerName: "Assigned Mentor", flex: 1 }, // ✅ Now shows mentor name
+          { field: "program_id", headerName: "Program Name", flex: 1 },
+          { field: "sdg_id", headerName: "SDG(s)", flex: 1 }, // ✅ Now shows multiple SDGs
         ];
   
         setColumns(dynamicColumns);
@@ -426,7 +429,7 @@ const AssessSEPage = () => {
   
     fetchSocialEnterprises();
   }, []);
-
+  
   const handleSubmit = async () => {
     const currentSEId = selectedSEs[currentSEIndex];
     const currentEvaluations = evaluations[currentSEId];
@@ -435,6 +438,27 @@ const AssessSEPage = () => {
     const userSession = JSON.parse(localStorage.getItem("user"));
     if (!userSession || !userSession.id) {
       console.error("❌ User session not found.");
+      return;
+    }
+  
+    // Find the selected SE to extract `mentor_id`
+    const selectedSE = socialEnterprises.find((se) => se.se_id === currentSEId);
+    console.log("🧐 Debug: Selected SE Data:", selectedSE); // Debugging
+  
+    if (!selectedSE) {
+      console.error("❌ Selected SE not found.");
+      return;
+    }
+  
+    // Extract mentor ID from selected SE
+    const mentorId = selectedSE.mentor_id; 
+  
+    // Debugging: Log mentorId
+    console.log("🔍 Selected SE ID:", currentSEId);
+    console.log("🔍 Mentor ID for Selected SE (Should be UUID):", mentorId);
+  
+    if (!mentorId || mentorId.includes(" ")) { // If mentorId has spaces, it's likely a name
+      console.error("❌ ERROR: mentorId is not an ID!");
       return;
     }
   
@@ -449,10 +473,11 @@ const AssessSEPage = () => {
     }
   
     // Store the completed evaluation before moving to the next SE
-    setEvaluations((prev) => ({
-      ...prev,
+    const updatedEvaluations = {
+      ...evaluations,
       [currentSEId]: currentEvaluations,
-    }));
+    };
+    setEvaluations(updatedEvaluations);
   
     // Check if there are more SEs to evaluate
     if (currentSEIndex < selectedSEs.length - 1) {
@@ -461,8 +486,10 @@ const AssessSEPage = () => {
       // After evaluating the last SE, send all evaluations to the backend
       try {
         const formData = {
-          evaluatorId: userSession.id,
-          evaluations,
+          evaluatorId: userSession.id, // ID of the logged-in evaluator
+          seId: currentSEId,           // Social Enterprise being evaluated
+          mentorId: mentorId,          // Assigned Mentor ID (Should be a UUID)
+          evaluations: updatedEvaluations, // Updated evaluations
         };
   
         console.log("📤 Sending ALL evaluations to server:", formData);
