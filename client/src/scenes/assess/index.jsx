@@ -17,7 +17,6 @@ import {
 import { tokens } from "../../theme";
 import { DataGrid } from "@mui/x-data-grid";
 import Header from "../../components/Header";
-import { mockDataSE } from "../../sampledata/mockData";
 
 // Define evaluation criteria for each category
 const evaluationCriteria = {
@@ -284,7 +283,9 @@ const AssessSEPage = () => {
   const [currentSEIndex, setCurrentSEIndex] = useState(0); // Index of the current SE being evaluated
   const [evaluations, setEvaluations] = useState({}); // Store evaluations for all SEs
   const [error, setError] = useState("");
-  
+  const [socialEnterprises, setSocialEnterprises] = useState([]);
+  const [columns, setColumns] = useState([]);
+
   // Handle SE selection checkbox change
   const handleSESelectionChange = (seId) => {
     setSelectedSEs((prev) =>
@@ -368,6 +369,64 @@ const AssessSEPage = () => {
     }));
   };
 
+  useEffect(() => {
+    const fetchSocialEnterprises = async () => {
+      try {
+        const seResponse = await axios.get("http://localhost:4000/getSocialEnterprises");
+        const mentorResponse = await axios.get("http://localhost:4000/api/mentors");
+        const programsResponse = await axios.get("http://localhost:4000/getPrograms");
+        const sdgResponse = await axios.get("http://localhost:4000/getSDGs");
+  
+        console.log("📥 SDG API Response:", sdgResponse.data); // Debugging
+  
+        // ✅ Ensure it's an array before using `.forEach()`
+        const programsData = Array.isArray(programsResponse.data) ? programsResponse.data : [];
+        const mentorsData = Array.isArray(mentorResponse.data) ? mentorResponse.data : [];
+        const sdgData = Array.isArray(sdgResponse.data) ? sdgResponse.data : [];
+  
+        // ✅ Create mapping { program_id -> program_name }
+        const programsMap = {};
+        programsData.forEach((program) => {
+          programsMap[program.program_id] = program.name;
+        });
+  
+        // ✅ Create mapping { mentor_id -> mentor_name }
+        const mentorMap = {};
+        mentorsData.forEach((mentor) => {
+          mentorMap[mentor.mentor_id] = `${mentor.mentor_firstName} ${mentor.mentor_lastName}`;
+        });
+  
+        // ✅ Create mapping { sdg_id -> sdg_name }
+        const sdgMap = {};
+        sdgData.forEach((sdg) => {
+          sdgMap[sdg.sdg_id] = sdg.name;
+        });
+  
+        // ✅ Replace program_id, mentor_id, and sdg_id with their actual names
+        const updatedSocialEnterprises = seResponse.data.map((se) => ({
+          ...se,
+          program_id: programsMap[se.program_id] || "Unknown Program",
+          mentor_id: mentorMap[se.mentor_id] || "No Mentor Assigned",
+          sdg_id: sdgMap[se.sdg_id] || "No SDG Name",
+        }));
+  
+        const dynamicColumns = [
+          { field: "team_name", headerName: "Social Enterprise", flex: 1 },
+          { field: "mentor_id", headerName: "Assigned Mentor", flex: 1 }, // Now shows mentor name
+          { field: "program_id", headerName: "Program Name", flex: 1 }, // Now shows program name
+          { field: "sdg_id", headerName: "SDG", flex: 1 }, // Now shows SDG name
+        ];
+  
+        setColumns(dynamicColumns);
+        setSocialEnterprises(updatedSocialEnterprises);
+      } catch (error) {
+        console.error("❌ Error fetching SE, Mentors, Programs, or SDGs:", error);
+      }
+    };
+  
+    fetchSocialEnterprises();
+  }, []);
+
   const handleSubmit = async () => {
     const currentSEId = selectedSEs[currentSEIndex];
     const currentEvaluations = evaluations[currentSEId];
@@ -426,16 +485,7 @@ const AssessSEPage = () => {
     setEvaluations({});
   };
 
-  const columns = [
-    { field: "id", headerName: "ID", flex: 0.5 },
-    { field: "name", headerName: "Social Enterprise", flex: 1 },
-    { field: "mentor", headerName: "Mentor", flex: 1 },
-    { field: "sdg", headerName: "SDG", flex: 1 },
-    { field: "contact", headerName: "Contact", flex: 1 },
-    { field: "members", headerName: "Members", flex: 0.5 },
-    { field: "program", headerName: "Program", flex: 1 },
-    { field: "status", headerName: "Status", flex: 0.5 },
-  ];
+  if (!columns.length) return <Typography>Loading...</Typography>;
 
   return (
     <Box m="20px">
@@ -487,7 +537,11 @@ const AssessSEPage = () => {
             },
           }}
         >
-          <DataGrid rows={mockDataSE} columns={columns} />
+        <DataGrid 
+          rows={socialEnterprises} 
+          columns={columns} 
+          getRowId={(row) => row.se_id} // Ensure `se_id` is used as `id`
+        />
         </Box>
 
         {/* SE Selection Dialog */}
@@ -499,16 +553,16 @@ const AssessSEPage = () => {
         >
           <DialogTitle>Select Social Enterprises for Evaluation</DialogTitle>
           <DialogContent>
-            {mockDataSE.map((se) => (
+            {socialEnterprises.map((se) => (
               <FormControlLabel
-                key={se.id}
+                key={se.se_id}
                 control={
                   <Checkbox
-                    checked={selectedSEs.includes(se.id)}
-                    onChange={() => handleSESelectionChange(se.id)}
+                    checked={selectedSEs.includes(se.se_id)} 
+                    onChange={() => handleSESelectionChange(se.se_id)}
                   />
                 }
-                label={`${se.name} (${se.sdg})`}
+                label={`${se.team_name} (${se.sdg_id})`}
               />
             ))}
             {error && (
@@ -536,12 +590,9 @@ const AssessSEPage = () => {
         >
           <DialogTitle>Evaluate Social Enterprise</DialogTitle>
           <DialogContent>
-            <Typography variant="h6">
-              {
-                mockDataSE.find((se) => se.id === selectedSEs[currentSEIndex])
-                  ?.name
-              }
-            </Typography>
+          <Typography variant="h6">
+            {socialEnterprises.find((se) => se.se_id === selectedSEs[currentSEIndex])?.team_name}
+          </Typography>
             {Object.keys(evaluationCriteria).map((category) => {
               const currentSEId = selectedSEs[currentSEIndex];
               const categoryEval = evaluations[currentSEId]?.[category] || {
@@ -551,9 +602,12 @@ const AssessSEPage = () => {
               };
               return (
                 <Box key={category} mb={3}>
+                  {/* Category Title */}
                   <Typography variant="subtitle1">
                     {category.charAt(0).toUpperCase() + category.slice(1)}
                   </Typography>
+              
+                  {/* Star Rating Selection */}
                   <Box display="flex" gap={1} justifyContent="center" mt={1}>
                     {[1, 2, 3, 4, 5].map((value) => (
                       <Box
@@ -565,9 +619,7 @@ const AssessSEPage = () => {
                         justifyContent="center"
                         alignItems="center"
                         borderRadius="5px"
-                        bgcolor={
-                          value <= categoryEval.rating ? "gold" : "transparent"
-                        }
+                        bgcolor={value <= categoryEval.rating ? "yellow" : "transparent"}
                         sx={{ cursor: "pointer" }}
                         onClick={() => handleRatingChange(category, value)}
                       >
@@ -575,44 +627,46 @@ const AssessSEPage = () => {
                       </Box>
                     ))}
                   </Box>
+              
+                  {/* Predefined Evaluation Criteria (Only If Rating > 0) */}
                   {categoryEval.rating > 0 && (
-                  <Box
-                    sx={{
-                      maxHeight: "150px",
-                      overflowY: "auto",
-                      mt: 2,
-                      p: 1,
-                      border: "1px solid #ccc",
-                      borderRadius: "5px",
-                      display: "flex",
-                      flexDirection: "column", // Ensures vertical alignment
-                      gap: 1, // Adds spacing between items
-                    }}
-                  >
-                    {evaluationCriteria[category][categoryEval.rating]?.map(
-                      (criterion, index) => (
-                        <FormControlLabel
-                          key={index}
-                          control={
-                            <Checkbox
-                              checked={categoryEval.selectedCriteria.includes(criterion)}
-                              onChange={() => handleCriteriaChange(category, criterion)}
-                            />
-                          }
-                          label={criterion}
-                        />
-                      )
-                    )}
-                  </Box>
+                    <Box
+                      sx={{
+                        maxHeight: "150px",
+                        overflowY: "auto",
+                        mt: 2,
+                        p: 1,
+                        border: "1px solid #ccc",
+                        borderRadius: "5px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                      }}
+                    >
+                      {evaluationCriteria[category]?.[categoryEval.rating]?.map(
+                        (criterion, index) => (
+                          <FormControlLabel
+                            key={index}
+                            control={
+                              <Checkbox
+                                checked={categoryEval.selectedCriteria?.includes(criterion) || false}
+                                onChange={() => handleCriteriaChange(category, criterion)}
+                              />
+                            }
+                            label={criterion}
+                          />
+                        )
+                      )}
+                    </Box>
                   )}
+              
+                  {/* Additional Comments Field */}
                   <TextField
                     label={`Additional Comments for ${category}`}
                     multiline
                     rows={3}
-                    value={categoryEval.comments}
-                    onChange={(e) =>
-                      handleCommentsChange(category, e.target.value)
-                    }
+                    value={categoryEval.comments || ""}
+                    onChange={(e) => handleCommentsChange(category, e.target.value)}
                     variant="outlined"
                     fullWidth
                     sx={{ mt: 2 }}
@@ -641,3 +695,4 @@ const AssessSEPage = () => {
 };
 
 export default AssessSEPage;
+

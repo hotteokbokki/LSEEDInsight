@@ -12,6 +12,7 @@ const { getUsers, getUserName } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const cookieParser = require("cookie-parser");
 const { getMentorsBySocialEnterprises, getMentorById } = require("./controllers/mentorsController.js");
+const { getAllSDG } = require("./controllers/sdgController.js");
 
 const app = express();
 
@@ -98,6 +99,16 @@ async function sendMessageWithOptions(chatId, message, options) {
   }
 }
 
+app.get("/getSDGs", async (req, res) => {
+  try {
+    const result = await getAllSDG();
+    res.json(result); // Send sdg as JSON
+  } catch (error) {
+    console.error("Error fetching sdgs:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.get("/api/mentors", async (req, res) => {
   try {
     const result = await pgDatabase.query("SELECT * FROM mentors");
@@ -155,9 +166,31 @@ app.get("/protected", requireAuth, (req, res) => {
 });
 
 app.get("/getSocialEnterprises", async (req, res) => {
-  const SE = await getAllSocialEnterprises();
+  try {
+    const SE = await getAllSocialEnterprises(); // Fetch SEs from DB
+    if (!SE || SE.length === 0) {
+      return res.status(404).json({ message: "No social enterprises found" });
+    }
+    res.json(SE); // Send SE data
+  } catch (error) {
+    console.error("Error fetching social enterprises:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
-  res.json(SE);
+app.get("/getPrograms", async (req, res) => {
+  try {
+    const result = await pgDatabase.query("SELECT program_id, name FROM Programs");
+
+    if (!result.rows || result.rows.length === 0) {
+      return res.json([]); // ✅ Always return an array
+    }
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("❌ Error fetching programs:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 });
 
 app.post("/webhook", async (req, res) => {
