@@ -436,7 +436,6 @@ const AssessSEPage = () => {
     const currentEvaluations = evaluations[currentSEId];
     const getValidRating = (rating) => (rating && rating >= 1 && rating <= 5 ? rating : 1);
   
-    // Retrieve user session data
     const userSession = JSON.parse(localStorage.getItem("user"));
     if (!userSession || !userSession.id) {
       console.error("❌ User session not found.");
@@ -444,28 +443,21 @@ const AssessSEPage = () => {
       return;
     }
   
-    // Find the selected SE to extract `mentor_id` and `sdg_id`
     const selectedSE = socialEnterprises.find((se) => se.se_id === currentSEId);
-    console.log("🧐 Debug: Selected SE Data:", selectedSE);
-  
     if (!selectedSE) {
       console.error("❌ Selected SE not found.");
       alert("Error: Selected Social Enterprise not found.");
       return;
     }
   
-    // ✅ Extract mentor ID and ensure it's valid
     const mentorId = selectedSE.mentor_id;
-    if (!mentorId || mentorId.includes(" ")) { // If mentorId has spaces, it's likely a name
-      console.error("❌ ERROR: mentorId is not an ID!");
+    if (!mentorId) {
+      console.error("❌ ERROR: mentorId is missing!");
       return;
     }
   
-    // ✅ Extract `sdg_id` (Single or Multiple)
     const sdgIds = Array.isArray(selectedSE.sdg_id) ? selectedSE.sdg_id : [selectedSE.sdg_id];
-    console.log("🔍 Extracted SDG IDs:", sdgIds);
   
-    // Validate predefined comments selection
     const isValid = Object.values(currentEvaluations || {}).every(
       (categoryEval) => categoryEval.selectedCriteria?.length >= 2
     );
@@ -475,53 +467,36 @@ const AssessSEPage = () => {
       return;
     }
   
-    // Store evaluations before sending
-    const updatedEvaluations = { ...evaluations, [currentSEId]: currentEvaluations };
-    setEvaluations(updatedEvaluations);
+    const formData = {
+      evaluatorId: userSession.id,
+      se_id: [currentSEId], // ✅ Send only the current SE in the request
+      mentorId: mentorId,
+      evaluations: currentEvaluations,
+      sdg_id: sdgIds,
+    };
   
-    // If there are more SEs to evaluate, continue
-    if (currentSEIndex < selectedSEs.length - 1) {
-      setCurrentSEIndex(currentSEIndex + 1);
-    } else {
-      // Send final evaluation data
-      try {
-        const formData = {
-          evaluatorId: userSession.id,
-          se_id: currentSEId,
-          mentorId: mentorId,
-          evaluations: updatedEvaluations,
-          sdg_id: sdgIds, // ✅ Send multiple or single SDGs
-          teamwork_rating: getValidRating(currentEvaluations?.teamwork?.rating),
-          teamwork_selectedcriteria: currentEvaluations?.teamwork?.selectedCriteria || [],
-          teamwork_addtlcmt: currentEvaluations?.teamwork?.comments || "",
-          finance_rating: getValidRating(currentEvaluations?.financialPlanning?.rating),
-          finance_selectedcriteria: currentEvaluations?.financialPlanning?.selectedCriteria || [],
-          finance_addtlcmt: currentEvaluations?.financialPlanning?.comments || "",
-          marketing_rating: getValidRating(currentEvaluations?.marketingPlan?.rating),
-          marketing_selectedcriteria: currentEvaluations?.marketingPlan?.selectedCriteria || [],
-          marketing_addtlcmt: currentEvaluations?.marketingPlan?.comments || "",
-          productservice_rating: getValidRating(currentEvaluations?.productServiceDesign?.rating),
-          productservice_selectedcriteria: currentEvaluations?.productServiceDesign?.selectedCriteria || [],
-          productservice_addtlcmt: currentEvaluations?.productServiceDesign?.comments || "",
-          humanresource_rating: getValidRating(currentEvaluations?.humanResourceManagement?.rating),
-          humanresource_selectedcriteria: currentEvaluations?.humanResourceManagement?.selectedCriteria || [],
-          humanresource_addtlcmt: currentEvaluations?.humanResourceManagement?.comments || "",
-          logistics_rating: getValidRating(currentEvaluations?.logistics?.rating),
-          logistics_selectedcriteria: currentEvaluations?.logistics?.selectedCriteria || [],
-          logistics_addtlcmt: currentEvaluations?.logistics?.comments || "",
-        };
+    Object.keys(currentEvaluations).forEach((category) => {
+      formData[`${category}_rating`] = getValidRating(currentEvaluations[category]?.rating);
+      formData[`${category}_selectedcriteria`] = currentEvaluations[category]?.selectedCriteria || [];
+      formData[`${category}_addtlcmt`] = currentEvaluations[category]?.comments || "";
+    });
   
-        console.log("📤 Sending ALL evaluations to server:", formData);
+    console.log("📤 Sending Evaluation to Backend:", formData);
   
-        const response = await axios.post("http://localhost:4000/evaluate", formData);
-        console.log("✅ Evaluations successfully sent to backend:", response.data);
+    try {
+      await axios.post("http://localhost:4000/evaluate", formData);
   
+      if (currentSEIndex < selectedSEs.length - 1) {
+        setCurrentSEIndex(currentSEIndex + 1); // Move to the next SE
+      } else {
+        console.log("✅ All SEs have been evaluated.");
         handleCloseEvaluateDialog();
-      } catch (error) {
-        console.error("❌ Error submitting evaluations:", error);
       }
+    } catch (error) {
+      console.error("❌ Error submitting evaluations:", error);
     }
   };
+  
   
   // Close the evaluation dialog
   const handleCloseEvaluateDialog = () => {
