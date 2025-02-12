@@ -372,36 +372,48 @@ const AssessSEPage = () => {
   useEffect(() => {
     const fetchSocialEnterprises = async () => {
       try {
-        const seResponse = await axios.get("http://localhost:4000/getSocialEnterprises");
-        const mentorResponse = await axios.get("http://localhost:4000/api/mentors");
-        const programsResponse = await axios.get("http://localhost:4000/getPrograms");
+        const seResponse = await axios.get(
+          "http://localhost:4000/getSocialEnterprises"
+        );
+        const mentorResponse = await axios.get(
+          "http://localhost:4000/api/mentors"
+        );
+        const programsResponse = await axios.get(
+          "http://localhost:4000/getPrograms"
+        );
         const sdgResponse = await axios.get("http://localhost:4000/getSDGs");
-  
+
         console.log("📥 SDG API Response:", sdgResponse.data); // Debugging
-  
+
         // ✅ Ensure it's an array before using `.forEach()`
-        const programsData = Array.isArray(programsResponse.data) ? programsResponse.data : [];
-        const mentorsData = Array.isArray(mentorResponse.data) ? mentorResponse.data : [];
+        const programsData = Array.isArray(programsResponse.data)
+          ? programsResponse.data
+          : [];
+        const mentorsData = Array.isArray(mentorResponse.data)
+          ? mentorResponse.data
+          : [];
         const sdgData = Array.isArray(sdgResponse.data) ? sdgResponse.data : [];
-  
+
         // ✅ Create mapping { program_id -> program_name }
         const programsMap = {};
         programsData.forEach((program) => {
           programsMap[program.program_id] = program.name;
         });
-  
+
         // ✅ Create mapping { mentor_id -> mentor_name }
         const mentorMap = {};
         mentorsData.forEach((mentor) => {
-          mentorMap[mentor.mentor_id] = `${mentor.mentor_firstName} ${mentor.mentor_lastName}`;
+          mentorMap[
+            mentor.mentor_id
+          ] = `${mentor.mentor_firstName} ${mentor.mentor_lastName}`;
         });
-  
+
         // ✅ Create mapping { sdg_id -> sdg_name }
         const sdgMap = {};
         sdgData.forEach((sdg) => {
           sdgMap[sdg.sdg_id] = sdg.name;
         });
-  
+
         // ✅ Handle multiple SDGs
         const updatedSocialEnterprises = seResponse.data.map((se) => ({
           ...se,
@@ -413,60 +425,68 @@ const AssessSEPage = () => {
             ? se.sdg_id.map((id) => sdgMap[id] || "Unknown SDG").join(", ") // Convert array to string
             : sdgMap[se.sdg_id] || "No SDG Name",
         }));
-  
+
         const dynamicColumns = [
           { field: "team_name", headerName: "Social Enterprise", flex: 1 },
           { field: "mentor_name", headerName: "Assigned Mentor", flex: 1 }, // ✅ Now shows mentor name
           { field: "program_id", headerName: "Program Name", flex: 1 },
           { field: "sdg_name", headerName: "SDG(s)", flex: 1 }, // ✅ Now shows multiple SDGs
         ];
-  
+
         setColumns(dynamicColumns);
         setSocialEnterprises(updatedSocialEnterprises);
       } catch (error) {
-        console.error("❌ Error fetching SE, Mentors, Programs, or SDGs:", error);
+        console.error(
+          "❌ Error fetching SE, Mentors, Programs, or SDGs:",
+          error
+        );
       }
     };
-  
+
     fetchSocialEnterprises();
   }, []);
-  
+
   const handleSubmit = async () => {
     const currentSEId = selectedSEs[currentSEIndex];
     const currentEvaluations = evaluations[currentSEId];
-    const getValidRating = (rating) => (rating && rating >= 1 && rating <= 5 ? rating : 1);
-  
+    const getValidRating = (rating) =>
+      rating && rating >= 1 && rating <= 5 ? rating : 1;
+
     const userSession = JSON.parse(localStorage.getItem("user"));
     if (!userSession || !userSession.id) {
       console.error("❌ User session not found.");
       alert("Error: User session not found.");
       return;
     }
-  
+
     const selectedSE = socialEnterprises.find((se) => se.se_id === currentSEId);
     if (!selectedSE) {
       console.error("❌ Selected SE not found.");
       alert("Error: Selected Social Enterprise not found.");
       return;
     }
-  
+
     const mentorId = selectedSE.mentor_id;
     if (!mentorId) {
       console.error("❌ ERROR: mentorId is missing!");
       return;
     }
-  
-    const sdgIds = Array.isArray(selectedSE.sdg_id) ? selectedSE.sdg_id : [selectedSE.sdg_id];
-  
+
+    const sdgIds = Array.isArray(selectedSE.sdg_id)
+      ? selectedSE.sdg_id
+      : [selectedSE.sdg_id];
+
     const isValid = Object.values(currentEvaluations || {}).every(
       (categoryEval) => categoryEval.selectedCriteria?.length >= 2
     );
-  
+
     if (!isValid) {
-      setError("Please select at least two predefined comments for each category.");
+      setError(
+        "Please select at least two predefined comments for each category."
+      );
       return;
     }
-  
+
     const formData = {
       evaluatorId: userSession.id,
       se_id: [currentSEId], // ✅ Send only the current SE in the request
@@ -474,18 +494,22 @@ const AssessSEPage = () => {
       evaluations: currentEvaluations,
       sdg_id: sdgIds,
     };
-  
+
     Object.keys(currentEvaluations).forEach((category) => {
-      formData[`${category}_rating`] = getValidRating(currentEvaluations[category]?.rating);
-      formData[`${category}_selectedcriteria`] = currentEvaluations[category]?.selectedCriteria || [];
-      formData[`${category}_addtlcmt`] = currentEvaluations[category]?.comments || "";
+      formData[`${category}_rating`] = getValidRating(
+        currentEvaluations[category]?.rating
+      );
+      formData[`${category}_selectedcriteria`] =
+        currentEvaluations[category]?.selectedCriteria || [];
+      formData[`${category}_addtlcmt`] =
+        currentEvaluations[category]?.comments || "";
     });
-  
+
     console.log("📤 Sending Evaluation to Backend:", formData);
-  
+
     try {
       await axios.post("http://localhost:4000/evaluate", formData);
-  
+
       if (currentSEIndex < selectedSEs.length - 1) {
         setCurrentSEIndex(currentSEIndex + 1); // Move to the next SE
       } else {
@@ -496,8 +520,7 @@ const AssessSEPage = () => {
       console.error("❌ Error submitting evaluations:", error);
     }
   };
-  
-  
+
   // Close the evaluation dialog
   const handleCloseEvaluateDialog = () => {
     setOpenEvaluateDialog(false);
@@ -558,11 +581,11 @@ const AssessSEPage = () => {
             },
           }}
         >
-        <DataGrid 
-          rows={socialEnterprises} 
-          columns={columns} 
-          getRowId={(row) => row.se_id} // Ensure `se_id` is used as `id`
-        />
+          <DataGrid
+            rows={socialEnterprises}
+            columns={columns}
+            getRowId={(row) => row.se_id} // Ensure `se_id` is used as `id`
+          />
         </Box>
 
         {/* SE Selection Dialog */}
@@ -579,7 +602,7 @@ const AssessSEPage = () => {
                 key={se.se_id}
                 control={
                   <Checkbox
-                    checked={selectedSEs.includes(se.se_id)} 
+                    checked={selectedSEs.includes(se.se_id)}
                     onChange={() => handleSESelectionChange(se.se_id)}
                   />
                 }
@@ -608,12 +631,50 @@ const AssessSEPage = () => {
           onClose={handleCloseEvaluateDialog}
           maxWidth="md"
           fullWidth
+          PaperProps={{
+            style: {
+              backgroundColor: "#fff", // White background
+              color: "#000", // Black text
+              border: "1px solid #000", // Black border for contrast
+            },
+          }}
         >
-          <DialogTitle>Evaluate Social Enterprise</DialogTitle>
-          <DialogContent>
-          <Typography variant="h6">
-            {socialEnterprises.find((se) => se.se_id === selectedSEs[currentSEIndex])?.team_name}
-          </Typography>
+          <DialogTitle
+            sx={{
+              backgroundColor: "#000", // Black header
+              color: "#fff", // White text
+              textAlign: "center",
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+            }}
+          >
+            Evaluate Social Enterprise
+          </DialogTitle>
+          <DialogContent
+            sx={{
+              padding: "24px",
+              maxHeight: "70vh", // Ensure it doesn't overflow the screen
+              overflowY: "auto", // Enable scrolling if content is too long
+            }}
+          >
+            {/* Current SE Name */}
+            <Typography
+              variant="h6"
+              sx={{
+                marginBottom: "16px",
+                fontWeight: "bold",
+                borderBottom: "1px solid #000",
+                paddingBottom: "8px",
+              }}
+            >
+              {
+                socialEnterprises.find(
+                  (se) => se.se_id === selectedSEs[currentSEIndex]
+                )?.team_name
+              }
+            </Typography>
+
+            {/* Evaluation Categories */}
             {Object.keys(evaluationCriteria).map((category) => {
               const currentSEId = selectedSEs[currentSEIndex];
               const categoryEval = evaluations[currentSEId]?.[category] || {
@@ -621,47 +682,66 @@ const AssessSEPage = () => {
                 selectedCriteria: [],
                 comments: "",
               };
+
               return (
-                <Box key={category} mb={3}>
+                <Box
+                  key={category}
+                  sx={{
+                    marginBottom: "24px",
+                    padding: "16px",
+                    border: "1px solid #000",
+                    borderRadius: "8px",
+                  }}
+                >
                   {/* Category Title */}
-                  <Typography variant="subtitle1">
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      fontWeight: "bold",
+                      marginBottom: "8px",
+                    }}
+                  >
                     {category.charAt(0).toUpperCase() + category.slice(1)}
                   </Typography>
-              
+
                   {/* Star Rating Selection */}
-                  <Box display="flex" gap={1} justifyContent="center" mt={1}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      gap: "8px",
+                      marginBottom: "16px",
+                    }}
+                  >
                     {[1, 2, 3, 4, 5].map((value) => (
-                      <Box
+                      <Button
                         key={value}
-                        width="40px"
-                        height="40px"
-                        border="1px solid black"
-                        display="flex"
-                        justifyContent="center"
-                        alignItems="center"
-                        borderRadius="5px"
-                        bgcolor={value <= categoryEval.rating ? "yellow" : "transparent"}
-                        sx={{ cursor: "pointer" }}
                         onClick={() => handleRatingChange(category, value)}
+                        sx={{
+                          color:
+                            categoryEval.rating === value ? "#000" : "#aaa",
+                          backgroundColor:
+                            categoryEval.rating === value
+                              ? "#f0f0f0"
+                              : "transparent",
+                          border: "1px solid #000",
+                          padding: "8px",
+                          minWidth: "40px",
+                          borderRadius: "50%",
+                          "&:hover": {
+                            backgroundColor: "#e0e0e0",
+                          },
+                        }}
                       >
-                        <Typography fontSize="24px">★</Typography>
-                      </Box>
+                        ★
+                      </Button>
                     ))}
                   </Box>
-              
+
                   {/* Predefined Evaluation Criteria (Only If Rating > 0) */}
                   {categoryEval.rating > 0 && (
                     <Box
                       sx={{
-                        maxHeight: "150px",
-                        overflowY: "auto",
-                        mt: 2,
-                        p: 1,
-                        border: "1px solid #ccc",
-                        borderRadius: "5px",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
+                        marginBottom: "16px",
                       }}
                     >
                       {evaluationCriteria[category]?.[categoryEval.rating]?.map(
@@ -670,42 +750,87 @@ const AssessSEPage = () => {
                             key={index}
                             control={
                               <Checkbox
-                                checked={categoryEval.selectedCriteria?.includes(criterion) || false}
-                                onChange={() => handleCriteriaChange(category, criterion)}
+                                checked={categoryEval.selectedCriteria.includes(
+                                  criterion
+                                )}
+                                onChange={() =>
+                                  handleCriteriaChange(category, criterion)
+                                }
+                                sx={{
+                                  color: "#000",
+                                  "&.Mui-checked": {
+                                    color: "#000",
+                                  },
+                                }}
                               />
                             }
                             label={criterion}
+                            sx={{
+                              marginBottom: "4px",
+                            }}
                           />
                         )
                       )}
                     </Box>
                   )}
-              
+
                   {/* Additional Comments Field */}
                   <TextField
-                    label={`Additional Comments for ${category}`}
-                    multiline
-                    rows={3}
-                    value={categoryEval.comments || ""}
-                    onChange={(e) => handleCommentsChange(category, e.target.value)}
+                    label="Additional Comments"
+                    value={categoryEval.comments}
+                    onChange={(e) =>
+                      handleCommentsChange(category, e.target.value)
+                    }
                     variant="outlined"
                     fullWidth
-                    sx={{ mt: 2 }}
+                    multiline
+                    rows={3}
+                    sx={{
+                      marginTop: "8px",
+                    }}
                   />
                 </Box>
               );
             })}
-            {error && (
-              <Alert severity="error" sx={{ mt: 2 }}>
-                {error}
-              </Alert>
-            )}
           </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseEvaluateDialog} color="primary">
+
+          {/* Error Message */}
+          {error && (
+            <Alert severity="error" sx={{ margin: "16px" }}>
+              {error}
+            </Alert>
+          )}
+
+          {/* Action Buttons */}
+          <DialogActions
+            sx={{
+              padding: "16px",
+              borderTop: "1px solid #000",
+            }}
+          >
+            <Button
+              onClick={handleCloseEvaluateDialog}
+              sx={{
+                color: "#000",
+                border: "1px solid #000",
+                "&:hover": {
+                  backgroundColor: "#f0f0f0",
+                },
+              }}
+            >
               Cancel
             </Button>
-            <Button onClick={handleSubmit} color="primary">
+            <Button
+              onClick={handleSubmit}
+              variant="contained"
+              sx={{
+                backgroundColor: "#000",
+                color: "#fff",
+                "&:hover": {
+                  backgroundColor: "#333",
+                },
+              }}
+            >
               Submit
             </Button>
           </DialogActions>
@@ -716,4 +841,3 @@ const AssessSEPage = () => {
 };
 
 export default AssessSEPage;
-

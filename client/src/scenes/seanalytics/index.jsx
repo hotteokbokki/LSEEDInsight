@@ -2,25 +2,27 @@ import React, { useState } from "react";
 import {
   Box,
   Typography,
-  useTheme,
-  Select,
-  MenuItem,
+  Button,
   FormControl,
   InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { tokens } from "../../theme";
 import LineChart from "../../components/LineChart";
 import PieChart from "../../components/PieChart";
 import LikertChart from "../../components/LikertChart";
 import RadarChart from "../../components/RadarChart";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom"; // Import useNavigate
 import { mockDataSE } from "../../sampledata/mockData";
+import { useTheme } from "@mui/material/styles";
 
 const SEAnalytics = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const { id } = useParams(); // Extract the `id` from the URL
   const [selectedSEId, setSelectedSEId] = useState(id); // State to manage selected SE
+  const navigate = useNavigate(); // Initialize useNavigate
 
   // Find the selected SE based on the ID
   const selectedSE = mockDataSE.find((se) => se.id === parseInt(selectedSEId));
@@ -92,20 +94,41 @@ const SEAnalytics = () => {
     <Box m="20px">
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center">
-        <FormControl variant="outlined" sx={{ minWidth: 120 }}>
-          <InputLabel>Select SE</InputLabel>
-          <Select
-            value={selectedSEId}
-            onChange={handleChangeSE}
-            label="Select SE"
+        {/* Back Button and Dropdown Container */}
+        <Box display="flex" alignItems="center" gap="10px">
+          {/* Back Button */}
+          <Button
+            variant="contained"
+            sx={{
+              backgroundColor: colors.blueAccent[500],
+              color: "black",
+              "&:hover": {
+                backgroundColor: colors.blueAccent[800],
+              },
+            }}
+            onClick={() => navigate("/socialenterprise")} // Navigate back to the Social Enterprises page
           >
-            {mockDataSE.map((se) => (
-              <MenuItem key={se.id} value={se.id}>
-                {se.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+            Back
+          </Button>
+
+          {/* Social Enterprise Selection Dropdown */}
+          <FormControl variant="outlined" sx={{ minWidth: 120 }}>
+            <InputLabel>Select SE</InputLabel>
+            <Select
+              value={selectedSEId}
+              onChange={handleChangeSE}
+              label="Select SE"
+            >
+              {mockDataSE.map((se) => (
+                <MenuItem key={se.id} value={se.id}>
+                  {se.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+
+        {/* Page Title */}
         <Typography variant="h4" fontWeight="bold" color={colors.grey[100]}>
           {selectedSE.name} Analytics
         </Typography>
@@ -116,7 +139,6 @@ const SEAnalytics = () => {
         mt="20px"
         sx={{
           backgroundColor: colors.primary[400], // Gray background
-
           padding: "20px", // Padding inside the box
           boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)", // Optional: Add shadow for better UI
         }}
@@ -140,7 +162,6 @@ const SEAnalytics = () => {
         <Box
           sx={{
             backgroundColor: colors.primary[400],
-
             padding: "20px",
             boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
           }}
@@ -157,7 +178,6 @@ const SEAnalytics = () => {
         <Box
           sx={{
             backgroundColor: colors.primary[400],
-
             padding: "20px",
             boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
           }}
@@ -176,7 +196,6 @@ const SEAnalytics = () => {
         mt="20px"
         sx={{
           backgroundColor: colors.primary[400],
-
           padding: "20px",
           boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
         }}

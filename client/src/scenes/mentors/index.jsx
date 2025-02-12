@@ -18,46 +18,44 @@ import EmailIcon from "@mui/icons-material/Email";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import TrafficIcon from "@mui/icons-material/Traffic";
-import { useState } from "react";
-import { useEffect } from "react";
-
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Mentors = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [rows, setRows] = useState(mockDataMentor);
+  const navigate = useNavigate();
 
   // Fetch mentors from the database
-useEffect(() => {
-  const fetchMentors = async () => {
-    try {
-      const response = await fetch("/api/mentors"); // Adjust based on your API route
-      const data = await response.json();
-      
-      const formattedData = data.map((mentor) => ({
-        id: mentor.mentor_id, // Use actual UUID
-        mentor_firstName: mentor.mentor_firstName,
-        mentor_lastName: mentor.mentor_lastName,
-        mentorName: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
-        email: mentor.email,
-        number: mentor.contactNum,
-        numberOfSEsAssigned: mentor.number_SE_assigned,
-        status: "Active", // Assuming active by default
-      }));
-
-      setRows(formattedData);
-    } catch (error) {
-      console.error("Error fetching mentors:", error);
-    }
-  };
-
-  fetchMentors();
-}, []);
+  useEffect(() => {
+    const fetchMentors = async () => {
+      try {
+        const response = await fetch("/api/mentors"); // Adjust based on your API route
+        const data = await response.json();
+        const formattedData = data.map((mentor) => ({
+          id: mentor.mentor_id, // Use actual UUID
+          mentor_firstName: mentor.mentor_firstName,
+          mentor_lastName: mentor.mentor_lastName,
+          mentorName: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
+          email: mentor.email,
+          number: mentor.contactNum,
+          numberOfSEsAssigned: mentor.number_SE_assigned,
+          status: "Active", // Assuming active by default
+        }));
+        setRows(formattedData);
+      } catch (error) {
+        console.error("Error fetching mentors:", error);
+      }
+    };
+    fetchMentors();
+  }, []);
 
   // State for dialogs and data
   const [openDialog, setOpenDialog] = useState(false);
   const [mentorData, setMentorData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     contactNumber: "",
   });
@@ -87,17 +85,14 @@ useEffect(() => {
       contactNum: mentorData.contactNumber,
       number_SE_assigned: 0, // Default
     };
-  
     try {
       const response = await fetch("/api/mentors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newMentor),
       });
-  
       if (response.ok) {
         console.log("Mentor added successfully");
-  
         // Fetch latest data from the backend
         const updatedResponse = await fetch("/api/mentors");
         const updatedData = await updatedResponse.json();
@@ -107,13 +102,16 @@ useEffect(() => {
           email: mentor.email,
           number: mentor.contactNum,
           numberOfSEsAssigned: mentor.number_SE_assigned,
-          status: "Active", 
+          status: "Active",
         }));
-  
         setRows(formattedData); // Update frontend with new data
-  
         setOpenDialog(false);
-        setMentorData({ firstName: "", lastName: "", email: "", contactNumber: "" });
+        setMentorData({
+          firstName: "",
+          lastName: "",
+          email: "",
+          contactNumber: "",
+        });
       } else {
         console.error("Error adding mentor");
       }
@@ -121,51 +119,43 @@ useEffect(() => {
       console.error("Failed to add mentor:", error);
     }
   };
-  
-  
+
   // Handle row updates
   const handleRowEditCommit = async (params) => {
     const { id, field, value } = params;
-  
     // Update state first for instant UI feedback
     const updatedRows = rows.map((row) =>
       row.id === id ? { ...row, [field]: value } : row
     );
     setRows(updatedRows);
-  
+
     // Find the updated mentor
     const updatedMentor = updatedRows.find((row) => row.id === id);
-    
     if (!updatedMentor) return;
-  
+
     // Send only the necessary fields to update
     const updatedMentorData = {
       mentor_id: id,
-      mentor_firstName: updatedMentor.mentor_firstName, 
+      mentor_firstName: updatedMentor.mentor_firstName,
       mentor_lastName: updatedMentor.mentor_lastName,
       email: updatedMentor.email,
       contactNum: updatedMentor.number,
       number_SE_assigned: updatedMentor.numberOfSEsAssigned,
     };
-  
     try {
       const response = await fetch(`/api/mentors/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedMentorData),
       });
-  
       if (!response.ok) {
         throw new Error("Failed to update mentor in database");
       }
-  
       console.log("Mentor updated successfully");
     } catch (error) {
       console.error("Error updating mentor:", error);
     }
   };
-  
-  
 
   // Toggle editing mode
   const toggleEditing = () => {
@@ -206,18 +196,7 @@ useEffect(() => {
       headerName: "Status",
       flex: 1,
       editable: isEditing, // Make editable when in edit mode
-      renderCell: (params) => (
-        <Box
-          sx={{
-            color:
-              params.value === "Active"
-                ? colors.greenAccent[400]
-                : colors.redAccent[400],
-          }}
-        >
-          {params.value}
-        </Box>
-      ),
+      renderCell: (params) => <Box>{params.value}</Box>,
       renderEditCell: (params) => (
         <TextField
           select
@@ -236,15 +215,28 @@ useEffect(() => {
         </TextField>
       ),
     },
+    {
+      field: "actions",
+      headerName: "Actions",
+      width: 150,
+      renderCell: (params) => (
+        <Button
+          variant="contained"
+          size="small"
+          onClick={() => navigate(`/mentor-analytics/${params.row.id}`)}
+        >
+          View Mentor
+        </Button>
+      ),
+    },
   ];
 
   return (
     <Box m="20px">
       {/* HEADER */}
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Header title="Mentors" subtitle="Explore LSEED Mentors" />
-      </Box>
+      <Header title="MENTORS" subtitle="Manage Mentors" />
 
+      {/* ROW 1: STAT BOXES */}
       {/* ROW 1: STAT BOXES */}
       <Box
         display="grid"
@@ -331,12 +323,15 @@ useEffect(() => {
       </Box>
 
       {/* ADD MENTOR BUTTON AND EDIT TOGGLE */}
-      <Box display="flex" gap="10px" mt="20px" mb="20px">
+      <Box display="flex" gap="10px" mt="20px">
         <Button
           variant="contained"
           sx={{
             backgroundColor: colors.greenAccent[500],
             color: "black",
+            "&:hover": {
+              backgroundColor: colors.greenAccent[600],
+            },
           }}
           onClick={handleDialogOpen}
         >
@@ -347,6 +342,9 @@ useEffect(() => {
           sx={{
             backgroundColor: colors.blueAccent[500],
             color: "black",
+            "&:hover": {
+              backgroundColor: colors.blueAccent[800],
+            },
           }}
           onClick={toggleEditing}
         >
@@ -359,47 +357,41 @@ useEffect(() => {
         <DialogTitle>Add New Mentor</DialogTitle>
         <DialogContent>
           <TextField
-            name="firstName"
             label="First Name"
-            variant="outlined"
-            fullWidth
-            value={mentorData.mentor_lastName}
+            name="firstName"
+            value={mentorData.firstName}
             onChange={handleInputChange}
-            sx={{ marginBottom: "15px" }}
+            fullWidth
+            margin="dense"
           />
           <TextField
-            name="lastName"
             label="Last Name"
-            variant="outlined"
-            fullWidth
-            value={mentorData.mentor_lastName}
+            name="lastName"
+            value={mentorData.lastName}
             onChange={handleInputChange}
-            sx={{ marginBottom: "15px" }}
+            fullWidth
+            margin="dense"
           />
           <TextField
-            name="email"
             label="Email"
-            variant="outlined"
-            fullWidth
+            name="email"
             value={mentorData.email}
             onChange={handleInputChange}
-            sx={{ marginBottom: "15px" }}
+            fullWidth
+            margin="dense"
           />
           <TextField
-            name="contactNumber"
             label="Contact Number"
-            variant="outlined"
-            fullWidth
+            name="contactNumber"
             value={mentorData.contactNumber}
             onChange={handleInputChange}
-            sx={{ marginBottom: "15px" }}
+            fullWidth
+            margin="dense"
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDialogClose} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} color="secondary">
+          <Button onClick={handleDialogClose}>Cancel</Button>
+          <Button onClick={handleSubmit} variant="contained" color="primary">
             Submit
           </Button>
         </DialogActions>
@@ -407,6 +399,7 @@ useEffect(() => {
 
       {/* ROW 2: DATA GRID */}
       <Box
+        height="75vh"
         mt="20px"
         sx={{
           "& .MuiDataGrid-root": {
@@ -421,6 +414,7 @@ useEffect(() => {
           "& .MuiDataGrid-columnHeaders": {
             backgroundColor: colors.blueAccent[700],
             borderBottom: "none",
+            color: colors.grey[100],
           },
           "& .MuiDataGrid-virtualScroller": {
             backgroundColor: colors.primary[400],
@@ -428,15 +422,15 @@ useEffect(() => {
           "& .MuiDataGrid-footerContainer": {
             borderTop: "none",
             backgroundColor: colors.blueAccent[700],
+            color: colors.grey[100],
           },
         }}
       >
         <DataGrid
           rows={rows}
           columns={columns}
-          autoHeight
-          onCellEditCommit={handleRowEditCommit} // Handle row edits
-          editMode="row" // Enable row editing
+          onCellEditCommit={handleRowEditCommit}
+          editMode="row"
         />
       </Box>
     </Box>
