@@ -408,7 +408,7 @@ const AssessSEPage = () => {
           program_id: programsMap[se.program_id] || "Unknown Program",
           mentor_id: se.mentor_id, // ✅ Keep UUID here
           mentor_name: mentorMap[se.mentor_id] || "No Mentor Assigned", // ✅ Store name separately
-          sdg_id: Array.isArray(se.sdg_id) // ✅ Handle multiple SDGs
+          sdg_name: Array.isArray(se.sdg_id) // ✅ Handle multiple SDGs
             ? se.sdg_id.map((id) => sdgMap[id] || "Unknown SDG").join(", ") // Convert array to string
             : sdgMap[se.sdg_id] || "No SDG Name",
         }));
@@ -417,7 +417,7 @@ const AssessSEPage = () => {
           { field: "team_name", headerName: "Social Enterprise", flex: 1 },
           { field: "mentor_name", headerName: "Assigned Mentor", flex: 1 }, // ✅ Now shows mentor name
           { field: "program_id", headerName: "Program Name", flex: 1 },
-          { field: "sdg_id", headerName: "SDG(s)", flex: 1 }, // ✅ Now shows multiple SDGs
+          { field: "sdg_name", headerName: "SDG(s)", flex: 1 }, // ✅ Now shows multiple SDGs
         ];
   
         setColumns(dynamicColumns);
@@ -438,6 +438,7 @@ const AssessSEPage = () => {
     const userSession = JSON.parse(localStorage.getItem("user"));
     if (!userSession || !userSession.id) {
       console.error("❌ User session not found.");
+      alert("Error: User session not found.");
       return;
     }
   
@@ -447,11 +448,54 @@ const AssessSEPage = () => {
   
     if (!selectedSE) {
       console.error("❌ Selected SE not found.");
+      alert("Error: Selected Social Enterprise not found.");
       return;
     }
   
+    const formattedSeId = [currentSEId];
+
     // Extract mentor ID from selected SE
     const mentorId = selectedSE.mentor_id; 
+    const sdgName = selectedSE.sdg_name;
+    const formattedSdgId = [selectedSE.sdg_id];
+
+    const getValidRating = (rating) => (rating && rating >= 1 && rating <= 5 ? rating : 1);
+
+    const formData = {
+      mentor_id: mentorId,
+      se_id: formattedSeId,
+      sdg_name: formattedSdgId, // ✅ Backend will find `sdg_id`
+      teamwork_rating: getValidRating(currentEvaluations?.teamwork?.rating),
+      teamwork_selectedcriteria: currentEvaluations?.teamwork?.selectedCriteria || [],
+      teamwork_addtlcmt: currentEvaluations?.teamwork?.comments || "",
+      finance_rating: getValidRating(currentEvaluations?.financialPlanning?.rating),
+      finance_selectedcriteria: currentEvaluations?.financialPlanning?.selectedCriteria || [],
+      finance_addtlcmt: currentEvaluations?.financialPlanning?.comments || "",
+      marketing_rating: getValidRating(currentEvaluations?.marketingPlan?.rating),
+      marketing_selectedcriteria: currentEvaluations?.marketingPlan?.selectedCriteria || [],
+      marketing_addtlcmt: currentEvaluations?.marketingPlan?.comments || "",
+      productservice_rating: getValidRating(currentEvaluations?.productServiceDesign?.rating),
+      productservice_selectedcriteria: currentEvaluations?.productServiceDesign?.selectedCriteria || [],
+      productservice_addtlcmt: currentEvaluations?.productServiceDesign?.comments || "",
+      humanresource_rating: getValidRating(currentEvaluations?.humanResourceManagement?.rating),
+      humanresource_selectedcriteria: currentEvaluations?.humanResourceManagement?.selectedCriteria || [],
+      humanresource_addtlcmt: currentEvaluations?.humanResourceManagement?.comments || "",
+      logistics_rating: getValidRating(currentEvaluations?.logistics?.rating),
+      logistics_selectedcriteria: currentEvaluations?.logistics?.selectedCriteria || [],
+      logistics_addtlcmt: currentEvaluations?.logistics?.comments || "",
+    };
+
+    try {
+      console.log("📤 Sending evaluation:", formData);
+      const response = await axios.post("http://localhost:4000/api/evaluations", formData);
+      console.log("✅ Evaluation added successfully:", response.data);
+      alert("✅ Evaluation submitted successfully!");
+  
+      handleCloseEvaluateDialog(); // Close dialog after submission
+    } catch (error) {
+      console.error("❌ Error submitting evaluation:", error);
+      alert(`❌ Error: ${error.response?.data?.message || "Unknown error occurred"}`);
+    }
   
     // Debugging: Log mentorId
     console.log("🔍 Selected SE ID:", currentSEId);

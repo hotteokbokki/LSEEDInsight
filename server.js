@@ -159,6 +159,114 @@ app.put("/api/mentors/:id", async (req, res) => {
   }
 });
 
+//API for evaluation
+
+app.post("/api/evaluations", async (req, res) => {
+  try {
+    console.log("📥 Received Evaluation Data:", req.body);
+
+    let {
+      mentor_id,
+      se_id,
+      sdg_id, // ✅ This must be formatted correctly
+      teamwork_rating,
+      teamwork_selectedcriteria,
+      teamwork_addtlcmt,
+      finance_rating,
+      finance_selectedcriteria,
+      finance_addtlcmt,
+      marketing_rating,
+      marketing_selectedcriteria,
+      marketing_addtlcmt,
+      productservice_rating,
+      productservice_selectedcriteria,
+      productservice_addtlcmt,
+      humanresource_rating,
+      humanresource_selectedcriteria,
+      humanresource_addtlcmt,
+      logistics_rating,
+      logistics_selectedcriteria,
+      logistics_addtlcmt,
+    } = req.body;
+
+    // ✅ Ensure `se_id` is always an array
+    if (!Array.isArray(se_id)) {
+      console.warn("⚠️ se_id is not an array. Converting...");
+      se_id = [se_id]; // Convert single value to an array
+    }
+
+    console.log("🔹 Converted se_id:", se_id);
+
+    // ✅ Convert `se_id` and `sdg_id` to PostgreSQL array format
+    const formattedSeId = `{${se_id.join(",")}}`;
+    const formattedSdgId = `{${sdg_id.join(",")}}`; // Convert `sdg_id` array to PostgreSQL format
+
+    console.log("📤 Formatted se_id:", formattedSeId);
+    console.log("📤 Formatted sdg_id:", formattedSdgId);
+
+    // ✅ Fix ratings (ensure they are between 1-5)
+    const fixRating = (rating) => (rating >= 1 && rating <= 5 ? rating : 1);
+    teamwork_rating = fixRating(teamwork_rating);
+    finance_rating = fixRating(finance_rating);
+    marketing_rating = fixRating(marketing_rating);
+    productservice_rating = fixRating(productservice_rating);
+    humanresource_rating = fixRating(humanresource_rating);
+    logistics_rating = fixRating(logistics_rating);
+
+    console.log("📊 Ratings after validation:", {
+      teamwork_rating,
+      finance_rating,
+      marketing_rating,
+      productservice_rating,
+      humanresource_rating,
+      logistics_rating,
+    });
+
+    // ✅ Insert evaluation (Ensure `se_id` and `sdg_id` are properly formatted)
+    console.log("📤 Inserting data into evaluation table...");
+
+    const query = `
+      INSERT INTO evaluation (
+        mentor_id, se_id, sdg_id, 
+        teamwork_rating, teamwork_selectedcriteria, teamwork_addtlcmt,
+        finance_rating, finance_selectedcriteria, finance_addtlcmt,
+        marketing_rating, marketing_selectedcriteria, marketing_addtlcmt,
+        productservice_rating, productservice_selectedcriteria, productservice_addtlcmt,
+        humanresource_rating, humanresource_selectedcriteria, humanresource_addtlcmt,
+        logistics_rating, logistics_selectedcriteria, logistics_addtlcmt
+      ) VALUES (
+        $1, $2, $3, 
+        $4, $5, $6, 
+        $7, $8, $9, 
+        $10, $11, $12, 
+        $13, $14, $15, 
+        $16, $17, $18, 
+        $19, $20, $21
+      ) RETURNING *`;
+
+    const values = [
+      mentor_id, formattedSeId, formattedSdgId, // ✅ Ensure `se_id` & `sdg_id` are properly formatted
+      teamwork_rating, teamwork_selectedcriteria, teamwork_addtlcmt,
+      finance_rating, finance_selectedcriteria, finance_addtlcmt,
+      marketing_rating, marketing_selectedcriteria, marketing_addtlcmt,
+      productservice_rating, productservice_selectedcriteria, productservice_addtlcmt,
+      humanresource_rating, humanresource_selectedcriteria, humanresource_addtlcmt,
+      logistics_rating, logistics_selectedcriteria, logistics_addtlcmt
+    ];
+
+    console.log("📤 SQL Query:", query);
+    console.log("📊 Query Values:", values);
+
+    const result = await pgDatabase.query(query, values);
+    console.log("✅ Successfully inserted evaluation:", result.rows[0]);
+    res.status(201).json({ message: "Evaluation added successfully", evaluation: result.rows[0] });
+
+  } catch (error) {
+    console.error("❌ INTERNAL SERVER ERROR:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+});
+
 
 // Example of a protected route
 app.get("/protected", requireAuth, (req, res) => {
