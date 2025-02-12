@@ -4,24 +4,28 @@ exports.getMentorsBySocialEnterprises = async (se_id) => {
   try {
     console.log(`Fetching mentors for social enterprise ID: ${se_id}`);
 
-    // Query to get mentors by social enterprise ID
-    const query = `SELECT "mentor_id", "mentor_firstName", "mentor_lastName" FROM "mentors" WHERE "se_id" = $1`;
-const values = [se_id];  // Correctly passing se_id
+    // ✅ Fix: Use ANY() to match UUID in an array column
+    const query = `
+      SELECT "mentor_id", "mentor_firstName", "mentor_lastName"
+      FROM "mentors"
+      WHERE $1 = ANY("se_id")`;  // ✅ Correctly match UUID in an array
 
+    const values = [se_id];
 
     const result = await pgDatabase.query(query, values);
 
     if (!result.rows.length) {
+      console.log("⚠️ No mentors found for SE ID:", se_id);
       return [];
     }
 
-    // Map the results correctly
+    // ✅ Map results correctly
     return result.rows.map(mentor => ({
-      text: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`, // Fix: Properly format mentor name
+      text: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
       callback_data: `mentor_${mentor.mentor_id}`
     }));
   } catch (error) {
-    console.error("Error fetching mentors:", error);
+    console.error("❌ Error fetching mentors:", error);
     return [];
   }
 };

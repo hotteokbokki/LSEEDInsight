@@ -167,22 +167,18 @@ app.post("/evaluate", async (req, res) => {
 
     let { mentorId, se_id, sdg_id, evaluations } = req.body;
 
-    // ✅ Ensure `se_id` and `sdg_id` are arrays
     if (!Array.isArray(se_id)) se_id = [se_id];
     if (!Array.isArray(sdg_id)) sdg_id = sdg_id ? [sdg_id] : [];
 
     console.log("🔹 Converted se_id:", se_id);
     console.log("🔹 Converted sdg_id:", sdg_id);
 
-    // ✅ Format `sdg_id` for PostgreSQL
     const formattedSdgId = `{${sdg_id.join(",")}}`;
 
     console.log("📤 Formatted sdg_id:", formattedSdgId);
 
-    // ✅ Default values to avoid errors
-    const defaultEvaluation = { rating: 1, selectedCriteria: [], additionalComment: "" };
+    const defaultEvaluation = { rating: 1, selectedCriteria: [], comments: "" };
 
-    // ✅ Extract ratings, criteria, and comments dynamically
     const categories = [
       "teamwork",
       "financialPlanning",
@@ -192,11 +188,10 @@ app.post("/evaluate", async (req, res) => {
       "logistics",
     ];
 
-    // ✅ Iterate over each SE and insert a separate record
     let insertedEvaluations = [];
 
     for (let singleSeId of se_id) {
-      const formattedSeId = `{${singleSeId}}`; // Convert SE ID to array format for PostgreSQL
+      const formattedSeId = `{${singleSeId}}`;
 
       console.log(`📤 Processing SE: ${singleSeId}`);
 
@@ -204,12 +199,11 @@ app.post("/evaluate", async (req, res) => {
 
       categories.forEach((category) => {
         const evalData = evaluations[category] || defaultEvaluation;
-        values.push(evalData.rating, evalData.selectedCriteria, evalData.comments || ""); // Fix here
+        values.push(evalData.rating, evalData.selectedCriteria, evalData.comments || "");
       });
 
       console.log("📊 Query Values for SE:", singleSeId, values);
 
-      // ✅ SQL INSERT Query
       const query = `
         INSERT INTO evaluation (
           mentor_id, se_id, sdg_id,
@@ -230,12 +224,44 @@ app.post("/evaluate", async (req, res) => {
         ) RETURNING *;
       `;
 
-      console.log("📤 SQL Query:", query);
-
-      // ✅ Execute Query
       const result = await pgDatabase.query(query, values);
       console.log(`✅ Successfully inserted evaluation for SE: ${singleSeId}`);
       insertedEvaluations.push(result.rows[0]);
+
+      // ✅ Step 1: Get chat ID of mentor
+      const chatIdQuery = `
+        SELECT chatid FROM telegrambot
+        WHERE mentor_id = $1 AND "se_ID" = $2
+      `;
+      const chatIdResult = await pgDatabase.query(chatIdQuery, [mentorId, singleSeId]);
+
+      if (chatIdResult.rows.length === 0) {
+        console.warn(`⚠️ No chat ID found for mentor ${mentorId} and SE ${singleSeId}`);
+        continue;
+      }
+
+      const chatId = chatIdResult.rows[0].chatid;
+      console.log(`📩 Chat ID found: ${chatId}`);
+
+      // ✅ Step 2: Format the message
+      let message = `📢 *New Evaluation Received*\n\n`;
+      message += `👤 *Mentor ID:* ${mentorId}\n`;
+      message += `🏢 *Social Enterprise ID:* ${singleSeId}\n\n`;
+
+      categories.forEach((category) => {
+        const evalData = evaluations[category] || defaultEvaluation;
+        message += `📝 *${category.replace(/([A-Z])/g, " $1")}:* ${"⭐".repeat(evalData.rating)} (${evalData.rating}/5)\n`;
+        message += `📌 *Key Points:*\n${evalData.selectedCriteria.map(c => `- ${c}`).join("\n")}\n`;
+        if (evalData.comments) {
+          message += `💬 *Comments:* ${evalData.comments}\n`;
+        }
+        message += `\n`;
+      });
+
+      console.log(`📩 Sending evaluation message to chat ID: ${chatId}`);
+
+      // ✅ Step 3: Send message to Telegram
+      await sendMessage(chatId, message);
     }
 
     res.status(201).json({
