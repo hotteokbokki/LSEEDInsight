@@ -594,9 +594,32 @@ const AssessSEPage = () => {
           onClose={handleCloseSelectDialog}
           maxWidth="md"
           fullWidth
+          PaperProps={{
+            style: {
+              backgroundColor: "#fff", // White background
+              color: "#000", // Black text
+              border: "1px solid #000", // Black border for contrast
+            },
+          }}
         >
-          <DialogTitle>Select Social Enterprises for Evaluation</DialogTitle>
-          <DialogContent>
+          <DialogTitle
+            sx={{
+              backgroundColor: "#1E4D2B", // DLSU Green header
+              color: "#fff", // White text
+              textAlign: "center",
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+            }}
+          >
+            Select Social Enterprises for Evaluation
+          </DialogTitle>
+          <DialogContent
+            sx={{
+              padding: "24px",
+              maxHeight: "70vh", // Ensure it doesn't overflow the screen
+              overflowY: "auto", // Enable scrolling if content is too long
+            }}
+          >
             {socialEnterprises.map((se) => (
               <FormControlLabel
                 key={se.se_id}
@@ -604,22 +627,55 @@ const AssessSEPage = () => {
                   <Checkbox
                     checked={selectedSEs.includes(se.se_id)}
                     onChange={() => handleSESelectionChange(se.se_id)}
+                    sx={{
+                      color: "#000", // Black checkbox
+                      "&.Mui-checked": {
+                        color: "#000", // Black when checked
+                      },
+                    }}
                   />
                 }
                 label={`${se.team_name} (${se.sdg_name})`}
+                sx={{
+                  marginBottom: "8px", // Spacing between items
+                }}
               />
             ))}
             {error && (
-              <Alert severity="error" sx={{ mt: 2 }}>
+              <Alert severity="error" sx={{ margin: "16px" }}>
                 {error}
               </Alert>
             )}
           </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseSelectDialog} color="primary">
+          <DialogActions
+            sx={{
+              padding: "16px",
+              borderTop: "1px solid #000", // Separator line
+            }}
+          >
+            <Button
+              onClick={handleCloseSelectDialog}
+              sx={{
+                color: "#000",
+                border: "1px solid #000",
+                "&:hover": {
+                  backgroundColor: "#f0f0f0", // Hover effect
+                },
+              }}
+            >
               Cancel
             </Button>
-            <Button onClick={handleStartEvaluation} color="primary">
+            <Button
+              onClick={handleStartEvaluation}
+              variant="contained"
+              sx={{
+                backgroundColor: "#1E4D2B",
+                color: "#fff",
+                "&:hover": {
+                  backgroundColor: "#1E4D2B",
+                },
+              }}
+            >
               Start Evaluation
             </Button>
           </DialogActions>
@@ -639,9 +695,10 @@ const AssessSEPage = () => {
             },
           }}
         >
+          {/* Top Portion with DLSU Green Background */}
           <DialogTitle
             sx={{
-              backgroundColor: "#000", // Black header
+              backgroundColor: "#1E4D2B", // DLSU Green header
               color: "#fff", // White text
               textAlign: "center",
               fontSize: "1.5rem",
@@ -650,6 +707,7 @@ const AssessSEPage = () => {
           >
             Evaluate Social Enterprise
           </DialogTitle>
+
           <DialogContent
             sx={{
               padding: "24px",
@@ -663,8 +721,9 @@ const AssessSEPage = () => {
               sx={{
                 marginBottom: "16px",
                 fontWeight: "bold",
-                borderBottom: "1px solid #000",
+                borderBottom: "1px solid #000", // Separator line
                 paddingBottom: "8px",
+                paddingTop: "8px",
               }}
             >
               {
@@ -689,8 +748,7 @@ const AssessSEPage = () => {
                   sx={{
                     marginBottom: "24px",
                     padding: "16px",
-                    border: "1px solid #000",
-                    borderRadius: "8px",
+                    border: "1px solid #000", // Border for each category
                   }}
                 >
                   {/* Category Title */}
@@ -704,36 +762,27 @@ const AssessSEPage = () => {
                     {category.charAt(0).toUpperCase() + category.slice(1)}
                   </Typography>
 
-                  {/* Star Rating Selection */}
-                  <Box
-                    sx={{
-                      display: "flex",
-                      gap: "8px",
-                      marginBottom: "16px",
-                    }}
-                  >
+                  {/* Star Rating Selection (Reverted to Original Style) */}
+                  <Box display="flex" gap={1} justifyContent="center" mt={1}>
                     {[1, 2, 3, 4, 5].map((value) => (
-                      <Button
+                      <Box
                         key={value}
+                        width="40px"
+                        height="40px"
+                        border="1px solid black"
+                        display="flex"
+                        justifyContent="center"
+                        alignItems="center"
+                        bgcolor={
+                          value <= categoryEval.rating
+                            ? "#FFEE8C"
+                            : "transparent"
+                        }
+                        sx={{ cursor: "pointer" }}
                         onClick={() => handleRatingChange(category, value)}
-                        sx={{
-                          color:
-                            categoryEval.rating === value ? "#000" : "#aaa",
-                          backgroundColor:
-                            categoryEval.rating === value
-                              ? "#f0f0f0"
-                              : "transparent",
-                          border: "1px solid #000",
-                          padding: "8px",
-                          minWidth: "40px",
-                          borderRadius: "50%",
-                          "&:hover": {
-                            backgroundColor: "#e0e0e0",
-                          },
-                        }}
                       >
-                        ★
-                      </Button>
+                        <Typography fontSize="24px">★</Typography>
+                      </Box>
                     ))}
                   </Box>
 
@@ -741,7 +790,15 @@ const AssessSEPage = () => {
                   {categoryEval.rating > 0 && (
                     <Box
                       sx={{
-                        marginBottom: "16px",
+                        maxHeight: "150px",
+                        overflowY: "auto",
+                        mt: 2,
+                        p: 1,
+                        border: "1px solid #ccc",
+                        borderRadius: "5px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
                       }}
                     >
                       {evaluationCriteria[category]?.[categoryEval.rating]?.map(
@@ -750,23 +807,25 @@ const AssessSEPage = () => {
                             key={index}
                             control={
                               <Checkbox
-                                checked={categoryEval.selectedCriteria.includes(
-                                  criterion
-                                )}
+                                checked={
+                                  categoryEval.selectedCriteria?.includes(
+                                    criterion
+                                  ) || false
+                                }
                                 onChange={() =>
                                   handleCriteriaChange(category, criterion)
                                 }
                                 sx={{
-                                  color: "#000",
+                                  color: "#000", // Black checkbox
                                   "&.Mui-checked": {
-                                    color: "#000",
+                                    color: "#000", // Black when checked
                                   },
                                 }}
                               />
                             }
                             label={criterion}
                             sx={{
-                              marginBottom: "4px",
+                              marginBottom: "4px", // Spacing between criteria
                             }}
                           />
                         )
@@ -774,7 +833,6 @@ const AssessSEPage = () => {
                     </Box>
                   )}
 
-                  {/* Additional Comments Field */}
                   <TextField
                     label="Additional Comments"
                     value={categoryEval.comments}
@@ -787,6 +845,32 @@ const AssessSEPage = () => {
                     rows={3}
                     sx={{
                       marginTop: "8px",
+                      "& .MuiOutlinedInput-root": {
+                        border: "1px solid #000", // Apply border only to input field
+                        borderRadius: "4px", // Rounded corners
+                        "&:hover": {
+                          borderColor: "#000",
+                        },
+                        "&.Mui-focused": {
+                          borderColor: "#000",
+                        },
+                      },
+                      "& .MuiInputBase-root": {
+                        padding: "8px",
+                      },
+                      "& .MuiInputBase-input": {
+                        color: "#000",
+                        lineHeight: "1.5",
+                        textDecoration: "none",
+                      },
+                      "& .MuiInputLabel-root": {
+                        color: "#000",
+                        backgroundColor: "#fff", // Add background to prevent line through label
+                        padding: "0 4px", // Small padding to keep it readable
+                      },
+                      "& .MuiInputLabel-root.Mui-focused": {
+                        color: "#000",
+                      },
                     }}
                   />
                 </Box>
@@ -805,7 +889,7 @@ const AssessSEPage = () => {
           <DialogActions
             sx={{
               padding: "16px",
-              borderTop: "1px solid #000",
+              borderTop: "1px solid #000", // Separator line
             }}
           >
             <Button
@@ -814,7 +898,7 @@ const AssessSEPage = () => {
                 color: "#000",
                 border: "1px solid #000",
                 "&:hover": {
-                  backgroundColor: "#f0f0f0",
+                  backgroundColor: "#f0f0f0", // Hover effect
                 },
               }}
             >
@@ -824,10 +908,10 @@ const AssessSEPage = () => {
               onClick={handleSubmit}
               variant="contained"
               sx={{
-                backgroundColor: "#000",
+                backgroundColor: "#1E4D2B",
                 color: "#fff",
                 "&:hover": {
-                  backgroundColor: "#333",
+                  backgroundColor: "#1E4D2B", // Darker hover effect
                 },
               }}
             >

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Box,
   Typography,
@@ -14,7 +15,6 @@ import {
 } from "@mui/material";
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
 import { tokens } from "../../theme";
-import { mockDataSE } from "../../sampledata/mockData";
 import Header from "../../components/Header";
 import LineChart from "../../components/LineChart";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
@@ -32,27 +32,103 @@ const SocialEnterprise = () => {
   const [selectedRow, setSelectedRow] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
 
+  // State for fetched data
+  const [socialEnterprises, setSocialEnterprises] = useState([]);
+  const [loading, setLoading] = useState(true); // Loading state for API call
+
   // Handle dialog open/close
   const handleOpenAddSE = () => setOpenAddSE(true);
   const handleCloseAddSE = () => setOpenAddSE(false);
   const handleOpenAddProgram = () => setOpenAddProgram(true);
   const handleCloseAddProgram = () => setOpenAddProgram(false);
+
+  // Fetch social enterprises from the backend
+  useEffect(() => {
+    const fetchSocialEnterprises = async () => {
+      try {
+        const seResponse = await axios.get(
+          "http://localhost:4000/getSocialEnterprises"
+        );
+        const mentorResponse = await axios.get(
+          "http://localhost:4000/api/mentors"
+        );
+        const programsResponse = await axios.get(
+          "http://localhost:4000/getPrograms"
+        );
+        const sdgResponse = await axios.get("http://localhost:4000/getSDGs");
+
+        // Ensure responses are arrays
+        const programsData = Array.isArray(programsResponse.data)
+          ? programsResponse.data
+          : [];
+        const mentorsData = Array.isArray(mentorResponse.data)
+          ? mentorResponse.data
+          : [];
+        const sdgData = Array.isArray(sdgResponse.data) ? sdgResponse.data : [];
+
+        // Create mappings for easier access
+        const programsMap = {};
+        programsData.forEach((program) => {
+          programsMap[program.program_id] = program.name;
+        });
+
+        const mentorMap = {};
+        mentorsData.forEach((mentor) => {
+          mentorMap[
+            mentor.mentor_id
+          ] = `${mentor.mentor_firstName} ${mentor.mentor_lastName}`;
+        });
+
+        const sdgMap = {};
+        sdgData.forEach((sdg) => {
+          sdgMap[sdg.sdg_id] = sdg.name;
+        });
+
+        // Map social enterprises to include additional details
+        const updatedSocialEnterprises = seResponse.data.map((se) => ({
+          id: se.se_id, // Use `se_id` as the unique identifier
+          name: se.team_name,
+          mentor: mentorMap[se.mentor_id] || "No Mentor Assigned",
+          program: programsMap[se.program_id] || "Unknown Program",
+          sdg: Array.isArray(se.sdg_id)
+            ? se.sdg_id.map((id) => sdgMap[id] || "Unknown SDG").join(", ")
+            : sdgMap[se.sdg_id] || "No SDG Name",
+          contact: se.contact || "No Contact Info", // Add contact field
+          numMember: se.numMember || 0, // Add number of members field
+          status: se.status || "Inactive", // Add status field
+        }));
+
+        setSocialEnterprises(updatedSocialEnterprises);
+        setLoading(false); // Mark loading as complete
+      } catch (error) {
+        console.error("Error fetching social enterprises:", error);
+        setLoading(false); // Mark loading as complete even if there's an error
+      }
+    };
+
+    fetchSocialEnterprises();
+  }, []);
+
+  // Handle row click
   const handleRowClick = (params) => {
     if (isEditing) {
       setSelectedRow(params.row);
       setOpenEditDialog(true);
     }
   };
+
   const handleCloseEditDialog = () => setOpenEditDialog(false);
+
   const handleEditChange = (e) => {
     setSelectedRow({ ...selectedRow, [e.target.name]: e.target.value });
   };
+
   const toggleEditing = () => {
     setIsEditing((prev) => !prev);
   };
 
+  // Define columns without the `id` column
   const columns = [
-    { field: "id", headerName: "ID", editable: false },
     {
       field: "name",
       headerName: "Social Enterprise",
@@ -64,7 +140,7 @@ const SocialEnterprise = () => {
     { field: "sdg", headerName: "SDG", flex: 1, editable: isEditing },
     { field: "contact", headerName: "Contact", flex: 1, editable: isEditing },
     {
-      field: "members",
+      field: "numMember",
       headerName: "No. of Members",
       type: "number",
       headerAlign: "left",
@@ -76,19 +152,8 @@ const SocialEnterprise = () => {
       field: "status",
       headerName: "Status",
       flex: 1,
-      editable: isEditing, // Make status editable
-      renderCell: (params) => (
-        <Box
-          sx={{
-            color:
-              params.value === "Active"
-                ? colors.greenAccent[400]
-                : colors.redAccent[400],
-          }}
-        >
-          {params.value}
-        </Box>
-      ),
+      editable: isEditing,
+      renderCell: (params) => <span>{params.value}</span>,
       renderEditCell: (params) => (
         <TextField
           select
@@ -113,9 +178,16 @@ const SocialEnterprise = () => {
       width: 150,
       renderCell: (params) => (
         <Button
-          variant="contained"
-          size="small"
           onClick={() => navigate(`/se-analytics/${params.row.id}`)}
+          sx={{
+            color: "#fff", // White text color
+            backgroundColor: colors.primary[700],
+            fontWeight: "bold", // Bold font
+            textTransform: "none", // Prevent uppercase transformation
+            "&:hover": {
+              backgroundColor: colors.primary[700], // Darker color on hover
+            },
+          }}
         >
           View SE
         </Button>
@@ -252,12 +324,18 @@ const SocialEnterprise = () => {
           },
         }}
       >
-        <DataGrid
-          rows={mockDataSE}
-          columns={columns}
-          onRowClick={handleRowClick}
-          editMode="row" // Enable row editing
-        />
+        {loading ? (
+          <Typography>Loading...</Typography>
+        ) : (
+          <DataGrid
+            rows={socialEnterprises}
+            columns={columns}
+            getRowId={(row) => row.id} // Use `id` as the unique identifier
+            onRowClick={handleRowClick}
+            editMode="row" // Enable row editing
+            autoHeight
+          />
+        )}
       </Box>
     </Box>
   );
