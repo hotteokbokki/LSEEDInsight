@@ -240,13 +240,15 @@ app.post("/evaluate", async (req, res) => {
         continue;
       }
 
+      const mentor = await getMentorById(mentorId);
+      socialEnterprise = await getSocialEnterpriseByID(singleSeId);
       const chatId = chatIdResult.rows[0].chatid;
       console.log(`📩 Chat ID found: ${chatId}`);
 
       // ✅ Step 2: Format the message
       let message = `📢 *New Evaluation Received*\n\n`;
-      message += `👤 *Mentor ID:* ${mentorId}\n`;
-      message += `🏢 *Social Enterprise ID:* ${singleSeId}\n\n`;
+      message += `👤 *Mentor:* ${mentor.mentor_firstName} ${mentor.mentor_lastName}\n`;
+      message += `🏢 *Social Enterprise:* ${socialEnterprise.team_name}\n\n`;
 
       categories.forEach((category) => {
         const evalData = evaluations[category] || defaultEvaluation;
