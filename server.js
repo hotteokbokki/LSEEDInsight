@@ -42,8 +42,10 @@ app.use(
 // Use authentication routes
 app.use("/auth", authRoutes);
 
-// Store users who interacted with the bot
-let users = {}; // Consider using MongoDB or another database for persistence
+// Temporary storage for user states
+const userStates = {};
+// Timeout duration (in milliseconds) before clearing stale states
+const STATE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 const PASSWORD = 'q@P#3_4)V5vUw+LJ!F'; // Set a secure password for authentication
 const userSelections = {}; // Store selections temporarily before final save
 
@@ -78,6 +80,31 @@ async function sendMessageWithInlineKeyboard(chatId, message, options) {
       return response.data;
   } catch (error) {
     console.error("Failed to send message with inline keyboard:", error.response?.data || error.message);
+  }
+}
+
+async function deleteMessage(chatId, messageId) {
+  try {
+    // Make a POST request to the Telegram Bot API to delete the message
+    const response = await axios.post(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`,
+      {
+        chat_id: chatId,
+        message_id: messageId,
+      }
+    );
+
+    // Check if the deletion was successful
+    if (response.data && response.data.ok) {
+      console.log(`✅ Message ${messageId} deleted successfully from chat ${chatId}`);
+    } else {
+      console.error(`❌ Failed to delete message ${messageId}:`, response.data);
+      throw new Error(`Failed to delete message: ${response.data.description}`);
+    }
+  } catch (error) {
+    // Handle errors (e.g., message not found, bot lacks permissions)
+    console.error(`❌ Error deleting message ${messageId} in chat ${chatId}:`, error.message);
+    throw error; // Re-throw the error for upstream handling
   }
 }
 
@@ -239,31 +266,30 @@ app.post("/evaluate", async (req, res) => {
         console.warn(`⚠️ No chat ID found for mentor ${mentorId} and SE ${singleSeId}`);
         continue;
       }
-
+      
       const mentor = await getMentorById(mentorId);
-      socialEnterprise = await getSocialEnterpriseByID(singleSeId);
-      const chatId = chatIdResult.rows[0].chatid;
-      console.log(`📩 Chat ID found: ${chatId}`);
-
-      // ✅ Step 2: Format the message
-      let message = `📢 *New Evaluation Received*\n\n`;
-      message += `👤 *Mentor:* ${mentor.mentor_firstName} ${mentor.mentor_lastName}\n`;
-      message += `🏢 *Social Enterprise:* ${socialEnterprise.team_name}\n\n`;
-
-      categories.forEach((category) => {
-        const evalData = evaluations[category] || defaultEvaluation;
-        message += `📝 *${category.replace(/([A-Z])/g, " $1")}:* ${"⭐".repeat(evalData.rating)} (${evalData.rating}/5)\n`;
-        message += `📌 *Key Points:*\n${evalData.selectedCriteria.map(c => `- ${c}`).join("\n")}\n`;
-        if (evalData.comments) {
-          message += `💬 *Comments:* ${evalData.comments}\n`;
-        }
-        message += `\n`;
-      });
-
-      console.log(`📩 Sending evaluation message to chat ID: ${chatId}`);
-
-      // ✅ Step 3: Send message to Telegram
-      await sendMessage(chatId, message);
+      const socialEnterprise = await getSocialEnterpriseByID(singleSeId);
+      
+      for (const row of chatIdResult.rows) {
+        const chatId = row.chatid;
+        console.log(`📩 Sending evaluation message to chat ID: ${chatId}`);
+      
+        let message = `📢 *New Evaluation Received*\n\n`;
+        message += `👤 *Mentor:* ${mentor.mentor_firstName} ${mentor.mentor_lastName}\n`;
+        message += `🏢 *Social Enterprise:* ${socialEnterprise.team_name}\n\n`;
+      
+        categories.forEach((category) => {
+          const evalData = evaluations[category] || defaultEvaluation;
+          message += `📝 *${category.replace(/([A-Z])/g, " $1")}:* ${"⭐".repeat(evalData.rating)} (${evalData.rating}/5)\n`;
+          message += `📌 *Key Points:*\n${evalData.selectedCriteria.map(c => `- ${c}`).join("\n")}\n`;
+          if (evalData.comments) {
+            message += `💬 *Comments:* ${evalData.comments}\n`;
+          }
+          message += `\n`;
+        });
+      
+        await sendMessage(chatId, message);
+      }
     }
 
     res.status(201).json({
@@ -314,6 +340,18 @@ app.post("/webhook", async (req, res) => {
   const message = req.body.message || req.body.edited_message;
   const callbackQuery = req.body.callback_query;
 
+  // Helper function to set or reset the user state with a timeout
+  const setUserState = (chatId, state) => {
+    if (userStates[chatId]?.timeoutId) {
+      clearTimeout(userStates[chatId].timeoutId);
+    }
+    userStates[chatId] = { state };
+    userStates[chatId].timeoutId = setTimeout(() => {
+      console.log(`🧹 State cleared for user ${chatId} due to inactivity.`);
+      delete userStates[chatId];
+    }, STATE_TIMEOUT);
+  };
+
   // Handle text messages (Registration, Password Check)
   if (message) {
     const chatId = message.chat.id;
@@ -325,30 +363,58 @@ app.post("/webhook", async (req, res) => {
       // Fetch user and programs in parallel
       const [existingUser, options] = await Promise.all([
         getTelegramUsers(chatId),
-        getPrograms(), 
+        getPrograms(),
       ]);
 
       // If user already exists, prevent re-registration
       if (existingUser) {
         if (message.text === "/start") {
-          await sendMessage(chatId, "✅ You are already registered! No need to enter the password again.");
+          await sendMessage(
+            chatId,
+            "✅ You are already registered! No need to enter the password again."
+          );
+        } else {
+          await sendMessage(
+            chatId,
+            "⚠️ You are already registered. Please use /start to begin a new interaction."
+          );
         }
         return res.sendStatus(200); // No need to proceed further if user is registered
       }
 
+      // Enforce /start as the first interaction
+      if (!userStates[chatId] && message.text !== "/start") {
+        await sendMessage(
+          chatId,
+          "⚠️ Please start the conversation by sending /start."
+        );
+        return res.sendStatus(200);
+      }
+
       // If unregistered user sends /start, ask for the password
       if (message.text === "/start") {
-        await sendMessage(chatId, "🔑 Please enter the password to register and continue interacting with the bot.");
+        setUserState(chatId, "awaiting_password"); // Set state to awaiting password
+        await sendMessage(
+          chatId,
+          "🔑 Please enter the password to register and continue interacting with the bot."
+        );
         return res.sendStatus(200);
       }
 
       // If user enters password and options are available
-      if (message.text === PASSWORD) {
-        if (options[0].length === 0) {
-          await sendMessage(chatId, "⚠️ No programs available at the moment. Please try again later.");
+      if (
+        userStates[chatId]?.state === "awaiting_password" &&
+        message.text.trim().toLowerCase() === PASSWORD.toLowerCase()
+      ) {
+        setUserState(chatId, "awaiting_program_selection"); // Transition to program selection
+        if (options.length === 0) {
+          await sendMessage(
+            chatId,
+            "⚠️ No programs available at the moment. Please try again later."
+          );
+          delete userStates[chatId]; // Reset state if no programs are available
           return res.sendStatus(200);
         }
-
         await sendMessageWithInlineKeyboard(
           chatId,
           "✅ Password correct! You have been successfully registered.\n\nPlease choose your program:",
@@ -358,175 +424,220 @@ app.post("/webhook", async (req, res) => {
       }
 
       // If password is incorrect
-      await sendMessage(chatId, "❌ Incorrect password. Please try again.");
-      return res.sendStatus(200);
+      if (userStates[chatId]?.state === "awaiting_password") {
+        await sendMessage(chatId, "❌ Incorrect password. Please try again.");
+        return res.sendStatus(200);
+      }
 
+      // Handle invalid input during program selection
+      if (userStates[chatId]?.state === "awaiting_program_selection") {
+        await sendMessage(
+          chatId,
+          "⚠️ Please select a program from the provided options."
+        );
+        return res.sendStatus(200);
+      }
     } catch (error) {
       console.error("Error handling message:", error);
       return res.sendStatus(500); // Internal server error in case of failure
     }
   }
 
+  // Handle callback queries (Program, Social Enterprise, Mentor Selection)
   if (callbackQuery) {
     const chatId = callbackQuery.message.chat.id;
     const userName = callbackQuery.message.chat.username;
     const firstName = callbackQuery.message.chat.first_name;
     const callbackQueryId = callbackQuery.id;
     const data = callbackQuery.data;
+    const messageId = callbackQuery.message.message_id;
 
     // Check if the callbackQueryId is valid
     if (!callbackQueryId || !data) {
-        console.error("Invalid or expired callback query received.");
-        return res.sendStatus(400); // Bad request if the query is invalid
+      console.error("Invalid or expired callback query received.");
+      return res.sendStatus(400); // Bad request if the query is invalid
     }
 
     try {
-        if (data.startsWith("program_")) {
-            // Handle program selection as before
-            const programId = data.replace("program_", "");
-            const selectedProgram = await getProgramNameByID(programId);
-
-            if (!selectedProgram) {
-                return res.sendStatus(400); // Invalid selection
-            }
-
-            // Acknowledge the callback query immediately
-            axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-                callback_query_id: callbackQueryId,
-                text: "✅ Choice received!",
-                show_alert: false,
-            }).catch(err => console.error("Failed to acknowledge callback:", err.response?.data || err.message));
-
-            const socialEnterprises = await getSocialEnterprisesByProgram(programId);
-
-            if (socialEnterprises.length === 0) {
-                await sendMessage(chatId, `⚠️ No social enterprises available under *${selectedProgram}*.`);
-                return res.sendStatus(200);
-            }
-
-            // Map the data correctly
-            const enterpriseOptions = socialEnterprises.map(se => ({
-                text: se.text.replace(" - ", "\n"), // Break at " - " for better readability
-                callback_data: se.callback_data
-            }));
-
-            // Wrap in a 2D array (Telegram requires this)
-            const inlineKeyboard = enterpriseOptions.map(option => [option]);
-
-            await sendMessageWithOptions(
-                chatId,
-                `✅ You selected *${selectedProgram}*!\n\nPlease choose a social enterprise:`,
-                inlineKeyboard
-            );
-
-            return res.sendStatus(200);
-          } else if (data.startsWith("enterprise_")) {
-            const enterpriseId = data.replace("enterprise_", "");
-            const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
-        
-            console.log(`🔍 Selected Enterprise:`, selectedEnterprise);
-        
-            if (!selectedEnterprise) {
-                return res.sendStatus(400); // Invalid selection
-            }
-        
-            // Store the SE selection temporarily
-            userSelections[chatId] = {
-                se_id: selectedEnterprise.se_id,
-                se_name: selectedEnterprise.team_name
-            };
-        
-            console.log(`✅ Stored SE selection for user ${chatId}:`, userSelections[chatId]);
-        
-            // Acknowledge the callback query immediately
-            axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-                callback_query_id: callbackQueryId,
-                text: "✅ Choice received!",
-                show_alert: false,
-            }).catch(err => console.error("Failed to acknowledge callback:", err.response?.data || err.message));
-        
-            // Fetch mentors for the selected SE
-            const mentors = await getMentorsBySocialEnterprises(enterpriseId);
-            console.log("Fetched Mentors:", mentors);
-        
-            if (mentors.length === 0) {
-                await sendMessage(chatId, `⚠️ No mentors available under *${selectedEnterprise.team_name}*.`);
-                return res.sendStatus(200);
-            }
-        
-            // Map mentor options
-            const mentorOptions = mentors.map(m => ({
-                text: m.text,
-                callback_data: m.callback_data
-            }));
-        
-            // Wrap in a 2D array
-            const inlineKeyboard = mentorOptions.map(option => [option]);
-        
-            await sendMessageWithOptions(
-                chatId,
-                `✅ You selected *${selectedEnterprise.team_name}*!\n\nPlease choose your Mentor:`,
-                inlineKeyboard
-            );
-        
-            return res.sendStatus(200);
-          } else if (data.startsWith("mentor_")) {
-            const mentorId = data.replace("mentor_", "");
-            const selectedMentor = await getMentorById(mentorId);
-        
-            if (!selectedMentor) {
-                return res.sendStatus(400); // Invalid selection
-            }
-        
-            // Ensure SE data is already stored
-            if (!userSelections[chatId]) {
-                console.error("❌ No SE selection found for user:", chatId);
-                return res.sendStatus(400);
-            }
-        
-            // Store the Mentor selection temporarily
-            userSelections[chatId].mentor_id = selectedMentor.mentor_id;
-            userSelections[chatId].mentor_name = `${selectedMentor.mentor_firstName} ${selectedMentor.mentor_lastName}`;
-        
-            console.log(`✅ Stored mentor selection for user ${chatId}:`, userSelections[chatId]);
-        
-            // Acknowledge the callback query immediately
-            axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-                callback_query_id: callbackQueryId,
-                text: "✅ Choice received!",
-                show_alert: false,
-            }).catch(err => console.error("Failed to acknowledge callback:", err.response?.data || err.message));
-        
-            // Final confirmation message
-            await sendMessage(chatId, `✅ You are now registered under *${userSelections[chatId].se_name}* with Mentor *${userSelections[chatId].mentor_name}*.\n\nWelcome to LSEED Insight!`);
-        
-            // Debugging logs
-            console.log("ChatID: ", chatId);
-            console.log("Username: ", userName);
-            console.log("First Name: ", firstName);
-            console.log("Selected SE Name:", userSelections[chatId].se_name);
-            console.log("Selected SE ID:", userSelections[chatId].se_id);
-            console.log("Selected Mentor Name:", userSelections[chatId].mentor_name);
-            console.log("Selected Mentor ID:", userSelections[chatId].mentor_id);
-
-            // Insert into Database
-            await insertTelegramUser(chatId,userName,firstName,userSelections);
-
-            delete userSelections[chatId];
-
-            console.log(`🗑️ Cleared stored selections for user ${chatId}`);
-
-            console.log(userSelections);
-        
-            return res.sendStatus(200);
+      if (data.startsWith("program_")) {
+        const programId = data.replace("program_", "");
+        const selectedProgram = await getProgramNameByID(programId);
+        if (!selectedProgram) {
+          return res.sendStatus(400); // Invalid selection
         }
-    } catch (error) {
-        console.error("Error processing callback query:", error);
-        return res.sendStatus(500); // Internal server error if callback fails
-    }
-}
 
+        // Acknowledge the callback query immediately
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          callback_query_id: callbackQueryId,
+          text: "✅ Choice received!",
+          show_alert: false,
+        });
+
+        const socialEnterprises = await getSocialEnterprisesByProgram(programId);
+        if (socialEnterprises.length === 0) {
+          await sendMessage(chatId, `⚠️ No social enterprises available under *${selectedProgram}*.`);
+          return res.sendStatus(200);
+        }
+
+        // Map the data correctly
+        const enterpriseOptions = socialEnterprises.map((se) => ({
+          text: se.text.replace(" - ", "\n"), // Break at " - " for better readability
+          callback_data: se.callback_data,
+        }));
+
+        // Wrap in a 2D array (Telegram requires this)
+        const inlineKeyboard = enterpriseOptions.map((option) => [option]);
+
+        // Send the SE options message and store its ID
+        const seOptionsMessage = await sendMessageWithOptions(
+          chatId,
+          `✅ You selected *${selectedProgram}*!\n\nPlease choose a social enterprise:`,
+          inlineKeyboard
+        );
+
+        // Store the SE options message ID for deletion later
+        userStates[chatId].seOptionsMessageId = seOptionsMessage.message_id;
+
+        return res.sendStatus(200);
+      } else if (data.startsWith("enterprise_")) {
+        const enterpriseId = data.replace("enterprise_", "");
+        const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
+        if (!selectedEnterprise) {
+          return res.sendStatus(400); // Invalid selection
+        }
+
+        // Store the SE selection temporarily
+        userSelections[chatId] = {
+          se_id: selectedEnterprise.se_id,
+          se_name: selectedEnterprise.team_name,
+        };
+
+        // Acknowledge the callback query immediately
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          callback_query_id: callbackQueryId,
+          text: "✅ Choice received!",
+          show_alert: false,
+        });
+
+        // Prompt confirmation before proceeding
+        const inlineKeyboard = [
+          [{ text: "Confirm", callback_data: `confirm_${enterpriseId}` }],
+          [{ text: "Pick Again", callback_data: "pick_again" }],
+        ];
+
+        // Send the confirmation message and store its ID
+        const confirmationMessage = await sendMessageWithOptions(
+          chatId,
+          `✅ You selected *${selectedEnterprise.team_name}*!\n\nPlease confirm your selection:`,
+          inlineKeyboard
+        );
+
+        // Store the confirmation message ID for deletion later
+        userStates[chatId].confirmationMessageId = confirmationMessage.message_id;
+
+        return res.sendStatus(200);
+      } else if (data.startsWith("confirm_")) {
+        const enterpriseId = data.replace("confirm_", "");
+        const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
+        if (!selectedEnterprise) {
+          return res.sendStatus(400); // Invalid selection
+        }
+
+        // Delete the SE options message
+        if (userStates[chatId]?.seOptionsMessageId) {
+          await deleteMessage(chatId, userStates[chatId].seOptionsMessageId);
+          delete userStates[chatId].seOptionsMessageId;
+        }
+
+        // Delete the confirmation message
+        if (userStates[chatId]?.confirmationMessageId) {
+          await deleteMessage(chatId, userStates[chatId].confirmationMessageId);
+          delete userStates[chatId].confirmationMessageId;
+        }
+
+        // Fetch mentors for the selected SE
+        const mentors = await getMentorsBySocialEnterprises(enterpriseId);
+
+        // Access the first mentor's name and ID
+        const mentorName = mentors[0]?.name;
+        const mentorID = mentors[0]?.mentor_id;
+
+        if (mentors.length === 0) {
+          await sendMessage(chatId, `⚠️ No mentors available under *${selectedEnterprise.team_name}*.`);
+          return res.sendStatus(200);
+        }
+
+        // Ensure SE data is already stored
+        if (!userSelections[chatId]) {
+          console.error("❌ No SE selection found for user:", chatId);
+          return res.sendStatus(400);
+        }
+
+        // Final confirmation message with the automatically assigned mentor
+        await sendMessage(
+          chatId,
+          `✅ You are now registered under *${userSelections[chatId].se_name}* with Mentor *${mentorName}*.\n\nWelcome to LSEED Insight!`
+        );
+
+        // Insert into Database
+        await insertTelegramUser(chatId, userName, firstName, userSelections, mentorID);
+        delete userSelections[chatId];
+        delete userStates[chatId]; // Clear user state after successful registration
+        console.log(`🗑️ Cleared stored selections and state for user ${chatId}`);
+        return res.sendStatus(200);
+      } else if (data === "pick_again") {
+        // Delete the confirmation message
+        if (userStates[chatId]?.confirmationMessageId) {
+          await deleteMessage(chatId, userStates[chatId].confirmationMessageId);
+          delete userStates[chatId].confirmationMessageId;
+        }
+
+        // Reset selections and restart the process
+        delete userSelections[chatId];
+        setUserState(chatId, "awaiting_program_selection"); // Restart from program selection
+
+        // Send "Selection cleared" message and store its ID
+        const selectionClearedMessage = await sendMessage(
+          chatId,
+          "🔄 Selection cleared. Please choose your program again."
+        );
+
+        // Store the selection cleared message ID for deletion later
+        userStates[chatId].selectionClearedMessageId = selectionClearedMessage.message_id;
+
+        return res.sendStatus(200);
+      }
+    } catch (error) {
+      console.error("Error processing callback query:", error);
+      return res.sendStatus(500); // Internal server error if callback fails
+    }
+  }
 });
+
+async function deleteMessage(chatId, messageId) {
+  try {
+    // Make a POST request to the Telegram Bot API to delete the message
+    const response = await axios.post(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`,
+      {
+        chat_id: chatId,
+        message_id: messageId,
+      }
+    );
+
+    // Check if the deletion was successful
+    if (response.data && response.data.ok) {
+      console.log(`✅ Message ${messageId} deleted successfully from chat ${chatId}`);
+    } else {
+      console.error(`❌ Failed to delete message ${messageId}:`, response.data);
+      throw new Error(`Failed to delete message: ${response.data.description}`);
+    }
+  } catch (error) {
+    // Handle errors (e.g., message not found, bot lacks permissions)
+    console.error(`❌ Error deleting message ${messageId} in chat ${chatId}:`, error.message);
+    throw error; // Re-throw the error for upstream handling
+  }
+}
 
 // Send Message to a User (using stored Telegram User ID)
 app.post("/send-message", async (req, res) => {
@@ -593,99 +704,6 @@ app.post("/send-message", async (req, res) => {
   }
 });
 
-// app.post("/evaluate", async (req, res) => {
-//   try {
-//     const { evaluations, evaluatorId, mentorId } = req.body;
-
-//     // Check if evaluations exist
-//     if (!evaluations || Object.keys(evaluations).length === 0) {
-//       return res.status(400).json({ error: "No evaluations received." });
-//     }
-
-//     // Debugging: Log mentorId to confirm it is an ID
-//     console.log("📥 Received evaluations from:", mentorId);
-
-//     // Check if mentorId is actually an ID
-//     if (mentorId.includes(" ")) { // A name has spaces, an ID does not
-//       console.error("❌ ERROR: mentorId is a name, not an ID!");
-//       return res.status(400).json({ error: "Invalid mentor ID format" });
-//     }
-
-//     // Get mentor's full name from evaluatorId
-//     const mentorName = await getUserName(evaluatorId);
-//     console.log("🧑‍🏫 Evaluator:", mentorName.full_name);
-
-//     // Extract SE IDs from evaluations object
-//     const seIds = Object.keys(evaluations);
-//     console.log("📥 Evaluating SEs:", seIds.join(", "));
-
-//     // Loop through each SE being evaluated
-//     for (const seId of seIds) {
-//       const evaluationData = evaluations[seId];
-//       console.log(`📊 Processing evaluation for SE ${seId}:`, evaluationData);
-//     }
-
-//     res.json({ message: "Evaluations received successfully." });
-
-//           // Here, store the evaluation in your database OR send it to the Telegram bot
-//       // Example: sendToTelegramBot(mentorName.full_name, seId, evaluationData);
-
-//       // // Insert the evaluation data into the database
-//     // await pgDatabase.query(
-//     //   `INSERT INTO evaluations (se_id, evaluator, evaluation_data) VALUES ($1, $2, $3)`,
-//     //   [seId, evaluator, JSON.stringify(evaluations)]
-//     // );
-
-//     // console.log("✅ Evaluation successfully stored in database");
-
-//     // // Fetch mentor assigned to this SE
-//     // const mentorResult = await pgDatabase.query(
-//     //   `SELECT m.mentor_id, m.mentor_firstName, m.mentor_lastName, u.telegramChatId
-//     //    FROM mentors m
-//     //    JOIN users u ON m.mentor_id = u.id
-//     //    WHERE m.mentor_id = (SELECT mentor_id FROM social_enterprises WHERE se_id = $1)`,
-//     //   [seId]
-//     // );
-
-//     // if (mentorResult.rows.length === 0) {
-//     //   console.log("⚠️ No mentor found for this SE.");
-//     //   return res.status(404).json({ error: "No mentor found." });
-//     // }
-
-//     // const { mentor_firstName, mentor_lastName, telegramChatId } = mentorResult.rows[0];
-
-//     // if (!telegramChatId) {
-//     //   console.log("⚠️ Mentor does not have a Telegram chat ID linked.");
-//     //   return res.status(400).json({ error: "Mentor has not linked their Telegram account." });
-//     // }
-
-//     // // Construct the evaluation summary message
-//     // let message = `📢 *New Evaluation Received*\n\n`;
-//     // message += `👤 *Evaluator*: ${evaluator}\n`;
-//     // message += `📌 *Social Enterprise*: ${seId}\n\n`;
-
-//     // Object.keys(evaluations).forEach((category) => {
-//     //   const { rating, selectedCriteria, comments } = evaluations[category];
-//     //   message += `📝 *${category}*: ${"⭐".repeat(rating)} (${rating}/5)\n`;
-//     //   message += `📌 *Key Points*:\n${selectedCriteria.map((c) => `- ${c}`).join("\n")}\n`;
-//     //   if (comments) {
-//     //     message += `💬 *Additional Comments*: ${comments}\n`;
-//     //   }
-//     //   message += `\n`;
-//     // });
-
-//     // // Send evaluation summary to the mentor on Telegram
-//     // const response = await sendMessage(telegramChatId, message);
-
-//     // console.log("✅ Message successfully sent to Telegram:", response);
-//     // res.json({ success: true, message: "Evaluation submitted and mentor notified." });
-
-//   } catch (error) {
-//     console.error("❌ Error handling evaluation submission:", error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
-
 app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   const { role } = req.body; // 'admin' or 'user'
@@ -708,7 +726,9 @@ app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
 });
 
 // Start the server
-const PORT = 4000;
+const PORT = process.env.BACKEND_PORT;
+// Start the server and ngrok tunnel
+const NGROK_DOMAIN = process.env.NGROK_DOMAIN; // Your predefined ngrok domain
 
 // Function to set the webhook
 async function setWebhook(ngrokUrl) {

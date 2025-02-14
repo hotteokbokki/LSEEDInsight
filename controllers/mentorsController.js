@@ -21,8 +21,8 @@ exports.getMentorsBySocialEnterprises = async (se_id) => {
 
     // ✅ Map results correctly
     return result.rows.map(mentor => ({
-      text: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
-      callback_data: `mentor_${mentor.mentor_id}`
+      name: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
+      mentor_id: `${mentor.mentor_id}`
     }));
   } catch (error) {
     console.error("❌ Error fetching mentors:", error);

@@ -21,7 +21,7 @@ exports.getTelegramUsers = async (chatID) => {
   }
 };
 
-exports.insertTelegramUser = async (chatid, username, firstname, userData) => {
+exports.insertTelegramUser = async (chatid, username, firstname, userData, mentorID) => {
   try {
     // SQL query to insert data into telegrambot table
     const query = `
@@ -36,7 +36,7 @@ exports.insertTelegramUser = async (chatid, username, firstname, userData) => {
       username,                         // $1: username
       firstname,                        // $2: firstName
       '',                               // $3: lastName (optional, default to empty string)
-      userData[chatid].mentor_id,       // $4: mentor_id (UUID)
+      mentorID,       // $4: mentor_id (UUID)
       null,                             // $5: rating (default to null)
       null,                             // $6: comments (default to null)
       false,                            // $7: isAcknowledge (default to false)
