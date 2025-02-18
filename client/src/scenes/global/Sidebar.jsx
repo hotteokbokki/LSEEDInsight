@@ -176,6 +176,16 @@ const Sidebar = () => {
               />
             )}
 
+            {user?.role === "LSEED" && (
+                <Item
+                  title="Scheduling Matrix"
+                  to="/scheduling"
+                  icon={<GradingOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+              )}
+
             {user?.role === "LSEED" ||
               (user?.role === "Mentor" && (
                 <Item

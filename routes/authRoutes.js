@@ -170,6 +170,16 @@ router.get("/users", async (req, res) => {
   }
 });
 
+router.get("/mentors", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT mentor_id, mentor_firstname || ' ' || mentor_lastname AS name, calendarLink FROM mentors");
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Error fetching mentors" });
+  }
+});
+
 module.exports = {
   router,
   requireAuth,
