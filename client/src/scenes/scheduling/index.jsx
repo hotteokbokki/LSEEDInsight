@@ -2,13 +2,14 @@
 // https://calendar.google.com/calendar/u/0?cid=MWJlZDcwNTZhNzNhOGRhZGU0MjZkZjI2MzMyMTYzNDBjMDE3OWJhZGJmMjUyMGYyMjI0NmVlMTkyMzg2OTBiY0Bncm91cC5jYWxlbmRhci5nb29nbGUuY29t
 
 import React, { useEffect, useState } from "react";
-import { Box, Button, List, ListItem, ListItemText, Modal } from "@mui/material";
+import { Box, Button, List, ListItem, ListItemText, Modal, TextField} from "@mui/material";
 import Header from "../../components/Header";
 import { useAuth } from "../../context/authContext";
 
 const Scheduling = ({ userRole }) => {
   const [openModal, setOpenModal] = useState(false); 
   const [mentors, setMentors] = useState([]);
+  const [calendarLink, setCalendarLink] = useState("");
   const { user } = useAuth();
   
   // Fetch mentors data from the backend
@@ -104,6 +105,24 @@ const Scheduling = ({ userRole }) => {
           )}
         </Box>
       )}
+
+      {/* Modal for uploading the calendar link */}
+      <Modal open={openModal} onClose={handleCloseModal} disableEnforceFocus BackdropProps={{ invisible: true }}>
+        <Box sx={{ width: "300px", padding: "20px", margin: "50px auto", backgroundColor: "white", borderRadius: "5px" }}>
+          <TextField
+            label="Calendar Link"
+            variant="outlined"
+            fullWidth
+            value={calendarLink}
+            onChange={(e) => setCalendarLink(e.target.value)}
+            sx={{ marginBottom: "15px", "& .MuiInputBase-input": { color: "black" } }}  // Set text color to black
+          />
+          <Box display="flex" justifyContent="space-between">
+            <Button variant="contained" onClick={handleUploadLink}>Upload</Button>
+            <Button variant="outlined" onClick={handleCloseModal}>Cancel</Button>
+          </Box>
+        </Box>
+      </Modal>
     </Box>
   );
 };
