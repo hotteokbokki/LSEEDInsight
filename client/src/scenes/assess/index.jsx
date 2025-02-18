@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef} from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import {
   Box,
@@ -289,6 +289,19 @@ const AssessSEPage = () => {
   const [columns, setColumns] = useState([]);
   const userSession = JSON.parse(localStorage.getItem("user"));
 
+  // New state for Evaluate Mentor dialog
+  const [openEvaluateMentorDialog, setOpenEvaluateMentorDialog] =
+    useState(false);
+
+  // Handlers for Evaluate Mentor dialog
+  const handleOpenEvaluateMentorDialog = () => {
+    setOpenEvaluateMentorDialog(true);
+  };
+
+  const handleCloseEvaluateMentorDialog = () => {
+    setOpenEvaluateMentorDialog(false);
+  };
+
   const handleSESelectionChange = (seId) => {
     setSelectedSEs((prev) =>
       prev.includes(seId) ? prev.filter((id) => id !== seId) : [...prev, seId]
@@ -375,22 +388,25 @@ const AssessSEPage = () => {
     const fetchSocialEnterprises = async () => {
       try {
         // Step 1: Fetch mentorships for the current mentor
-        const mentorshipsResponse = await axios.get("http://localhost:4000/getMentorshipsbyID", {
-          params: { mentor_id: userSession.id },
-        });
+        const mentorshipsResponse = await axios.get(
+          "http://localhost:4000/getMentorshipsbyID",
+          {
+            params: { mentor_id: userSession.id },
+          }
+        );
         console.log("📥 Mentorship Response:", mentorshipsResponse.data);
-  
+
         // Step 2: Map data directly from mentorshipsResponse to updatedSocialEnterprises
         const updatedSocialEnterprises = mentorshipsResponse.data.map((se) => ({
-          id: se.id,  // Unique ID for each row
+          id: se.id, // Unique ID for each row
           mentor_id: se.mentor_id,
           se_id: se.se_id,
-          team_name: se.se || "Unknown Team",  // Social enterprise name
-          mentor_name: se.mentor || "No Mentor Assigned",  // Mentor name
-          program_name: se.program || "Unknown Program",  // Program name
-          sdg_name: se.sdg || "No SDG Name",  // SDG name
+          team_name: se.se || "Unknown Team", // Social enterprise name
+          mentor_name: se.mentor || "No Mentor Assigned", // Mentor name
+          program_name: se.program || "Unknown Program", // Program name
+          sdg_name: se.sdg || "No SDG Name", // SDG name
         }));
-  
+
         // Step 3: Define dynamic columns
         const dynamicColumns = [
           { field: "team_name", headerName: "Social Enterprise", flex: 1 },
@@ -398,7 +414,7 @@ const AssessSEPage = () => {
           { field: "program_name", headerName: "Program Name", flex: 1 },
           { field: "sdg_name", headerName: "SDG(s)", flex: 1 },
         ];
-  
+
         // Step 4: Update state
         setColumns(dynamicColumns);
         setSocialEnterprises(updatedSocialEnterprises);
@@ -406,7 +422,7 @@ const AssessSEPage = () => {
         console.error("❌ Error fetching data:", error);
       }
     };
-  
+
     fetchSocialEnterprises();
   }, [userSession.id]);
 
@@ -416,45 +432,51 @@ const AssessSEPage = () => {
       dialogContentRef.current.scrollTop = 0; // Scroll to the top
     }
   }, [openEvaluateDialog]);
-  
+
   const handleSubmit = async () => {
     const currentSEId = selectedSEs[currentSEIndex];
     const currentEvaluations = evaluations[currentSEId];
-    const getValidRating = (rating) => (rating && rating >= 1 && rating <= 5 ? rating : 1);
-  
+    const getValidRating = (rating) =>
+      rating && rating >= 1 && rating <= 5 ? rating : 1;
+
     if (!userSession || !userSession.id) {
       console.error("❌ User session not found.");
       alert("Error: User session not found.");
       return;
     }
-  
+
     const selectedSE = socialEnterprises.find((se) => se.se_id === currentSEId);
     if (!selectedSE) {
       console.error("❌ Selected SE not found.");
       alert("Error: Selected Social Enterprise not found.");
       return;
     }
-  
+
     const mentorId = selectedSE.mentor_id;
     if (!mentorId) {
       console.error("❌ ERROR: mentorId is missing!");
       return;
     }
-  
-    const sdgIds = Array.isArray(selectedSE.sdg_id) ? selectedSE.sdg_id : [selectedSE.sdg_id];
-  
+
+    const sdgIds = Array.isArray(selectedSE.sdg_id)
+      ? selectedSE.sdg_id
+      : [selectedSE.sdg_id];
+
     // Validation: Ensure every category has a rating and at least one predefined comment
     const isValid = Object.values(currentEvaluations || {}).every(
-      (categoryEval) => categoryEval.rating > 0 && categoryEval.selectedCriteria?.length > 0
+      (categoryEval) =>
+        categoryEval.rating > 0 && categoryEval.selectedCriteria?.length > 0
     );
-  
+
     if (!isValid) {
-      setError("Please provide a rating and select at least one predefined comment for each category.");
+      setError(
+        "Please provide a rating and select at least one predefined comment for each category."
+      );
       return;
     }
-  
+
     console.log("This is the se_id: ", currentSEId);
-  
+
     const formData = {
       evaluatorId: userSession.id,
       se_id: [currentSEId],
@@ -462,18 +484,22 @@ const AssessSEPage = () => {
       evaluations: currentEvaluations,
       sdg_id: sdgIds,
     };
-  
+
     Object.keys(currentEvaluations).forEach((category) => {
-      formData[`${category}_rating`] = getValidRating(currentEvaluations[category]?.rating);
-      formData[`${category}_selectedcriteria`] = currentEvaluations[category]?.selectedCriteria || [];
-      formData[`${category}_addtlcmt`] = currentEvaluations[category]?.comments || "";
+      formData[`${category}_rating`] = getValidRating(
+        currentEvaluations[category]?.rating
+      );
+      formData[`${category}_selectedcriteria`] =
+        currentEvaluations[category]?.selectedCriteria || [];
+      formData[`${category}_addtlcmt`] =
+        currentEvaluations[category]?.comments || "";
     });
-  
+
     console.log("📤 Sending Evaluation to Backend:", formData);
-  
+
     try {
       await axios.post("http://localhost:4000/evaluate", formData);
-  
+
       if (currentSEIndex < selectedSEs.length - 1) {
         setCurrentSEIndex((prevIndex) => prevIndex + 1); // Move to the next SE
         setTimeout(() => {
@@ -485,7 +511,7 @@ const AssessSEPage = () => {
         console.log("✅ All SEs have been evaluated.");
         handleCloseEvaluateDialog();
         setTimeout(() => {
-          window.scrollTo({ top: 0, behavior: 'smooth' }); // Ensure full reset to the top
+          window.scrollTo({ top: 0, behavior: "smooth" }); // Ensure full reset to the top
         }, 200);
       }
     } catch (error) {
@@ -498,10 +524,11 @@ const AssessSEPage = () => {
     const currentSEId = selectedSEs[currentSEIndex];
     const currentEvaluations = evaluations[currentSEId] || {};
     return !Object.values(currentEvaluations).every(
-      (categoryEval) => categoryEval.rating > 0 && categoryEval.selectedCriteria?.length > 0
+      (categoryEval) =>
+        categoryEval.rating > 0 && categoryEval.selectedCriteria?.length > 0
     );
   };
-  
+
   // Close the evaluation dialog
   const handleCloseEvaluateDialog = () => {
     setOpenEvaluateDialog(false);
@@ -518,7 +545,7 @@ const AssessSEPage = () => {
           <Skeleton variant="rectangular" width={120} height={40} />
           <Skeleton variant="rectangular" width={120} height={40} />
         </Box>
-  
+
         {/* Placeholder for DataGrid Rows */}
         {[1, 2, 3, 4, 5].map((rowIndex) => (
           <Box
@@ -529,10 +556,14 @@ const AssessSEPage = () => {
               marginBottom: "8px",
             }}
           >
-            <Skeleton variant="rectangular" width={200} height={40} /> {/* Social Enterprise */}
-            <Skeleton variant="rectangular" width={150} height={40} /> {/* Assigned Mentor */}
-            <Skeleton variant="rectangular" width={150} height={40} /> {/* Program Name */}
-            <Skeleton variant="rectangular" width={100} height={40} /> {/* SDG(s) */}
+            <Skeleton variant="rectangular" width={200} height={40} />{" "}
+            {/* Social Enterprise */}
+            <Skeleton variant="rectangular" width={150} height={40} />{" "}
+            {/* Assigned Mentor */}
+            <Skeleton variant="rectangular" width={150} height={40} />{" "}
+            {/* Program Name */}
+            <Skeleton variant="rectangular" width={100} height={40} />{" "}
+            {/* SDG(s) */}
           </Box>
         ))}
       </Box>
@@ -564,6 +595,13 @@ const AssessSEPage = () => {
             color="secondary"
             sx={{ fontSize: "20px", padding: "20px", width: "48%" }}
           >
+            Evaluate Mentor
+          </Button>
+          <Button
+            variant="contained"
+            color="secondary"
+            sx={{ fontSize: "20px", padding: "20px", width: "48%" }}
+          >
             File LOM
           </Button>
         </Box>
@@ -589,13 +627,45 @@ const AssessSEPage = () => {
             },
           }}
         >
-        <DataGrid
-          rows={socialEnterprises} // Ensure this array contains the result from the query
-          columns={columns}
-          getRowId={(row) => row.id} // Use the 'id' from the query result
-        />
+          <DataGrid
+            rows={socialEnterprises} // Ensure this array contains the result from the query
+            columns={columns}
+            getRowId={(row) => row.id} // Use the 'id' from the query result
+          />
         </Box>
-
+        {/* Evaluate Mentor Dialog */}
+        <Dialog
+          open={openEvaluateMentorDialog}
+          onClose={handleCloseEvaluateMentorDialog}
+          fullWidth
+          maxWidth="md"
+        >
+          <DialogTitle
+            sx={{ backgroundColor: colors.primary[500], color: "#fff" }}
+          >
+            Evaluate Mentor
+          </DialogTitle>
+          <DialogContent>
+            <Box mt={2}>
+              <Typography variant="h6">Mentor Evaluation Form</Typography>
+              <TextField
+                label="Comments"
+                multiline
+                rows={4}
+                fullWidth
+                margin="normal"
+                variant="outlined"
+              />
+              {/* Add additional fields or criteria as needed */}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseEvaluateMentorDialog}>Cancel</Button>
+            <Button variant="contained" color="primary">
+              Submit
+            </Button>
+          </DialogActions>
+        </Dialog>
         {/* SE Selection Dialog */}
         <Dialog
           open={openSelectDialog}
@@ -622,23 +692,23 @@ const AssessSEPage = () => {
             Select Social Enterprises for Evaluation
           </DialogTitle>
           <DialogContent>
-          {socialEnterprises.map((se) => (
-            <FormControlLabel
-              key={se.se_id}
-              control={
-                <Checkbox
-                  checked={selectedSEs.includes(se.se_id)} // Use se_id here
-                  onChange={() => handleSESelectionChange(se.se_id)} // Pass se_id
-                  sx={{
-                    color: "#000",
-                    "&.Mui-checked": { color: "#000" },
-                  }}
-                />
-              }
-              label={`${se.team_name} [SDG: ${se.sdg_name}]`}
-              sx={{ marginBottom: "8px" }}
-            />
-          ))}
+            {socialEnterprises.map((se) => (
+              <FormControlLabel
+                key={se.se_id}
+                control={
+                  <Checkbox
+                    checked={selectedSEs.includes(se.se_id)} // Use se_id here
+                    onChange={() => handleSESelectionChange(se.se_id)} // Pass se_id
+                    sx={{
+                      color: "#000",
+                      "&.Mui-checked": { color: "#000" },
+                    }}
+                  />
+                }
+                label={`${se.team_name} [SDG: ${se.sdg_name}]`}
+                sx={{ marginBottom: "8px" }}
+              />
+            ))}
             {error && <Alert severity="error">{error}</Alert>}
           </DialogContent>
 
@@ -727,12 +797,13 @@ const AssessSEPage = () => {
                 )?.team_name
               }
             </Typography>
-
-            <Typography variant="h6" sx={{ textAlign: "center", marginBottom: "16px" }}>
+            <Typography
+              variant="h6"
+              sx={{ textAlign: "center", marginBottom: "16px" }}
+            >
               Evaluating {currentSEIndex + 1} / {selectedSEs.length}
-            </Typography>;
-
-            {/* Evaluation Categories */}
+            </Typography>
+            ;{/* Evaluation Categories */}
             {Object.keys(evaluationCriteria).map((category) => {
               const currentSEId = selectedSEs[currentSEIndex];
               const categoryEval = evaluations[currentSEId]?.[category] || {
@@ -910,13 +981,14 @@ const AssessSEPage = () => {
               sx={{
                 backgroundColor: isSubmitDisabled() ? "#ccc" : "#1E4D2B",
                 color: "#fff",
-                '&:hover': {
+                "&:hover": {
                   backgroundColor: isSubmitDisabled() ? "#ccc" : "#145A32",
                 },
               }}
             >
               Submit
-            </Button>;
+            </Button>
+            ;
           </DialogActions>
         </Dialog>
       </Box>
