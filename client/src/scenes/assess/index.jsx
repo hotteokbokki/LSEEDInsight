@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef} from "react";
 import axios from "axios";
 import {
   Box,
@@ -13,6 +13,7 @@ import {
   Checkbox,
   FormControlLabel,
   Alert,
+  Skeleton,
 } from "@mui/material";
 import { tokens } from "../../theme";
 import { DataGrid } from "@mui/x-data-grid";
@@ -279,14 +280,15 @@ const AssessSEPage = () => {
   const colors = tokens(theme.palette.mode);
   const [openSelectDialog, setOpenSelectDialog] = useState(false); // For SE selection dialog
   const [openEvaluateDialog, setOpenEvaluateDialog] = useState(false); // For evaluation dialog
+  const dialogContentRef = useRef(null); // Ref for the dialog content
   const [selectedSEs, setSelectedSEs] = useState([]); // Selected SEs for evaluation
   const [currentSEIndex, setCurrentSEIndex] = useState(0); // Index of the current SE being evaluated
   const [evaluations, setEvaluations] = useState({}); // Store evaluations for all SEs
   const [error, setError] = useState("");
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [columns, setColumns] = useState([]);
+  const userSession = JSON.parse(localStorage.getItem("user"));
 
-  // Handle SE selection checkbox change
   const handleSESelectionChange = (seId) => {
     setSelectedSEs((prev) =>
       prev.includes(seId) ? prev.filter((id) => id !== seId) : [...prev, seId]
@@ -372,155 +374,134 @@ const AssessSEPage = () => {
   useEffect(() => {
     const fetchSocialEnterprises = async () => {
       try {
-        const seResponse = await axios.get(
-          "http://localhost:4000/getSocialEnterprises"
-        );
-        const mentorResponse = await axios.get(
-          "http://localhost:4000/api/mentors"
-        );
-        const programsResponse = await axios.get(
-          "http://localhost:4000/getPrograms"
-        );
-        const sdgResponse = await axios.get("http://localhost:4000/getSDGs");
-
-        console.log("📥 SDG API Response:", sdgResponse.data); // Debugging
-
-        // ✅ Ensure it's an array before using `.forEach()`
-        const programsData = Array.isArray(programsResponse.data)
-          ? programsResponse.data
-          : [];
-        const mentorsData = Array.isArray(mentorResponse.data)
-          ? mentorResponse.data
-          : [];
-        const sdgData = Array.isArray(sdgResponse.data) ? sdgResponse.data : [];
-
-        // ✅ Create mapping { program_id -> program_name }
-        const programsMap = {};
-        programsData.forEach((program) => {
-          programsMap[program.program_id] = program.name;
+        // Step 1: Fetch mentorships for the current mentor
+        const mentorshipsResponse = await axios.get("http://localhost:4000/getMentorshipsbyID", {
+          params: { mentor_id: userSession.id },
         });
-
-        // ✅ Create mapping { mentor_id -> mentor_name }
-        const mentorMap = {};
-        mentorsData.forEach((mentor) => {
-          mentorMap[
-            mentor.mentor_id
-          ] = `${mentor.mentor_firstName} ${mentor.mentor_lastName}`;
-        });
-
-        // ✅ Create mapping { sdg_id -> sdg_name }
-        const sdgMap = {};
-        sdgData.forEach((sdg) => {
-          sdgMap[sdg.sdg_id] = sdg.name;
-        });
-
-        // ✅ Handle multiple SDGs
-        const updatedSocialEnterprises = seResponse.data.map((se) => ({
-          ...se,
-          program_id: programsMap[se.program_id] || "Unknown Program",
-          mentor_id: se.mentor_id, // ✅ Keep UUID here
-          mentor_name: mentorMap[se.mentor_id] || "No Mentor Assigned", // ✅ Store name separately
-          sdg_id: se.sdg_id,
-          sdg_name: Array.isArray(se.sdg_id) // ✅ Handle multiple SDGs
-            ? se.sdg_id.map((id) => sdgMap[id] || "Unknown SDG").join(", ") // Convert array to string
-            : sdgMap[se.sdg_id] || "No SDG Name",
+        console.log("📥 Mentorship Response:", mentorshipsResponse.data);
+  
+        // Step 2: Map data directly from mentorshipsResponse to updatedSocialEnterprises
+        const updatedSocialEnterprises = mentorshipsResponse.data.map((se) => ({
+          id: se.id,  // Unique ID for each row
+          mentor_id: se.mentor_id,
+          se_id: se.se_id,
+          team_name: se.se || "Unknown Team",  // Social enterprise name
+          mentor_name: se.mentor || "No Mentor Assigned",  // Mentor name
+          program_name: se.program || "Unknown Program",  // Program name
+          sdg_name: se.sdg || "No SDG Name",  // SDG name
         }));
-
+  
+        // Step 3: Define dynamic columns
         const dynamicColumns = [
           { field: "team_name", headerName: "Social Enterprise", flex: 1 },
-          { field: "mentor_name", headerName: "Assigned Mentor", flex: 1 }, // ✅ Now shows mentor name
-          { field: "program_id", headerName: "Program Name", flex: 1 },
-          { field: "sdg_name", headerName: "SDG(s)", flex: 1 }, // ✅ Now shows multiple SDGs
+          { field: "mentor_name", headerName: "Assigned Mentor", flex: 1 },
+          { field: "program_name", headerName: "Program Name", flex: 1 },
+          { field: "sdg_name", headerName: "SDG(s)", flex: 1 },
         ];
-
+  
+        // Step 4: Update state
         setColumns(dynamicColumns);
         setSocialEnterprises(updatedSocialEnterprises);
       } catch (error) {
-        console.error(
-          "❌ Error fetching SE, Mentors, Programs, or SDGs:",
-          error
-        );
+        console.error("❌ Error fetching data:", error);
       }
     };
-
+  
     fetchSocialEnterprises();
-  }, []);
+  }, [userSession.id]);
 
+  // Scroll to the top of the dialog when it opens
+  useEffect(() => {
+    if (openEvaluateDialog && dialogContentRef.current) {
+      dialogContentRef.current.scrollTop = 0; // Scroll to the top
+    }
+  }, [openEvaluateDialog]);
+  
   const handleSubmit = async () => {
     const currentSEId = selectedSEs[currentSEIndex];
     const currentEvaluations = evaluations[currentSEId];
-    const getValidRating = (rating) =>
-      rating && rating >= 1 && rating <= 5 ? rating : 1;
-
-    const userSession = JSON.parse(localStorage.getItem("user"));
+    const getValidRating = (rating) => (rating && rating >= 1 && rating <= 5 ? rating : 1);
+  
     if (!userSession || !userSession.id) {
       console.error("❌ User session not found.");
       alert("Error: User session not found.");
       return;
     }
-
+  
     const selectedSE = socialEnterprises.find((se) => se.se_id === currentSEId);
     if (!selectedSE) {
       console.error("❌ Selected SE not found.");
       alert("Error: Selected Social Enterprise not found.");
       return;
     }
-
+  
     const mentorId = selectedSE.mentor_id;
     if (!mentorId) {
       console.error("❌ ERROR: mentorId is missing!");
       return;
     }
-
-    const sdgIds = Array.isArray(selectedSE.sdg_id)
-      ? selectedSE.sdg_id
-      : [selectedSE.sdg_id];
-
+  
+    const sdgIds = Array.isArray(selectedSE.sdg_id) ? selectedSE.sdg_id : [selectedSE.sdg_id];
+  
+    // Validation: Ensure every category has a rating and at least one predefined comment
     const isValid = Object.values(currentEvaluations || {}).every(
-      (categoryEval) => categoryEval.selectedCriteria?.length >= 2
+      (categoryEval) => categoryEval.rating > 0 && categoryEval.selectedCriteria?.length > 0
     );
-
+  
     if (!isValid) {
-      setError(
-        "Please select at least two predefined comments for each category."
-      );
+      setError("Please provide a rating and select at least one predefined comment for each category.");
       return;
     }
-
+  
+    console.log("This is the se_id: ", currentSEId);
+  
     const formData = {
       evaluatorId: userSession.id,
-      se_id: [currentSEId], // ✅ Send only the current SE in the request
+      se_id: [currentSEId],
       mentorId: mentorId,
       evaluations: currentEvaluations,
       sdg_id: sdgIds,
     };
-
+  
     Object.keys(currentEvaluations).forEach((category) => {
-      formData[`${category}_rating`] = getValidRating(
-        currentEvaluations[category]?.rating
-      );
-      formData[`${category}_selectedcriteria`] =
-        currentEvaluations[category]?.selectedCriteria || [];
-      formData[`${category}_addtlcmt`] =
-        currentEvaluations[category]?.comments || "";
+      formData[`${category}_rating`] = getValidRating(currentEvaluations[category]?.rating);
+      formData[`${category}_selectedcriteria`] = currentEvaluations[category]?.selectedCriteria || [];
+      formData[`${category}_addtlcmt`] = currentEvaluations[category]?.comments || "";
     });
-
+  
     console.log("📤 Sending Evaluation to Backend:", formData);
-
+  
     try {
       await axios.post("http://localhost:4000/evaluate", formData);
-
+  
       if (currentSEIndex < selectedSEs.length - 1) {
-        setCurrentSEIndex(currentSEIndex + 1); // Move to the next SE
+        setCurrentSEIndex((prevIndex) => prevIndex + 1); // Move to the next SE
+        setTimeout(() => {
+          if (dialogContentRef.current) {
+            dialogContentRef.current.scrollTop = 0; // Scroll to top after transition
+          }
+        }, 100);
       } else {
         console.log("✅ All SEs have been evaluated.");
         handleCloseEvaluateDialog();
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' }); // Ensure full reset to the top
+        }, 200);
       }
     } catch (error) {
       console.error("❌ Error submitting evaluations:", error);
     }
   };
 
+  // Disable submit button unless all required fields are completed
+  const isSubmitDisabled = () => {
+    const currentSEId = selectedSEs[currentSEIndex];
+    const currentEvaluations = evaluations[currentSEId] || {};
+    return !Object.values(currentEvaluations).every(
+      (categoryEval) => categoryEval.rating > 0 && categoryEval.selectedCriteria?.length > 0
+    );
+  };
+  
   // Close the evaluation dialog
   const handleCloseEvaluateDialog = () => {
     setOpenEvaluateDialog(false);
@@ -529,7 +510,34 @@ const AssessSEPage = () => {
     setEvaluations({});
   };
 
-  if (!columns.length) return <Typography>Loading...</Typography>;
+  if (!columns.length) {
+    return (
+      <Box sx={{ padding: "16px" }}>
+        {/* Placeholder for Buttons */}
+        <Box sx={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
+          <Skeleton variant="rectangular" width={120} height={40} />
+          <Skeleton variant="rectangular" width={120} height={40} />
+        </Box>
+  
+        {/* Placeholder for DataGrid Rows */}
+        {[1, 2, 3, 4, 5].map((rowIndex) => (
+          <Box
+            key={rowIndex}
+            sx={{
+              display: "flex",
+              gap: "16px",
+              marginBottom: "8px",
+            }}
+          >
+            <Skeleton variant="rectangular" width={200} height={40} /> {/* Social Enterprise */}
+            <Skeleton variant="rectangular" width={150} height={40} /> {/* Assigned Mentor */}
+            <Skeleton variant="rectangular" width={150} height={40} /> {/* Program Name */}
+            <Skeleton variant="rectangular" width={100} height={40} /> {/* SDG(s) */}
+          </Box>
+        ))}
+      </Box>
+    );
+  }
 
   return (
     <Box m="20px">
@@ -581,11 +589,11 @@ const AssessSEPage = () => {
             },
           }}
         >
-          <DataGrid
-            rows={socialEnterprises}
-            columns={columns}
-            getRowId={(row) => row.se_id} // Ensure `se_id` is used as `id`
-          />
+        <DataGrid
+          rows={socialEnterprises} // Ensure this array contains the result from the query
+          columns={columns}
+          getRowId={(row) => row.id} // Use the 'id' from the query result
+        />
         </Box>
 
         {/* SE Selection Dialog */}
@@ -613,40 +621,27 @@ const AssessSEPage = () => {
           >
             Select Social Enterprises for Evaluation
           </DialogTitle>
-          <DialogContent
-            sx={{
-              padding: "24px",
-              maxHeight: "70vh", // Ensure it doesn't overflow the screen
-              overflowY: "auto", // Enable scrolling if content is too long
-            }}
-          >
-            {socialEnterprises.map((se) => (
-              <FormControlLabel
-                key={se.se_id}
-                control={
-                  <Checkbox
-                    checked={selectedSEs.includes(se.se_id)}
-                    onChange={() => handleSESelectionChange(se.se_id)}
-                    sx={{
-                      color: "#000", // Black checkbox
-                      "&.Mui-checked": {
-                        color: "#000", // Black when checked
-                      },
-                    }}
-                  />
-                }
-                label={`${se.team_name} (${se.sdg_name})`}
-                sx={{
-                  marginBottom: "8px", // Spacing between items
-                }}
-              />
-            ))}
-            {error && (
-              <Alert severity="error" sx={{ margin: "16px" }}>
-                {error}
-              </Alert>
-            )}
+          <DialogContent>
+          {socialEnterprises.map((se) => (
+            <FormControlLabel
+              key={se.se_id}
+              control={
+                <Checkbox
+                  checked={selectedSEs.includes(se.se_id)} // Use se_id here
+                  onChange={() => handleSESelectionChange(se.se_id)} // Pass se_id
+                  sx={{
+                    color: "#000",
+                    "&.Mui-checked": { color: "#000" },
+                  }}
+                />
+              }
+              label={`${se.team_name} [SDG: ${se.sdg_name}]`}
+              sx={{ marginBottom: "8px" }}
+            />
+          ))}
+            {error && <Alert severity="error">{error}</Alert>}
           </DialogContent>
+
           <DialogActions
             sx={{
               padding: "16px",
@@ -732,6 +727,10 @@ const AssessSEPage = () => {
                 )?.team_name
               }
             </Typography>
+
+            <Typography variant="h6" sx={{ textAlign: "center", marginBottom: "16px" }}>
+              Evaluating {currentSEIndex + 1} / {selectedSEs.length}
+            </Typography>;
 
             {/* Evaluation Categories */}
             {Object.keys(evaluationCriteria).map((category) => {
@@ -907,16 +906,17 @@ const AssessSEPage = () => {
             <Button
               onClick={handleSubmit}
               variant="contained"
+              disabled={isSubmitDisabled()}
               sx={{
-                backgroundColor: "#1E4D2B",
+                backgroundColor: isSubmitDisabled() ? "#ccc" : "#1E4D2B",
                 color: "#fff",
-                "&:hover": {
-                  backgroundColor: "#1E4D2B", // Darker hover effect
+                '&:hover': {
+                  backgroundColor: isSubmitDisabled() ? "#ccc" : "#145A32",
                 },
               }}
             >
               Submit
-            </Button>
+            </Button>;
           </DialogActions>
         </Dialog>
       </Box>

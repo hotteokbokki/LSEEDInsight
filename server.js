@@ -13,6 +13,7 @@ const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const cookieParser = require("cookie-parser");
 const { getMentorsBySocialEnterprises, getMentorById } = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
+const { getMentorshipsByMentorId, getMentorBySEID } = require("./controllers/mentorshipsController.js");
 
 const app = express();
 
@@ -125,26 +126,6 @@ async function sendMessageWithOptions(chatId, message, options) {
     console.error("Failed to send message with inline keyboard:", error.response?.data || error.message);
   }
 }
-
-app.get("/getSDGs", async (req, res) => {
-  try {
-    const result = await getAllSDG();
-    res.json(result); // Send sdg as JSON
-  } catch (error) {
-    console.error("Error fetching sdgs:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
-app.get("/api/mentors", async (req, res) => {
-  try {
-    const result = await pgDatabase.query("SELECT * FROM mentors");
-    res.json(result.rows); // Send mentors as JSON
-  } catch (error) {
-    console.error("Error fetching mentors:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
 
 app.post("/api/mentors", async (req, res) => {
   try {
@@ -275,18 +256,27 @@ app.post("/evaluate", async (req, res) => {
         console.log(`📩 Sending evaluation message to chat ID: ${chatId}`);
       
         let message = `📢 *New Evaluation Received*\n\n`;
-        message += `👤 *Mentor:* ${mentor.mentor_firstName} ${mentor.mentor_lastName}\n`;
+        message += `👤 *Mentor:* ${mentor.mentor_firstname} ${mentor.mentor_lastname}\n`;
         message += `🏢 *Social Enterprise:* ${socialEnterprise.team_name}\n\n`;
       
         categories.forEach((category) => {
           const evalData = evaluations[category] || defaultEvaluation;
-          message += `📝 *${category.replace(/([A-Z])/g, " $1")}:* ${"⭐".repeat(evalData.rating)} (${evalData.rating}/5)\n`;
+        
+          // Adds spaces before capital letters and capitalizes the first letter of each word
+          const formattedCategory = category.replace(/([A-Z])/g, " $1").replace(/\b\w/g, char => char.toUpperCase());
+        
+          message += `📝 *${formattedCategory}:* ${"⭐".repeat(evalData.rating)} (${evalData.rating}/5)\n`;
           message += `📌 *Key Points:*\n${evalData.selectedCriteria.map(c => `- ${c}`).join("\n")}\n`;
+          
           if (evalData.comments) {
             message += `💬 *Comments:* ${evalData.comments}\n`;
+          } else {
+            message += `💬 *Comments:* No comments provided.\n`;
           }
           message += `\n`;
         });
+        
+        
       
         await sendMessage(chatId, message);
       }
@@ -308,30 +298,59 @@ app.get("/protected", requireAuth, (req, res) => {
   res.json({ message: "Access granted to protected route" });
 });
 
-app.get("/getSocialEnterprises", async (req, res) => {
+app.get("/api/admin/users", async (req, res) => {
   try {
-    const SE = await getAllSocialEnterprises(); // Fetch SEs from DB
-    if (!SE || SE.length === 0) {
+    const users = await getUsers(); // Fetch SEs from DB
+    if (!users || users.length === 0) {
       return res.status(404).json({ message: "No social enterprises found" });
     }
-    res.json(SE); // Send SE data
+    res.json(users);
   } catch (error) {
     console.error("Error fetching social enterprises:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
-app.get("/getPrograms", async (req, res) => {
+app.get("/getMentorshipsbyID", async (req, res) => {
   try {
-    const result = await pgDatabase.query("SELECT program_id, name FROM Programs");
+    const { mentor_id } = req.query; // Extract mentor_id from query parameters
 
-    if (!result.rows || result.rows.length === 0) {
-      return res.json([]); // ✅ Always return an array
+    if (!mentor_id) {
+      return res.status(400).json({ message: "mentor_id is required" });
     }
 
-    res.json(result.rows);
+    // Fetch mentorships based on mentor_id from the database
+    const mentorships = await getMentorshipsByMentorId(mentor_id) // Assume this function exists in your DB logic
+
+    if (!mentorships || mentorships.length === 0) {
+      return res.status(404).json({ message: "No mentorships found for the given mentor_id" });
+    }
+
+    res.json(mentorships); // Send the mentorships data
   } catch (error) {
-    console.error("❌ Error fetching programs:", error);
+    console.error("Error fetching mentorships:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/getSocialEnterprisesByID", async (req, res) => {
+  try {
+    const { se_id } = req.query; // Extract mentor_id from query parameters
+
+    if (!se_id) {
+      return res.status(400).json({ message: "se_id is required" });
+    }
+
+    // Fetch mentorships based on mentor_id from the database
+    const se = await getSocialEnterpriseByID(se_id) // Assume this function exists in your DB logic
+
+    if (!se || se.length === 0) {
+      return res.status(404).json({ message: "No se found for the given se_id" });
+    }
+
+    res.json(se); // Send the mentorships data
+  } catch (error) {
+    console.error("Error fetching mentorships:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
@@ -481,8 +500,8 @@ app.post("/webhook", async (req, res) => {
 
         // Map the data correctly
         const enterpriseOptions = socialEnterprises.map((se) => ({
-          text: se.text.replace(" - ", "\n"), // Break at " - " for better readability
-          callback_data: se.callback_data,
+          text: se.abbr, // Show only the abbreviation when selecting
+          callback_data: se.callback_data, // Callback remains the same
         }));
 
         // Wrap in a 2D array (Telegram requires this)
@@ -556,7 +575,7 @@ app.post("/webhook", async (req, res) => {
         }
 
         // Fetch mentors for the selected SE
-        const mentors = await getMentorsBySocialEnterprises(enterpriseId);
+        const mentors = await getMentorBySEID(enterpriseId);
 
         // Access the first mentor's name and ID
         const mentorName = mentors[0]?.name;

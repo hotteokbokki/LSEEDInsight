@@ -3,7 +3,7 @@ const pgDatabase = require('../database.js'); // Import PostgreSQL client
 exports.getSocialEnterprisesByProgram = async (programId) => {
   try {
     // Query to get social enterprises by program_id
-    const query = 'SELECT se_id, team_name FROM SocialEnterprises WHERE program_id = $1';
+    const query = 'SELECT se_id, team_name, abbr FROM SocialEnterprises WHERE program_id = $1';
     const values = [programId];
 
     const result = await pgDatabase.query(query, values);
@@ -16,6 +16,7 @@ exports.getSocialEnterprisesByProgram = async (programId) => {
     // Map the results to the desired format
     return result.rows.map(se => ({
       text: se.team_name, 
+      abbr: se.abbr,
       callback_data: `enterprise_${se.se_id}`
     }));
   } catch (error) {

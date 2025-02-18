@@ -34,7 +34,7 @@ exports.getMentorById = async (mentor_id) => {
   try {
     console.log(`Fetching mentor by ID: ${mentor_id}`);
 
-    const query = `SELECT "mentor_id", "mentor_firstName", "mentor_lastName" FROM "mentors" WHERE "mentor_id" = $1`;
+    const query = `SELECT "mentor_id", "mentor_firstname", "mentor_lastname" FROM "mentors" WHERE "mentor_id" = $1`;
     const values = [mentor_id];
 
     const result = await pgDatabase.query(query, values);
