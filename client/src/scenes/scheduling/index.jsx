@@ -1,58 +1,62 @@
-import { Box } from "@mui/material";
+// Sample LSEED Insight Google Calendar
+// https://calendar.google.com/calendar/u/0?cid=MWJlZDcwNTZhNzNhOGRhZGU0MjZkZjI2MzMyMTYzNDBjMDE3OWJhZGJmMjUyMGYyMjI0NmVlMTkyMzg2OTBiY0Bncm91cC5jYWxlbmRhci5nb29nbGUuY29t
+
+import React, { useEffect, useState } from "react";
+import { Box, Button, List, ListItem, ListItemText, Modal, TextField} from "@mui/material";
 import Header from "../../components/Header";
-import { DataGrid } from "@mui/x-data-grid";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
-import listPlugin from "@fullcalendar/list";
-import { useState } from "react";
-import { mockDataTasks } from "../../sampledata/mockData";
-import { tokens } from "../../theme";
-import { useTheme } from "@mui/material";
+import { useAuth } from "../../context/authContext";
 
-const Scheduling = () => {
-  const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
-  const [currentEvents, setCurrentEvents] = useState([]);
+const Scheduling = ({ userRole }) => {
+  const [openModal, setOpenModal] = useState(false); 
+  const [mentors, setMentors] = useState([]);
+  const [calendarLink, setCalendarLink] = useState("");
+  const { user } = useAuth();
+  
+  // Fetch mentors data from the backend
+  useEffect(() => {
+    const fetchMentors = async () => {
+      try {
+        const response = await fetch("/api/mentors");  // Adjust URL according to your backend routing
+        const data = await response.json();
+        setMentors(data);
+      } catch (error) {
+        console.error("Error fetching mentors:", error);
+      }
+    };
 
-  const columns = [
-    {
-      field: "task",
-      headerName: "Task",
-      flex: 1,
-      cellClassName: "name-column--cell",
-    },
-    {
-      field: "dateToAccomplish",
-      headerName: "Date to Accomplish",
-      flex: 1,
-    },
-  ];
-
-  const handleDateClick = (selected) => {
-    const title = prompt("Please enter a new title for your event");
-    const calendarApi = selected.view.calendar;
-    calendarApi.unselect();
-
-    if (title) {
-      calendarApi.addEvent({
-        id: `${selected.dateStr}-${title}`,
-        title,
-        start: selected.startStr,
-        end: selected.endStr,
-        allDay: selected.allDay,
-      });
-    }
+    fetchMentors();
+  }, []);
+  
+  const handleRedirect = () => {
+    window.open("https://calendar.google.com", "_blank");
   };
 
-  const handleEventClick = (selected) => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete the event '${selected.event.title}'`
-      )
-    ) {
-      selected.event.remove();
+  const handleOpenModal = () => setOpenModal(true);
+  const handleCloseModal = () => setOpenModal(false);
+
+  const handleUploadLink = async () => {
+    if (calendarLink) {
+      try {
+        // Assuming you have an API to handle the mentor link update
+        const response = await fetch("/api/mentors/updateCalendarLink", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ calendarLink, userRole }),
+        });
+
+        if (response.ok) {
+          alert("Calendar link updated successfully!");
+          setCalendarLink("");
+          handleCloseModal(); // Close modal after successful update
+        } else {
+          alert("Failed to update calendar link. Please try again.");
+        }
+      } catch (error) {
+        console.error("Error uploading link:", error);
+        alert("There was an error uploading the calendar link.");
+      }
+    } else {
+      alert("Please provide a valid calendar link.");
     }
   };
 
@@ -60,95 +64,65 @@ const Scheduling = () => {
     <Box m="20px">
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Header
-          title="Scheduling Matrix"
-          subtitle="Find the Appropriate Schedule"
-        />
+        <Header title="Scheduling Matrix" subtitle={user.role === "LSEED" ? "See the schedule of the mentors" : "Find the Appropriate Schedule"}  />
       </Box>
 
-      {/* Row 3: Calendar and Data Grid */}
-      <Box
-        display="grid"
-        gridTemplateColumns="repeat(12, 1fr)"
-        gridAutoRows="minmax(400px, auto)"
-        gap="20px"
-        mt="20px"
-      >
-        {/* Left: Calendar */}
-        <Box
-          gridColumn="span 8"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          flexDirection="column"
-          alignItems="stretch"
-          justifyContent="stretch"
-        >
-          <FullCalendar
-            height="100%"
-            plugins={[
-              dayGridPlugin,
-              timeGridPlugin,
-              interactionPlugin,
-              listPlugin,
-            ]}
-            headerToolbar={{
-              left: "prev,next today",
-              center: "title",
-              right: "dayGridMonth,timeGridWeek,timeGridDay,listMonth",
-            }}
-            initialView="dayGridMonth"
-            editable={true}
-            selectable={true}
-            selectMirror={true}
-            dayMaxEvents={true}
-            select={handleDateClick}
-            eventClick={handleEventClick}
-            eventsSet={(events) => setCurrentEvents(events)}
-            initialEvents={[
-              {
-                id: "12315",
-                title: "All-day event",
-                date: "2022-09-14",
-              },
-              {
-                id: "5123",
-                title: "Timed event",
-                date: "2022-09-28",
-              },
-            ]}
+      {user.role === "Mentor" ? (
+        <Box display="flex" justifyContent="center" mt={2}>
+          <Button variant="contained" sx={{ backgroundColor: "#1976D2" , color: "white" }} onClick={handleRedirect}>
+            Open LSEED Calendar
+          </Button>
+          <Button
+            variant="contained"
+            sx={{ backgroundColor: "#4caf50", color: "white", marginLeft: "10px" }}
+            onClick={handleOpenModal}
+          >
+            Upload Calendar Link
+          </Button>
+        </Box>
+      ) : (
+        <Box mt={2}>
+          {mentors.length > 0 ? (
+            <List>
+              {mentors.map((mentor) => (
+                <ListItem key={mentor.mentor_id}>
+                  <ListItemText primary={`${mentor.mentor_firstname} ${mentor.mentor_lastname}`} />
+                  <Button
+                    variant="contained"
+                    sx={{ backgroundColor: mentor.calendarlink ? "#1976D2" : "#B0B0B0", color: "white" }}
+                    onClick={() => mentor.calendarlink && window.open(mentor.calendarlink, "_blank")}
+                    disabled={!mentor.calendarlink}
+                  >
+                    {mentor.calendarlink ? "View Calendar" : "No Calendar Available"}
+                  </Button>
+                </ListItem>
+              ))}
+            </List>
+          ) : (
+            <Box display="flex" justifyContent="center" mt={2}>
+              <p>No mentors available.</p>
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {/* Modal for uploading the calendar link */}
+      <Modal open={openModal} onClose={handleCloseModal} disableEnforceFocus BackdropProps={{ invisible: true }}>
+        <Box sx={{ width: "300px", padding: "20px", margin: "50px auto", backgroundColor: "white", borderRadius: "5px" }}>
+          <TextField
+            label="Calendar Link"
+            variant="outlined"
+            fullWidth
+            value={calendarLink}
+            onChange={(e) => setCalendarLink(e.target.value)}
+            sx={{ marginBottom: "15px", "& .MuiInputBase-input": { color: "black" } }}  // Set text color to black
           />
+          <Box display="flex" justifyContent="space-between">
+            <Button variant="contained" onClick={handleUploadLink}>Upload</Button>
+            <Button variant="outlined" onClick={handleCloseModal}>Cancel</Button>
+          </Box>
         </Box>
-
-        {/* Right: Data Grid */}
-        <Box
-          gridColumn="span 4"
-          height="100%"
-          sx={{
-            "& .MuiDataGrid-root": {
-              border: "none",
-            },
-            "& .MuiDataGrid-cell": {
-              borderBottom: "none",
-            },
-            "& .name-column--cell": {
-              color: colors.greenAccent[300],
-            },
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: colors.blueAccent[700],
-              borderBottom: "none",
-            },
-            "& .MuiDataGrid-virtualScroller": {
-              backgroundColor: colors.primary[400],
-            },
-            "& .MuiDataGrid-footerContainer": {
-              borderTop: "none",
-              backgroundColor: colors.blueAccent[700],
-            },
-          }}
-        >
-          <DataGrid rows={mockDataTasks} columns={columns} />
-        </Box>
-      </Box>
+      </Modal>
     </Box>
   );
 };

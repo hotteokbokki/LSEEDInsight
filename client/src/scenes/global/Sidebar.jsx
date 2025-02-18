@@ -19,16 +19,18 @@ import { useEffect } from "react";
 const Item = ({ title, to, icon, selected, setSelected }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+
   return (
     <MenuItem
       active={selected === title}
       style={{
         color: colors.grey[100],
+        fontWeight: selected === title ? "bold" : "normal",
       }}
       onClick={() => setSelected(title)}
       icon={icon}
     >
-      <Typography>{title}</Typography>
+      <Typography variant="body1">{title}</Typography>
       <Link to={to} />
     </MenuItem>
   );
@@ -45,6 +47,8 @@ const Sidebar = () => {
   return (
     <Box
       sx={{
+        height: "100vh",
+        background: colors.primary[400],
         "& .pro-sidebar-inner": {
           background: `${colors.primary[400]} !important`,
         },
@@ -52,25 +56,28 @@ const Sidebar = () => {
           backgroundColor: "transparent !important",
         },
         "& .pro-inner-item": {
-          padding: "5px 35px 5px 20px !important",
+          padding: "4px 20px 8px 10px !important",
+          borderRadius: "8px",
+          transition: "all 0.3s ease-in-out",
         },
         "& .pro-inner-item:hover": {
-          color: "#868dfb !important",
+          backgroundColor: colors.grey[700],
+          color: "#fff !important",
         },
         "& .pro-menu-item.active": {
-          color: "#6870fa !important",
+          backgroundColor: colors.greenAccent[600],
+          color: "#fff !important",
+          borderRadius: "8px",
         },
       }}
     >
       <ProSidebar collapsed={isCollapsed}>
         <Menu iconShape="square">
+          {/* Header Section */}
           <MenuItem
             onClick={() => setIsCollapsed(!isCollapsed)}
             icon={isCollapsed ? <MenuOutlinedIcon /> : undefined}
-            style={{
-              margin: "10px 0 20px 0",
-              color: colors.grey[100],
-            }}
+            style={{ margin: "15px 0", color: colors.grey[100], }}
           >
             {!isCollapsed && (
               <Box
@@ -89,34 +96,29 @@ const Sidebar = () => {
             )}
           </MenuItem>
 
+          {/* Profile Section */}
           {!isCollapsed && user && (
-            <Box mb="25px">
+            <Box textAlign="center" p="10px">
               <Box display="flex" justifyContent="center" alignItems="center">
                 <img
                   alt="profile-user"
-                  width="100px"
-                  height="100px"
+                  width="90px"
+                  height="90px"
                   src="/assets/user.png"
-                  style={{ cursor: "pointer", borderRadius: "50%" }}
+                  style={{ borderRadius: "50%", border: `2px solid ${colors.grey[100]}`, boxShadow: "0px 4px 10px rgba(0,0,0,0.2)" }}
                 />
               </Box>
 
-              <Box textAlign="center">
-                <Typography
-                  variant="h2"
-                  color={colors.grey[100]}
-                  fontWeight="bold"
-                  sx={{ m: "10px 0 0 0" }}
-                >
-                  {user.name || "User"}
-                </Typography>
-                <Typography variant="h5" color={colors.greenAccent[500]}>
-                  {user.role || "LSEED User"}
-                </Typography>
-              </Box>
+              <Typography variant="h5" color={colors.grey[100]} fontWeight="bold" mt={1}>
+                {user.firstname || "User"}
+              </Typography>
+              <Typography variant="body2" color={colors.greenAccent[500]}>
+                {user.role || "LSEED User"}
+              </Typography>
             </Box>
           )}
 
+          {/* Navigation Items */}
           <Box paddingLeft={isCollapsed ? undefined : "10%"}>
             <Item
               title="Dashboard"
@@ -137,55 +139,18 @@ const Sidebar = () => {
             )}
 
             {user?.role === "LSEED" && (
-              <Item
-                title="Manage Social Enterprise"
-                to="/socialenterprise"
-                icon={<Diversity2OutlinedIcon />}
-                selected={selected}
-                setSelected={setSelected}
-              />
+              <>
+                <Item title="Manage Social Enterprise" to="/socialenterprise" icon={<Diversity2OutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="LSEED Mentors" to="/mentors" icon={<SettingsAccessibilityOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="Show Analytics" to="/analytics" icon={<AnalyticsOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="Show Reports" to="/reports" icon={<GradingOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="Scheduling Matrix" to="/scheduling" icon={<CalendarMonthOutlinedIcon />} selected={selected} setSelected={setSelected} />
+              </>
             )}
 
-            {user?.role === "LSEED" && (
-              <Item
-                title="LSEED Mentors"
-                to="/mentors"
-                icon={<SettingsAccessibilityOutlinedIcon />}
-                selected={selected}
-                setSelected={setSelected}
-              />
+            {user?.role === "Mentor" && (
+              <Item title="Scheduling Matrix" to="/scheduling" icon={<CalendarMonthOutlinedIcon />} selected={selected} setSelected={setSelected} />
             )}
-
-            {user?.role === "LSEED" && (
-              <Item
-                title="Show Analytics"
-                to="/analytics"
-                icon={<AnalyticsOutlinedIcon />}
-                selected={selected}
-                setSelected={setSelected}
-              />
-            )}
-
-            {user?.role === "LSEED" && (
-              <Item
-                title="Show Reports"
-                to="/reports"
-                icon={<GradingOutlinedIcon />}
-                selected={selected}
-                setSelected={setSelected}
-              />
-            )}
-
-            {user?.role === "LSEED" ||
-              (user?.role === "Mentor" && (
-                <Item
-                  title="Scheduling Matrix"
-                  to="/scheduling"
-                  icon={<CalendarMonthOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-              ))}
           </Box>
         </Menu>
       </ProSidebar>
