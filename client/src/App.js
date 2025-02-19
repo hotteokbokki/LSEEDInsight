@@ -56,7 +56,6 @@ const ProtectedRoute = ({ allowedRoles }) => {
 const MainContent = () => {
   const { user, loading } = useAuth();
   const location = useLocation();
-  const isAdminPage = location.pathname === "/admin";
 
   useEffect(() => {
     if (!loading) {
@@ -73,9 +72,9 @@ const MainContent = () => {
 
   return (
     <>
-      {!isAdminPage && user && <Sidebar />}
+      {user && <Sidebar />}
       <main className="content">
-        {!isAdminPage && user && <Topbar />}
+        {user && <Topbar />}
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />

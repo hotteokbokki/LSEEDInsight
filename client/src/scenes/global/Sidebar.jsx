@@ -13,13 +13,12 @@ import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined
 import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
+import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined"; // Import Admin icon
 import { useAuth } from "../../context/authContext";
-import { useEffect } from "react";
 
 const Item = ({ title, to, icon, selected, setSelected }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-
   return (
     <MenuItem
       active={selected === title}
@@ -43,6 +42,11 @@ const Sidebar = () => {
   const [selected, setSelected] = useState("Dashboard");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   return (
     <Box
@@ -77,7 +81,7 @@ const Sidebar = () => {
           <MenuItem
             onClick={() => setIsCollapsed(!isCollapsed)}
             icon={isCollapsed ? <MenuOutlinedIcon /> : undefined}
-            style={{ margin: "15px 0", color: colors.grey[100], }}
+            style={{ margin: "15px 0", color: colors.grey[100] }}
           >
             {!isCollapsed && (
               <Box
@@ -105,11 +109,19 @@ const Sidebar = () => {
                   width="90px"
                   height="90px"
                   src="/assets/user.png"
-                  style={{ borderRadius: "50%", border: `2px solid ${colors.grey[100]}`, boxShadow: "0px 4px 10px rgba(0,0,0,0.2)" }}
+                  style={{
+                    borderRadius: "50%",
+                    border: `2px solid ${colors.grey[100]}`,
+                    boxShadow: "0px 4px 10px rgba(0,0,0,0.2)",
+                  }}
                 />
               </Box>
-
-              <Typography variant="h5" color={colors.grey[100]} fontWeight="bold" mt={1}>
+              <Typography
+                variant="h5"
+                color={colors.grey[100]}
+                fontWeight="bold"
+                mt={1}
+              >
                 {user.firstname || "User"}
               </Typography>
               <Typography variant="body2" color={colors.greenAccent[500]}>
@@ -120,6 +132,7 @@ const Sidebar = () => {
 
           {/* Navigation Items */}
           <Box paddingLeft={isCollapsed ? undefined : "10%"}>
+            {/* Dashboard */}
             <Item
               title="Dashboard"
               to="/dashboard"
@@ -128,7 +141,8 @@ const Sidebar = () => {
               setSelected={setSelected}
             />
 
-            {user?.role === "Mentor" && (
+            {/* Assess SE - Visible to Mentors and Administrators */}
+            {(user?.role === "Mentor" || user?.role === "Administrator") && (
               <Item
                 title="Assess SE"
                 to="/assess"
@@ -138,20 +152,82 @@ const Sidebar = () => {
               />
             )}
 
-            {user?.role === "LSEED" && (
+            {/* LSEED Pages - Visible to LSEED Users and Administrators */}
+            {(user?.role === "LSEED" || user?.role === "Administrator") && (
               <>
-                <Item title="Manage Social Enterprise" to="/socialenterprise" icon={<Diversity2OutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="LSEED Mentors" to="/mentors" icon={<SettingsAccessibilityOutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="Show Analytics" to="/analytics" icon={<AnalyticsOutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="Show Reports" to="/reports" icon={<GradingOutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="Scheduling Matrix" to="/scheduling" icon={<CalendarMonthOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item
+                  title="Manage SE"
+                  to="/socialenterprise"
+                  icon={<Diversity2OutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="LSEED Mentors"
+                  to="/mentors"
+                  icon={<SettingsAccessibilityOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Show Analytics"
+                  to="/analytics"
+                  icon={<AnalyticsOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Show Reports"
+                  to="/reports"
+                  icon={<GradingOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Scheduling Matrix"
+                  to="/scheduling"
+                  icon={<CalendarMonthOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
               </>
             )}
 
+            {/* Scheduling Matrix - Visible to Mentors */}
             {user?.role === "Mentor" && (
-              <Item title="Scheduling Matrix" to="/scheduling" icon={<CalendarMonthOutlinedIcon />} selected={selected} setSelected={setSelected} />
+              <Item
+                title="Scheduling Matrix"
+                to="/scheduling"
+                icon={<CalendarMonthOutlinedIcon />}
+                selected={selected}
+                setSelected={setSelected}
+              />
+            )}
+
+            {/* Admin Page - Visible only to Administrators */}
+            {user?.role === "Administrator" && (
+              <Item
+                title="Admin Page"
+                to="/admin"
+                icon={<AdminPanelSettingsOutlinedIcon />}
+                selected={selected}
+                setSelected={setSelected}
+              />
             )}
           </Box>
+
+          {/* Logout Button */}
+          <MenuItem
+            icon={<ExitToAppOutlinedIcon />}
+            onClick={handleLogout}
+            style={{
+              color: colors.redAccent[500],
+              fontWeight: "bold",
+              marginTop: "auto",
+            }}
+          >
+            <Typography variant="body1">Logout</Typography>
+          </MenuItem>
         </Menu>
       </ProSidebar>
     </Box>

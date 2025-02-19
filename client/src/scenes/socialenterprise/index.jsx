@@ -47,15 +47,15 @@ const SocialEnterprise = () => {
     const fetchSocialEnterprises = async () => {
       try {
         const seResponse = await axios.get(
-          "http://localhost:4000/getSocialEnterprises"
+          "http://localhost:4000/getAllSocialEnterprises"
         );
         const mentorResponse = await axios.get(
-          "http://localhost:4000/api/mentors"
+          "http://localhost:4000/api/getMentorsBySocialEnterprises"
         );
         const programsResponse = await axios.get(
           "http://localhost:4000/getPrograms"
         );
-        const sdgResponse = await axios.get("http://localhost:4000/getSDGs");
+        const sdgResponse = await axios.get("http://localhost:4000/getAllSDG");
 
         // Ensure responses are arrays
         const programsData = Array.isArray(programsResponse.data)
@@ -86,16 +86,16 @@ const SocialEnterprise = () => {
 
         // Map social enterprises to include additional details
         const updatedSocialEnterprises = seResponse.data.map((se) => ({
-          id: se.se_id, // Use `se_id` as the unique identifier
-          name: se.team_name,
+          id: se.se_id, // Ensure this matches the backend's `se_id`
+          name: se.team_name || "Unnamed Team",
           mentor: mentorMap[se.mentor_id] || "No Mentor Assigned",
           program: programsMap[se.program_id] || "Unknown Program",
           sdg: Array.isArray(se.sdg_id)
             ? se.sdg_id.map((id) => sdgMap[id] || "Unknown SDG").join(", ")
             : sdgMap[se.sdg_id] || "No SDG Name",
-          contact: se.contact || "No Contact Info", // Add contact field
-          numMember: se.numMember || 0, // Add number of members field
-          status: se.status || "Inactive", // Add status field
+          contact: se.contact || "No Contact Info",
+          numMember: se.numMember || 0,
+          status: se.status || "Inactive",
         }));
 
         setSocialEnterprises(updatedSocialEnterprises);
@@ -153,10 +153,11 @@ const SocialEnterprise = () => {
       headerName: "Status",
       flex: 1,
       editable: isEditing,
-      renderCell: (params) => <span>{params.value}</span>,
+      renderCell: (params) => <Typography>{params.value}</Typography>,
       renderEditCell: (params) => (
         <TextField
           select
+          fullWidth
           value={params.value}
           onChange={(e) =>
             params.api.setEditCellValue({
@@ -165,7 +166,8 @@ const SocialEnterprise = () => {
               value: e.target.value,
             })
           }
-          fullWidth
+          full
+          Width
         >
           <MenuItem value="Active">Active</MenuItem>
           <MenuItem value="Inactive">Inactive</MenuItem>
