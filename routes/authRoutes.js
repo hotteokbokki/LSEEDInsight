@@ -43,6 +43,11 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Check if account is active
+    if (!user.isActive) {
+      return res.status(403).json({ message: 'Your account is pending verification. Please wait for LSEED to verify your account.' });
+    }
+
     // ✅ Generate a unique session ID
     // const sessionId = crypto.randomUUID();
     try {
