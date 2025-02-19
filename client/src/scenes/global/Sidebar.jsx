@@ -56,7 +56,7 @@ const Sidebar = () => {
           backgroundColor: "transparent !important",
         },
         "& .pro-inner-item": {
-          padding: "4px 20px 8px 10px !important",
+          padding: "4px 25px 8px 20px !important",
           borderRadius: "8px",
           transition: "all 0.3s ease-in-out",
         },
