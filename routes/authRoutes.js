@@ -177,13 +177,14 @@ router.get("/users", async (req, res) => {
 
 router.get("/mentors", async (req, res) => {
   try {
-    const result = await pool.query("SELECT mentor_id, mentor_firstname || ' ' || mentor_lastname AS name, calendarLink FROM mentors");
+    const result = await pgDatabase.query(`SELECT mentor_id, mentor_firstname || ' ' || mentor_lastname AS name, calendarlink FROM mentors`);
     res.json(result.rows);
   } catch (err) {
-    console.error(err.message);
+    console.error("Database Error:", err);  // Improved logging
     res.status(500).json({ error: "Error fetching mentors" });
   }
 });
+
 
 router.post("/updateCalendarLink", requireAuth, async (req, res) => {
   const { calendarlink } = req.body;  // We only need calendarlink to update
