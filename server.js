@@ -121,6 +121,13 @@ async function sendMessageWithOptions(chatId, message, options) {
         inline_keyboard: options, // Use directly without additional mapping
       },
     });
+    if (response.data && response.data.result) {
+      console.log(`📩 Message sent successfully. Message ID: ${response.data.result.message_id}`);
+      return response.data.result;
+  } else {
+      console.error("⚠️ Failed to send message with options. Response:", response.data);
+      return null;
+  }
     return response.data;
   } catch (error) {
     console.error("Failed to send message with inline keyboard:", error.response?.data || error.message);
@@ -514,6 +521,14 @@ app.post("/webhook", async (req, res) => {
           inlineKeyboard
         );
 
+        // Store the message ID to delete it later
+        if (seOptionsMessage && seOptionsMessage.message_id) {
+          userStates[chatId].seOptionsMessageId = seOptionsMessage.message_id;
+          console.log(`📌 Stored SE Options Message ID: ${seOptionsMessage.message_id}`);
+        } else {
+          console.log("⚠️ Failed to store SE Options Message ID.");
+        }
+
         // Store the SE options message ID for deletion later
         userStates[chatId].seOptionsMessageId = seOptionsMessage.message_id;
 
@@ -611,20 +626,80 @@ app.post("/webhook", async (req, res) => {
           delete userStates[chatId].confirmationMessageId;
         }
 
+        // Delete the bot's social enterprise selection message
+        if (userStates[chatId]?.seOptionsMessageId) {
+          console.log(`🗑️ Deleting bot social enterprise selection message ID: ${userStates[chatId].seOptionsMessageId}`);
+          await deleteMessage(chatId, userStates[chatId].seOptionsMessageId);
+          delete userStates[chatId].seOptionsMessageId;
+      } else {
+          console.log("⚠️ No social enterprise selection message ID found.");
+      }
+
+      // Delete the previous "Selection Cleared" message if it exists
+      if (userStates[chatId]?.selectionClearedMessageId) {
+        console.log(`🗑️ Deleting previous "Selection Cleared" message ID: ${userStates[chatId].selectionClearedMessageId}`);
+        await deleteMessage(chatId, userStates[chatId].selectionClearedMessageId);
+        delete userStates[chatId].selectionClearedMessageId;
+      } else {
+          console.log("⚠️ No previous 'Selection Cleared' message found.");
+      }
+
         // Reset selections and restart the process
         delete userSelections[chatId];
         setUserState(chatId, "awaiting_program_selection"); // Restart from program selection
 
         // Send "Selection cleared" message and store its ID
-        const selectionClearedMessage = await sendMessage(
-          chatId,
-          "🔄 Selection cleared. Please choose your program again."
-        );
+        const selectionClearedMessage = await sendMessage(chatId, "🔄 Selection cleared. Please choose your program again.");
 
-        // Store the selection cleared message ID for deletion later
+        // Ensure the message ID is stored correctly
+        if (selectionClearedMessage && selectionClearedMessage.result && selectionClearedMessage.result.message_id) {
+            userStates[chatId].selectionClearedMessageId = selectionClearedMessage.result.message_id;
+            console.log(`📌 Stored new "Selection Cleared" message ID: ${selectionClearedMessage.result.message_id}`);
+        } else {
+            console.log("⚠️ Failed to store new 'Selection Cleared' message ID. Response:", selectionClearedMessage);
+        }
+
+        // Fetch the list of social enterprises again
+        const socialEnterprises = await getAllSocialEnterprises();
+        if (socialEnterprises.length === 0) {
+            await sendMessage(chatId, "⚠️ No social enterprises available at the moment.");
+            return res.sendStatus(200);
+        }
+
+
+        // Create inline keyboard options for social enterprises
+        const enterpriseOptions = socialEnterprises.map(se => ({
+          text: se.abbr,
+          callback_data: `enterprise_${se.se_id}`
+      }));
+
+      // Convert to a 2D array for Telegram's inline keyboard
+      const inlineKeyboard = enterpriseOptions.map(option => [option]);
+
+      console.log("📩 Resending social enterprise choices...");
+
+      // Send the new selection message and store the new message ID
+      const newSeOptionsMessage = await sendMessageWithOptions(
+          chatId,
+          "🔄 Please choose a social enterprise again:",
+          inlineKeyboard
+      );
+
+      if (newSeOptionsMessage && newSeOptionsMessage.message_id) {
+        userStates[chatId].seOptionsMessageId = newSeOptionsMessage.message_id;
+        console.log(`📌 Stored new SE Options Message ID: ${newSeOptionsMessage.message_id}`);
+    } else {
+        console.log("⚠️ Failed to store new SE Options Message ID.");
+    }
+
+    console.log(`✅ Successfully reset selection for user ${chatId}.`);
+
+    return res.sendStatus(200);
+
+            /* Store the selection cleared message ID for deletion later
         userStates[chatId].selectionClearedMessageId = selectionClearedMessage.message_id;
 
-        return res.sendStatus(200);
+        return res.sendStatus(200);*/
       }
     } catch (error) {
       console.error("Error processing callback query:", error);
