@@ -14,6 +14,7 @@ const cookieParser = require("cookie-parser");
 const { getMentorsBySocialEnterprises, getMentorById } = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
 const { getMentorshipsByMentorId, getMentorBySEID } = require("./controllers/mentorshipsController.js");
+const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
 
 const app = express();
 
@@ -339,6 +340,21 @@ app.get("/getMentorshipsbyID", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+app.get("/getPreDefinedComments", async (req, res) => {
+  try {
+    const data = await getPreDefinedComments(); // Fetch predefined comments
+
+    if (!data || Object.keys(data).length === 0) {
+      return res.status(404).json({ error: "No predefined comments found" });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error("❌ Error fetching predefined comments:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 app.get("/getSocialEnterprisesByID", async (req, res) => {
   try {
