@@ -16,7 +16,10 @@ const Scheduling = ({ userRole }) => {
   useEffect(() => {
     const fetchMentors = async () => {
       try {
-        const response = await fetch("/api/mentors");  // Adjust URL according to your backend routing
+        const response = await fetch("/auth/mentors");  // Corrected endpoint
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
         const data = await response.json();
         setMentors(data);
       } catch (error) {
@@ -86,7 +89,7 @@ const Scheduling = ({ userRole }) => {
             <List>
               {mentors.map((mentor) => (
                 <ListItem key={mentor.mentor_id}>
-                  <ListItemText primary={`${mentor.mentor_firstname} ${mentor.mentor_lastname}`} />
+                  <ListItemText primary={mentor.name} />
                   <Button
                     variant="contained"
                     sx={{ backgroundColor: mentor.calendarlink ? "#1976D2" : "#B0B0B0", color: "white" }}
