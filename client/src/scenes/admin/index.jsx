@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Box, Button, Typography, useTheme } from "@mui/material";
+import {
+  Box,
+  Button,
+  Typography,
+  useTheme,
+  Select,
+  MenuItem,
+} from "@mui/material";
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
 import { DataGrid } from "@mui/x-data-grid";
@@ -8,7 +15,7 @@ const AdminPage = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const [isEditing, setIsEditing] = useState(false); // Toggle editing mode
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
@@ -57,16 +64,52 @@ const AdminPage = () => {
       flex: 1,
       renderCell: (params) =>
         `${params.row.first_name} ${params.row.last_name}`,
+      editable: isEditing, // Make editable when in edit mode
     },
     {
       field: "email",
       headerName: "Email",
       flex: 1,
+      editable: isEditing, // Make editable when in edit mode
     },
     {
       field: "roles",
       headerName: "Role",
       flex: 1,
+      editable: isEditing, // Make editable when in edit mode
+    },
+    {
+      field: "isActive",
+      headerName: "Active Status",
+      flex: 1,
+      renderCell: (params) => (
+        <span
+          style={{
+            color: params.value
+              ? colors.greenAccent[500]
+              : colors.redAccent[500],
+          }}
+        >
+          {params.value ? "Active" : "Inactive"}
+        </span>
+      ),
+      renderEditCell: (params) => (
+        <Select
+          value={params.value ? "Active" : "Inactive"}
+          onChange={(e) =>
+            params.api.setEditCellValue({
+              id: params.id,
+              field: params.field,
+              value: e.target.value === "Active",
+            })
+          }
+          fullWidth
+        >
+          <MenuItem value="Active">Active</MenuItem>
+          <MenuItem value="Inactive">Inactive</MenuItem>
+        </Select>
+      ),
+      editable: isEditing, // Make editable when in edit mode
     },
     {
       field: "actions",
@@ -89,11 +132,104 @@ const AdminPage = () => {
     // Implement role change logic here
   };
 
+  const handleStatusChange = async (userId) => {
+    try {
+      const user = users.find((user) => user.id === userId);
+      const newStatus = !user.isActive;
+
+      // Update the status on the frontend
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user.id === userId ? { ...user, isActive: newStatus } : user
+        )
+      );
+
+      // Send the updated status to the backend
+      const response = await fetch(
+        `http://localhost:4000/api/admin/users/${userId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ isActive: newStatus }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update user status");
+      }
+
+      console.log(`User ${userId} status updated to ${newStatus}`);
+    } catch (err) {
+      console.error(err.message || "An error occurred while updating status.");
+    }
+  };
+
+  // Handle row updates
+  const handleRowEditCommit = async (params) => {
+    const { id, field, value } = params;
+    // Update state first for instant UI feedback
+    const updatedUsers = users.map((user) =>
+      user.id === id ? { ...user, [field]: value } : user
+    );
+    setUsers(updatedUsers);
+
+    // Find the updated user
+    const updatedUser = updatedUsers.find((user) => user.id === id);
+    if (!updatedUser) return;
+
+    // Send only the necessary fields to update
+    const updatedUserData = {
+      id: updatedUser.id,
+      first_name: updatedUser.first_name,
+      last_name: updatedUser.last_name,
+      email: updatedUser.email,
+      roles: updatedUser.roles,
+      isActive: updatedUser.isActive,
+    };
+    try {
+      const response = await fetch(
+        `http://localhost:4000/api/admin/users/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updatedUserData),
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to update user in database");
+      }
+      console.log("User updated successfully");
+    } catch (error) {
+      console.error("Error updating user:", error);
+    }
+  };
+
   return (
     <Box m="20px">
       {/* HEADER */}
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Header title="ADMIN PAGE" subtitle="Manage users and roles" />
+      </Box>
+
+      {/* Enable Editing Button */}
+      <Box display="flex" alignItems="center">
+        <Button
+          variant="contained"
+          sx={{
+            backgroundColor: colors.blueAccent[500],
+            color: "black",
+            "&:hover": {
+              backgroundColor: colors.blueAccent[700],
+            },
+          }}
+          onClick={() => setIsEditing((prev) => !prev)}
+        >
+          {isEditing ? "Disable Editing" : "Enable Editing"}
+        </Button>
       </Box>
 
       {/* GRID & TABLE */}
@@ -131,11 +267,15 @@ const AdminPage = () => {
           }}
         >
           <DataGrid
-            rows={users}
+            rows={users.map((user, index) => ({
+              ...user,
+              id: user.email || index, // Use email as the unique ID, fallback to index
+            }))}
             columns={columns}
             pageSize={5}
             rowsPerPageOptions={[5]}
-            getRowId={(row) => row.email} // Use email as the unique ID
+            getRowId={(row) => row.email || row.id} // Ensure unique ID
+            onCellEditCommit={handleRowEditCommit}
           />
         </Box>
       </Box>

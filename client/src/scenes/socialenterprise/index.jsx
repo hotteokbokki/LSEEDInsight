@@ -44,10 +44,11 @@ const SocialEnterprise = () => {
 
   // Fetch social enterprises from the backend
   useEffect(() => {
-    const fetchSocialEnterprises = async () => {
+    const fetchSocialEnterprise = async () => {
       try {
+        const seId = 1; // Replace this with the desired social enterprise ID
         const seResponse = await axios.get(
-          "http://localhost:4000/getAllSocialEnterprises"
+          `http://localhost:4000/getSocialEnterpriseByID/${seId}`
         );
         const mentorResponse = await axios.get(
           "http://localhost:4000/api/getMentorsBySocialEnterprises"
@@ -56,7 +57,10 @@ const SocialEnterprise = () => {
           "http://localhost:4000/getPrograms"
         );
         const sdgResponse = await axios.get("http://localhost:4000/getAllSDG");
-
+        console.log("SE Response:", seResponse.data);
+        console.log("Mentor Response:", mentorResponse.data);
+        console.log("Programs Response:", programsResponse.data);
+        console.log("SDG Response:", sdgResponse.data);
         // Ensure responses are arrays
         const programsData = Array.isArray(programsResponse.data)
           ? programsResponse.data
@@ -76,7 +80,7 @@ const SocialEnterprise = () => {
         mentorsData.forEach((mentor) => {
           mentorMap[
             mentor.mentor_id
-          ] = `${mentor.mentor_firstName} ${mentor.mentor_lastName}`;
+          ] = `${mentor.mentor_firstname} ${mentor.mentor_lastname}`;
         });
 
         const sdgMap = {};
@@ -84,29 +88,33 @@ const SocialEnterprise = () => {
           sdgMap[sdg.sdg_id] = sdg.name;
         });
 
-        // Map social enterprises to include additional details
-        const updatedSocialEnterprises = seResponse.data.map((se) => ({
-          id: se.se_id, // Ensure this matches the backend's `se_id`
-          name: se.team_name || "Unnamed Team",
-          mentor: mentorMap[se.mentor_id] || "No Mentor Assigned",
-          program: programsMap[se.program_id] || "Unknown Program",
-          sdg: Array.isArray(se.sdg_id)
-            ? se.sdg_id.map((id) => sdgMap[id] || "Unknown SDG").join(", ")
-            : sdgMap[se.sdg_id] || "No SDG Name",
-          contact: se.contact || "No Contact Info",
-          numMember: se.numMember || 0,
-          status: se.status || "Inactive",
-        }));
+        // Map the single social enterprise response to the expected format
+        const se = seResponse.data;
+
+        const updatedSocialEnterprises = [
+          {
+            id: se.se_id || se.id, // Fallback to another unique field if `se_id` is missing
+            name: se.team_name || se.name || "Unnamed Team", // Handle alternative field names
+            mentor: mentorMap[se.mentor_id] || "No Mentor Assigned",
+            program: programsMap[se.program_id] || "Unknown Program",
+            sdg: Array.isArray(se.sdg_id)
+              ? se.sdg_id.map((id) => sdgMap[id] || "Unknown SDG").join(", ")
+              : sdgMap[se.sdg_id] || "No SDG Name",
+            contact: se.contact || "No Contact Info",
+            numMember: se.numMember || 0,
+            status: se.status || "Inactive",
+          },
+        ];
 
         setSocialEnterprises(updatedSocialEnterprises);
         setLoading(false); // Mark loading as complete
       } catch (error) {
-        console.error("Error fetching social enterprises:", error);
+        console.error("Error fetching social enterprise:", error);
         setLoading(false); // Mark loading as complete even if there's an error
       }
     };
 
-    fetchSocialEnterprises();
+    fetchSocialEnterprise();
   }, []);
 
   // Handle row click
