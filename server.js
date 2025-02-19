@@ -189,65 +189,56 @@ app.post("/evaluate", async (req, res) => {
     console.log("🔹 Converted se_id:", se_id);
     console.log("🔹 Converted sdg_id:", sdg_id);
 
-    const formattedSdgId = `{${sdg_id.join(",")}}`;
-
-    console.log("📤 Formatted sdg_id:", formattedSdgId);
-
-    const defaultEvaluation = { rating: 1, selectedCriteria: [], comments: "" };
-
-    const categories = [
-      "teamwork",
-      "financialPlanning",
-      "marketingPlan",
-      "productServiceDesign",
-      "humanResourceManagement",
-      "logistics",
-    ];
-
     let insertedEvaluations = [];
 
     for (let singleSeId of se_id) {
-      const formattedSeId = `{${singleSeId}}`;
-
       console.log(`📤 Processing SE: ${singleSeId}`);
 
-      const values = [mentorId, formattedSeId, formattedSdgId];
-
-      categories.forEach((category) => {
-        const evalData = evaluations[category] || defaultEvaluation;
-        values.push(evalData.rating, evalData.selectedCriteria, evalData.comments || "");
-      });
-
-      console.log("📊 Query Values for SE:", singleSeId, values);
-
-      const query = `
-        INSERT INTO evaluation (
-          mentor_id, se_id, sdg_id,
-          teamwork_rating, teamwork_selectedcriteria, teamwork_addtlcmt,
-          finance_rating, finance_selectedcriteria, finance_addtlcmt,
-          marketing_rating, marketing_selectedcriteria, marketing_addtlcmt,
-          productservice_rating, productservice_selectedcriteria, productservice_addtlcmt,
-          humanresource_rating, humanresource_selectedcriteria, humanresource_addtlcmt,
-          logistics_rating, logistics_selectedcriteria, logistics_addtlcmt
-        ) VALUES (
-          $1, $2, $3, 
-          $4, $5, $6, 
-          $7, $8, $9, 
-          $10, $11, $12, 
-          $13, $14, $15, 
-          $16, $17, $18, 
-          $19, $20, $21
-        ) RETURNING *;
+      // ✅ Step 1: Insert into `evaluations`
+      const evalQuery = `
+        INSERT INTO evaluations (mentor_id, se_id, created_at)
+        VALUES ($1, $2, NOW())
+        RETURNING evaluation_id;
       `;
+      const evalRes = await pgDatabase.query(evalQuery, [mentorId, singleSeId]);
+      const evaluationId = evalRes.rows[0].evaluation_id;
+      console.log("✅ Inserted Evaluation ID:", evaluationId);
 
-      const result = await pgDatabase.query(query, values);
-      console.log(`✅ Successfully inserted evaluation for SE: ${singleSeId}`);
-      insertedEvaluations.push(result.rows[0]);
+      // ✅ Step 2: Insert into `evaluation_categories`
+      for (const [category, details] of Object.entries(evaluations)) {
+        const categoryQuery = `
+          INSERT INTO evaluation_categories (evaluation_id, category_name, rating, additional_comment)
+          VALUES ($1, $2, $3, $4)
+          RETURNING evaluation_category_id;
+        `;
+        const categoryRes = await pgDatabase.query(categoryQuery, [
+          evaluationId,
+          category,
+          details.rating,
+          details.comments || "",
+        ]);
+        const categoryId = categoryRes.rows[0].evaluation_category_id;
+        console.log(`✅ Inserted Category (${category}): ID ${categoryId}`);
 
-      // ✅ Step 1: Get chat ID of mentor
+        // ✅ Step 3: Insert into `evaluation_selected_comments`
+        if (details.selectedCriteria.length > 0) {
+          for (const comment of details.selectedCriteria) {
+            const commentQuery = `
+              INSERT INTO evaluation_selected_comments (evaluation_category_id, comment)
+              VALUES ($1, $2);
+            `;
+            await pgDatabase.query(commentQuery, [categoryId, comment]);
+          }
+          console.log(`✅ Inserted ${details.selectedCriteria.length} comments for ${category}`);
+        }
+      }
+
+      insertedEvaluations.push(evaluationId);
+
+      // ✅ Step 4: Get mentor's chat ID from Telegram Bot Table
       const chatIdQuery = `
         SELECT chatid FROM telegrambot
-        WHERE mentor_id = $1 AND "se_ID" = $2
+        WHERE mentor_id = $1 AND "se_ID" = $2;
       `;
       const chatIdResult = await pgDatabase.query(chatIdQuery, [mentorId, singleSeId]);
 
@@ -255,37 +246,35 @@ app.post("/evaluate", async (req, res) => {
         console.warn(`⚠️ No chat ID found for mentor ${mentorId} and SE ${singleSeId}`);
         continue;
       }
-      
-      const mentor = await getMentorById(mentorId);
-      const socialEnterprise = await getSocialEnterpriseByID(singleSeId);
-      
+
+      // ✅ Step 5: Retrieve mentor and SE details
+      const mentorQuery = `SELECT mentor_firstname, mentor_lastname FROM mentors WHERE mentor_id = $1;`;
+      const mentorResult = await pgDatabase.query(mentorQuery, [mentorId]);
+      const mentor = mentorResult.rows[0];
+
+      const seQuery = `SELECT team_name FROM socialenterprises WHERE se_id = $1;`;
+      const seResult = await pgDatabase.query(seQuery, [singleSeId]);
+      const socialEnterprise = seResult.rows[0];
+
       for (const row of chatIdResult.rows) {
         const chatId = row.chatid;
         console.log(`📩 Sending evaluation message to chat ID: ${chatId}`);
-      
+
         let message = `📢 *New Evaluation Received*\n\n`;
         message += `👤 *Mentor:* ${mentor.mentor_firstname} ${mentor.mentor_lastname}\n`;
         message += `🏢 *Social Enterprise:* ${socialEnterprise.team_name}\n\n`;
-      
-        categories.forEach((category) => {
-          const evalData = evaluations[category] || defaultEvaluation;
-        
-          // Adds spaces before capital letters and capitalizes the first letter of each word
+
+        for (const [category, evalData] of Object.entries(evaluations)) {
           const formattedCategory = category.replace(/([A-Z])/g, " $1").replace(/\b\w/g, char => char.toUpperCase());
-        
+          
           message += `📝 *${formattedCategory}:* ${"⭐".repeat(evalData.rating)} (${evalData.rating}/5)\n`;
           message += `📌 *Key Points:*\n${evalData.selectedCriteria.map(c => `- ${c}`).join("\n")}\n`;
           
-          if (evalData.comments) {
-            message += `💬 *Comments:* ${evalData.comments}\n`;
-          } else {
-            message += `💬 *Comments:* No comments provided.\n`;
-          }
-          message += `\n`;
-        });
-        
-        
-      
+          message += evalData.comments
+            ? `💬 *Comments:* ${evalData.comments}\n\n`
+            : `💬 *Comments:* No comments provided.\n\n`;
+        }
+
         await sendMessage(chatId, message);
       }
     }
@@ -300,6 +289,7 @@ app.post("/evaluate", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 });
+
 
 // Example of a protected route
 app.get("/protected", requireAuth, (req, res) => {
