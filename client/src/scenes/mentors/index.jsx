@@ -24,6 +24,7 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import TrafficIcon from "@mui/icons-material/Traffic";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Snackbar, Alert } from "@mui/material";
 
 const Mentors = () => {
   const theme = useTheme();
@@ -36,6 +37,7 @@ const Mentors = () => {
   });
   const [mentors, setMentors] = useState([]);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
+  const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
   // Fetch mentors from the database
   useEffect(() => {
     const fetchMentors = async () => {
@@ -63,19 +65,14 @@ const Mentors = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch mentors
-        const mentorsResponse = await fetch("/api/mentors");
+        // Fetch active mentors
+        const mentorsResponse = await fetch("/api/active-mentors");
         const mentorsData = await mentorsResponse.json();
-        setMentors(
-          mentorsData.map((mentor) => ({
-            id: mentor.mentor_id,
-            name: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
-          }))
-        );
+        setMentors(mentorsData);
 
-        // Fetch social enterprises
+        // Fetch social enterprises without mentors
         const seResponse = await fetch(
-          "/getAllSocialEnterprisesWithMentorship"
+          "/api/social-enterprises-without-mentor"
         );
         const seData = await seResponse.json();
         setSocialEnterprises(
@@ -135,8 +132,15 @@ const Mentors = () => {
 
       if (response.ok) {
         console.log("Mentorship added successfully");
-        handleDialogClose(); // Close the dialog
-        setMentorshipData({ selectedMentor: "", selectedSocialEnterprise: "" }); // Reset form
+
+        // Close the dialog box
+        setOpenDialog(false);
+
+        // Reset the form data
+        setMentorshipData({ selectedMentor: "", selectedSocialEnterprise: "" });
+
+        // Show success popup
+        setIsSuccessPopupOpen(true);
       } else {
         console.error("Error adding mentorship");
       }
@@ -260,7 +264,6 @@ const Mentors = () => {
     <Box m="20px">
       {/* HEADER */}
       <Header title="MENTORS" subtitle="Manage Mentors" />
-
       {/* ROW 1: STAT BOXES */}
       {/* ROW 1: STAT BOXES */}
       <Box
@@ -346,7 +349,6 @@ const Mentors = () => {
           />
         </Box>
       </Box>
-
       {/* ADD MENTOR BUTTON AND EDIT TOGGLE */}
       <Box display="flex" gap="10px" mt="20px">
         <Button
@@ -376,7 +378,6 @@ const Mentors = () => {
           {isEditing ? "Disable Editing" : "Enable Editing"}
         </Button>
       </Box>
-
       {/* DIALOG BOX */}
       <Dialog
         open={openDialog}
@@ -447,7 +448,12 @@ const Mentors = () => {
                 labelId="mentor-label"
                 name="selectedMentor"
                 value={mentorshipData.selectedMentor}
-                onChange={handleInputChange}
+                onChange={(e) =>
+                  setMentorshipData({
+                    ...mentorshipData,
+                    selectedMentor: e.target.value,
+                  })
+                }
                 label="Select Mentor"
                 sx={{
                   "& .MuiOutlinedInput-notchedOutline": {
@@ -458,6 +464,9 @@ const Mentors = () => {
                   },
                   "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
                     borderColor: "#000", // Consistent border color when focused
+                  },
+                  "& .MuiSelect-select": {
+                    color: "#000", // Ensure the selected text is black
                   },
                 }}
               >
@@ -489,13 +498,18 @@ const Mentors = () => {
                   },
                 }}
               >
-                Select Mentor
+                Select Social Enterprise
               </InputLabel>
               <Select
                 labelId="se-label"
                 name="selectedSocialEnterprise"
                 value={mentorshipData.selectedSocialEnterprise}
-                onChange={handleInputChange}
+                onChange={(e) =>
+                  setMentorshipData({
+                    ...mentorshipData,
+                    selectedSocialEnterprise: e.target.value,
+                  })
+                }
                 label="Select Social Enterprise"
                 sx={{
                   "& .MuiOutlinedInput-notchedOutline": {
@@ -506,6 +520,9 @@ const Mentors = () => {
                   },
                   "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
                     borderColor: "#000", // Consistent border color when focused
+                  },
+                  "& .MuiSelect-select": {
+                    color: "#000", // Ensure the selected text is black
                   },
                 }}
               >
@@ -539,7 +556,7 @@ const Mentors = () => {
             Cancel
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={handleSubmit} // Calls the updated handleSubmit function
             variant="contained"
             sx={{
               backgroundColor: "#1E4D2B", // DLSU Green button
@@ -554,6 +571,20 @@ const Mentors = () => {
         </DialogActions>
       </Dialog>
 
+      <Snackbar
+        open={isSuccessPopupOpen} // Controlled by state
+        autoHideDuration={3000} // Automatically close after 3 seconds
+        onClose={() => setIsSuccessPopupOpen(false)} // Close on click or timeout
+        anchorOrigin={{ vertical: "top", horizontal: "center" }} // Position of the popup
+      >
+        <Alert
+          onClose={() => setIsSuccessPopupOpen(false)}
+          severity="success"
+          sx={{ width: "100%" }}
+        >
+          Mentorship added successfully!
+        </Alert>
+      </Snackbar>
       {/* ROW 2: DATA GRID */}
       <Box
         height="75vh"

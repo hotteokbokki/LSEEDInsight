@@ -49,3 +49,27 @@ exports.getMentorById = async (mentor_id) => {
     return null;
   }
 };
+
+exports.getActiveMentors = async () => {
+  try {
+    console.log("Fetching active mentors...");
+    const query = `
+      SELECT "mentor_id", "mentor_firstname", "mentor_lastname"
+      FROM "mentors"
+      WHERE "isactive" = true
+    `;
+    const result = await pgDatabase.query(query);
+    if (!result.rows.length) {
+      console.log("⚠️ No active mentors found");
+      return [];
+    }
+    // Map results to a format suitable for the frontend
+    return result.rows.map(mentor => ({
+      id: mentor.mentor_id,
+      name: `${mentor.mentor_firstname} ${mentor.mentor_lastname}`,
+    }));
+  } catch (error) {
+    console.error("❌ Error fetching active mentors:", error);
+    return [];
+  }
+};

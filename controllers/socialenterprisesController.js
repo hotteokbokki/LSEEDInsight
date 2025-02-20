@@ -99,3 +99,36 @@ exports.getAllSocialEnterprisesWithMentorship = async () => {
   }
 };
 
+exports.getSocialEnterprisesWithoutMentor = async () => {
+  try {
+    const query = `
+      SELECT 
+          se.se_id, 
+          se.team_name
+      FROM socialenterprises AS se
+      LEFT JOIN mentorships AS ms ON se.se_id = ms.se_id
+      WHERE ms.se_id IS NULL
+    `;
+    const result = await pgDatabase.query(query);
+    return result.rows.length ? result.rows : [];
+  } catch (error) {
+    console.error("❌ Error fetching social enterprises without mentors:", error);
+    return [];
+  }
+};
+
+exports.updateSocialEnterpriseStatus = async (se_id, isActive) => {
+  try {
+    const query = `
+      UPDATE socialenterprises
+      SET isactive = $1
+      WHERE se_id = $2
+      RETURNING *;
+    `;
+    const result = await pgDatabase.query(query, [isActive, se_id]);
+    return result.rows[0];
+  } catch (error) {
+    console.error("❌ Error updating social enterprise status:", error);
+    throw error;
+  }
+};

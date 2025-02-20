@@ -17,7 +17,9 @@ const { getAllSDG } = require("./controllers/sdgController.js");
 const { getMentorshipsByMentorId, getMentorBySEID } = require("./controllers/mentorshipsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
 const { getEvaluationsByMentorID } = require("./controllers/evaluationsController.js");
-
+const { getActiveMentors } = require("./controllers/mentorsController");
+const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
+const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
 const app = express();
 
 
@@ -391,6 +393,27 @@ app.get("/getPreDefinedComments", async (req, res) => {
   }
 });
 
+// Fetch active mentors
+app.get("/api/active-mentors", async (req, res) => {
+  try {
+    const activeMentors = await getActiveMentors();
+    res.json(activeMentors);
+  } catch (error) {
+    console.error("Error fetching active mentors:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+// Fetch social enterprises without mentors
+app.get("/api/social-enterprises-without-mentor", async (req, res) => {
+  try {
+    const socialEnterprises = await getSocialEnterprisesWithoutMentor();
+    res.json(socialEnterprises);
+  } catch (error) {
+    console.error("Error fetching social enterprises without mentors:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 app.get("/getSocialEnterprisesByID", async (req, res) => {
   try {
@@ -847,6 +870,32 @@ app.post("/send-message", async (req, res) => {
   } catch (error) {
     console.error("❌ Error in /send-feedback route:", error.message);
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/mentorships", async (req, res) => {
+  try {
+    const { mentor_id, se_id } = req.body;
+
+    // Insert the mentorship into the database
+    const mentorshipQuery = `
+      INSERT INTO mentorships (mentor_id, se_id)
+      VALUES ($1, $2)
+      RETURNING *;
+    `;
+    const mentorshipResult = await pgDatabase.query(mentorshipQuery, [mentor_id, se_id]);
+
+    if (!mentorshipResult.rows.length) {
+      return res.status(500).json({ message: "Failed to create mentorship" });
+    }
+
+    // Update the social enterprise's `isactive` status to true
+    await updateSocialEnterpriseStatus(se_id, true);
+
+    res.status(201).json({ message: "Mentorship added successfully" });
+  } catch (error) {
+    console.error("Error adding mentorship:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 

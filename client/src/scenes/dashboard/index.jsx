@@ -16,7 +16,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { mockDataSEDB } from "../../sampledata/mockData";
 
@@ -24,6 +24,8 @@ const Dashboard = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [currentEvents, setCurrentEvents] = useState([]);
+  const [socialEnterprises, setSocialEnterprises] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const columns = [
     {
@@ -38,7 +40,31 @@ const Dashboard = () => {
       flex: 1,
     },
   ];
+  useEffect(() => {
+    const fetchSocialEnterprises = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:4000/getAllSocialEnterprisesWithMentorship"
+        );
+        const data = await response.json();
 
+        // Format the data for the DataGrid
+        const formattedData = data.map((se) => ({
+          id: se.se_id,
+          socialEnterprise: se.team_name || "Unnamed SE",
+          mentor:
+            se.mentors.length > 0 ? se.mentors[0].mentor_name : "No Mentor",
+        }));
+
+        setSocialEnterprises(formattedData);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching social enterprises:", error);
+        setLoading(false);
+      }
+    };
+    fetchSocialEnterprises();
+  }, []);
   const handleDateClick = (selected) => {
     const title = prompt("Please enter a new title for your event");
     const calendarApi = selected.view.calendar;
@@ -229,7 +255,11 @@ const Dashboard = () => {
               },
             }}
           >
-            <DataGrid rows={mockDataSEDB} columns={columns} />
+            {loading ? (
+              <Typography>Loading...</Typography>
+            ) : (
+              <DataGrid rows={socialEnterprises} columns={columns} autoHeight />
+            )}
           </Box>
 
           {/* Right: Calendar */}

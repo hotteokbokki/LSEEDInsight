@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -13,8 +13,7 @@ import LineChart from "../../components/LineChart";
 import PieChart from "../../components/PieChart";
 import LikertChart from "../../components/LikertChart";
 import RadarChart from "../../components/RadarChart";
-import { useParams, useNavigate } from "react-router-dom"; // Import useNavigate
-import { mockDataSE } from "../../sampledata/mockData";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
 
 const SEAnalytics = () => {
@@ -22,70 +21,91 @@ const SEAnalytics = () => {
   const colors = tokens(theme.palette.mode);
   const { id } = useParams(); // Extract the `id` from the URL
   const [selectedSEId, setSelectedSEId] = useState(id); // State to manage selected SE
+  const [socialEnterprises, setSocialEnterprises] = useState([]); // List of all social enterprises
+  const [selectedSE, setSelectedSE] = useState(null); // Selected social enterprise
+  const [lineData, setLineData] = useState([]); // Real performance trend data
+  const [pieData, setPieData] = useState([]); // Real common challenges data
+  const [likertData, setLikertData] = useState([]); // Real Likert scale data
+  const [radarData, setRadarData] = useState([]); // Real radar chart data
   const navigate = useNavigate(); // Initialize useNavigate
 
-  // Find the selected SE based on the ID
-  const selectedSE = mockDataSE.find((se) => se.id === parseInt(selectedSEId));
+  // Fetch all social enterprises from the backend
+  useEffect(() => {
+    const fetchSocialEnterprises = async () => {
+      try {
+        const response = await fetch("/getAllSocialEnterprises");
+        const data = await response.json();
+
+        // Format the data for the dropdown
+        const formattedData = data.map((se) => ({
+          id: se.se_id,
+          name: se.team_name,
+        }));
+
+        setSocialEnterprises(formattedData);
+
+        // Set the initial selected SE if `id` is provided
+        if (id) {
+          const initialSE = formattedData.find((se) => se.id === parseInt(id));
+          setSelectedSE(initialSE);
+          setSelectedSEId(id);
+        }
+      } catch (error) {
+        console.error("Error fetching social enterprises:", error);
+      }
+    };
+
+    fetchSocialEnterprises();
+  }, [id]);
+
+  // Fetch analytics data for the selected social enterprise
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      if (!selectedSEId) return;
+
+      try {
+        // Fetch performance trend data
+        const lineResponse = await fetch(
+          `/api/performance-trend/${selectedSEId}`
+        );
+        const lineData = await lineResponse.json();
+        setLineData(lineData);
+
+        // Fetch common challenges data
+        const pieResponse = await fetch(
+          `/api/common-challenges/${selectedSEId}`
+        );
+        const pieData = await pieResponse.json();
+        setPieData(pieData);
+
+        // Fetch Likert scale data
+        const likertResponse = await fetch(`/api/likert-data/${selectedSEId}`);
+        const likertData = await likertResponse.json();
+        setLikertData(likertData);
+
+        // Fetch radar chart data
+        const radarResponse = await fetch(`/api/radar-data/${selectedSEId}`);
+        const radarData = await radarResponse.json();
+        setRadarData(radarData);
+      } catch (error) {
+        console.error("Error fetching analytics data:", error);
+      }
+    };
+
+    fetchAnalyticsData();
+  }, [selectedSEId]);
 
   // Handle SE change in the dropdown
   const handleChangeSE = (event) => {
-    setSelectedSEId(event.target.value);
+    const newSEId = event.target.value;
+    setSelectedSEId(newSEId);
+
+    // Update the selected SE
+    const newSE = socialEnterprises.find((se) => se.id === parseInt(newSEId));
+    setSelectedSE(newSE);
   };
 
-  // Mock data for charts (replace with real data as needed)
-  const mockLineData = [
-    {
-      id: "performance",
-      color: tokens("dark").greenAccent[500],
-      data: [
-        { x: "Jan", y: 80 },
-        { x: "Feb", y: 90 },
-        { x: "Mar", y: 70 },
-        { x: "Apr", y: 85 },
-        { x: "May", y: 95 },
-      ],
-    },
-  ];
-
-  const mockPieData = [
-    { id: "Challenge A", label: "Challenge A", value: 40 },
-    { id: "Challenge B", label: "Challenge B", value: 30 },
-    { id: "Challenge C", label: "Challenge C", value: 20 },
-    { id: "Challenge D", label: "Challenge D", value: 10 },
-  ];
-
-  const mockLikertData = [
-    {
-      question: "Q1: How satisfied are you?",
-      "Strongly Disagree": 10,
-      Disagree: 20,
-      Neutral: 30,
-      Agree: 25,
-      "Strongly Agree": 15,
-    },
-  ];
-
-  const mockRadarData = [
-    {
-      category: "Challenge A",
-      "Social Enterprise A": 80,
-      "Social Enterprise B": 60,
-      "Social Enterprise C": 70,
-    },
-    {
-      category: "Challenge B",
-      "Social Enterprise A": 40,
-      "Social Enterprise B": 90,
-      "Social Enterprise C": 50,
-    },
-    {
-      category: "Performance A",
-      "Social Enterprise A": 90,
-      "Social Enterprise B": 80,
-      "Social Enterprise C": 85,
-    },
-  ];
-
+  // If no social enterprise is found, show an error message
   if (!selectedSE) {
     return <Box>No Social Enterprise found</Box>;
   }
@@ -104,7 +124,7 @@ const SEAnalytics = () => {
               onChange={handleChangeSE}
               label="Select SE"
             >
-              {mockDataSE.map((se) => (
+              {socialEnterprises.map((se) => (
                 <MenuItem key={se.id} value={se.id}>
                   {se.name}
                 </MenuItem>
@@ -112,7 +132,6 @@ const SEAnalytics = () => {
             </Select>
           </FormControl>
         </Box>
-
         {/* Page Title */}
         <Typography variant="h4" fontWeight="bold" color={colors.grey[100]}>
           {selectedSE.name} Analytics
@@ -123,16 +142,16 @@ const SEAnalytics = () => {
       <Box
         mt="20px"
         sx={{
-          backgroundColor: colors.primary[400], // Gray background
-          padding: "20px", // Padding inside the box
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)", // Optional: Add shadow for better UI
+          backgroundColor: colors.primary[400],
+          padding: "20px",
+          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
         }}
       >
         <Typography variant="h5" fontWeight="bold" color={colors.grey[100]}>
           Performance Trend
         </Typography>
         <Box height="250px">
-          <LineChart data={mockLineData} />
+          <LineChart data={lineData} />
         </Box>
       </Box>
 
@@ -155,7 +174,7 @@ const SEAnalytics = () => {
             Common Challenges
           </Typography>
           <Box height="250px">
-            <PieChart data={mockPieData} />
+            <PieChart data={pieData} />
           </Box>
         </Box>
 
@@ -171,7 +190,7 @@ const SEAnalytics = () => {
             Performance Score
           </Typography>
           <Box height="250px">
-            <LikertChart data={mockLikertData} />
+            <LikertChart data={likertData} />
           </Box>
         </Box>
       </Box>
@@ -189,9 +208,10 @@ const SEAnalytics = () => {
           Performance Overview
         </Typography>
         <Box height="300px">
-          <RadarChart data={mockRadarData} />
+          <RadarChart data={radarData} />
         </Box>
       </Box>
+
       {/* Back Button with Spacing */}
       <Box mt="20px" display="flex" justifyContent="start">
         <Button
@@ -202,10 +222,10 @@ const SEAnalytics = () => {
             "&:hover": {
               backgroundColor: colors.blueAccent[800],
             },
-            width: "2/12", // Take up 2/12 of the space
-            maxWidth: "150px", // Optional: Add a max-width for better control
+            width: "2/12",
+            maxWidth: "150px",
           }}
-          onClick={() => navigate("/mentors")} // Navigate back to the Mentors page
+          onClick={() => navigate("/mentors")}
         >
           Back
         </Button>
