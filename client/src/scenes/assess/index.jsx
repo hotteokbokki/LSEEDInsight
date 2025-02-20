@@ -29,6 +29,9 @@ const AssessSEPage = () => {
   const [currentSEIndex, setCurrentSEIndex] = useState(0); // Index of the current SE being evaluated
   const [evaluations, setEvaluations] = useState({}); // Store evaluations for all SEs
   const [error, setError] = useState("");
+  const [isLoadingSocialEnterprises, setIsLoadingSocialEnterprises] = useState(false);
+  const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
+  const [evaluationsData, setEvaluationsData] = useState([]);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [evaluationCriteria, setEvaluationCriteria] = useState({});
   const [columns, setColumns] = useState([]);
@@ -47,6 +50,38 @@ const AssessSEPage = () => {
   
     fetchPredefinedComments();
   }, []);
+
+  useEffect(() => {
+    const fetchEvaluations = async () => {
+      try {
+        setIsLoadingEvaluations(true); // Start loading
+  
+        const response = await axios.get("http://localhost:4000/getMentorEvaluations", {
+          params: { mentor_id: userSession.id },
+        });
+        console.log("📥 Evaluations Response:", response.data);
+  
+        const formattedData = response.data.map((evaluation) => ({
+          id: evaluation.evaluation_id,
+          se_id: evaluation.se_id,
+          mentor_id: evaluation.mentor_id,
+          evaluation_date: evaluation.evaluation_date,
+          category_name: evaluation.category_name,
+          star_rating: evaluation.star_rating,
+          selected_comments: evaluation.selected_comments.join(", "),
+          additional_comment: evaluation.additional_comment,
+        }));
+  
+        setEvaluationsData(formattedData);
+      } catch (error) {
+        console.error("❌ Error fetching evaluations:", error);
+      } finally {
+        setIsLoadingEvaluations(false); // Stop loading
+      }
+    };
+  
+    fetchEvaluations();
+  }, [userSession.id]);
 
   const handleSESelectionChange = (seId) => {
     setSelectedSEs((prev) =>
@@ -134,13 +169,13 @@ const AssessSEPage = () => {
   useEffect(() => {
     const fetchSocialEnterprises = async () => {
       try {
-        // Step 1: Fetch mentorships for the current mentor
+        setIsLoadingSocialEnterprises(true); // Start loading
+  
         const mentorshipsResponse = await axios.get("http://localhost:4000/getMentorshipsbyID", {
           params: { mentor_id: userSession.id },
         });
         console.log("📥 Mentorship Response:", mentorshipsResponse.data);
   
-        // Step 2: Map data directly from mentorshipsResponse to updatedSocialEnterprises
         const updatedSocialEnterprises = mentorshipsResponse.data.map((se) => ({
           id: se.id,
           mentor_id: se.mentor_id,
@@ -148,22 +183,14 @@ const AssessSEPage = () => {
           team_name: se.se || "Unknown Team",
           mentor_name: se.mentor || "No Mentor Assigned",
           program_name: se.program || "Unknown Program",
-          sdg_name: se.sdgs || "No SDG Name",  // Use the aggregated SDGs column
+          sdg_name: se.sdgs || "No SDG Name",
         }));
   
-        // Step 3: Define dynamic columns
-        const dynamicColumns = [
-          { field: "team_name", headerName: "Social Enterprise", flex: 1 },
-          { field: "mentor_name", headerName: "Assigned Mentor", flex: 1 },
-          { field: "program_name", headerName: "Program Name", flex: 1 },
-          { field: "sdg_name", headerName: "SDG(s)", flex: 1 },
-        ];
-  
-        // Step 4: Update state
-        setColumns(dynamicColumns);
         setSocialEnterprises(updatedSocialEnterprises);
       } catch (error) {
         console.error("❌ Error fetching data:", error);
+      } finally {
+        setIsLoadingSocialEnterprises(false); // Stop loading
       }
     };
   
@@ -270,34 +297,37 @@ const AssessSEPage = () => {
     setEvaluations({});
   };
 
-  if (!columns.length) {
-    return (
-      <Box sx={{ padding: "16px" }}>
-        {/* Placeholder for Buttons */}
-        <Box sx={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
-          <Skeleton variant="rectangular" width={120} height={40} />
-          <Skeleton variant="rectangular" width={120} height={40} />
-        </Box>
-  
-        {/* Placeholder for DataGrid Rows */}
-        {[1, 2, 3, 4, 5].map((rowIndex) => (
-          <Box
-            key={rowIndex}
-            sx={{
-              display: "flex",
-              gap: "16px",
-              marginBottom: "8px",
-            }}
-          >
-            <Skeleton variant="rectangular" width={200} height={40} /> {/* Social Enterprise */}
-            <Skeleton variant="rectangular" width={150} height={40} /> {/* Assigned Mentor */}
-            <Skeleton variant="rectangular" width={150} height={40} /> {/* Program Name */}
-            <Skeleton variant="rectangular" width={100} height={40} /> {/* SDG(s) */}
-          </Box>
-        ))}
+  {isLoadingSocialEnterprises ? (
+    <Box sx={{ padding: "16px" }}>
+      {/* Placeholder for Buttons */}
+      <Box sx={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
+        <Skeleton variant="rectangular" width={120} height={40} />
+        <Skeleton variant="rectangular" width={120} height={40} />
       </Box>
-    );
-  }
+  
+      {/* Placeholder for DataGrid Rows */}
+      {[1, 2, 3, 4, 5].map((rowIndex) => (
+        <Box
+          key={rowIndex}
+          sx={{
+            display: "flex",
+            gap: "16px",
+            marginBottom: "8px",
+          }}
+        >
+          <Skeleton variant="rectangular" width={200} height={40} /> {/* Social Enterprise */}
+          <Skeleton variant="rectangular" width={150} height={40} /> {/* Assigned Mentor */}
+          <Skeleton variant="rectangular" width={150} height={40} /> {/* Program Name */}
+          <Skeleton variant="rectangular" width={100} height={40} /> {/* SDG(s) */}
+        </Box>
+      ))}
+    </Box>
+  ) : socialEnterprises.length === 0 ? (
+    <Typography>No social enterprises found.</Typography>
+  ) : (
+    <DataGrid rows={socialEnterprises} columns={columns} autoHeight pageSize={5} />
+  )}
+  
 
   return (
     <Box m="20px">
