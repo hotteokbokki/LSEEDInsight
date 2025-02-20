@@ -4,10 +4,14 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
   DialogTitle,
   TextField,
-  MenuItem,
   useTheme,
+  Typography,
 } from "@mui/material";
 import { tokens } from "../../theme";
 import { DataGrid } from "@mui/x-data-grid";
@@ -26,12 +30,17 @@ const Mentors = () => {
   const colors = tokens(theme.palette.mode);
   const [rows, setRows] = useState(mockDataMentor);
   const navigate = useNavigate();
-
+  const [mentorshipData, setMentorshipData] = useState({
+    selectedMentor: "",
+    selectedSocialEnterprise: "",
+  });
+  const [mentors, setMentors] = useState([]);
+  const [socialEnterprises, setSocialEnterprises] = useState([]);
   // Fetch mentors from the database
   useEffect(() => {
     const fetchMentors = async () => {
       try {
-        const response = await fetch("/api/mentors"); // Adjust based on your API route
+        const response = await fetch("http//localhost:4000/api/mentors"); // Adjust based on your API route
         const data = await response.json();
         const formattedData = data.map((mentor) => ({
           id: mentor.mentor_id, // Use actual UUID
@@ -51,6 +60,36 @@ const Mentors = () => {
     fetchMentors();
   }, []);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch mentors
+        const mentorsResponse = await fetch("/api/mentors");
+        const mentorsData = await mentorsResponse.json();
+        setMentors(
+          mentorsData.map((mentor) => ({
+            id: mentor.mentor_id,
+            name: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
+          }))
+        );
+
+        // Fetch social enterprises
+        const seResponse = await fetch(
+          "/getAllSocialEnterprisesWithMentorship"
+        );
+        const seData = await seResponse.json();
+        setSocialEnterprises(
+          seData.map((se) => ({
+            id: se.se_id,
+            name: se.team_name,
+          }))
+        );
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+    fetchData();
+  }, []);
   // State for dialogs and data
   const [openDialog, setOpenDialog] = useState(false);
   const [mentorData, setMentorData] = useState({
@@ -77,46 +116,32 @@ const Mentors = () => {
 
   // Submit new mentor data
   const handleSubmit = async () => {
-    const newMentor = {
-      mentor_id: crypto.randomUUID(), // Generate a unique UUID
-      mentor_firstName: mentorData.firstName,
-      mentor_lastName: mentorData.lastName,
-      email: mentorData.email,
-      contactNum: mentorData.contactNumber,
-      number_SE_assigned: 0, // Default
-    };
+    const { selectedMentor, selectedSocialEnterprise } = mentorshipData;
+
+    if (!selectedMentor || !selectedSocialEnterprise) {
+      alert("Please select both a mentor and a social enterprise.");
+      return;
+    }
+
     try {
-      const response = await fetch("/api/mentors", {
+      const response = await fetch("/api/mentorships", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newMentor),
+        body: JSON.stringify({
+          mentor_id: selectedMentor,
+          se_id: selectedSocialEnterprise,
+        }),
       });
+
       if (response.ok) {
-        console.log("Mentor added successfully");
-        // Fetch latest data from the backend
-        const updatedResponse = await fetch("/api/mentors");
-        const updatedData = await updatedResponse.json();
-        const formattedData = updatedData.map((mentor) => ({
-          id: mentor.mentor_id,
-          mentorName: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
-          email: mentor.email,
-          number: mentor.contactNum,
-          numberOfSEsAssigned: mentor.number_SE_assigned,
-          status: "Active",
-        }));
-        setRows(formattedData); // Update frontend with new data
-        setOpenDialog(false);
-        setMentorData({
-          firstName: "",
-          lastName: "",
-          email: "",
-          contactNumber: "",
-        });
+        console.log("Mentorship added successfully");
+        handleDialogClose(); // Close the dialog
+        setMentorshipData({ selectedMentor: "", selectedSocialEnterprise: "" }); // Reset form
       } else {
-        console.error("Error adding mentor");
+        console.error("Error adding mentorship");
       }
     } catch (error) {
-      console.error("Failed to add mentor:", error);
+      console.error("Failed to add mentorship:", error);
     }
   };
 
@@ -335,7 +360,7 @@ const Mentors = () => {
           }}
           onClick={handleDialogOpen}
         >
-          Add Mentor
+          Add Mentorship
         </Button>
         <Button
           variant="contained"
@@ -353,45 +378,177 @@ const Mentors = () => {
       </Box>
 
       {/* DIALOG BOX */}
-      <Dialog open={openDialog} onClose={handleDialogClose}>
-        <DialogTitle>Add New Mentor</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="First Name"
-            name="firstName"
-            value={mentorData.firstName}
-            onChange={handleInputChange}
-            fullWidth
-            margin="dense"
-          />
-          <TextField
-            label="Last Name"
-            name="lastName"
-            value={mentorData.lastName}
-            onChange={handleInputChange}
-            fullWidth
-            margin="dense"
-          />
-          <TextField
-            label="Email"
-            name="email"
-            value={mentorData.email}
-            onChange={handleInputChange}
-            fullWidth
-            margin="dense"
-          />
-          <TextField
-            label="Contact Number"
-            name="contactNumber"
-            value={mentorData.contactNumber}
-            onChange={handleInputChange}
-            fullWidth
-            margin="dense"
-          />
+      <Dialog
+        open={openDialog}
+        onClose={handleDialogClose}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          style: {
+            backgroundColor: "#fff", // White background
+            color: "#000", // Black text
+            border: "1px solid #000", // Black border for contrast
+          },
+        }}
+      >
+        {/* Dialog Title */}
+        <DialogTitle
+          sx={{
+            backgroundColor: "#1E4D2B", // DLSU Green header
+            color: "#fff", // White text
+            textAlign: "center",
+            fontSize: "1.5rem",
+            fontWeight: "bold",
+          }}
+        >
+          Add New Mentorship
+        </DialogTitle>
+
+        {/* Dialog Content */}
+        <DialogContent
+          sx={{
+            padding: "24px",
+            maxHeight: "70vh", // Ensure it doesn't overflow the screen
+            overflowY: "auto", // Enable scrolling if content is too long
+          }}
+        >
+          {/* Place Dropdowns Side by Side */}
+          <Box
+            display="flex"
+            gap={2} // Add spacing between dropdowns
+            alignItems="center" // Align dropdowns vertically
+            mb={2} // Add margin at the bottom
+            marginTop="20px"
+          >
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: "bold",
+                marginBottom: "8px", // Space between label and dropdown
+              }}
+            >
+              Mentor
+            </Typography>
+            {/* Mentor Dropdown */}
+            <FormControl fullWidth margin="normal">
+              <InputLabel
+                id="mentor-label"
+                sx={{
+                  backgroundColor: "#fff", // Prevent overlap with the border
+                  padding: "0 4px", // Add padding for readability
+                  "&.Mui-focused": {
+                    backgroundColor: "#fff", // Ensure the background remains white when focused
+                  },
+                }}
+              >
+                Select Mentor
+              </InputLabel>
+              <Select
+                labelId="mentor-label"
+                name="selectedMentor"
+                value={mentorshipData.selectedMentor}
+                onChange={handleInputChange}
+                label="Select Mentor"
+                sx={{
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#000", // Consistent border color
+                  },
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#000", // Darken border on hover
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#000", // Consistent border color when focused
+                  },
+                }}
+              >
+                {mentors.map((mentor) => (
+                  <MenuItem key={mentor.id} value={mentor.id}>
+                    {mentor.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: "bold",
+                marginBottom: "8px", // Space between label and dropdown
+              }}
+            >
+              Social Enterprise
+            </Typography>
+            {/* Social Enterprise Dropdown */}
+            <FormControl fullWidth margin="normal">
+              <InputLabel
+                id="mentor-label"
+                sx={{
+                  backgroundColor: "#fff", // Prevent overlap with the border
+                  padding: "0 4px", // Add padding for readability
+                  "&.Mui-focused": {
+                    backgroundColor: "#fff", // Ensure the background remains white when focused
+                  },
+                }}
+              >
+                Select Mentor
+              </InputLabel>
+              <Select
+                labelId="se-label"
+                name="selectedSocialEnterprise"
+                value={mentorshipData.selectedSocialEnterprise}
+                onChange={handleInputChange}
+                label="Select Social Enterprise"
+                sx={{
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#000", // Consistent border color
+                  },
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#000", // Darken border on hover
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#000", // Consistent border color when focused
+                  },
+                }}
+              >
+                {socialEnterprises.map((se) => (
+                  <MenuItem key={se.id} value={se.id}>
+                    {se.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDialogClose}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" color="primary">
+
+        {/* Dialog Actions */}
+        <DialogActions
+          sx={{
+            padding: "16px",
+            borderTop: "1px solid #000", // Separator line
+          }}
+        >
+          <Button
+            onClick={handleDialogClose}
+            sx={{
+              color: "#000",
+              border: "1px solid #000",
+              "&:hover": {
+                backgroundColor: "#f0f0f0", // Hover effect
+              },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            sx={{
+              backgroundColor: "#1E4D2B", // DLSU Green button
+              color: "#fff",
+              "&:hover": {
+                backgroundColor: "#145A32", // Darker green on hover
+              },
+            }}
+          >
             Submit
           </Button>
         </DialogActions>

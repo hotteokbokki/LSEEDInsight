@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef} from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import {
   Box,
@@ -29,7 +29,8 @@ const AssessSEPage = () => {
   const [currentSEIndex, setCurrentSEIndex] = useState(0); // Index of the current SE being evaluated
   const [evaluations, setEvaluations] = useState({}); // Store evaluations for all SEs
   const [error, setError] = useState("");
-  const [isLoadingSocialEnterprises, setIsLoadingSocialEnterprises] = useState(false);
+  const [isLoadingSocialEnterprises, setIsLoadingSocialEnterprises] =
+    useState(false);
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
   const [evaluationsData, setEvaluationsData] = useState([]);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
@@ -40,14 +41,16 @@ const AssessSEPage = () => {
   useEffect(() => {
     const fetchPredefinedComments = async () => {
       try {
-        const response = await axios.get("http://localhost:4000/getPreDefinedComments");
+        const response = await axios.get(
+          "http://localhost:4000/getPreDefinedComments"
+        );
         setEvaluationCriteria(response.data); // Store fetched data in state
         console.log("📥 Predefined Comments Fetched:", response.data);
       } catch (error) {
         console.error("❌ Error fetching predefined comments:", error);
       }
     };
-  
+
     fetchPredefinedComments();
   }, []);
 
@@ -55,12 +58,15 @@ const AssessSEPage = () => {
     const fetchEvaluations = async () => {
       try {
         setIsLoadingEvaluations(true); // Start loading
-  
-        const response = await axios.get("http://localhost:4000/getMentorEvaluations", {
-          params: { mentor_id: userSession.id },
-        });
+
+        const response = await axios.get(
+          "http://localhost:4000/getMentorEvaluations",
+          {
+            params: { mentor_id: userSession.id },
+          }
+        );
         console.log("📥 Evaluations Response:", response.data);
-  
+
         const formattedData = response.data.map((evaluation) => ({
           id: evaluation.evaluation_id,
           se_id: evaluation.se_id,
@@ -71,7 +77,7 @@ const AssessSEPage = () => {
           selected_comments: evaluation.selected_comments.join(", "),
           additional_comment: evaluation.additional_comment,
         }));
-  
+
         setEvaluationsData(formattedData);
       } catch (error) {
         console.error("❌ Error fetching evaluations:", error);
@@ -79,7 +85,7 @@ const AssessSEPage = () => {
         setIsLoadingEvaluations(false); // Stop loading
       }
     };
-  
+
     fetchEvaluations();
   }, [userSession.id]);
 
@@ -114,7 +120,7 @@ const AssessSEPage = () => {
   // Handle rating change for the current SE
   const handleRatingChange = (category, value) => {
     const currentSEId = selectedSEs[currentSEIndex];
-  
+
     setEvaluations((prev) => ({
       ...prev,
       [currentSEId]: {
@@ -127,7 +133,6 @@ const AssessSEPage = () => {
       },
     }));
   };
-  
 
   // Handle predefined criteria selection for the current SE
   const handleCriteriaChange = (category, criterion) => {
@@ -170,12 +175,15 @@ const AssessSEPage = () => {
     const fetchSocialEnterprises = async () => {
       try {
         setIsLoadingSocialEnterprises(true); // Start loading
-  
-        const mentorshipsResponse = await axios.get("http://localhost:4000/getMentorshipsbyID", {
-          params: { mentor_id: userSession.id },
-        });
+
+        const mentorshipsResponse = await axios.get(
+          "http://localhost:4000/getMentorshipsbyID",
+          {
+            params: { mentor_id: userSession.id },
+          }
+        );
         console.log("📥 Mentorship Response:", mentorshipsResponse.data);
-  
+
         const updatedSocialEnterprises = mentorshipsResponse.data.map((se) => ({
           id: se.id,
           mentor_id: se.mentor_id,
@@ -185,7 +193,7 @@ const AssessSEPage = () => {
           program_name: se.program || "Unknown Program",
           sdg_name: se.sdgs || "No SDG Name",
         }));
-  
+
         setSocialEnterprises(updatedSocialEnterprises);
       } catch (error) {
         console.error("❌ Error fetching data:", error);
@@ -193,7 +201,7 @@ const AssessSEPage = () => {
         setIsLoadingSocialEnterprises(false); // Stop loading
       }
     };
-  
+
     fetchSocialEnterprises();
   }, [userSession.id]);
 
@@ -203,45 +211,51 @@ const AssessSEPage = () => {
       dialogContentRef.current.scrollTop = 0; // Scroll to the top
     }
   }, [openEvaluateDialog]);
-  
+
   const handleSubmit = async () => {
     const currentSEId = selectedSEs[currentSEIndex];
     const currentEvaluations = evaluations[currentSEId];
-    const getValidRating = (rating) => (rating && rating >= 1 && rating <= 5 ? rating : 1);
-  
+    const getValidRating = (rating) =>
+      rating && rating >= 1 && rating <= 5 ? rating : 1;
+
     if (!userSession || !userSession.id) {
       console.error("❌ User session not found.");
       alert("Error: User session not found.");
       return;
     }
-  
+
     const selectedSE = socialEnterprises.find((se) => se.se_id === currentSEId);
     if (!selectedSE) {
       console.error("❌ Selected SE not found.");
       alert("Error: Selected Social Enterprise not found.");
       return;
     }
-  
+
     const mentorId = selectedSE.mentor_id;
     if (!mentorId) {
       console.error("❌ ERROR: mentorId is missing!");
       return;
     }
-  
-    const sdgIds = Array.isArray(selectedSE.sdg_id) ? selectedSE.sdg_id : [selectedSE.sdg_id];
-  
+
+    const sdgIds = Array.isArray(selectedSE.sdg_id)
+      ? selectedSE.sdg_id
+      : [selectedSE.sdg_id];
+
     // Validation: Ensure every category has a rating and at least one predefined comment
     const isValid = Object.values(currentEvaluations || {}).every(
-      (categoryEval) => categoryEval.rating > 0 && categoryEval.selectedCriteria?.length > 0
+      (categoryEval) =>
+        categoryEval.rating > 0 && categoryEval.selectedCriteria?.length > 0
     );
-  
+
     if (!isValid) {
-      setError("Please provide a rating and select at least one predefined comment for each category.");
+      setError(
+        "Please provide a rating and select at least one predefined comment for each category."
+      );
       return;
     }
-  
+
     console.log("This is the se_id: ", currentSEId);
-  
+
     const formData = {
       evaluatorId: userSession.id,
       se_id: [currentSEId],
@@ -249,18 +263,22 @@ const AssessSEPage = () => {
       evaluations: currentEvaluations,
       sdg_id: sdgIds,
     };
-  
+
     Object.keys(currentEvaluations).forEach((category) => {
-      formData[`${category}_rating`] = getValidRating(currentEvaluations[category]?.rating);
-      formData[`${category}_selectedcriteria`] = currentEvaluations[category]?.selectedCriteria || [];
-      formData[`${category}_addtlcmt`] = currentEvaluations[category]?.comments || "";
+      formData[`${category}_rating`] = getValidRating(
+        currentEvaluations[category]?.rating
+      );
+      formData[`${category}_selectedcriteria`] =
+        currentEvaluations[category]?.selectedCriteria || [];
+      formData[`${category}_addtlcmt`] =
+        currentEvaluations[category]?.comments || "";
     });
-  
+
     console.log("📤 Sending Evaluation to Backend:", formData);
-  
+
     try {
       await axios.post("http://localhost:4000/evaluate", formData);
-  
+
       if (currentSEIndex < selectedSEs.length - 1) {
         setCurrentSEIndex((prevIndex) => prevIndex + 1); // Move to the next SE
         setTimeout(() => {
@@ -272,7 +290,7 @@ const AssessSEPage = () => {
         console.log("✅ All SEs have been evaluated.");
         handleCloseEvaluateDialog();
         setTimeout(() => {
-          window.scrollTo({ top: 0, behavior: 'smooth' }); // Ensure full reset to the top
+          window.scrollTo({ top: 0, behavior: "smooth" }); // Ensure full reset to the top
         }, 200);
       }
     } catch (error) {
@@ -285,10 +303,11 @@ const AssessSEPage = () => {
     const currentSEId = selectedSEs[currentSEIndex];
     const currentEvaluations = evaluations[currentSEId] || {};
     return !Object.values(currentEvaluations).every(
-      (categoryEval) => categoryEval.rating > 0 && categoryEval.selectedCriteria?.length > 0
+      (categoryEval) =>
+        categoryEval.rating > 0 && categoryEval.selectedCriteria?.length > 0
     );
   };
-  
+
   // Close the evaluation dialog
   const handleCloseEvaluateDialog = () => {
     setOpenEvaluateDialog(false);
@@ -297,37 +316,46 @@ const AssessSEPage = () => {
     setEvaluations({});
   };
 
-  {isLoadingSocialEnterprises ? (
-    <Box sx={{ padding: "16px" }}>
-      {/* Placeholder for Buttons */}
-      <Box sx={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
-        <Skeleton variant="rectangular" width={120} height={40} />
-        <Skeleton variant="rectangular" width={120} height={40} />
-      </Box>
-  
-      {/* Placeholder for DataGrid Rows */}
-      {[1, 2, 3, 4, 5].map((rowIndex) => (
-        <Box
-          key={rowIndex}
-          sx={{
-            display: "flex",
-            gap: "16px",
-            marginBottom: "8px",
-          }}
-        >
-          <Skeleton variant="rectangular" width={200} height={40} /> {/* Social Enterprise */}
-          <Skeleton variant="rectangular" width={150} height={40} /> {/* Assigned Mentor */}
-          <Skeleton variant="rectangular" width={150} height={40} /> {/* Program Name */}
-          <Skeleton variant="rectangular" width={100} height={40} /> {/* SDG(s) */}
+  {
+    isLoadingSocialEnterprises ? (
+      <Box sx={{ padding: "16px" }}>
+        {/* Placeholder for Buttons */}
+        <Box sx={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
+          <Skeleton variant="rectangular" width={120} height={40} />
+          <Skeleton variant="rectangular" width={120} height={40} />
         </Box>
-      ))}
-    </Box>
-  ) : socialEnterprises.length === 0 ? (
-    <Typography>No social enterprises found.</Typography>
-  ) : (
-    <DataGrid rows={socialEnterprises} columns={columns} autoHeight pageSize={5} />
-  )}
-  
+
+        {/* Placeholder for DataGrid Rows */}
+        {[1, 2, 3, 4, 5].map((rowIndex) => (
+          <Box
+            key={rowIndex}
+            sx={{
+              display: "flex",
+              gap: "16px",
+              marginBottom: "8px",
+            }}
+          >
+            <Skeleton variant="rectangular" width={200} height={40} />{" "}
+            {/* Social Enterprise */}
+            <Skeleton variant="rectangular" width={150} height={40} />{" "}
+            {/* Assigned Mentor */}
+            <Skeleton variant="rectangular" width={150} height={40} />{" "}
+            {/* Program Name */}
+            <Skeleton variant="rectangular" width={100} height={40} />{" "}
+            {/* SDG(s) */}
+          </Box>
+        ))}
+      </Box>
+    ) : socialEnterprises.length === 0 ? (
+      <Box sx={{ padding: "16px", textAlign: "center" }}>
+        <Typography variant="body1" color="white">
+          No records found.
+        </Typography>
+      </Box>
+    ) : (
+      <DataGrid rows={socialEnterprises} columns={columns} autoheight />
+    );
+  }
 
   return (
     <Box m="20px">
@@ -354,7 +382,7 @@ const AssessSEPage = () => {
             color="secondary"
             sx={{ fontSize: "20px", padding: "20px", width: "48%" }}
           >
-            Mentorship Assessment 
+            Mentorship Assessment
           </Button>
         </Box>
 
@@ -379,11 +407,11 @@ const AssessSEPage = () => {
             },
           }}
         >
-        <DataGrid
-          rows={socialEnterprises} // Ensure this array contains the result from the query
-          columns={columns}
-          getRowId={(row) => row.id} // Use the 'id' from the query result
-        />
+          <DataGrid
+            rows={socialEnterprises} // Ensure this array contains the result from the query
+            columns={columns}
+            getRowId={(row) => row.id} // Use the 'id' from the query result
+          />
         </Box>
 
         {/* SE Selection Dialog */}
@@ -412,23 +440,23 @@ const AssessSEPage = () => {
             Select Social Enterprises for Evaluation
           </DialogTitle>
           <DialogContent>
-          {socialEnterprises.map((se) => (
-            <FormControlLabel
-              key={se.se_id}
-              control={
-                <Checkbox
-                  checked={selectedSEs.includes(se.se_id)} // Use se_id here
-                  onChange={() => handleSESelectionChange(se.se_id)} // Pass se_id
-                  sx={{
-                    color: "#000",
-                    "&.Mui-checked": { color: "#000" },
-                  }}
-                />
-              }
-              label={`${se.team_name} [SDG: ${se.sdg_name}]`}
-              sx={{ marginBottom: "8px" }}
-            />
-          ))}
+            {socialEnterprises.map((se) => (
+              <FormControlLabel
+                key={se.se_id}
+                control={
+                  <Checkbox
+                    checked={selectedSEs.includes(se.se_id)} // Use se_id here
+                    onChange={() => handleSESelectionChange(se.se_id)} // Pass se_id
+                    sx={{
+                      color: "#000",
+                      "&.Mui-checked": { color: "#000" },
+                    }}
+                  />
+                }
+                label={`${se.team_name} [SDG: ${se.sdg_name}]`}
+                sx={{ marginBottom: "8px" }}
+              />
+            ))}
             {error && <Alert severity="error">{error}</Alert>}
           </DialogContent>
 
@@ -517,12 +545,13 @@ const AssessSEPage = () => {
                 )?.team_name
               }
             </Typography>
-
-            <Typography variant="h6" sx={{ textAlign: "center", marginBottom: "16px" }}>
+            <Typography
+              variant="h6"
+              sx={{ textAlign: "center", marginBottom: "16px" }}
+            >
               Evaluating {currentSEIndex + 1} / {selectedSEs.length}
-            </Typography>;
-
-            {/* Evaluation Categories */}
+            </Typography>
+            ;{/* Evaluation Categories */}
             {Object.keys(evaluationCriteria).map((category) => {
               const currentSEId = selectedSEs[currentSEIndex];
               const categoryEval = evaluations[currentSEId]?.[category] || {
@@ -591,27 +620,33 @@ const AssessSEPage = () => {
                       }}
                     >
                       {categoryEval.predefinedComments.length > 0 ? (
-                        categoryEval.predefinedComments.map((criterion, index) => (
-                          <FormControlLabel
-                            key={index}
-                            control={
-                              <Checkbox
-                                checked={categoryEval.selectedCriteria?.includes(criterion)}
-                                onChange={() => handleCriteriaChange(category, criterion)}
-                                sx={{
-                                  color: "#000",
-                                  "&.Mui-checked": {
+                        categoryEval.predefinedComments.map(
+                          (criterion, index) => (
+                            <FormControlLabel
+                              key={index}
+                              control={
+                                <Checkbox
+                                  checked={categoryEval.selectedCriteria?.includes(
+                                    criterion
+                                  )}
+                                  onChange={() =>
+                                    handleCriteriaChange(category, criterion)
+                                  }
+                                  sx={{
                                     color: "#000",
-                                  },
-                                }}
-                              />
-                            }
-                            label={criterion}
-                            sx={{
-                              marginBottom: "4px",
-                            }}
-                          />
-                        ))
+                                    "&.Mui-checked": {
+                                      color: "#000",
+                                    },
+                                  }}
+                                />
+                              }
+                              label={criterion}
+                              sx={{
+                                marginBottom: "4px",
+                              }}
+                            />
+                          )
+                        )
                       ) : (
                         <Typography variant="body2" color="textSecondary">
                           Loading predefined comments...
@@ -698,13 +733,14 @@ const AssessSEPage = () => {
               sx={{
                 backgroundColor: isSubmitDisabled() ? "#ccc" : "#1E4D2B",
                 color: "#fff",
-                '&:hover': {
+                "&:hover": {
                   backgroundColor: isSubmitDisabled() ? "#ccc" : "#145A32",
                 },
               }}
             >
               Submit
-            </Button>;
+            </Button>
+            ;
           </DialogActions>
         </Dialog>
       </Box>

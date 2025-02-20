@@ -215,19 +215,6 @@ const Sidebar = () => {
               />
             )}
           </Box>
-
-          {/* Logout Button */}
-          <MenuItem
-            icon={<ExitToAppOutlinedIcon />}
-            onClick={handleLogout}
-            style={{
-              color: colors.redAccent[500],
-              fontWeight: "bold",
-              marginTop: "auto",
-            }}
-          >
-            <Typography variant="body1">Logout</Typography>
-          </MenuItem>
         </Menu>
       </ProSidebar>
     </Box>

@@ -75,21 +75,6 @@ const MentorAnalytics = () => {
       <Box display="flex" justifyContent="space-between" alignItems="center">
         {/* Back Button and Dropdown Container */}
         <Box display="flex" alignItems="center" gap="10px">
-          {/* Back Button */}
-          <Button
-            variant="contained"
-            sx={{
-              backgroundColor: colors.blueAccent[500],
-              color: "black",
-              "&:hover": {
-                backgroundColor: colors.blueAccent[800],
-              },
-            }}
-            onClick={() => navigate("/mentors")} // Navigate back to the Mentors page
-          >
-            Back
-          </Button>
-
           {/* Mentor Selection Dropdown */}
           <FormControl variant="outlined" sx={{ minWidth: 120 }}>
             <InputLabel>Select Mentor</InputLabel>
@@ -145,6 +130,24 @@ const MentorAnalytics = () => {
         <Box height="300px">
           <RadarChart data={mockRadarData} />
         </Box>
+      </Box>
+      {/* Back Button with Spacing */}
+      <Box mt="20px" display="flex" justifyContent="start">
+        <Button
+          variant="contained"
+          sx={{
+            backgroundColor: colors.blueAccent[500],
+            color: "black",
+            "&:hover": {
+              backgroundColor: colors.blueAccent[800],
+            },
+            width: "2/12", // Take up 2/12 of the space
+            maxWidth: "150px", // Optional: Add a max-width for better control
+          }}
+          onClick={() => navigate("/mentors")} // Navigate back to the Mentors page
+        >
+          Back
+        </Button>
       </Box>
     </Box>
   );

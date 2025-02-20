@@ -65,7 +65,7 @@ const MainContent = () => {
 
       const sessionId = Cookies.get('sessionId');  // js-cookie automatically decodes the cookie value
       console.log("[App.js] User session:",sessionId);
-      console.log("[App.js] User ID:", user.id);
+      //console.log("[App.js] User ID:", user.id);
     }
   }, [user, loading]);
 
