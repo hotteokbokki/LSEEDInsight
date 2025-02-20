@@ -46,74 +46,23 @@ const SocialEnterprise = () => {
   useEffect(() => {
     const fetchSocialEnterprise = async () => {
       try {
-        const seId = 1; // Replace this with the desired social enterprise ID
-        const seResponse = await axios.get(
-          `http://localhost:4000/getSocialEnterpriseByID/${seId}`
-        );
-        const mentorResponse = await axios.get(
-          "http://localhost:4000/api/getMentorsBySocialEnterprises"
-        );
-        const programsResponse = await axios.get(
-          "http://localhost:4000/getPrograms"
-        );
-        const sdgResponse = await axios.get("http://localhost:4000/getAllSDG");
-        console.log("SE Response:", seResponse.data);
-        console.log("Mentor Response:", mentorResponse.data);
-        console.log("Programs Response:", programsResponse.data);
-        console.log("SDG Response:", sdgResponse.data);
-        // Ensure responses are arrays
-        const programsData = Array.isArray(programsResponse.data)
-          ? programsResponse.data
-          : [];
-        const mentorsData = Array.isArray(mentorResponse.data)
-          ? mentorResponse.data
-          : [];
-        const sdgData = Array.isArray(sdgResponse.data) ? sdgResponse.data : [];
-
-        // Create mappings for easier access
-        const programsMap = {};
-        programsData.forEach((program) => {
-          programsMap[program.program_id] = program.name;
-        });
-
-        const mentorMap = {};
-        mentorsData.forEach((mentor) => {
-          mentorMap[
-            mentor.mentor_id
-          ] = `${mentor.mentor_firstname} ${mentor.mentor_lastname}`;
-        });
-
-        const sdgMap = {};
-        sdgData.forEach((sdg) => {
-          sdgMap[sdg.sdg_id] = sdg.name;
-        });
-
-        // Map the single social enterprise response to the expected format
-        const se = seResponse.data;
-
-        const updatedSocialEnterprises = [
-          {
-            id: se.se_id || se.id, // Fallback to another unique field if `se_id` is missing
-            name: se.team_name || se.name || "Unnamed Team", // Handle alternative field names
-            mentor: mentorMap[se.mentor_id] || "No Mentor Assigned",
-            program: programsMap[se.program_id] || "Unknown Program",
-            sdg: Array.isArray(se.sdg_id)
-              ? se.sdg_id.map((id) => sdgMap[id] || "Unknown SDG").join(", ")
-              : sdgMap[se.sdg_id] || "No SDG Name",
-            contact: se.contact || "No Contact Info",
-            numMember: se.numMember || 0,
-            status: se.status || "Inactive",
-          },
-        ];
-
-        setSocialEnterprises(updatedSocialEnterprises);
-        setLoading(false); // Mark loading as complete
+          const response = await axios.get("http://localhost:4000/getAllSocialEnterprisesWithMentorship");
+  
+          const updatedSocialEnterprises = response.data.map(se => ({
+              id: se.se_id,
+              name: se.team_name || "Unnamed SE",
+              program: se.program_name || "No Program", // ✅ Include program name
+              mentorshipStatus: se.mentors.length > 0 ? "Has Mentor" : "No Mentor",
+              mentors: se.mentors.map(m => m.mentor_name).join(", ") || "No mentors",
+          }));
+  
+          setSocialEnterprises(updatedSocialEnterprises);
+          setLoading(false);
       } catch (error) {
-        console.error("Error fetching social enterprise:", error);
-        setLoading(false); // Mark loading as complete even if there's an error
+          console.error("Error fetching social enterprises:", error);
+          setLoading(false);
       }
     };
-
     fetchSocialEnterprise();
   }, []);
 
@@ -135,75 +84,30 @@ const SocialEnterprise = () => {
     setIsEditing((prev) => !prev);
   };
 
-  // Define columns without the `id` column
   const columns = [
+    { field: "name", headerName: "Social Enterprise", flex: 1 },
+    { field: "program", headerName: "Program", flex: 1 }, // ✅ Added Program Name
+    { field: "mentorshipStatus", headerName: "Mentorship Status", flex: 1 },
+    { field: "mentors", headerName: "Mentors", flex: 1 },
     {
-      field: "name",
-      headerName: "Social Enterprise",
-      flex: 1,
-      cellClassName: "name-column--cell",
-      editable: isEditing,
+        field: "actions",
+        headerName: "Actions",
+        width: 150,
+        renderCell: (params) => (
+            <Button
+                onClick={() => navigate(`/se-analytics/${params.row.id}`)}
+                sx={{
+                    color: "#fff",
+                    backgroundColor: colors.primary[700],
+                    "&:hover": { backgroundColor: colors.primary[800] },
+                }}
+            >
+                View SE
+            </Button>
+        ),
     },
-    { field: "mentor", headerName: "Mentor", flex: 1, editable: isEditing },
-    { field: "sdg", headerName: "SDG", flex: 1, editable: isEditing },
-    { field: "contact", headerName: "Contact", flex: 1, editable: isEditing },
-    {
-      field: "numMember",
-      headerName: "No. of Members",
-      type: "number",
-      headerAlign: "left",
-      align: "left",
-      editable: isEditing,
-    },
-    { field: "program", headerName: "Program", flex: 1, editable: isEditing },
-    {
-      field: "status",
-      headerName: "Status",
-      flex: 1,
-      editable: isEditing,
-      renderCell: (params) => <Typography>{params.value}</Typography>,
-      renderEditCell: (params) => (
-        <TextField
-          select
-          fullWidth
-          value={params.value}
-          onChange={(e) =>
-            params.api.setEditCellValue({
-              id: params.id,
-              field: params.field,
-              value: e.target.value,
-            })
-          }
-          full
-          Width
-        >
-          <MenuItem value="Active">Active</MenuItem>
-          <MenuItem value="Inactive">Inactive</MenuItem>
-        </TextField>
-      ),
-    },
-    {
-      field: "actions",
-      headerName: "Actions",
-      width: 150,
-      renderCell: (params) => (
-        <Button
-          onClick={() => navigate(`/se-analytics/${params.row.id}`)}
-          sx={{
-            color: "#fff", // White text color
-            backgroundColor: colors.primary[700],
-            fontWeight: "bold", // Bold font
-            textTransform: "none", // Prevent uppercase transformation
-            "&:hover": {
-              backgroundColor: colors.primary[700], // Darker color on hover
-            },
-          }}
-        >
-          View SE
-        </Button>
-      ),
-    },
-  ];
+];
+
 
   return (
     <Box m="20px">

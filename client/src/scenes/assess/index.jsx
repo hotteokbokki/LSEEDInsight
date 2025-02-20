@@ -142,13 +142,13 @@ const AssessSEPage = () => {
   
         // Step 2: Map data directly from mentorshipsResponse to updatedSocialEnterprises
         const updatedSocialEnterprises = mentorshipsResponse.data.map((se) => ({
-          id: se.id,  // Unique ID for each row
+          id: se.id,
           mentor_id: se.mentor_id,
           se_id: se.se_id,
-          team_name: se.se || "Unknown Team",  // Social enterprise name
-          mentor_name: se.mentor || "No Mentor Assigned",  // Mentor name
-          program_name: se.program || "Unknown Program",  // Program name
-          sdg_name: se.sdg || "No SDG Name",  // SDG name
+          team_name: se.se || "Unknown Team",
+          mentor_name: se.mentor || "No Mentor Assigned",
+          program_name: se.program || "Unknown Program",
+          sdg_name: se.sdgs || "No SDG Name",  // Use the aggregated SDGs column
         }));
   
         // Step 3: Define dynamic columns

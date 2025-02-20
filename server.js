@@ -6,7 +6,7 @@ const axios = require("axios");
 const ngrok = require("ngrok"); // Exposes your local server to the internet
 const { getPrograms, getProgramNameByID } = require("./controllers/programsController");
 const { getTelegramUsers, insertTelegramUser } = require("./controllers/telegrambotController");
-const { getSocialEnterprisesByProgram, getSocialEnterpriseByID, getAllSocialEnterprises } = require("./controllers/socialenterprisesController");
+const { getSocialEnterprisesByProgram, getSocialEnterpriseByID, getAllSocialEnterprises, getAllSocialEnterprisesWithMentorship } = require("./controllers/socialenterprisesController");
 require("dotenv").config();
 const { getUsers, getUserName } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
@@ -303,6 +303,19 @@ app.get("/api/admin/users", async (req, res) => {
       return res.status(404).json({ message: "No social enterprises found" });
     }
     res.json(users);
+  } catch (error) {
+    console.error("Error fetching social enterprises:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/getAllSocialEnterprisesWithMentorship", async (req, res) => {
+  try {
+    const result = await getAllSocialEnterprisesWithMentorship(); // Fetch SEs from DB
+    if (!result || result.length === 0) {
+      return res.status(404).json({ message: "No social enterprises found" });
+    }
+    res.json(result);
   } catch (error) {
     console.error("Error fetching social enterprises:", error);
     res.status(500).json({ message: "Internal Server Error" });
