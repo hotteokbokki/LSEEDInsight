@@ -1,26 +1,19 @@
 require('dotenv').config();
-const { Client } = require('pg');
+const { Pool } = require('pg');
 
 // Retrieve Database credentials from environment variables
-const databaseURL = process.env.DATABASE_HOSTNAME;
-const databaseUser = process.env.DATABASE_USER;
-const databasePort = process.env.DATABASE_PORT;
-const databasePassword = process.env.DATABASE_KEY;
-const databaseName = process.env.DATABASE_NAME;  // Make sure you have this in your .env file
-
-// Create a new PostgreSQL client instance using the environment variables
-const client = new Client({
-    host: databaseURL,
-    user: databaseUser,
-    port: databasePort,
-    password: databasePassword,
-    database: databaseName
+const pool = new Pool({
+    host: process.env.DATABASE_HOSTNAME,
+    user: process.env.DATABASE_USER,
+    port: process.env.DATABASE_PORT,
+    password: process.env.DATABASE_KEY,
+    database: process.env.DATABASE_NAME,
+    max: 10, // Max connections in pool
+    idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
 });
 
-// Connect to the PostgreSQL database
-client.connect()
+pool.connect()
     .then(() => console.log("🔗 Connected to PostgreSQL"))
-    .catch(err => console.error("Connection error", err.stack));
+    .catch(err => console.error("❌ Connection error", err.stack));
 
-// Export the client so it can be used in other files
-module.exports = client;
+module.exports = pool;

@@ -59,12 +59,13 @@ const MainContent = () => {
 
   useEffect(() => {
     if (!loading) {
-      console.log("Logged in user:", user);
+      console.log("[App.js] Logged in user:", user);
 
-      console.log("All Cookies:", document.cookie);
+      console.log("[App.js] All Cookies:", document.cookie);
 
       const sessionId = Cookies.get('sessionId');  // js-cookie automatically decodes the cookie value
-      console.log("User session:", sessionId);
+      console.log("[App.js] User session:",sessionId);
+      console.log("[App.js] User ID:", user.id);
     }
   }, [user, loading]);
 

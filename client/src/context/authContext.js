@@ -30,8 +30,8 @@ export const AuthContextProvider = ({ children }) => {
   // Login function to set session and update user state
   const login = async (userData) => {
     try{
-      console.log("Logging in user:", userData); // Log user data before storing
-      console.log("Parsed Stored User:", JSON.parse(localStorage.getItem("user")));
+      console.log("[authContext] Logging in user:", userData); // Log user data before storing
+      console.log("[authContext] Parsed Stored User:", JSON.parse(localStorage.getItem("user")));
       if (userData.roles === "Administrator") {
         localStorage.setItem("user", JSON.stringify(userData)); // Store user in localStorage
         setUser(userData); // Update user state
@@ -55,7 +55,7 @@ export const AuthContextProvider = ({ children }) => {
         withCredentials: true, // Ensure cookies are sent along with the request
       })
       .then(response => {
-        console.log("Logout successful", response.data);
+        console.log("[authContext] Logout successful", response.data);
       })
       .catch(error => {
         console.error("Error logging out:", error);

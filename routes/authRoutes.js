@@ -51,7 +51,7 @@ router.post('/login', async (req, res) => {
     // ✅ Generate a unique session ID
     // const sessionId = crypto.randomUUID();
     try {
-      console.log('Inserting session into active_sessions');
+      console.log('[authRoutes] Inserting session into active_sessions');
       // ✅ Insert the session ID into `active_sessions`
       const sessionInsertQuery = `
         INSERT INTO active_sessions (session_id, user_id) VALUES ($1, $2)
@@ -72,6 +72,8 @@ router.post('/login', async (req, res) => {
       lastName: user.last_name,
       sessionId: sessionId,
     };
+
+    console.log("[authRoutes] Session after login:", req.session.user); // Add this log
 
     // ✅ Set session ID in a cookie
     res.cookie("session_id", sessionId, { httpOnly: true, secure: false });
@@ -95,6 +97,15 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Login Error:', error);
     res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.get("/session-check", (req, res) => {
+  console.log("Checking session:", req.session); // Logs full session object
+  if (req.session.user) {
+    return res.json({ sessionUser: req.session.user });
+  } else {
+    return res.status(401).json({ message: "No active session" });
   }
 });
 
@@ -137,10 +148,10 @@ router.post("/signup", async (req, res) => {
 
 // Logout route
 router.post('/logout', async  (req, res) => {
-  console.log("logging out - authRoutes");
+  console.log("[authRoutes] Logging Out");
   try {
     // Retrieve session ID from the cookie
-    console.log('Session ID:', sessionId);
+    console.log('[authRoutes] Session ID:', sessionId);
 
     if (sessionId === undefined) {
         return res.status(400).json({ message: 'No session found' });
@@ -152,7 +163,7 @@ router.post('/logout', async  (req, res) => {
     // Execute the query
     await pgDatabase.query(deleteSessionQuery, [sessionId]);
     
-    console.log("Session ID Deleted");
+    console.log("[authRoutes] Session ID Deleted");
 
     // Clear the session cookie
     res.clearCookie('session_id');
@@ -189,7 +200,7 @@ router.get("/mentors", async (req, res) => {
 router.post("/updateCalendarLink", requireAuth, async (req, res) => {
   const { calendarlink } = req.body;  // We only need calendarlink to update
   const userId = req.session.user.id; // Get the user ID from the session
-  console.log("User id @authroutes: ", userId);
+  console.log("[authRoutes] User ID: ", userId);
   
   try {
     if (userId) {
