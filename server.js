@@ -10,6 +10,7 @@ const { getSocialEnterprisesByProgram, getSocialEnterpriseByID, getAllSocialEnte
 require("dotenv").config();
 const { getUsers, getUserName } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
+const pgSession = require("connect-pg-simple")(session);
 const cookieParser = require("cookie-parser");
 const { getMentorsBySocialEnterprises, getMentorById } = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
@@ -17,6 +18,8 @@ const { getMentorshipsByMentorId, getMentorBySEID } = require("./controllers/men
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
 
 const app = express();
+
+
 
 // Enable CORS with credentials
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
@@ -26,9 +29,12 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 
 // Configure session handling
-app.use(cookieParser());
 app.use(
   session({
+    store: new pgSession({
+      pool: pgDatabase,
+      tableName: "session", // Ensure this matches your actual session store table
+    }),
     secret: process.env.SESSION_SECRET, // Use a secure key
     resave: false,
     saveUninitialized: false,
@@ -40,6 +46,13 @@ app.use(
     },
   })
 );
+app.use(cookieParser());
+
+
+app.use((req, res, next) => {
+  console.log("[DEBUG|server] Current session:", req.session);
+  next();
+});
 
 // Use authentication routes
 app.use("/auth", authRoutes);
