@@ -461,11 +461,18 @@ app.post("/webhook", async (req, res) => {
     const lastName = message.chat.last_name || "No Last Name";
 
     try {
+      
       // Fetch user and programs in parallel
       const [existingUser, options] = await Promise.all([
         getTelegramUsers(chatId),
         getPrograms(),
       ]);
+
+      // If user is already registered, ignore /start and all other messages
+      if (existingUser) {
+          return res.sendStatus(200); // Do nothing at all
+      }
+
 
       // If user already exists, prevent re-registration
       if (existingUser) {
@@ -475,10 +482,8 @@ app.post("/webhook", async (req, res) => {
             "✅ You are already registered! No need to enter the password again."
           );
         } else {
-          await sendMessage(
-            chatId,
-            "⚠️ You are already registered. Please use /start to begin a new interaction."
-          );
+          return res.sendStatus(200);
+          
         }
         return res.sendStatus(200); // No need to proceed further if user is registered
       }
@@ -538,6 +543,8 @@ app.post("/webhook", async (req, res) => {
         );
         return res.sendStatus(200);
       }
+      // Ignore any other messages
+      return res.sendStatus(200);
     } catch (error) {
       console.error("Error handling message:", error);
       return res.sendStatus(500); // Internal server error in case of failure
@@ -599,7 +606,6 @@ app.post("/webhook", async (req, res) => {
           await deleteMessage(chatId, userStates[chatId].programSelectionMessageId);
           delete userStates[chatId].programSelectionMessageId;
         }
-        
 
         if (data === "pick_program_again") {
           // Delete previous confirmation message
