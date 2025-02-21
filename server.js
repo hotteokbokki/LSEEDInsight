@@ -197,30 +197,29 @@ app.post("/evaluate", async (req, res) => {
   try {
     console.log("📥 Received Evaluation Data:", req.body);
 
-    let { mentorId, se_id, sdg_id, evaluations } = req.body;
-
+    let { mentorId, se_id, evaluations } = req.body;
     if (!Array.isArray(se_id)) se_id = [se_id];
-    if (!Array.isArray(sdg_id)) sdg_id = sdg_id ? [sdg_id] : [];
 
     console.log("🔹 Converted se_id:", se_id);
-    console.log("🔹 Converted sdg_id:", sdg_id);
 
     let insertedEvaluations = [];
 
     for (let singleSeId of se_id) {
       console.log(`📤 Processing SE: ${singleSeId}`);
 
-      // ✅ Step 1: Insert into `evaluations`
+      // ✅ Insert into `evaluations`
       const evalQuery = `
-        INSERT INTO evaluations (mentor_id, se_id, created_at)
-        VALUES ($1, $2, NOW())
+        INSERT INTO evaluations (mentor_id, se_id, created_at, "isAcknowledge")
+        VALUES ($1, $2, NOW(), false)
         RETURNING evaluation_id;
       `;
       const evalRes = await pgDatabase.query(evalQuery, [mentorId, singleSeId]);
       const evaluationId = evalRes.rows[0].evaluation_id;
       console.log("✅ Inserted Evaluation ID:", evaluationId);
 
-      // ✅ Step 2: Insert into `evaluation_categories`
+      let evaluationDetails = "";
+
+      // ✅ Insert into `evaluation_categories` and `evaluation_selected_comments`
       for (const [category, details] of Object.entries(evaluations)) {
         const categoryQuery = `
           INSERT INTO evaluation_categories (evaluation_id, category_name, rating, additional_comment)
@@ -234,9 +233,7 @@ app.post("/evaluate", async (req, res) => {
           details.comments || "",
         ]);
         const categoryId = categoryRes.rows[0].evaluation_category_id;
-        console.log(`✅ Inserted Category (${category}): ID ${categoryId}`);
 
-        // ✅ Step 3: Insert into `evaluation_selected_comments`
         if (details.selectedCriteria.length > 0) {
           for (const comment of details.selectedCriteria) {
             const commentQuery = `
@@ -245,16 +242,20 @@ app.post("/evaluate", async (req, res) => {
             `;
             await pgDatabase.query(commentQuery, [categoryId, comment]);
           }
-          console.log(`✅ Inserted ${details.selectedCriteria.length} comments for ${category}`);
         }
+
+        // ✅ Format evaluation details
+        const formattedCategory = category.replace(/([A-Z])/g, " $1").replace(/\b\w/g, char => char.toUpperCase());
+        evaluationDetails += `📝 *${formattedCategory}:* ${"⭐".repeat(details.rating)} (${details.rating}/5)\n`;
+        evaluationDetails += `📌 *Key Points:*\n${details.selectedCriteria.map(c => `- ${c}`).join("\n")}\n`;
+        evaluationDetails += details.comments ? `💬 *Comments:* ${details.comments}\n\n` : `💬 *Comments:* No comments provided.\n\n`;
       }
 
       insertedEvaluations.push(evaluationId);
 
-      // ✅ Step 4: Get mentor's chat ID from Telegram Bot Table
+      // ✅ Get mentor's chat ID from Telegram Bot Table
       const chatIdQuery = `
-        SELECT chatid FROM telegrambot
-        WHERE mentor_id = $1 AND "se_ID" = $2;
+        SELECT chatid FROM telegrambot WHERE mentor_id = $1 AND "se_ID" = $2;
       `;
       const chatIdResult = await pgDatabase.query(chatIdQuery, [mentorId, singleSeId]);
 
@@ -263,7 +264,7 @@ app.post("/evaluate", async (req, res) => {
         continue;
       }
 
-      // ✅ Step 5: Retrieve mentor and SE details
+      // ✅ Get mentor and SE details
       const mentorQuery = `SELECT mentor_firstname, mentor_lastname FROM mentors WHERE mentor_id = $1;`;
       const mentorResult = await pgDatabase.query(mentorQuery, [mentorId]);
       const mentor = mentorResult.rows[0];
@@ -279,33 +280,25 @@ app.post("/evaluate", async (req, res) => {
         let message = `📢 *New Evaluation Received*\n\n`;
         message += `👤 *Mentor:* ${mentor.mentor_firstname} ${mentor.mentor_lastname}\n`;
         message += `🏢 *Social Enterprise:* ${socialEnterprise.team_name}\n\n`;
+        message += evaluationDetails;
 
-        for (const [category, evalData] of Object.entries(evaluations)) {
-          const formattedCategory = category.replace(/([A-Z])/g, " $1").replace(/\b\w/g, char => char.toUpperCase());
-          
-          message += `📝 *${formattedCategory}:* ${"⭐".repeat(evalData.rating)} (${evalData.rating}/5)\n`;
-          message += `📌 *Key Points:*\n${evalData.selectedCriteria.map(c => `- ${c}`).join("\n")}\n`;
-          
-          message += evalData.comments
-            ? `💬 *Comments:* ${evalData.comments}\n\n`
-            : `💬 *Comments:* No comments provided.\n\n`;
-        }
+        // ✅ Add "Acknowledge" button
+        const inlineKeyboard = {
+          reply_markup: JSON.stringify({
+            inline_keyboard: [[{ text: "✅ Acknowledge", callback_data: `ack_${evaluationId}` }]],
+          }),
+        };
 
-        await sendMessage(chatId, message);
+        await sendMessage(chatId, message, inlineKeyboard);
       }
     }
 
-    res.status(201).json({
-      message: "Evaluations added successfully",
-      evaluations: insertedEvaluations,
-    });
-
+    res.status(201).json({ message: "Evaluations added successfully", evaluations: insertedEvaluations });
   } catch (error) {
     console.error("❌ INTERNAL SERVER ERROR:", error);
     res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 });
-
 
 // Example of a protected route
 app.get("/protected", requireAuth, (req, res) => {
