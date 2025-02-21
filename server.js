@@ -461,18 +461,11 @@ app.post("/webhook", async (req, res) => {
     const lastName = message.chat.last_name || "No Last Name";
 
     try {
-      
       // Fetch user and programs in parallel
       const [existingUser, options] = await Promise.all([
         getTelegramUsers(chatId),
         getPrograms(),
       ]);
-
-      // If user is already registered, ignore /start and all other messages
-      if (existingUser) {
-          return res.sendStatus(200); // Do nothing at all
-      }
-
 
       // If user already exists, prevent re-registration
       if (existingUser) {
@@ -483,7 +476,6 @@ app.post("/webhook", async (req, res) => {
           );
         } else {
           return res.sendStatus(200);
-          
         }
         return res.sendStatus(200); // No need to proceed further if user is registered
       }
@@ -543,8 +535,6 @@ app.post("/webhook", async (req, res) => {
         );
         return res.sendStatus(200);
       }
-      // Ignore any other messages
-      return res.sendStatus(200);
     } catch (error) {
       console.error("Error handling message:", error);
       return res.sendStatus(500); // Internal server error in case of failure
@@ -573,75 +563,6 @@ app.post("/webhook", async (req, res) => {
         if (!selectedProgram) {
           return res.sendStatus(400); // Invalid selection
         }
-
-        userSelections[chatId] = { programId, programName: selectedProgram };
-        const programInlineKeyboard = [
-          [{ text: "Confirm", callback_data: `confirm_program_${programId}` }],
-          [{ text: "Pick Again", callback_data: "pick_program_again" }],
-        ];
-
-        const ProgramconfirmationMessage = await sendMessageWithOptions(
-          chatId,
-          `✅ You selected *${selectedProgram}*!\n\nPlease confirm your selection:`,
-          programInlineKeyboard
-        );
-
-        userStates[chatId] = { ProgramconfirmationMessageId: ProgramconfirmationMessage.message_id };
-
-        return res.sendStatus(200);
-      }
-
-        if (data.startsWith("confirm_program_")) {
-          const programId = data.replace("confirm_program_", "");
-          const selectedProgram = userSelections[chatId]?.programName;
-  
-          if (userStates[chatId]?.confirmationMessageId) {
-            console.log(`Deleting previous confirmation message: ${userStates[chatId].confirmationMessageId}`);
-            await deleteMessage(chatId, userStates[chatId].confirmationMessageId);
-            delete userStates[chatId].confirmationMessageId;
-          }
-
-          if (userStates[chatId]?.programSelectionMessageId) {
-          console.log(`Deleting previous program selection message: ${userStates[chatId].programSelectionMessageId}`);
-          await deleteMessage(chatId, userStates[chatId].programSelectionMessageId);
-          delete userStates[chatId].programSelectionMessageId;
-        }
-
-        if (data === "pick_program_again") {
-          // Delete previous confirmation message
-          if (userStates[chatId]?.ProgramconfirmationMessageId) {
-              await deleteMessage(chatId, userStates[chatId].ProgramconfirmationMessageId);
-              delete userStates[chatId].ProgramconfirmationMessageId;
-          }
-      
-          // Reset state and fetch programs again
-          setUserState(chatId, "awaiting_program_selection");
-          
-          const programs = await getPrograms();
-          if (programs.length === 0) {
-              await sendMessage(chatId, "⚠️ No programs available at the moment.");
-              return res.sendStatus(200);
-          }
-      
-          // Resend the program selection message
-          const newProgramSelectionMessage = await sendMessageWithInlineKeyboard(
-              chatId,
-              "🔄 Please choose your program again:",
-              programs
-          );
-      
-          // Store the new message ID for future deletion
-          if (newProgramSelectionMessage && newProgramSelectionMessage.message_id) {
-              userStates[chatId].programSelectionMessageId = newProgramSelectionMessage.message_id;
-              console.log(`📌 Stored new program selection message ID: ${newProgramSelectionMessage.message_id}`);
-          }
-      
-          return res.sendStatus(200);
-      }
-      
-        
-  
-          await sendMessage(chatId, `✅ Program *${selectedProgram}* confirmed!`);
 
         // Acknowledge the callback query immediately
         await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
