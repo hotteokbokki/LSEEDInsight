@@ -27,6 +27,7 @@
     "@testing-library/user-event": "^13.5.0",
     "ajv": "^8.17.1",
     "axios": "^1.7.9",
+    "date-fns": "^4.1.0",
     "formik": "^2.4.6",
     "js-cookie": "^3.0.5",
     "react": "^18.3.1",

@@ -18,15 +18,24 @@ import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
 import { useState, useEffect } from "react";
 import { DataGrid } from "@mui/x-data-grid";
-import { mockDataSEDB } from "../../sampledata/mockData";
 
 const Dashboard = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [currentEvents, setCurrentEvents] = useState([]);
+  const [unassignedMentors, setUnassignedMentors] = useState(0);
+  const [totalMentors, setTotalMentors] = useState(1); // Avoid division by zero
+  const [topPerformers, setTopPerformers] = useState([]);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const [stats, setStats] = useState({
+    unassignedMentors: 0,
+    assignedMentors: 0,
+    totalSocialEnterprises: 0,
+    totalPrograms: 0,
+    previousUnassignedMentors: 0,
+  });
+  const [percentageIncrease, setPercentageIncrease] = useState("0%");
   const columns = [
     {
       field: "socialEnterprise",
@@ -40,6 +49,56 @@ const Dashboard = () => {
       flex: 1,
     },
   ];
+  
+  useEffect(() => {
+    const fetchTopPerformers = async () => {
+        try {
+            const response = await fetch("http://localhost:4000/api/top-se-performance");
+            const data = await response.json();
+
+            console.log("Fetched Data:", data); // ✅ Debugging step
+
+            if (!Array.isArray(data) || !data.length) {
+                console.warn("Unexpected response:", data);
+                setTopPerformers([]); // Always set an array
+                return;
+            }
+          
+            setTopPerformers(data);
+        } catch (error) {
+            console.error("Error fetching top SE performance:", error);
+            setTopPerformers([]);
+        }
+    };
+
+    fetchTopPerformers();
+}, []);
+
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        const response = await fetch("http://localhost:4000/api/dashboard-stats");
+        const data = await response.json();
+
+        setStats(data);
+
+        // ✅ Calculate percentage increase for unassigned mentors
+        if (data.previousUnassignedMentors > 0) {
+          const change = ((data.unassignedMentors - data.previousUnassignedMentors) / data.previousUnassignedMentors) * 100;
+          setPercentageIncrease(`${change.toFixed(1)}%`);
+        } else if (data.unassignedMentors > 0) {
+            setPercentageIncrease("100%"); // First-time assignments
+        } else {
+            setPercentageIncrease("0%");
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+      }
+    };
+
+    fetchDashboardStats();
+  }, []);
+
   useEffect(() => {
     const fetchSocialEnterprises = async () => {
       try {
@@ -65,6 +124,7 @@ const Dashboard = () => {
     };
     fetchSocialEnterprises();
   }, []);
+
   const handleDateClick = (selected) => {
     const title = prompt("Please enter a new title for your event");
     const calendarApi = selected.view.calendar;
@@ -91,97 +151,107 @@ const Dashboard = () => {
     }
   };
 
-  return (
+  const formatChartData = (data) => {
+    const groupedData = {};
+
+    // Step 1: Get Today's Date & Next 60 Days
+    const today = new Date();
+    const next60Days = new Date();
+    next60Days.setDate(today.getDate() + 60);
+
+    // Step 2: Generate Only Assigned X-Axis Range (Fixed)
+    const allMonths = [];
+    let current = new Date(today.getFullYear(), today.getMonth(), 1); // Start at first day of this month
+    while (current <= next60Days) {
+        allMonths.push(current.toISOString().substring(0, 7)); // Format "YYYY-MM"
+        current.setMonth(current.getMonth() + 1); // Move to next month
+    }
+
+    // Step 3: Initialize SEs and Assign a Fixed X-Axis Range
+    data.forEach((se) => {
+        if (!se || !se.social_enterprise || !se.month) return; // ✅ Avoid undefined values
+
+        if (!groupedData[se.social_enterprise]) {
+            groupedData[se.social_enterprise] = allMonths.map((month) => ({ x: month, y: 0 }));
+        }
+
+        // ✅ Ensure groupedData[se.social_enterprise] exists before mapping
+        if (Array.isArray(groupedData[se.social_enterprise])) {
+            groupedData[se.social_enterprise] = groupedData[se.social_enterprise].map((point) =>
+                point.x === se.month.substring(0, 7) ? { x: point.x, y: parseFloat(se.avg_rating) || 0 } : point
+            );
+        }
+    });
+
+    // Step 4: Convert to LineChart Format
+    return Object.keys(groupedData).map((seName) => ({
+        id: seName,
+        color: `hsl(${Math.random() * 360}, 70%, 50%)`, // Assign a unique color
+        data: groupedData[seName] || [], // ✅ Ensure data is an array
+    }));
+};
+
+// Apply formatting to fetched data
+const chartData = formatChartData(topPerformers);
+
+return (
     <Box m="20px">
       {/* HEADER */}
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Header title="DASHBOARD" subtitle="Welcome to your dashboard" />
       </Box>
 
-      {/* GRID & CHARTS */}
-      <Box
-        display="grid"
-        gridTemplateColumns="repeat(12, 1fr)"
-        gridAutoRows="140px"
-        gap="20px"
-      >
-        {/* ROW 1 */}
+        {/* GRID & CHARTS */}
         <Box
-          gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
+          display="grid"
+          gridTemplateColumns="repeat(12, 1fr)"
+          gridAutoRows="140px"
+          gap="20px"
         >
+        {/* Unassigned Mentors */}
+        <Box gridColumn="span 3" backgroundColor={colors.primary[400]} display="flex" alignItems="center" justifyContent="center">
           <StatBox
-            title="13"
+            title={stats.unassignedMentors}
             subtitle="Unassigned Mentors"
-            progress="0.75"
-            increase="+14%"
-            icon={
-              <EmailIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
-              />
-            }
+            progress={stats.unassignedMentors / (stats.unassignedMentors + stats.assignedMentors)}
+            increase={percentageIncrease}
+            icon={<EmailIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
           />
         </Box>
-        <Box
-          gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
+
+        {/* Assigned Mentors */}
+        <Box gridColumn="span 3" backgroundColor={colors.primary[400]} display="flex" alignItems="center" justifyContent="center">
           <StatBox
-            title="44"
+            title={stats.assignedMentors}
             subtitle="Assigned Mentors"
-            progress="0.50"
-            increase="+21%"
-            icon={
-              <PointOfSaleIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
-              />
-            }
+            progress={stats.assignedMentors / (stats.unassignedMentors + stats.assignedMentors)}
+            increase="+0%" // Static for now, can be dynamically calculated
+            icon={<PointOfSaleIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
           />
         </Box>
-        <Box
-          gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
+
+        {/* Total Social Enterprises */}
+        <Box gridColumn="span 3" backgroundColor={colors.primary[400]} display="flex" alignItems="center" justifyContent="center">
           <StatBox
-            title="20"
+            title={stats.totalSocialEnterprises}
             subtitle="Total SEs"
-            progress="0.30"
-            increase="+5%"
-            icon={
-              <PersonAddIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
-              />
-            }
+            progress={1}
+            increase="+0%" // Static for now
+            icon={<PersonAddIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
           />
         </Box>
-        <Box
-          gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
+
+        {/* Total Programs */}
+        <Box gridColumn="span 3" backgroundColor={colors.primary[400]} display="flex" alignItems="center" justifyContent="center">
           <StatBox
-            title="44"
+            title={stats.totalPrograms}
             subtitle="No. of Programs"
-            progress="0.80"
-            increase="+43%"
-            icon={
-              <TrafficIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
-              />
-            }
+            progress={1}
+            increase="+0%" // Static for now
+            icon={<TrafficIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
           />
         </Box>
+
 
         {/* ROW 2 */}
         <Box
@@ -214,7 +284,7 @@ const Dashboard = () => {
             </Box>
           </Box>
           <Box height="250px" m="-20px 0 0 0">
-            <LineChart isDashboard={true} />
+              <LineChart isDashboard={true} data={chartData} />
           </Box>
         </Box>
 

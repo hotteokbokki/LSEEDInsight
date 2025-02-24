@@ -73,3 +73,34 @@ exports.getActiveMentors = async () => {
     return [];
   }
 };
+
+exports.getAllMentors = async () => {
+  try {
+    console.log("Fetching all mentors...");
+
+    const query = `
+      SELECT mentor_id, mentor_firstName, mentor_lastName, email, contactNum,
+        (SELECT COUNT(*) FROM mentorships WHERE mentor_id = mentors.mentor_id) AS number_SE_assigned
+      FROM mentors
+    `;
+
+    const result = await pgDatabase.query(query);
+
+    if (!result.rows.length) {
+      console.log("⚠️ No mentors found.");
+      return [];
+    }
+
+    return result.rows.map(mentor => ({
+      mentor_id: mentor.mentor_id,
+      mentor_firstName: mentor.mentor_firstname,
+      mentor_lastName: mentor.mentor_lastname,
+      email: mentor.email,
+      contactNum: mentor.contactnum,
+      number_SE_assigned: mentor.number_se_assigned || 0,
+    }));
+  } catch (error) {
+    console.error("❌ Error fetching all mentors:", error);
+    return [];
+  }
+};

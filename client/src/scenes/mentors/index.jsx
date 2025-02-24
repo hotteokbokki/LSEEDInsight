@@ -14,6 +14,7 @@ import {
   Typography,
 } from "@mui/material";
 import { tokens } from "../../theme";
+import axios from "axios";
 import { DataGrid } from "@mui/x-data-grid";
 import { mockDataMentor } from "../../sampledata/mockData";
 import Header from "../../components/Header";
@@ -29,7 +30,7 @@ import { Snackbar, Alert } from "@mui/material";
 const Mentors = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-  const [rows, setRows] = useState(mockDataMentor);
+  const [rows, setRows] = useState();
   const navigate = useNavigate();
   const [mentorshipData, setMentorshipData] = useState({
     selectedMentor: "",
@@ -42,23 +43,27 @@ const Mentors = () => {
   useEffect(() => {
     const fetchMentors = async () => {
       try {
-        const response = await fetch("http//localhost:4000/api/mentors"); // Adjust based on your API route
-        const data = await response.json();
-        const formattedData = data.map((mentor) => ({
-          id: mentor.mentor_id, // Use actual UUID
+        const response = await axios.get("http://localhost:4000/api/mentors"); // ✅ Fixed URL
+        console.log("📥 API Response:", response.data); // ✅ Debugging Log
+  
+        const formattedData = response.data.map((mentor) => ({
+          id: mentor.mentor_id, // ✅ Use actual UUID as ID
           mentor_firstName: mentor.mentor_firstName,
           mentor_lastName: mentor.mentor_lastName,
           mentorName: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
           email: mentor.email,
-          number: mentor.contactNum,
-          numberOfSEsAssigned: mentor.number_SE_assigned,
+          number: mentor.contactNum || "N/A", // ✅ Handle null values
+          numberOfSEsAssigned: mentor.number_SE_assigned || 0, // ✅ Ensure it's a number
           status: "Active", // Assuming active by default
         }));
-        setRows(formattedData);
+  
+        console.log("✅ Formatted Data:", formattedData);
+        setRows(formattedData); // ✅ Correctly setting state
       } catch (error) {
-        console.error("Error fetching mentors:", error);
+        console.error("❌ Error fetching mentors:", error);
       }
     };
+  
     fetchMentors();
   }, []);
 

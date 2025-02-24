@@ -12,7 +12,7 @@ const { getUsers, getUserName } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const pgSession = require("connect-pg-simple")(session);
 const cookieParser = require("cookie-parser");
-const { getMentorsBySocialEnterprises, getMentorById } = require("./controllers/mentorsController.js");
+const { getMentorsBySocialEnterprises, getMentorById, getAllMentors } = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
 const { getMentorshipsByMentorId, getMentorBySEID } = require("./controllers/mentorshipsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
@@ -150,6 +150,66 @@ async function sendMessageWithOptions(chatId, message, options) {
     console.error("Failed to send message with inline keyboard:", error.response?.data || error.message);
   }
 }
+
+app.get("/api/mentors", async (req, res) => {
+  try {
+    const mentors = await getAllMentors();
+    res.json(mentors);
+  } catch (error) {
+    console.error("❌ Error fetching mentors:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/dashboard-stats", async (req, res) => {
+  try {
+    // ✅ Fetch the number of unassigned mentors (mentors with no active mentorship)
+    const unassignedMentors = await pgDatabase.query(
+      `SELECT COUNT(*) FROM mentors m
+       LEFT JOIN mentorships ms ON m.mentor_id = ms.mentor_id AND ms.status = 'Active'
+       WHERE ms.mentor_id IS NULL AND m.isactive = true`
+    );
+
+    // ✅ Fetch unassigned mentors from the previous week
+    const previousUnassignedMentors = await pgDatabase.query(
+      `SELECT COUNT(*) FROM mentors m
+       LEFT JOIN mentorships ms ON m.mentor_id = ms.mentor_id AND ms.status = 'Active'
+       WHERE ms.mentor_id IS NULL AND m.isactive = true
+       AND m.mentor_id NOT IN (
+         SELECT mentor_id FROM mentorships 
+         WHERE start_date >= NOW() - INTERVAL '7 days'
+       )`
+    );
+
+    // ✅ Fetch the number of assigned mentors (mentors with at least one active mentorship)
+    const assignedMentors = await pgDatabase.query(
+      `SELECT COUNT(DISTINCT m.mentor_id) FROM mentors m
+       JOIN mentorships ms ON m.mentor_id = ms.mentor_id 
+       WHERE ms.status = 'Active' AND m.isactive = true`
+    );
+
+    // ✅ Fetch the total number of social enterprises
+    const totalSocialEnterprises = await pgDatabase.query(
+      `SELECT COUNT(*) FROM socialenterprises`
+    );
+
+    // ✅ Fetch the number of programs
+    const totalPrograms = await pgDatabase.query(
+      `SELECT COUNT(*) FROM programs` // Adjust table name based on your schema
+    );
+
+    res.json({
+      unassignedMentors: parseInt(unassignedMentors.rows[0].count),
+      previousUnassignedMentors: parseInt(previousUnassignedMentors.rows[0].count),
+      assignedMentors: parseInt(assignedMentors.rows[0].count),
+      totalSocialEnterprises: parseInt(totalSocialEnterprises.rows[0].count),
+      totalPrograms: parseInt(totalPrograms.rows[0].count),
+    });
+  } catch (error) {
+    console.error("❌ Error fetching dashboard stats:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 app.post("/api/mentors", async (req, res) => {
   try {
@@ -369,6 +429,45 @@ app.get("/getEvaluationDetails", async (req, res) => {
   } catch (error) {
       console.error("❌ Error fetching evaluation details:", error);
       res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/top-se-performance", async (req, res) => {
+  try {
+    const result = await pgDatabase.query(`
+        WITH MonthlyRatings AS (
+          SELECT 
+              e.se_id,
+              s.abbr AS social_enterprise, -- Use abbreviation instead of full name
+              DATE_TRUNC('month', e.created_at) AS month,
+              ROUND(AVG(ec.rating), 2) AS avg_rating
+          FROM evaluations e
+          JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+          JOIN socialenterprises s ON e.se_id = s.se_id
+          WHERE e.created_at >= (CURRENT_DATE - INTERVAL '3 months')
+          GROUP BY e.se_id, s.abbr, month
+          ),
+          TopSEs AS (
+              SELECT se_id, social_enterprise, AVG(avg_rating) AS overall_avg_rating
+              FROM MonthlyRatings
+              GROUP BY se_id, social_enterprise
+              ORDER BY overall_avg_rating DESC
+              LIMIT 3
+          )
+          SELECT m.se_id, m.social_enterprise, m.month, m.avg_rating
+          FROM MonthlyRatings m
+          JOIN TopSEs t ON m.se_id = t.se_id
+          ORDER BY m.social_enterprise, m.month;
+    `);
+
+    if (result.rows.length === 0) {
+      return res.json({ message: "No performance data available" });
+    }
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching top SE performance:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
