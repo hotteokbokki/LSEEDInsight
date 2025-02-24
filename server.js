@@ -16,7 +16,7 @@ const { getMentorsBySocialEnterprises, getMentorById } = require("./controllers/
 const { getAllSDG } = require("./controllers/sdgController.js");
 const { getMentorshipsByMentorId, getMentorBySEID } = require("./controllers/mentorshipsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
-const { getEvaluationsByMentorID } = require("./controllers/evaluationsController.js");
+const { getEvaluationsByMentorID, getEvaluationDetails } = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
@@ -350,6 +350,28 @@ app.get("/getMentorEvaluations", async (req, res) => {
   }
 });
 
+
+app.get("/getEvaluationDetails", async (req, res) => {
+  try {
+      const { evaluation_id } = req.query; // Extract evaluation_id from query parameters
+
+      if (!evaluation_id) {
+          return res.status(400).json({ message: "evaluation_id is required" });
+      }
+
+      const result = await getEvaluationDetails(evaluation_id); // Fetch evaluation details from DB
+
+      if (!result || result.length === 0) {
+          return res.status(404).json({ message: "No evaluation details found" });
+      }
+
+      res.json(result);
+  } catch (error) {
+      console.error("❌ Error fetching evaluation details:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.get("/getMentorshipsbyID", async (req, res) => {
   try {
     const { mentor_id } = req.query; // Extract mentor_id from query parameters
@@ -557,47 +579,68 @@ app.post("/webhook", async (req, res) => {
           return res.sendStatus(400); // Invalid selection
         }
 
-        // Acknowledge the callback query immediately
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-          callback_query_id: callbackQueryId,
-          text: "✅ Choice received!",
-          show_alert: false,
-        });
+        userSelections[chatId] = { programId, programName: selectedProgram };
+        const programInlineKeyboard = [
+          [{ text: "Confirm", callback_data: `confirm_program_${programId}` }],
+          [{ text: "Pick Again", callback_data: "pick_program_again" }],
+        ];
 
-        const socialEnterprises = await getSocialEnterprisesByProgram(programId);
-        if (socialEnterprises.length === 0) {
-          await sendMessage(chatId, `⚠️ No social enterprises available under *${selectedProgram}*.`);
-          return res.sendStatus(200);
-        }
-
-        // Map the data correctly
-        const enterpriseOptions = socialEnterprises.map((se) => ({
-          text: se.abbr, // Show only the abbreviation when selecting
-          callback_data: se.callback_data, // Callback remains the same
-        }));
-
-        // Wrap in a 2D array (Telegram requires this)
-        const inlineKeyboard = enterpriseOptions.map((option) => [option]);
-
-        // Send the SE options message and store its ID
-        const seOptionsMessage = await sendMessageWithOptions(
+        const ProgramconfirmationMessage = await sendMessageWithOptions(
           chatId,
-          `✅ You selected *${selectedProgram}*!\n\nPlease choose a social enterprise:`,
-          inlineKeyboard
+          `✅ You selected *${selectedProgram}*!\n\nPlease confirm your selection:`,
+          programInlineKeyboard
         );
 
-        // Store the message ID to delete it later
-        if (seOptionsMessage && seOptionsMessage.message_id) {
-          userStates[chatId].seOptionsMessageId = seOptionsMessage.message_id;
-          console.log(`📌 Stored SE Options Message ID: ${seOptionsMessage.message_id}`);
-        } else {
-          console.log("⚠️ Failed to store SE Options Message ID.");
-        }
-
-        // Store the SE options message ID for deletion later
-        userStates[chatId].seOptionsMessageId = seOptionsMessage.message_id;
+        userStates[chatId] = { ProgramconfirmationMessageId: ProgramconfirmationMessage.message_id };
 
         return res.sendStatus(200);
+      } 
+
+          const programId = data.replace("confirm_program_", "");
+          const selectedProgram = userSelections[chatId]?.programName;
+  
+          if (userStates[chatId]?.confirmationMessageId) {
+            console.log(`Deleting previous confirmation message: ${userStates[chatId].confirmationMessageId}`);
+            await deleteMessage(chatId, userStates[chatId].confirmationMessageId);
+            delete userStates[chatId].confirmationMessageId;
+          }
+
+          if (userStates[chatId]?.programSelectionMessageId) {
+          console.log(`Deleting previous program selection message: ${userStates[chatId].programSelectionMessageId}`);
+          await deleteMessage(chatId, userStates[chatId].programSelectionMessageId);
+          delete userStates[chatId].programSelectionMessageId;
+        }
+
+        if (data === "pick_program_again") {
+          // Delete previous confirmation message
+          if (userStates[chatId]?.ProgramconfirmationMessageId) {
+              await deleteMessage(chatId, userStates[chatId].ProgramconfirmationMessageId);
+              delete userStates[chatId].ProgramconfirmationMessageId;
+          }
+      
+          // Reset state and fetch programs again
+          setUserState(chatId, "awaiting_program_selection");
+          
+          const programs = await getPrograms();
+          if (programs.length === 0) {
+              await sendMessage(chatId, "⚠️ No programs available at the moment.");
+              return res.sendStatus(200);
+          }
+      
+          // Resend the program selection message
+          const newProgramSelectionMessage = await sendMessageWithInlineKeyboard(
+              chatId,
+              "🔄 Please choose your program again:",
+              programs
+          );
+      
+          // Store the new message ID for future deletion
+          if (newProgramSelectionMessage && newProgramSelectionMessage.message_id) {
+              userStates[chatId].programSelectionMessageId = newProgramSelectionMessage.message_id;
+              console.log(`📌 Stored new program selection message ID: ${newProgramSelectionMessage.message_id}`);
+          }
+      
+          return res.sendStatus(200);
       } else if (data.startsWith("enterprise_")) {
         const enterpriseId = data.replace("enterprise_", "");
         const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);

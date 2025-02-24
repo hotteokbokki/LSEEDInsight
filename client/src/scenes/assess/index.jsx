@@ -33,9 +33,10 @@ const AssessSEPage = () => {
     useState(false);
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
   const [evaluationsData, setEvaluationsData] = useState([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedEvaluation, setSelectedEvaluation] = useState(null);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [evaluationCriteria, setEvaluationCriteria] = useState({});
-  const [columns, setColumns] = useState([]);
   const userSession = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
@@ -57,37 +58,101 @@ const AssessSEPage = () => {
   useEffect(() => {
     const fetchEvaluations = async () => {
       try {
-        setIsLoadingEvaluations(true); // Start loading
-
-        const response = await axios.get(
-          "http://localhost:4000/getMentorEvaluations",
-          {
-            params: { mentor_id: userSession.id },
-          }
-        );
-        console.log("📥 Evaluations Response:", response.data);
-
+        setIsLoadingEvaluations(true);
+  
+        const response = await axios.get("http://localhost:4000/getMentorEvaluations", {
+          params: { mentor_id: userSession.id },
+        });
+  
+        console.log("📥 Evaluations Response:", response.data); // Debugging
+  
+        // Ensure evaluation_id is included and set as `id`
         const formattedData = response.data.map((evaluation) => ({
-          id: evaluation.evaluation_id,
-          se_id: evaluation.se_id,
-          mentor_id: evaluation.mentor_id,
-          evaluation_date: evaluation.evaluation_date,
-          category_name: evaluation.category_name,
-          star_rating: evaluation.star_rating,
-          selected_comments: evaluation.selected_comments.join(", "),
-          additional_comment: evaluation.additional_comment,
+          id: evaluation.evaluation_id, // Use evaluation_id as the unique ID
+          evaluation_id: evaluation.evaluation_id, // Explicitly include evaluation_id
+          evaluator_name: evaluation.evaluator_name,
+          social_enterprise: evaluation.social_enterprise,
+          evaluation_date: new Date(evaluation.evaluation_date).toLocaleDateString(),
+          acknowledged: evaluation.acknowledged ? "Yes" : "No",
         }));
-
+  
+        console.log("✅ Formatted EvaluationsData:", formattedData); // Debugging
         setEvaluationsData(formattedData);
       } catch (error) {
         console.error("❌ Error fetching evaluations:", error);
       } finally {
-        setIsLoadingEvaluations(false); // Stop loading
+        setIsLoadingEvaluations(false);
       }
     };
-
+  
     fetchEvaluations();
   }, [userSession.id]);
+  
+  const columns = [
+    { field: "social_enterprise", headerName: "Social Enterprise", flex: 1 },
+    { field: "evaluator_name", headerName: "Evaluator", flex: 1 },
+    { field: "acknowledged", headerName: "Acknowledged", flex: 1 },
+    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
+    {
+      field: "action",
+      headerName: "Action",
+      flex: 1,
+      renderCell: (params) => (
+        <Button
+          variant="contained"
+          style={{ backgroundColor: colors.greenAccent[500], color: "white" }}
+          onClick={() => handleViewExistingEvaluation(params.row.evaluation_id)} // Pass only evaluation_id
+        >
+          View
+        </Button>
+      ),
+    },
+  ];
+
+  const handleViewExistingEvaluation = async (evaluation_id) => {
+    console.log("📌 Evaluation ID Passed:", evaluation_id); // Debugging log
+  
+    try {
+      const response = await axios.get("http://localhost:4000/getEvaluationDetails", {
+        params: { evaluation_id },
+      });
+  
+      console.log("📥 Raw API Response:", response); // Log raw response
+      console.log("📥 API Response Data:", response.data); // Log parsed response
+  
+      if (!response.data || response.data.length === 0) {
+        console.warn("⚠️ No evaluation details found.");
+        return;
+      }
+  
+      // Process evaluation details
+      const groupedEvaluation = response.data.reduce((acc, evalItem) => {
+        const { evaluation_date, social_enterprise, category_name, star_rating, selected_comments, additional_comment } = evalItem;
+  
+        if (!acc.id) {
+          acc.id = evaluation_id;
+          acc.social_enterprise = social_enterprise;
+          acc.evaluation_date = new Date(evaluation_date).toLocaleDateString();
+          acc.categories = [];
+        }
+  
+        acc.categories.push({
+          category_name,
+          star_rating,
+          selected_comments: Array.isArray(selected_comments) ? selected_comments : [], // Ensure selected_comments is always an array
+          additional_comment,
+        });
+  
+        return acc;
+      }, {});
+  
+      console.log("✅ Processed Evaluation Data:", groupedEvaluation);
+      setSelectedEvaluation(groupedEvaluation);
+      setOpenDialog(true);
+    } catch (error) {
+      console.error("❌ Error fetching evaluation details:", error);
+    }
+  };
 
   const handleSESelectionChange = (seId) => {
     setSelectedSEs((prev) =>
@@ -353,7 +418,11 @@ const AssessSEPage = () => {
         </Typography>
       </Box>
     ) : (
-      <DataGrid rows={socialEnterprises} columns={columns} autoheight />
+      <DataGrid
+        rows={evaluationsData}
+        columns={columns}
+        getRowId={(row) => row.evaluation_id} // Ensure evaluation_id is used as ID
+      />
     );
   }
 
@@ -407,11 +476,7 @@ const AssessSEPage = () => {
             },
           }}
         >
-          <DataGrid
-            rows={socialEnterprises} // Ensure this array contains the result from the query
-            columns={columns}
-            getRowId={(row) => row.id} // Use the 'id' from the query result
-          />
+          <DataGrid rows={evaluationsData} columns={columns} getRowId={(row) => row.id} />
         </Box>
 
         {/* SE Selection Dialog */}
@@ -493,7 +558,6 @@ const AssessSEPage = () => {
             </Button>
           </DialogActions>
         </Dialog>
-
         {/* Evaluation Dialog */}
         <Dialog
           open={openEvaluateDialog}
@@ -743,6 +807,41 @@ const AssessSEPage = () => {
             ;
           </DialogActions>
         </Dialog>
+        {/* Evaluation Details Dialog - Read-Only */}
+        <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
+          <DialogTitle>View Evaluation</DialogTitle>
+          <DialogContent>
+            {selectedEvaluation ? (
+              <Box>
+                <Typography><strong>Social Enterprise:</strong> {selectedEvaluation.social_enterprise}</Typography>
+                <Typography><strong>Evaluation Date:</strong> {selectedEvaluation.evaluation_date}</Typography>
+
+                {selectedEvaluation.categories && selectedEvaluation.categories.length > 0 ? (
+                  selectedEvaluation.categories.map((category, index) => (
+                    <Box key={index} mt={2}>
+                      <Typography><strong>{category.category_name}</strong></Typography>
+                      <Typography>Rating: {category.star_rating} ★</Typography>
+                      <Typography>
+                        Comments: {category.selected_comments.length > 0 ? category.selected_comments.join(", ") : "No comments"}
+                      </Typography>
+                      <Typography>
+                        Additional Comment: {category.additional_comment || "No additional comments"}
+                      </Typography>
+                    </Box>
+                  ))
+                ) : (
+                  <Typography>No categories found for this evaluation.</Typography>
+                )}
+              </Box>
+            ) : (
+              <Typography>Loading evaluation details...</Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDialog(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
+
       </Box>
     </Box>
   );
