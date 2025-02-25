@@ -256,10 +256,10 @@ const SocialEnterprise = () => {
       <Header title="SOCIAL ENTERPRISE" subtitle="Manage Social Enterprises" />
         {/* SE Performance Trend*/}
         <Box
-            gridColumn="span 12"
-            gridRow="span 2"
-            backgroundColor={colors.primary[400]}
-          >
+          gridColumn="span 12"
+          gridRow="span 2"
+          backgroundColor={colors.primary[400]}
+        >
           <SEPerformanceTrendChart /> {/* ✅ Embed the SEPerformanceChart component here */}
           </Box>
         <Box display="flex" gap="10px" mt="20px">

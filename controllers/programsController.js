@@ -40,3 +40,16 @@ exports.getProgramNameByID = async (programId) => {
     return null; // Return null if there's an error
   }
 };
+
+exports.getProgramCount = async () => {
+  try {
+      const query = `
+        SELECT COUNT(*) FROM programs
+      `;
+      const result = await pgDatabase.query(query);
+      return result.rows;
+  } catch (error) {
+      console.error("❌ Error fetching program count:", error);
+      return [];
+  }
+};

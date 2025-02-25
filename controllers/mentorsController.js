@@ -104,3 +104,53 @@ exports.getAllMentors = async () => {
     return [];
   }
 };
+
+exports.getUnassignedMentors = async () => {
+  try {
+      const query = `
+            SELECT COUNT(*) FROM mentors m
+            LEFT JOIN mentorships ms ON m.mentor_id = ms.mentor_id AND ms.status = 'Active'
+            WHERE ms.mentor_id IS NULL AND m.isactive = true;
+      `;
+
+      const result = await pgDatabase.query(query);
+      return result.rows;
+  } catch (error) {
+      console.error("❌ Error fetching unassigned mentors:", error);
+      return [];
+  }
+};
+
+exports.getPreviousUnassignedMentors = async () => {
+  try {
+      const query = `
+            SELECT COUNT(*) FROM mentors m
+            LEFT JOIN mentorships ms ON m.mentor_id = ms.mentor_id AND ms.status = 'Active'
+            WHERE ms.mentor_id IS NULL AND m.isactive = true
+            AND m.mentor_id NOT IN (
+              SELECT mentor_id FROM mentorships 
+              WHERE start_date >= NOW() - INTERVAL '7 days'
+            )
+      `;
+      const result = await pgDatabase.query(query);
+      return result.rows;
+  } catch (error) {
+      console.error("❌ Error fetching unassigned mentors from the previous week:", error);
+      return [];
+  }
+};
+
+exports.getAssignedMentors = async () => {
+  try {
+      const query = `
+          SELECT COUNT(DISTINCT m.mentor_id) FROM mentors m
+          JOIN mentorships ms ON m.mentor_id = ms.mentor_id 
+          WHERE ms.status = 'Active' AND m.isactive = true
+      `;
+      const result = await pgDatabase.query(query);
+      return result.rows;
+  } catch (error) {
+      console.error("❌ Error fetching assigned mentors:", error);
+      return [];
+  }
+};

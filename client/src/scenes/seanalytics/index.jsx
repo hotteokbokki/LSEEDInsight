@@ -29,24 +29,29 @@ const SEAnalytics = () => {
   const [radarData, setRadarData] = useState([]); // Real radar chart data
   const navigate = useNavigate(); // Initialize useNavigate
 
-  // Fetch all social enterprises from the backend
   useEffect(() => {
     const fetchSocialEnterprises = async () => {
       try {
         const response = await fetch("/getAllSocialEnterprises");
         const data = await response.json();
-
+  
         // Format the data for the dropdown
         const formattedData = data.map((se) => ({
-          id: se.se_id,
+          id: se.se_id, // Keep as string (since UUIDs are strings)
           name: se.team_name,
         }));
-
+  
         setSocialEnterprises(formattedData);
-
+  
+        // Debugging
+        console.log("Fetched Social Enterprises:", formattedData);
+        console.log("URL ID:", id);
+  
         // Set the initial selected SE if `id` is provided
         if (id) {
-          const initialSE = formattedData.find((se) => se.id === parseInt(id));
+          const initialSE = formattedData.find((se) => se.id === id);
+          console.log("Matched SE:", initialSE);
+  
           setSelectedSE(initialSE);
           setSelectedSEId(id);
         }
@@ -54,7 +59,7 @@ const SEAnalytics = () => {
         console.error("Error fetching social enterprises:", error);
       }
     };
-
+  
     fetchSocialEnterprises();
   }, [id]);
 
@@ -99,14 +104,16 @@ const SEAnalytics = () => {
   const handleChangeSE = (event) => {
     const newSEId = event.target.value;
     setSelectedSEId(newSEId);
-
-    // Update the selected SE
-    const newSE = socialEnterprises.find((se) => se.id === parseInt(newSEId));
+  
+    // Find the new selected SE using strict string comparison
+    const newSE = socialEnterprises.find((se) => se.id === newSEId);
+    console.log("Selected SE:", newSE);
+  
     setSelectedSE(newSE);
   };
 
   // If no social enterprise is found, show an error message
-  if (!selectedSE) {
+  if (!selectedSE && socialEnterprises.length > 0) {
     return <Box>No Social Enterprise found</Box>;
   }
 
@@ -134,7 +141,7 @@ const SEAnalytics = () => {
         </Box>
         {/* Page Title */}
         <Typography variant="h4" fontWeight="bold" color={colors.grey[100]}>
-          {selectedSE.name} Analytics
+          {selectedSE ? `${selectedSE.name} Analytics` : "Loading..."}
         </Typography>
       </Box>
 

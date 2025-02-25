@@ -132,3 +132,16 @@ exports.updateSocialEnterpriseStatus = async (se_id, isActive) => {
     throw error;
   }
 };
+
+exports.getTotalSECount = async () => {
+  try {
+      const query = `
+        SELECT COUNT(*) FROM socialenterprises
+      `;
+      const result = await pgDatabase.query(query);
+      return result.rows;
+  } catch (error) {
+      console.error("❌ Error fetching se count:", error);
+      return [];
+  }
+};
