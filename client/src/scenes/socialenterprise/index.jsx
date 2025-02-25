@@ -19,7 +19,7 @@ import {
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
-import LineChart from "../../components/LineChart";
+import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import { useNavigate } from "react-router-dom"; // For navigation
 
@@ -45,7 +45,7 @@ const SocialEnterprise = () => {
   const [mentors, setMentors] = useState([]);
   const [sdgs, setSdgs] = useState([]);
   const [programs, setPrograms] = useState([]);
-
+  const [topPerformers, setTopPerformers] = useState([]);
   // State for fetched data
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [loading, setLoading] = useState(true); // Loading state for API call
@@ -254,37 +254,15 @@ const SocialEnterprise = () => {
   return (
     <Box m="20px">
       <Header title="SOCIAL ENTERPRISE" subtitle="Manage Social Enterprises" />
-      <Box
-        gridColumn="span 12"
-        gridRow="span 2"
-        backgroundColor={colors.primary[400]}
-      >
+        {/* SE Performance Trend*/}
         <Box
-          height="100px"
-          mt="25px"
-          p="0 30px"
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-        >
-          <Box>
-            <Typography variant="h5" fontWeight="600" color={colors.grey[100]}>
-              GEMS
-            </Typography>
-            <Typography
-              variant="h3"
-              fontWeight="bold"
-              color={colors.greenAccent[500]}
-            >
-              Top Performer
-            </Typography>
+            gridColumn="span 12"
+            gridRow="span 2"
+            backgroundColor={colors.primary[400]}
+          >
+          <SEPerformanceTrendChart /> {/* ✅ Embed the SEPerformanceChart component here */}
           </Box>
-        </Box>
-        <Box height="250px" m="-20px 0 0 0">
-          <LineChart isDashboard={true} />
-        </Box>
-      </Box>
-      <Box display="flex" gap="10px" mt="20px">
+        <Box display="flex" gap="10px" mt="20px">
         <Button
           variant="contained"
           sx={{ backgroundColor: colors.greenAccent[500], color: "black" }}

@@ -3,7 +3,6 @@ import { useTheme } from "@mui/material"; // ✅ Fix: Import useTheme from MUI
 import { tokens } from "../theme"; // ✅ Fix: Ensure tokens is imported from your theme file
 import { format, addDays } from "date-fns"; // ✅ Fix: Import format and addDays from date-fns
 
-
 const LineChart = ({ data, isDashboard = false, dateRange = 60 }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
@@ -40,7 +39,7 @@ const LineChart = ({ data, isDashboard = false, dateRange = 60 }) => {
         tooltip: { container: { color: colors.primary[500] } },
       }}
       colors={isDashboard ? { datum: "color" } : { scheme: "nivo" }}
-      margin={{ top: 50, right: 110, bottom: 50, left: 60 }}
+      margin={{ top: 50, right: 210, bottom: 50, left: 60 }}
       xScale={{
         type: "point",
         domain: xAxisDates, // ✅ Controlled inside LineChart
@@ -85,14 +84,14 @@ const LineChart = ({ data, isDashboard = false, dateRange = 60 }) => {
       useMesh={true}
       legends={[
         {
-          anchor: "top-right",
+          anchor: "bottom-right", // ✅ Move legend to bottom-right
           direction: "column",
           justify: false,
-          translateX: -20, // Shift left slightly
-          translateY: -50,
+          translateX: 110,  // ✅ Adjust position horizontally
+          translateY: -30, // ✅ Move down
           itemsSpacing: 4,
           itemDirection: "left-to-right",
-          itemWidth: 80, // Reduce width if necessary
+          itemWidth: 80,
           itemHeight: 10,
           itemOpacity: 1,
           symbolSize: 12,
