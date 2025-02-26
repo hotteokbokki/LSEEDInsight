@@ -748,6 +748,37 @@ app.post("/webhook", async (req, res) => {
           delete userStates[chatId].programSelectionMessageId;
         }
 
+        if (data.startsWith("confirm_program_")) {
+          const programId = data.replace("confirm_program_", "");
+          const selectedProgram = userSelections[chatId]?.programName;
+      
+          // Fetch SEs under the chosen program
+          const socialEnterprises = await getSocialEnterprisesByProgram(programId);
+          
+          if (!socialEnterprises.length) {
+              await sendMessage(chatId, `⚠️ No Social Enterprises found under *${selectedProgram}*.`);
+              return res.sendStatus(200);
+          }
+      
+          // Create inline keyboard options for SE selection
+          const enterpriseOptions = socialEnterprises.map(se => ({
+              text: se.text, // Display SE name
+              callback_data: `enterprise_${se.callback_data.split("_")[1]}` // Use SE ID
+          }));
+      
+          const inlineKeyboard = enterpriseOptions.map(option => [option]); // Convert to Telegram format
+      
+          // Send SE selection message
+          await sendMessageWithOptions(
+              chatId,
+              `✅ *${selectedProgram}* confirmed!\n\nPlease select a Social Enterprise:`,
+              inlineKeyboard
+          );
+      
+          return res.sendStatus(200);
+      }
+      
+
         if (data === "pick_program_again") {
           // Delete previous confirmation message
           if (userStates[chatId]?.ProgramconfirmationMessageId) {
