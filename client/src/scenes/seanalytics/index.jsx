@@ -32,7 +32,7 @@ const SEAnalytics = () => {
   useEffect(() => {
     const fetchSocialEnterprises = async () => {
       try {
-        const response = await fetch("/getAllSocialEnterprises");
+        const response = await fetch("http://localhost:4000/getAllSocialEnterprises");
         const data = await response.json();
   
         // Format the data for the dropdown

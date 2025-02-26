@@ -372,6 +372,19 @@ app.get("/getAllSocialEnterprisesWithMentorship", async (req, res) => {
   }
 });
 
+app.get("/getAllSocialEnterprises", async (req, res) => {
+  try {
+    const result = await getAllSocialEnterprises(); // Fetch SEs from DB
+    if (!result || result.length === 0) {
+      return res.status(404).json({ message: "No social enterprises found" });
+    }
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching social enterprises:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.get("/getMentorEvaluations", async (req, res) => {
   try {
     const { mentor_id } = req.query; // Extract mentor_id from query parameters
