@@ -12,6 +12,12 @@ const Analytics = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
+  const dummyPieData = [
+    { id: "Category A", label: "Category A", value: 30, color: "hsl(230, 70%, 50%)" },
+    { id: "Category B", label: "Category B", value: 40, color: "hsl(170, 70%, 50%)" },
+    { id: "Category C", label: "Category C", value: 50, color: "hsl(50, 70%, 50%)" },
+  ];
+
   return (
     <Box m="20px">
       {/* Header */}
@@ -146,6 +152,7 @@ const Analytics = () => {
           <PieChart
             title="Average SE Improvement Score"
             titleColor={colors.greenAccent[500]}
+            data={dummyPieData}
           />
         </Box>
         <Box
@@ -164,6 +171,7 @@ const Analytics = () => {
           <PieChart
             title="Top 3 Challenges for SE"
             titleColor={colors.greenAccent[500]}
+            data={dummyPieData}
           />
         </Box>
       </Box>
