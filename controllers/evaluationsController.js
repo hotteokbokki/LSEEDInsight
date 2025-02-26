@@ -134,3 +134,68 @@ exports.getPerformanceTrendBySEID = async (se_id) => {
         return [];
     }
 };
+
+exports.getCommonChallengesBySEID = async (se_id) => {
+    try {
+        console.log("Fetching top SE performance for the last 3 months");
+
+        const query = `
+            WITH total AS (
+                SELECT COUNT(esc2.selected_comment_id) AS total_count
+                FROM evaluations e2
+                JOIN evaluation_categories ec2 ON e2.evaluation_id = ec2.evaluation_id
+                JOIN evaluation_selected_comments esc2 ON ec2.evaluation_category_id = esc2.evaluation_category_id
+                WHERE e2.se_id = $1
+                AND ec2.rating <= 3
+            )
+            SELECT 
+                esc.comment, 
+                ec.category_name AS category,  -- Include category from evaluation_categories
+                COUNT(esc.selected_comment_id) AS count,
+                ROUND(COUNT(esc.selected_comment_id) * 100.0 / total.total_count, 0) AS percentage
+            FROM evaluations e
+            JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+            JOIN evaluation_selected_comments esc ON ec.evaluation_category_id = esc.evaluation_category_id
+            CROSS JOIN total  -- Ensures total_count is available for all rows
+            WHERE e.se_id = $1
+            AND ec.rating <= 3  
+            GROUP BY esc.comment, ec.category_name, total.total_count  -- Include category in GROUP BY
+            ORDER BY count DESC
+            LIMIT 5;
+        `;
+        const values = [se_id];
+
+        const result = await pgDatabase.query(query, values);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+
+exports.getPermanceScoreBySEID = async (se_id) => {
+    try {
+        console.log("Fetching top SE performance for the last 3 months");
+
+        const query = `
+            SELECT 
+                e.se_id,
+                ec.category_name,
+                ec.rating,
+                COUNT(ec.rating) AS rating_count
+            FROM evaluations e
+            JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+            WHERE e.se_id = $1
+            GROUP BY e.se_id, ec.category_name, ec.rating
+            ORDER BY ec.category_name, ec.rating;
+        `;
+        const values = [se_id];
+
+        const result = await pgDatabase.query(query, values);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+

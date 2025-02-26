@@ -77,21 +77,36 @@ const SEAnalytics = () => {
         setLineData(lineData);
 
         // Fetch common challenges data
-        const pieResponse = await fetch(
-          `/api/common-challenges/${selectedSEId}`
-        );
-        const pieData = await pieResponse.json();
-        setPieData(pieData);
+        const pieResponse = await fetch(`/api/common-challenges/${selectedSEId}`);
+        const rawPieData = await pieResponse.json();
+
+        // Format pie chart data properly
+        const formattedPieData = rawPieData.map((item) => ({
+          id: item.comment, // Use evaluation_id as the unique identifier
+          label: `${item.percentage}%`, // Displayed text in the pie chart
+          value: parseInt(item.count, 10), // Convert count to a number
+          category: item.category,
+        }));
+
+        setPieData(formattedPieData);
 
         // Fetch Likert scale data
         const likertResponse = await fetch(`/api/likert-data/${selectedSEId}`);
-        const likertData = await likertResponse.json();
-        setLikertData(likertData);
+        const rawLikertData = await likertResponse.json();
+
+        setLikertData(rawLikertData);
 
         // Fetch radar chart data
         const radarResponse = await fetch(`/api/radar-data/${selectedSEId}`);
         const radarData = await radarResponse.json();
-        setRadarData(radarData);
+        console.log("Radar API Response:", radarData);  // ✅ Debug API Response
+        
+        if (!Array.isArray(radarData)) {
+          console.error("Invalid radar data format", radarData);
+        } else {
+          setRadarData(radarData);
+          console.log("Radar Data Set in State:", radarData);  // ✅ Debug State Update
+        }
       } catch (error) {
         console.error("Error fetching analytics data:", error);
       }
@@ -164,25 +179,23 @@ const SEAnalytics = () => {
 
       {/* Common Challenges & Performance Score */}
       <Box
-        display="grid"
-        gridTemplateColumns="repeat(2, 1fr)"
-        gap="20px"
-        mt="20px"
+        sx={{
+          backgroundColor: colors.primary[400],
+          padding: "20px",
+          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+        }}
       >
-        {/* Common Challenges */}
-        <Box
-          sx={{
-            backgroundColor: colors.primary[400],
-            padding: "20px",
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-          }}
-        >
-          <Typography variant="h5" fontWeight="bold" color={colors.grey[100]}>
-            Common Challenges
-          </Typography>
-          <Box height="250px">
+        <Typography variant="h5" fontWeight="bold" color={colors.grey[100]}>
+          Common Challenges
+        </Typography>
+        <Box height="250px" display="flex" justifyContent="center" alignItems="center">
+          {pieData.length === 0 ? (
+            <Typography variant="h6" color={colors.grey[300]}>
+              No common challenges found.
+            </Typography>
+          ) : (
             <PieChart data={pieData} />
-          </Box>
+          )}
         </Box>
 
         {/* Performance Score */}
@@ -196,8 +209,14 @@ const SEAnalytics = () => {
           <Typography variant="h5" fontWeight="bold" color={colors.grey[100]}>
             Performance Score
           </Typography>
-          <Box height="250px">
-            <LikertChart data={likertData} />
+          <Box height="250px" display="flex" justifyContent="center" alignItems="center">
+          {likertData.length === 0 ? (
+              <Typography variant="h6" color={colors.grey[300]}>
+                No performance ratings available.
+              </Typography>
+            ) : (
+              <LikertChart data={likertData} />
+            )}
           </Box>
         </Box>
       </Box>
@@ -214,9 +233,16 @@ const SEAnalytics = () => {
         <Typography variant="h5" fontWeight="bold" color={colors.grey[100]}>
           Performance Overview
         </Typography>
-        <Box height="300px">
-          <RadarChart data={radarData} />
+        <Box height="300px" display="flex" justifyContent="center" alignItems="center">
+          {radarData.length === 0 ? (
+            <Typography variant="h6" color={colors.grey[300]}>
+              Performance Overview Unavailable.
+            </Typography>
+          ) : (
+            <RadarChart radarData={radarData} />
+          )}
         </Box>
+
       </Box>
 
       {/* Back Button with Spacing */}

@@ -16,10 +16,11 @@ const { getMentorsBySocialEnterprises, getMentorById, getAllMentors, getUnassign
 const { getAllSDG } = require("./controllers/sdgController.js");
 const { getMentorshipsByMentorId, getMentorBySEID } = require("./controllers/mentorshipsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
-const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID } = require("./controllers/evaluationsController.js");
+const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID } = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
+const { getPerformanceOverviewBySEID } = require("./controllers/evaluationcategoriesController.js");
 const app = express();
 
 
@@ -440,6 +441,57 @@ app.get("/api/single-se-performance/:se_id", async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error("Error fetching performance trend:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/common-challenges/:se_id", async (req, res) => {
+  const { se_id } = req.params;
+  try {
+    console.log(se_id);
+    const result = await getCommonChallengesBySEID(se_id);
+    
+    if (!result || result.length === 0) {
+      return res.json({ message: "No performance trend data available" });
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching performance trend:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/likert-data/:se_id", async (req, res) => {
+  const { se_id } = req.params;
+  try {
+    console.log(se_id);
+    const result = await getPermanceScoreBySEID(se_id);
+    
+    if (!result || result.length === 0) {
+      return res.json({ message: "No performance score data available" });
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching performance score:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/radar-data/:se_id", async (req, res) => {
+  const { se_id } = req.params;
+  try {
+    console.log(se_id);
+    const result = await getPerformanceOverviewBySEID(se_id);
+    
+    if (!result || result.length === 0) {
+      return res.json({ message: "No performance overview data available" });
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching performance overview:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });

@@ -1,64 +1,60 @@
 import { ResponsiveRadar } from "@nivo/radar";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
-import { mockRadarData as data } from "../sampledata/mockData";
 
-const RadarChart = ({ isDashboard = false }) => {
+const RadarChart = ({ radarData = [], isDashboard = false }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
+  // Ensure radarData is formatted correctly for Nivo
+  const formattedData = radarData?.map((item) => ({
+    category: item.category, 
+    Overview: parseFloat(item.score),
+  })) || [];
+
+  // Adjust colors based on theme mode
+  const chartColor = theme.palette.mode === "dark" ? colors.greenAccent[300] : colors.greenAccent[400];
+  const borderChartColor = theme.palette.mode === "dark" ? colors.primary[300] : colors.primary[500];
+
   return (
     <ResponsiveRadar
-      data={data}
-      keys={["challenges", "performance"]}
+      data={formattedData}
+      keys={["Overview"]}
       indexBy="category"
-      maxValue="auto"
+      maxValue={5}
       margin={{ top: 50, right: 80, bottom: 40, left: 80 }}
       curve="linearClosed"
       borderWidth={2}
-      borderColor={{ from: "color" }}
+      borderColor={borderChartColor} // Brighter border in dark mode
       gridLevels={5}
       gridShape="circular"
       gridLabelOffset={36}
       enableDots={true}
       dotSize={8}
-      dotColor={{ theme: "background" }}
+      dotColor={chartColor} // Brighter dots in dark mode
       dotBorderWidth={2}
-      dotBorderColor={{ from: "color" }}
-      colors={isDashboard ? { datum: "color" } : { scheme: "nivo" }}
-      fillOpacity={0.25}
+      dotBorderColor={borderChartColor}
+      colors={chartColor} // More visible chart color
+      fillOpacity={0.6} // Increased fill opacity for better visibility
       blendMode="multiply"
       motionConfig="wobbly"
       theme={{
         axis: {
           domain: {
-            line: {
-              stroke: colors.grey[100],
-            },
-          },
-          legend: {
-            text: {
-              fill: colors.grey[100],
-            },
+            line: { stroke: colors.grey[100] },
           },
           ticks: {
-            line: {
-              stroke: colors.grey[100],
-              strokeWidth: 1,
-            },
-            text: {
-              fill: colors.grey[100],
-            },
+            line: { stroke: colors.grey[100] },
+            text: { fill: colors.grey[100] },
           },
         },
         legends: {
-          text: {
-            fill: colors.grey[100],
-          },
+          text: { fill: colors.grey[100] },
         },
         tooltip: {
           container: {
-            color: colors.primary[500],
+            background: colors.primary[500],
+            color: colors.grey[100],
           },
         },
       }}
@@ -66,22 +62,19 @@ const RadarChart = ({ isDashboard = false }) => {
         {
           anchor: "top-left",
           direction: "column",
-          justify: false,
           translateX: -50,
           translateY: -40,
-          itemsSpacing: 0,
-          itemDirection: "left-to-right",
           itemWidth: 80,
           itemHeight: 20,
-          itemOpacity: 0.75,
+          itemOpacity: 0.9, // Make legend more visible
           symbolSize: 12,
           symbolShape: "circle",
-          symbolBorderColor: "rgba(0, 0, 0, .5)",
+          symbolBorderColor: colors.grey[100],
           effects: [
             {
               on: "hover",
               style: {
-                itemBackground: "rgba(0, 0, 0, .03)",
+                itemBackground: "rgba(255, 255, 255, 0.1)", // Slightly lighter background on hover
                 itemOpacity: 1,
               },
             },

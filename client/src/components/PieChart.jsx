@@ -1,39 +1,51 @@
 import { ResponsivePie } from "@nivo/pie";
 import { tokens } from "../theme";
 import { useTheme } from "@mui/material";
-import { mockPieData as data } from "../sampledata/mockData";
 
-const PieChart = () => {
+const PieChart = ({ data }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+
+  // Ensure proper text contrast for both modes
+  const textColor = theme.palette.mode === "dark" ? "#FFFFFF" : "#333333"; // Strong contrast
+  const backgroundColor = theme.palette.mode === "dark" ? colors.grey[900] : "#FFFFFF";
+
   return (
     <ResponsivePie
       data={data}
+      tooltip={({ datum }) => (
+        <div
+          style={{
+            background: backgroundColor,
+            color: textColor,
+            padding: "5px",
+            borderRadius: "5px",
+            boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.1)", // Add slight shadow for visibility
+          }}
+        >
+          {datum.data.category}
+        </div>
+      )}
       theme={{
         axis: {
           domain: {
-            line: {
-              stroke: colors.grey[100],
-            },
+            line: { stroke: textColor },
           },
           legend: {
-            text: {
-              fill: colors.grey[100],
-            },
+            text: { fill: textColor },
           },
           ticks: {
-            line: {
-              stroke: colors.grey[100],
-              strokeWidth: 1,
-            },
-            text: {
-              fill: colors.grey[100],
-            },
+            line: { stroke: textColor, strokeWidth: 1 },
+            text: { fill: textColor },
           },
         },
         legends: {
-          text: {
-            fill: colors.grey[100],
+          text: { fill: textColor }, // Ensure strong contrast in legends
+        },
+        tooltip: {
+          container: {
+            background: backgroundColor,
+            color: textColor,
           },
         },
       }}
@@ -42,52 +54,24 @@ const PieChart = () => {
       padAngle={0.7}
       cornerRadius={3}
       activeOuterRadiusOffset={8}
-      borderColor={{
-        from: "color",
-        modifiers: [["darker", 0.2]],
-      }}
+      borderColor={{ from: "color", modifiers: [["darker", 0.3]] }}
       arcLinkLabelsSkipAngle={10}
-      arcLinkLabelsTextColor={colors.grey[100]}
+      arcLinkLabelsTextColor={textColor} // Ensure arc link text is visible
       arcLinkLabelsThickness={2}
       arcLinkLabelsColor={{ from: "color" }}
-      enableArcLabels={false}
-      arcLabelsRadiusOffset={0.4}
-      arcLabelsSkipAngle={7}
-      arcLabelsTextColor={{
-        from: "color",
-        modifiers: [["darker", 2]],
-      }}
-      defs={[
-        {
-          id: "dots",
-          type: "patternDots",
-          background: "inherit",
-          color: "rgba(255, 255, 255, 0.3)",
-          size: 4,
-          padding: 1,
-          stagger: true,
-        },
-        {
-          id: "lines",
-          type: "patternLines",
-          background: "inherit",
-          color: "rgba(255, 255, 255, 0.3)",
-          rotation: -45,
-          lineWidth: 6,
-          spacing: 10,
-        },
-      ]}
+      arcLabelsSkipAngle={10}
+      arcLabelsComponent={() => null} // **Removes the numbers inside the pie chart**
+      arcLabelsTextColor={textColor} // Stronger contrast for arc labels
       legends={[
         {
           anchor: "bottom",
           direction: "row",
-          justify: false,
           translateX: 0,
           translateY: 56,
           itemsSpacing: 0,
           itemWidth: 100,
           itemHeight: 18,
-          itemTextColor: "#999",
+          itemTextColor: textColor, // Ensure legend text is visible
           itemDirection: "left-to-right",
           itemOpacity: 1,
           symbolSize: 18,
@@ -96,7 +80,7 @@ const PieChart = () => {
             {
               on: "hover",
               style: {
-                itemTextColor: "#000",
+                itemTextColor: theme.palette.mode === "dark" ? colors.grey[300] : colors.grey[800], // Stronger hover contrast
               },
             },
           ],
