@@ -102,3 +102,35 @@ exports.getTopSEPerformance = async () => {
         return [];
     }
 };
+
+exports.getPerformanceTrendBySEID = async (se_id) => {
+    try {
+        console.log("Fetching top SE performance for the last 3 months");
+
+        const query = `
+            WITH MonthlyRatings AS (
+                SELECT 
+                    e.se_id,
+                    s.abbr AS social_enterprise, -- Use abbreviation instead of full name
+                    DATE_TRUNC('month', e.created_at) AS month,
+                    ROUND(AVG(ec.rating), 2) AS avg_rating
+                FROM evaluations e
+                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+                JOIN socialenterprises s ON e.se_id = s.se_id
+                WHERE e.created_at >= (CURRENT_DATE - INTERVAL '3 months') 
+                AND e.se_id = $1  -- Filter by specific SE ID
+                GROUP BY e.se_id, s.abbr, month
+            )
+            SELECT se_id, social_enterprise, month, avg_rating
+            FROM MonthlyRatings
+            ORDER BY month;
+        `;
+        const values = [se_id];
+
+        const result = await pgDatabase.query(query, values);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};

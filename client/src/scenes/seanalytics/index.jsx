@@ -9,7 +9,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import { tokens } from "../../theme";
-import LineChart from "../../components/LineChart";
+import SSEPerformanceTrendChart from "../../components/SSEPerformanceTrendChart";
 import PieChart from "../../components/PieChart";
 import LikertChart from "../../components/LikertChart";
 import RadarChart from "../../components/RadarChart";
@@ -71,7 +71,7 @@ const SEAnalytics = () => {
       try {
         // Fetch performance trend data
         const lineResponse = await fetch(
-          `/api/performance-trend/${selectedSEId}`
+          `/api/single-se-performance/${selectedSEId}`
         );
         const lineData = await lineResponse.json();
         setLineData(lineData);
@@ -158,7 +158,7 @@ const SEAnalytics = () => {
           Performance Trend
         </Typography>
         <Box height="250px">
-          <LineChart data={lineData} />
+          <SSEPerformanceTrendChart lineData={lineData} />
         </Box>
       </Box>
 

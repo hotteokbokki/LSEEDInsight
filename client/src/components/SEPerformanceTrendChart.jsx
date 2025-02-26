@@ -48,21 +48,26 @@ const SEPerformanceTrendChart = () => {
           return "Insufficient data";
         }
     
-        // Step 1: Get Today's Date & Next 60 Days
+        // Step 1: Get Today's Date & Calculate Start Date (30 days before today)
         const today = new Date();
+        const startDate = new Date();
+        startDate.setMonth(today.getMonth() - 1); // Move 1 month back (30 days approx)
+        startDate.setDate(1); // Ensure we start at the beginning of the month
+    
         const next60Days = new Date();
         next60Days.setDate(today.getDate() + 60);
     
         console.log("Today:", today.toISOString().substring(0, 10));
+        console.log("Start Month (30 days before today):", startDate.toISOString().substring(0, 7));
         console.log("Next 60 Days:", next60Days.toISOString().substring(0, 10));
     
         // Step 2: Extract Months from Database Data
         const dbMonths = new Set(data.map((se) => se.month.substring(0, 7))); // Unique months from data
     
-        // Step 3: Generate X-Axis Months (Starting from Last Month)
-        const allMonths = new Set(["2025-01"]); // ✅ Always include the previous month
+        // Step 3: Generate X-Axis Months (Starting 30 Days Prior)
+        const allMonths = new Set([startDate.toISOString().substring(0, 7)]); // ✅ Start dynamically
     
-        let current = new Date(today.getFullYear(), today.getMonth(), 1);
+        let current = new Date(startDate);
         while (current <= next60Days) {
             allMonths.add(current.toISOString().substring(0, 7)); // Add alternating month
             current.setMonth(current.getMonth() + 2); // Skip one month

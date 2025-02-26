@@ -16,7 +16,7 @@ const { getMentorsBySocialEnterprises, getMentorById, getAllMentors, getUnassign
 const { getAllSDG } = require("./controllers/sdgController.js");
 const { getMentorshipsByMentorId, getMentorBySEID } = require("./controllers/mentorshipsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
-const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance } = require("./controllers/evaluationsController.js");
+const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID } = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
@@ -427,16 +427,17 @@ app.get("/api/top-se-performance", async (req, res) => {
   }
 });
 
-app.get("/api/performance-trend/:seId", async (req, res) => {
-  const { seId } = req.params;
+app.get("/api/single-se-performance/:se_id", async (req, res) => {
+  const { se_id } = req.params;
   try {
-    //const performanceData = await getPerformanceTrend(seId);
+    console.log(se_id);
+    const result = await getPerformanceTrendBySEID(se_id);
     
-    if (!performanceData || performanceData.length === 0) {
+    if (!result || result.length === 0) {
       return res.json({ message: "No performance trend data available" });
     }
 
-    res.json(performanceData);
+    res.json(result);
   } catch (error) {
     console.error("Error fetching performance trend:", error);
     res.status(500).json({ message: "Internal Server Error" });
