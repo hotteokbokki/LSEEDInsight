@@ -6,7 +6,7 @@ const BarChart = ({ data, isDashboard = false }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
-  // Ensure text contrast for both modes
+  // Determine appropriate text color based on theme mode
   const textColor = theme.palette.mode === "dark" ? "#FFFFFF" : "#333333";
   const backgroundColor = theme.palette.mode === "dark" ? colors.grey[900] : "#FFFFFF";
 
@@ -36,21 +36,15 @@ const BarChart = ({ data, isDashboard = false }) => {
       indexBy="category"
       margin={{ top: 40, right: 40, bottom: 70, left: 60 }}
       padding={0.3}
-      colors={({ index }) => colors.blueAccent[400]} // Use consistent theme colors
-      axisBottom={{
-        legend: isDashboard ? undefined : "Evaluation Categories",
-        legendPosition: "middle",
-        legendOffset: 50,
-        tickRotation: -45,
-        tickTextColor: textColor,
-      }}
+      colors={({ index }) => colors.blueAccent[400]} // Use theme colors for bars
+      axisBottom={null}
       axisLeft={{
         legend: isDashboard ? undefined : "Average Score",
         legendPosition: "middle",
         legendOffset: -40,
         tickValues: [1, 2, 3, 4, 5],
         format: (v) => Math.round(v),
-        tickTextColor: textColor,
+        tickTextColor: textColor, // Ensure visibility
       }}
       tooltip={({ value, indexValue }) => (
         <div
@@ -59,25 +53,17 @@ const BarChart = ({ data, isDashboard = false }) => {
             color: textColor,
             padding: "5px",
             borderRadius: "5px",
-            boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.1)",
+            boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.1)", // Improve tooltip readability
           }}
         >
           <strong>{indexValue}</strong>
           <div>Avg Rating: {value}</div>
         </div>
       )}
-      layout="vertical"
-      labelSkipWidth={12}
-      labelSkipHeight={12}
-      labelTextColor={textColor}
       theme={{
         axis: {
-          domain: {
-            line: { stroke: textColor },
-          },
-          legend: {
-            text: { fill: textColor },
-          },
+          domain: { line: { stroke: textColor } },
+          legend: { text: { fill: textColor } },
           ticks: {
             line: { stroke: textColor, strokeWidth: 1 },
             text: { fill: textColor },
@@ -93,6 +79,10 @@ const BarChart = ({ data, isDashboard = false }) => {
           },
         },
       }}
+      layout="vertical"
+      labelSkipWidth={12}
+      labelSkipHeight={12}
+      labelTextColor={textColor} // Ensuring bar labels are visible
     />
   );
 };

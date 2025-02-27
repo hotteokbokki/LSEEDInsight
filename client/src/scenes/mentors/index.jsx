@@ -40,6 +40,8 @@ const Mentors = () => {
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
   const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
+  const [stats, setStats] = useState(null);
+
   // Fetch mentors from the database
   useEffect(() => {
     const fetchMentors = async () => {
@@ -66,6 +68,20 @@ const Mentors = () => {
     };
 
     fetchMentors();
+  }, []);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(`/api/mentor-stats`);
+        const data = await response.json();
+        console.log(data)
+        setStats(data);
+      } catch (error) {
+        console.error("Error fetching analytics stats:", error);
+      }
+    };
+    fetchStats();
   }, []);
 
   useEffect(() => {
@@ -290,7 +306,6 @@ const Mentors = () => {
       {/* HEADER */}
       <Header title="MENTORS" subtitle="Manage Mentors" />
       {/* ROW 1: STAT BOXES */}
-      {/* ROW 1: STAT BOXES */}
       <Box
         display="grid"
         gridTemplateColumns="repeat(12, 1fr)"
@@ -305,17 +320,16 @@ const Mentors = () => {
           justifyContent="center"
         >
           <StatBox
-            title="13"
+            title={stats?.mentorWithoutMentorshipCount[0]?.count} // Render dynamic value
             subtitle="Unassigned Mentors"
-            progress="0.75"
-            increase="+14%"
-            icon={
-              <EmailIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
-              />
-            }
+            progress={parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)} // Calculate percentage of unassigned mentors
+            increase={`${(
+              (parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)) * 100
+            ).toFixed(2)}%`} // Calculate percentage of mentors with mentorship
+            icon={<EmailIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
           />
         </Box>
+
         <Box
           gridColumn="span 3"
           backgroundColor={colors.primary[400]}
@@ -324,15 +338,13 @@ const Mentors = () => {
           justifyContent="center"
         >
           <StatBox
-            title="44"
+            title={stats?.mentorWithMentorshipCount[0]?.count}
             subtitle="Assigned Mentors"
-            progress="0.50"
-            increase="+21%"
-            icon={
-              <PointOfSaleIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
-              />
-            }
+            progress={parseInt(stats?.mentorWithMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)} // Calculate percentage filled
+            increase={`${(
+              (parseInt(stats?.mentorWithMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)) * 100
+            ).toFixed(2)}%`} // Calculate percentage of mentors with mentorship
+            icon={<PointOfSaleIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
           />
         </Box>
         <Box
@@ -343,10 +355,12 @@ const Mentors = () => {
           justifyContent="center"
         >
           <StatBox
-            title="Lebron James"
+            title={`${stats?.mostAssignedMentor[0]?.mentor_firstname} ${stats?.mostAssignedMentor[0]?.mentor_lastname}`} 
             subtitle="Most Assigned"
-            progress="0.30"
-            increase="+5%"
+            progress={(stats?.mostAssignedMentor[0]?.num_assigned_se / stats?.totalSECount[0]?.count).toFixed(2)} // Calculate progress (assigned SE count / total SE count)
+            increase={`${(
+              ((stats?.mostAssignedMentor[0]?.num_assigned_se / stats?.totalSECount[0]?.count) - 0) * 100
+            ).toFixed(2)}%`} // Adjust to calculate increase
             icon={
               <PersonAddIcon
                 sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
@@ -361,16 +375,18 @@ const Mentors = () => {
           alignItems="center"
           justifyContent="center"
         >
-          <StatBox
-            title="Lavar Ball"
-            subtitle="Least Assigned"
-            progress="0.80"
-            increase="+43%"
-            icon={
-              <TrafficIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
-              />
-            }
+        <StatBox
+          title={`${stats?.leastAssignedMentor[0]?.mentor_firstname} ${stats?.leastAssignedMentor[0]?.mentor_lastname}`}
+          subtitle="Least Assigned"
+          progress={(stats?.leastAssignedMentor[0]?.num_assigned_se / stats?.totalSECount[0]?.count).toFixed(2)} // Calculate progress (assigned SE count / total SE count)
+          increase={`${(
+            ((stats?.leastAssignedMentor[0]?.num_assigned_se / stats?.totalSECount[0]?.count) - 0) * 100
+          ).toFixed(2)}%`} // Adjust to calculate increase
+          icon={
+            <TrafficIcon
+              sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+            />
+          }
           />
         </Box>
       </Box>

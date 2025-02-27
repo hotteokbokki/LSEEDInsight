@@ -70,3 +70,19 @@ exports.getSEWithMentors = async () => {
         return []; // Return an empty array in case of an error
     }
 };
+
+exports.getMentorshipCount = async () => {
+    try {
+        const query = `
+            SELECT COUNT(DISTINCT mentor_id) 
+            FROM mentorships
+            WHERE status != 'Inactive';  -- Optionally filter by active mentorships
+        `;
+
+        const result = await pgDatabase.query(query);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching mentorships", error);
+        return []; // Return an empty array in case of an error
+    }
+};

@@ -13,16 +13,16 @@ const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const pgSession = require("connect-pg-simple")(session);
 const cookieParser = require("cookie-parser");
 const { addProgram } = require("./controllers/programsController");
-const { getMentorsBySocialEnterprises, getMentorById, getAllMentors, getUnassignedMentors, getPreviousUnassignedMentors, getAssignedMentors } = require("./controllers/mentorsController.js");
+const { getMentorsBySocialEnterprises, getMentorById, getAllMentors, getUnassignedMentors, getPreviousUnassignedMentors, getAssignedMentors, getWithoutMentorshipCount, getLeastAssignedMentor, getMostAssignedMentor } = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
-const { getMentorshipsByMentorId, getMentorBySEID, getSEWithMentors, getPreviousSEWithMentors } = require("./controllers/mentorshipsController.js");
+const { getMentorshipsByMentorId, getMentorBySEID, getSEWithMentors, getPreviousSEWithMentors, getMentorshipCount } = require("./controllers/mentorshipsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
-const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID, getAllSECommonChallenges, getAverageScoreForAllSEPerCategory, getImprovementScorePerMonthAnnually, getImprovementScoreOverallAnnually, getGrowthScoreOverallAnually, getMonthlyGrowthDetails } = require("./controllers/evaluationsController.js");
+const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID, getAllSECommonChallenges, getAverageScoreForAllSEPerCategory, getImprovementScorePerMonthAnnually, getImprovementScoreOverallAnnually, getGrowthScoreOverallAnually, getMonthlyGrowthDetails, getSELeaderboards } = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
-const { getPerformanceOverviewBySEID } = require("./controllers/evaluationcategoriesController.js");
+const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution } = require("./controllers/evaluationcategoriesController.js");
 const app = express();
 
 // Enable CORS with credentials
@@ -187,13 +187,26 @@ app.get("/api/dashboard-stats", async (req, res) => {
   }
 });
 
-app.get("/test-api", async (req, res) => {
+app.get("/api/mentor-stats", async (req, res) => {
   try {
-    const result  = await getGrowthScoreOverallAnually();
+    // ✅ Fetch data
+    const mentorshipCount = await getMentorshipCount();
+    const mentorsWithMentorshipCount = await getMentorshipCount();
+    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount();
+    const leastAssignedMentor = await getLeastAssignedMentor();
+    const mostAssignedMentor = await getMostAssignedMentor();
+    const totalSECount = await getTotalSECount();
 
-    res.json(result);
+    res.json({
+      mentorCountTotal: mentorshipCount,
+      mentorWithMentorshipCount: mentorsWithMentorshipCount,
+      mentorWithoutMentorshipCount: mentorsWithoutMentorshipCount,
+      leastAssignedMentor,
+      mostAssignedMentor,
+      totalSECount,
+    });
   } catch (error) {
-    console.error("❌ Error fetching dashboard stats:", error);
+    console.error("❌ Error fetching mentor stats:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
@@ -219,6 +232,8 @@ app.get("/api/analytics-stats", async (req, res) => {
     const allCommonChallenges = await getAllSECommonChallenges();
     const categoricalScoreForAllSE = await getAverageScoreForAllSEPerCategory();
     const improvementScore = await getImprovementScorePerMonthAnnually();
+    const evaluationScoreDistribution = await getEvaluationScoreDistribution();
+    const leaderboardData = await getSELeaderboards();
 
     // ✅ Return Response
     res.json({
@@ -229,8 +244,10 @@ app.get("/api/analytics-stats", async (req, res) => {
       allCommonChallenges,
       categoricalScoreForAllSE,
       improvementScore,
-      growthScoreTotal: currentGrowthScoreValue.toFixed(2), // Should return 1.17
-      cumulativeGrowth: cumulativeGrowthValue.toFixed(2),  // Should return 46.80
+      growthScoreTotal: currentGrowthScoreValue.toFixed(2), 
+      cumulativeGrowth: cumulativeGrowthValue.toFixed(2),  
+      evaluationScoreDistribution,
+      leaderboardData,
     });
 
   } catch (error) {

@@ -67,8 +67,6 @@ exports.getEvaluationDetails = async (evaluation_id) => {
 
 exports.getTopSEPerformance = async () => {
     try {
-        console.log("Fetching top SE performance for the last 3 months");
-
         const query = `
             WITH MonthlyRatings AS (
                 SELECT 
@@ -107,8 +105,6 @@ exports.getTopSEPerformance = async () => {
 
 exports.getPerformanceTrendBySEID = async (se_id) => {
     try {
-        console.log("Fetching top SE performance for the last 3 months");
-
         const query = `
             WITH MonthlyRatings AS (
                 SELECT 
@@ -139,8 +135,6 @@ exports.getPerformanceTrendBySEID = async (se_id) => {
 
 exports.getCommonChallengesBySEID = async (se_id) => {
     try {
-        console.log("Fetching top SE performance for the last 3 months");
-
         const query = `
             WITH top_comments AS (
                 SELECT 
@@ -442,6 +436,52 @@ exports.getMonthlyGrowthDetails= async () => {
           ) AS growth_change_rate
       FROM FinalGrowth
       ORDER BY month;
+        `;
+        const result = await pgDatabase.query(query);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+
+exports.getSELeaderboards= async () => {
+    try {
+        const query = `
+            WITH MonthlyRatings AS (
+                SELECT 
+                    e.se_id,
+                    s.abbr AS social_enterprise, -- Use abbreviation instead of full name
+                    DATE_TRUNC('month', e.created_at) AS month,
+                    ROUND(AVG(ec.rating), 2) AS avg_rating,
+                    COUNT(*) AS eval_count -- Count number of evaluations per SE per month
+                FROM evaluations e
+                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+                JOIN socialenterprises s ON e.se_id = s.se_id
+                WHERE e.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '3 months') -- Ensures full months are considered
+                GROUP BY e.se_id, s.abbr, month
+            ),
+            LatestRatings AS (
+                SELECT se_id, MAX(month) AS latest_month
+                FROM MonthlyRatings
+                GROUP BY se_id
+            ),
+            TopSEs AS (
+                SELECT 
+                    mr.se_id, 
+                    mr.social_enterprise, 
+                    mr.avg_rating, 
+                    SUM(mr.avg_rating * mr.eval_count) / SUM(mr.eval_count) AS weighted_avg_rating
+                FROM MonthlyRatings mr
+                JOIN LatestRatings lr ON mr.se_id = lr.se_id AND mr.month = lr.latest_month
+                GROUP BY mr.se_id, mr.social_enterprise, mr.avg_rating
+                ORDER BY weighted_avg_rating DESC
+                LIMIT 10 -- Get the top 10 performing SEs based on most recent rating
+            )
+            SELECT t.se_id, t.social_enterprise, t.avg_rating AS most_recent_avg_rating
+            FROM TopSEs t
+            ORDER BY t.weighted_avg_rating DESC;
+
         `;
         const result = await pgDatabase.query(query);
         return result.rows;

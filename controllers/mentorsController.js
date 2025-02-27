@@ -52,7 +52,6 @@ exports.getMentorById = async (mentor_id) => {
 
 exports.getActiveMentors = async () => {
   try {
-    console.log("Fetching active mentors...");
     const query = `
       SELECT "mentor_id", "mentor_firstname", "mentor_lastname"
       FROM "mentors"
@@ -76,8 +75,6 @@ exports.getActiveMentors = async () => {
 
 exports.getAllMentors = async () => {
   try {
-    console.log("Fetching all mentors...");
-
     const query = `
       SELECT mentor_id, mentor_firstName, mentor_lastName, email, contactNum,
         (SELECT COUNT(*) FROM mentorships WHERE mentor_id = mentors.mentor_id) AS number_SE_assigned
@@ -146,6 +143,91 @@ exports.getAssignedMentors = async () => {
           SELECT COUNT(DISTINCT m.mentor_id) FROM mentors m
           JOIN mentorships ms ON m.mentor_id = ms.mentor_id 
           WHERE ms.status = 'Active' AND m.isactive = true
+      `;
+      const result = await pgDatabase.query(query);
+      return result.rows;
+  } catch (error) {
+      console.error("❌ Error fetching assigned mentors:", error);
+      return [];
+  }
+};
+
+exports.getMentorCount = async () => {
+  try {
+      const query = `
+          SELECT COUNT(*) 
+          FROM mentors;
+      `;
+      const result = await pgDatabase.query(query);
+      return result.rows;
+  } catch (error) {
+      console.error("❌ Error fetching assigned mentors:", error);
+      return [];
+  }
+};
+
+exports.getWithoutMentorshipCount = async () => {
+  try {
+      const query = `
+          SELECT COUNT(*) 
+          FROM mentors
+          WHERE mentor_id NOT IN (SELECT DISTINCT mentor_id FROM public.mentorships);
+      `;
+      const result = await pgDatabase.query(query);
+      return result.rows;
+  } catch (error) {
+      console.error("❌ Error fetching assigned mentors:", error);
+      return [];
+  }
+};
+
+exports.getMostAssignedMentor = async () => {
+  try {
+      const query = `
+          SELECT 
+              m.mentor_id,
+              m.mentor_firstname,
+              m.mentor_lastname,
+              COUNT(ms.se_id) AS num_assigned_se
+          FROM 
+              public.mentors m
+          JOIN 
+              public.mentorships ms ON m.mentor_id = ms.mentor_id
+          WHERE 
+              ms.status = 'Active'
+          GROUP BY 
+              m.mentor_id
+          ORDER BY 
+              num_assigned_se DESC
+          LIMIT 1;
+      `;
+      const result = await pgDatabase.query(query);
+      return result.rows;
+  } catch (error) {
+      console.error("❌ Error fetching assigned mentors:", error);
+      return [];
+  }
+};
+
+exports.getLeastAssignedMentor = async () => {
+  try {
+      const query = `
+          SELECT 
+              m.mentor_id,
+              m.mentor_firstname,
+              m.mentor_lastname,
+              COUNT(ms.se_id) AS num_assigned_se
+          FROM 
+              public.mentors m
+          JOIN 
+              public.mentorships ms ON m.mentor_id = ms.mentor_id
+          WHERE 
+              ms.status = 'Active'
+          GROUP BY 
+              m.mentor_id
+          ORDER BY 
+              num_assigned_se ASC
+          LIMIT 1;
       `;
       const result = await pgDatabase.query(query);
       return result.rows;
