@@ -16,7 +16,6 @@ import {
 import { tokens } from "../../theme";
 import axios from "axios";
 import { DataGrid } from "@mui/x-data-grid";
-import { mockDataMentor } from "../../sampledata/mockData";
 import Header from "../../components/Header";
 import StatBox from "../../components/StatBox";
 import EmailIcon from "@mui/icons-material/Email";
@@ -36,6 +35,7 @@ const Mentors = () => {
     selectedMentor: "",
     selectedSocialEnterprise: "",
   });
+  const [mentorships, setMentorships] = useState([]);
   const [mentors, setMentors] = useState([]);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
@@ -45,7 +45,7 @@ const Mentors = () => {
       try {
         const response = await axios.get("http://localhost:4000/api/mentors"); // ✅ Fixed URL
         console.log("📥 API Response:", response.data); // ✅ Debugging Log
-  
+
         const formattedData = response.data.map((mentor) => ({
           id: mentor.mentor_id, // ✅ Use actual UUID as ID
           mentor_firstName: mentor.mentor_firstName,
@@ -56,14 +56,14 @@ const Mentors = () => {
           numberOfSEsAssigned: mentor.number_SE_assigned || 0, // ✅ Ensure it's a number
           status: "Active", // Assuming active by default
         }));
-  
+
         console.log("✅ Formatted Data:", formattedData);
         setRows(formattedData); // ✅ Correctly setting state
       } catch (error) {
         console.error("❌ Error fetching mentors:", error);
       }
     };
-  
+
     fetchMentors();
   }, []);
 
@@ -146,11 +146,28 @@ const Mentors = () => {
 
         // Show success popup
         setIsSuccessPopupOpen(true);
+
+        await fetchLatestMentorships();
       } else {
         console.error("Error adding mentorship");
       }
     } catch (error) {
       console.error("Failed to add mentorship:", error);
+    }
+  };
+
+  const fetchLatestMentorships = async () => {
+    try {
+      const response = await fetch("/api/mentorships"); // Adjust the endpoint as needed
+      if (response.ok) {
+        const updatedMentorships = await response.json();
+        // Update the state with the latest mentorship data
+        setMentorships(updatedMentorships); // Assuming you have a state variable `mentorships`
+      } else {
+        console.error("Failed to fetch latest mentorships");
+      }
+    } catch (error) {
+      console.error("Error fetching mentorships:", error);
     }
   };
 

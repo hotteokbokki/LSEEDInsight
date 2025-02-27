@@ -13,8 +13,8 @@ exports.getPrograms = async () => {
 
     // Map the results to the desired format
     return result.rows.map(program => ({
-      text: program.name,
-      callback_data: `program_${program.program_id}`
+      id: program.program_id, // Use 'id' for consistency with frontend
+      name: program.name,
     }));
   } catch (error) {
     console.error("Error fetching programs:", error);

@@ -15,6 +15,7 @@ const cookieParser = require("cookie-parser");
 const { getMentorsBySocialEnterprises, getMentorById, getAllMentors, getUnassignedMentors, getPreviousUnassignedMentors, getAssignedMentors } = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
 const { getMentorshipsByMentorId, getMentorBySEID } = require("./controllers/mentorshipsController.js");
+const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
 const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID } = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
@@ -372,6 +373,16 @@ app.get("/getAllSocialEnterprisesWithMentorship", async (req, res) => {
   }
 });
 
+app.get("/getAllSDG", async (req, res) => {
+  try {
+    const sdgs = await getAllSDG(); // Fetch SDGs from the controller
+    res.json(sdgs); // Send the SDGs as JSON
+  } catch (error) {
+    console.error("Error fetching SDGs:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.get("/getAllSocialEnterprises", async (req, res) => {
   try {
     const result = await getAllSocialEnterprises(); // Fetch SEs from DB
@@ -545,6 +556,19 @@ app.get("/getPreDefinedComments", async (req, res) => {
   }
 });
 
+
+
+// API endpoint to fetch all programs
+app.get("/getPrograms", async (req, res) => {
+  try {
+    const programs = await getPrograms(); // Fetch programs from the controller
+    res.json(programs); // Send the programs as JSON
+  } catch (error) {
+    console.error("Error fetching programs:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 // Fetch active mentors
 app.get("/api/active-mentors", async (req, res) => {
   try {
@@ -585,6 +609,22 @@ app.get("/getSocialEnterprisesByID", async (req, res) => {
     res.json(se); // Send the mentorships data
   } catch (error) {
     console.error("Error fetching mentorships:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+// API endpoint to add a new social enterprise
+app.post("/api/social-enterprises", async (req, res) => {
+  try {
+    const socialEnterpriseData = req.body; // Extract data from the request body
+    const newSocialEnterprise = await addSocialEnterprise(socialEnterpriseData); // Call the controller function
+
+    res.status(201).json({
+      message: "Social Enterprise added successfully",
+      data: newSocialEnterprise,
+    });
+  } catch (error) {
+    console.error("Error adding social enterprise:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });

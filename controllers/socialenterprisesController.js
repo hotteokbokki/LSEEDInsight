@@ -145,3 +145,43 @@ exports.getTotalSECount = async () => {
       return [];
   }
 };
+
+exports.addSocialEnterprise = async (socialEnterpriseData) => {
+  try {
+    const {
+      name,
+      sdg_id,
+      contactnum,
+      program_id,
+      isactive,
+      abbr = null, // Default to null if not provided
+    } = socialEnterpriseData;
+
+    const query = `
+      INSERT INTO socialenterprises (
+        team_name,
+        sdg_id,
+        contactnum,
+        program_id,
+        isactive,
+        abbr
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *;
+    `;
+    const values = [
+      name,
+      sdg_id,
+      contactnum,
+      program_id,
+      isactive,
+      abbr, // Include abbreviation
+    ];
+
+    const result = await pgDatabase.query(query, values);
+    return result.rows[0];
+  } catch (error) {
+    console.error("Error adding social enterprise:", error);
+    throw error;
+  }
+};

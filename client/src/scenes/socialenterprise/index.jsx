@@ -29,12 +29,12 @@ const SocialEnterprise = () => {
   const navigate = useNavigate(); // Initialize navigation
   const [socialEnterpriseData, setSocialEnterpriseData] = useState({
     name: "",
-    selectedMentor: "",
     selectedSDG: "",
     contact: "",
     numberOfMembers: "",
     selectedProgram: "",
     selectedStatus: "",
+    abbr: "", // Add abbreviation field
   });
   // State for dialogs
   const [openAddSE, setOpenAddSE] = useState(false);
@@ -42,7 +42,7 @@ const SocialEnterprise = () => {
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [mentors, setMentors] = useState([]);
+
   const [sdgs, setSdgs] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [topPerformers, setTopPerformers] = useState([]);
@@ -92,60 +92,11 @@ const SocialEnterprise = () => {
   }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const mentorsResponse = await fetch("/api/mentors");
-        const sdgsResponse = await fetch("/getAllSDG");
-        const programsResponse = await fetch("/getPrograms");
-
-        const mentorsData = await mentorsResponse.json();
-        const sdgsData = await sdgsResponse.json();
-        const programsData = await programsResponse.json();
-
-        setMentors(
-          mentorsData.map((mentor) => ({
-            id: mentor.mentor_id,
-            name: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
-          }))
-        );
-        setSdgs(sdgsData);
-        setPrograms(programsData);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    const fetchMentors = async () => {
-      try {
-        const response = await fetch("/api/mentors");
-        const data = await response.json();
-        setMentors(
-          data.map((mentor) => ({
-            id: mentor.mentor_id,
-            name: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
-          }))
-        );
-      } catch (error) {
-        console.error("Error fetching mentors:", error);
-      }
-    };
-    fetchMentors();
-  }, []);
-
-  useEffect(() => {
     const fetchSDGs = async () => {
       try {
-        const response = await fetch("/getAllSDG");
+        const response = await fetch("/getAllSDG"); // Call the API endpoint
         const data = await response.json();
-        setSdgs(
-          data.map((sdg) => ({
-            id: sdg.sdg_id,
-            name: sdg.sdg_name,
-          }))
-        );
+        setSdgs(data); // Update the state with the fetched SDGs
       } catch (error) {
         console.error("Error fetching SDGs:", error);
       }
@@ -156,14 +107,9 @@ const SocialEnterprise = () => {
   useEffect(() => {
     const fetchPrograms = async () => {
       try {
-        const response = await fetch("/getPrograms");
+        const response = await fetch("/getPrograms"); // Call the API endpoint
         const data = await response.json();
-        setPrograms(
-          data.map((program) => ({
-            id: program.program_id,
-            name: program.program_name,
-          }))
-        );
+        setPrograms(data); // Update the state with the fetched programs
       } catch (error) {
         console.error("Error fetching programs:", error);
       }
@@ -173,14 +119,37 @@ const SocialEnterprise = () => {
 
   const handleSubmit = async () => {
     try {
+      // Basic validation
+      if (!socialEnterpriseData.name.trim()) {
+        alert("Name is required");
+        return;
+      }
+      if (!socialEnterpriseData.selectedSDG) {
+        alert("SDG is required");
+        return;
+      }
+      if (!socialEnterpriseData.contact.trim()) {
+        alert("Contact is required");
+        return;
+      }
+      if (!socialEnterpriseData.selectedProgram) {
+        alert("Program is required");
+        return;
+      }
+      if (!socialEnterpriseData.selectedStatus) {
+        alert("Status is required");
+        return;
+      }
+
+      // Proceed with submission
       const newSocialEnterprise = {
         name: socialEnterpriseData.name,
-        mentor_id: socialEnterpriseData.selectedMentor,
         sdg_id: socialEnterpriseData.selectedSDG,
-        contact: socialEnterpriseData.contact,
-        number_of_members: socialEnterpriseData.numberOfMembers,
+        contactnum: socialEnterpriseData.contact, // Change this line
+        number_of_members: socialEnterpriseData.numberOfMembers || 0,
         program_id: socialEnterpriseData.selectedProgram,
-        status: socialEnterpriseData.selectedStatus,
+        isactive: socialEnterpriseData.selectedStatus, // Convert status to boolean
+        abbr: socialEnterpriseData.abbr || null,
       };
 
       const response = await fetch("/api/social-enterprises", {
@@ -194,12 +163,12 @@ const SocialEnterprise = () => {
         handleCloseAddSE(); // Close the dialog
         setSocialEnterpriseData({
           name: "",
-          selectedMentor: "",
           selectedSDG: "",
           contact: "",
           numberOfMembers: "",
           selectedProgram: "",
           selectedStatus: "",
+          abbr: "",
         });
       } else {
         console.error("Error adding Social Enterprise");
@@ -254,15 +223,17 @@ const SocialEnterprise = () => {
   return (
     <Box m="20px">
       <Header title="SOCIAL ENTERPRISE" subtitle="Manage Social Enterprises" />
-        {/* SE Performance Trend*/}
-        <Box
-          gridColumn="span 12"
-          gridRow="span 2"
-          backgroundColor={colors.primary[400]}
-        >
-          <SEPerformanceTrendChart /> {/* ✅ Embed the SEPerformanceChart component here */}
-          </Box>
-        <Box display="flex" gap="10px" mt="20px">
+      {/* SE Performance Trend*/}
+      <Box
+        gridColumn="span 12"
+        gridRow="span 2"
+        backgroundColor={colors.primary[400]}
+        paddingTop="10px"
+      >
+        <SEPerformanceTrendChart />{" "}
+        {/* ✅ Embed the SEPerformanceChart component here */}
+      </Box>
+      <Box display="flex" gap="10px" mt="20px">
         <Button
           variant="contained"
           sx={{ backgroundColor: colors.greenAccent[500], color: "black" }}
@@ -322,6 +293,9 @@ const SocialEnterprise = () => {
                 {/* TextField */}
                 <TextField
                   label="Enter Name"
+                  name="name"
+                  value={socialEnterpriseData.name}
+                  onChange={handleInputChange}
                   fullWidth
                   margin="dense"
                   sx={{
@@ -347,61 +321,6 @@ const SocialEnterprise = () => {
                     },
                   }}
                 />
-              </Box>
-
-              {/* Mentor Dropdown */}
-              <Box>
-                {/* Mentor Label */}
-                <Typography
-                  variant="subtitle1"
-                  sx={{
-                    fontWeight: "bold",
-                    marginBottom: "8px", // Space between label and dropdown
-                  }}
-                >
-                  Mentor
-                </Typography>
-
-                {/* Select Dropdown */}
-                <FormControl fullWidth margin="normal">
-                  <InputLabel
-                    id="mentor-label"
-                    sx={{
-                      backgroundColor: "#fff", // Prevent overlap with the border
-                      padding: "0 4px", // Add padding for readability
-                      "&.Mui-focused": {
-                        backgroundColor: "#fff", // Ensure the background remains white when focused
-                      },
-                    }}
-                  >
-                    Select Mentor
-                  </InputLabel>
-                  <Select
-                    labelId="mentor-label"
-                    name="selectedMentor"
-                    value={socialEnterpriseData.selectedMentor || ""}
-                    onChange={handleInputChange}
-                    label="Select Mentor"
-                    sx={{
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000", // Consistent border color
-                        borderWidth: "1px",
-                      },
-                      "&:hover .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000", // Darken border on hover
-                      },
-                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000", // Consistent border color when focused
-                      },
-                    }}
-                  >
-                    {mentors.map((mentor) => (
-                      <MenuItem key={mentor.id} value={mentor.id}>
-                        {mentor.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
               </Box>
 
               {/* SDG Dropdown */}
@@ -426,6 +345,7 @@ const SocialEnterprise = () => {
                       padding: "0 4px", // Add padding for readability
                       "&.Mui-focused": {
                         backgroundColor: "#fff", // Ensure the background remains white when focused
+                        color: "#000",
                       },
                     }}
                   >
@@ -438,23 +358,36 @@ const SocialEnterprise = () => {
                     onChange={handleInputChange}
                     label="Select SDG"
                     sx={{
+                      color: "#000",
                       "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000", // Consistent border color
+                        borderColor: "#000",
                         borderWidth: "1px",
                       },
                       "&:hover .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000", // Darken border on hover
+                        borderColor: "#000",
                       },
                       "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000", // Consistent border color when focused
+                        borderColor: "#000",
                       },
                     }}
                   >
-                    {sdgs.map((sdg) => (
-                      <MenuItem key={sdg.id} value={sdg.id}>
-                        {sdg.name}
+                    {/* Placeholder Option */}
+                    <MenuItem value="" disabled>
+                      Select SDG
+                    </MenuItem>
+
+                    {/* Check if SDGs exist */}
+                    {sdgs.length > 0 ? (
+                      sdgs.map((sdg) => (
+                        <MenuItem key={sdg.id} value={sdg.id}>
+                          {sdg.name}
+                        </MenuItem>
+                      ))
+                    ) : (
+                      <MenuItem value="" disabled>
+                        No SDGs available
                       </MenuItem>
-                    ))}
+                    )}
                   </Select>
                 </FormControl>
               </Box>
@@ -474,51 +407,10 @@ const SocialEnterprise = () => {
 
                 {/* TextField */}
                 <TextField
+                  name="contact"
+                  value={socialEnterpriseData.contact}
+                  onChange={handleInputChange}
                   label="Enter Contact"
-                  fullWidth
-                  margin="dense"
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      border: "1px solid #000", // Consistent border color
-                      borderRadius: "4px", // Rounded corners
-                      "&:hover": {
-                        borderColor: "#000", // Darken border on hover
-                      },
-                      "&.Mui-focused": {
-                        borderColor: "#000", // Consistent border color when focused
-                      },
-                    },
-                    "& .MuiInputLabel-root": {
-                      backgroundColor: "#fff", // Prevent overlap with the border
-                      padding: "0 4px", // Add padding for readability
-                      "&.Mui-focused": {
-                        backgroundColor: "#fff", // Ensure the background remains white when focused
-                      },
-                    },
-                    "& .MuiInputBase-input": {
-                      color: "#000", // Set text color to black
-                    },
-                  }}
-                />
-              </Box>
-
-              {/* No. of Members Field */}
-              <Box>
-                {/* No. of Members Label */}
-                <Typography
-                  variant="subtitle1"
-                  sx={{
-                    fontWeight: "bold",
-                    marginBottom: "8px", // Space between title and input
-                  }}
-                >
-                  No. of Members
-                </Typography>
-
-                {/* TextField */}
-                <TextField
-                  label="Enter No. of Members"
-                  type="number"
                   fullWidth
                   margin="dense"
                   sx={{
@@ -553,52 +445,70 @@ const SocialEnterprise = () => {
                   variant="subtitle1"
                   sx={{
                     fontWeight: "bold",
-                    marginBottom: "8px", // Space between label and dropdown
+                    marginBottom: "8px",
                   }}
                 >
                   Program
                 </Typography>
 
-                {/* Select Dropdown */}
-                <FormControl fullWidth margin="dense">
-                  <InputLabel
-                    id="program-label"
-                    sx={{
-                      backgroundColor: "#fff", // Prevent overlap with the border
-                      padding: "0 4px", // Add padding for readability
-                      "&.Mui-focused": {
-                        backgroundColor: "#fff", // Ensure the background remains white when focused
-                      },
-                    }}
-                  >
-                    Select Program
-                  </InputLabel>
-                  <Select
-                    labelId="program-label"
-                    name="selectedProgram"
-                    value={socialEnterpriseData.selectedProgram || ""}
-                    onChange={handleInputChange}
-                    label="Select Program"
-                    sx={{
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000", // Consistent border color
-                        borderWidth: "1px", // Solid 1px border
-                      },
-                      "&:hover .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000", // Darken border on hover
-                      },
-                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000", // Consistent border color when focused
-                      },
-                    }}
-                  >
-                    {programs.map((program) => (
-                      <MenuItem key={program.id} value={program.id}>
-                        {program.name}
+                {/* Show loading state if programs are not yet fetched */}
+                {loading ? (
+                  <Typography>Loading programs...</Typography>
+                ) : (
+                  <FormControl fullWidth margin="dense">
+                    <InputLabel
+                      id="program-label"
+                      sx={{
+                        backgroundColor: "#fff",
+                        padding: "0 4px",
+                        "&.Mui-focused": {
+                          backgroundColor: "#fff",
+                        },
+                      }}
+                    >
+                      Select Program
+                    </InputLabel>
+                    <Select
+                      labelId="program-label"
+                      name="selectedProgram"
+                      value={socialEnterpriseData.selectedProgram || ""}
+                      onChange={handleInputChange}
+                      label="Select Program"
+                      sx={{
+                        color: "#000",
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "#000",
+                          borderWidth: "1px",
+                        },
+                        "&:hover .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "#000",
+                        },
+                        "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "#000",
+                        },
+                      }}
+                    >
+                      <MenuItem value="" disabled>
+                        Select Program
                       </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                      {programs.length > 0 ? (
+                        programs.map((program) => (
+                          <MenuItem
+                            key={program.id}
+                            value={program.id}
+                            title={`Program: ${program.name}`}
+                          >
+                            {program.name}
+                          </MenuItem>
+                        ))
+                      ) : (
+                        <MenuItem value="" disabled>
+                          No programs available
+                        </MenuItem>
+                      )}
+                    </Select>
+                  </FormControl>
+                )}
               </Box>
 
               {/* Status Dropdown */}
@@ -635,6 +545,7 @@ const SocialEnterprise = () => {
                     onChange={handleInputChange}
                     label="Select Status"
                     sx={{
+                      color: "#000",
                       "& .MuiOutlinedInput-notchedOutline": {
                         borderColor: "#000", // Consistent border color
                         borderWidth: "1px", // Solid 1px border
@@ -651,6 +562,52 @@ const SocialEnterprise = () => {
                     <MenuItem value="Inactive">Inactive</MenuItem>
                   </Select>
                 </FormControl>
+              </Box>
+
+              {/* Abbreviation Field */}
+              <Box>
+                {/* Abbreviation Label */}
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: "bold",
+                    marginBottom: "8px", // Space between title and input
+                  }}
+                >
+                  Abbreviation
+                </Typography>
+
+                {/* TextField */}
+                <TextField
+                  name="abbr"
+                  value={socialEnterpriseData.abbr}
+                  onChange={handleInputChange}
+                  label="Enter Abbreviation"
+                  fullWidth
+                  margin="dense"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      border: "1px solid #000", // Consistent border color
+                      borderRadius: "4px", // Rounded corners
+                      "&:hover": {
+                        borderColor: "#000", // Darken border on hover
+                      },
+                      "&.Mui-focused": {
+                        borderColor: "#000", // Consistent border color when focused
+                      },
+                    },
+                    "& .MuiInputLabel-root": {
+                      backgroundColor: "#fff", // Prevent overlap with the border
+                      padding: "0 4px", // Add padding for readability
+                      "&.Mui-focused": {
+                        backgroundColor: "#fff", // Ensure the background remains white when focused
+                      },
+                    },
+                    "& .MuiInputBase-input": {
+                      color: "#000", // Set text color to black
+                    },
+                  }}
+                />
               </Box>
             </Box>
           </DialogContent>
