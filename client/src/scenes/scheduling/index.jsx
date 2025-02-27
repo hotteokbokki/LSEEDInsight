@@ -200,8 +200,8 @@ const Scheduling = ({ userRole }) => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseSEModal}>Cancel</Button>
-          <Button onClick={handleConfirmDate} disabled={!selectedSE || isLoading}>
+          <Button sx={{ color: "#fff", textAlign: "center", fontWeight: "bold" }} onClick={handleCloseSEModal}>Cancel</Button>
+          <Button sx={{ color: "#fff", textAlign: "center", fontWeight: "bold" }} onClick={handleConfirmDate} disabled={!selectedSE || isLoading}>
             {isLoading ? "Updating..." : "Confirm"}
           </Button>
         </DialogActions>
