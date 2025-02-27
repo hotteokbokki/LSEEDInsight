@@ -32,26 +32,28 @@ const SEAnalytics = () => {
   useEffect(() => {
     const fetchSocialEnterprises = async () => {
       try {
-        const response = await fetch("http://localhost:4000/getAllSocialEnterprises");
+        const response = await fetch(
+          "http://localhost:4000/getAllSocialEnterprises"
+        );
         const data = await response.json();
-  
+
         // Format the data for the dropdown
         const formattedData = data.map((se) => ({
           id: se.se_id, // Keep as string (since UUIDs are strings)
           name: se.team_name,
         }));
-  
+
         setSocialEnterprises(formattedData);
-  
+
         // Debugging
         console.log("Fetched Social Enterprises:", formattedData);
         console.log("URL ID:", id);
-  
+
         // Set the initial selected SE if `id` is provided
         if (id) {
           const initialSE = formattedData.find((se) => se.id === id);
           console.log("Matched SE:", initialSE);
-  
+
           setSelectedSE(initialSE);
           setSelectedSEId(id);
         }
@@ -59,13 +61,19 @@ const SEAnalytics = () => {
         console.error("Error fetching social enterprises:", error);
       }
     };
-  
+
     fetchSocialEnterprises();
   }, [id]);
 
   // Fetch analytics data for the selected social enterprise
   useEffect(() => {
     const fetchAnalyticsData = async () => {
+      // Reset all chart data before fetching new data
+      setLineData([]);
+      setPieData([]);
+      setLikertData([]);
+      setRadarData([]);
+
       if (!selectedSEId) return;
 
       try {
@@ -77,36 +85,30 @@ const SEAnalytics = () => {
         setLineData(lineData);
 
         // Fetch common challenges data
-        const pieResponse = await fetch(`/api/common-challenges/${selectedSEId}`);
+        const pieResponse = await fetch(
+          `/api/common-challenges/${selectedSEId}`
+        );
         const rawPieData = await pieResponse.json();
-
-        // Format pie chart data properly
         const formattedPieData = rawPieData.map((item) => ({
-          id: item.comment, // Use evaluation_id as the unique identifier
-          label: `${item.percentage}%`, // Displayed text in the pie chart
-          value: parseInt(item.count, 10), // Convert count to a number
+          id: item.comment,
+          label: `${item.percentage}%`,
+          value: parseInt(item.count, 10),
           category: item.category,
         }));
-
         setPieData(formattedPieData);
 
         // Fetch Likert scale data
         const likertResponse = await fetch(`/api/likert-data/${selectedSEId}`);
         const rawLikertData = await likertResponse.json();
-
         setLikertData(rawLikertData);
-        console.log("Updated LikertData:", likertData);  // This will still log the old state!
 
         // Fetch radar chart data
         const radarResponse = await fetch(`/api/radar-data/${selectedSEId}`);
         const radarData = await radarResponse.json();
-        console.log("Radar API Response:", radarData);  // ✅ Debug API Response
-        
-        if (!Array.isArray(radarData)) {
-          console.error("Invalid radar data format", radarData);
-        } else {
+        if (Array.isArray(radarData)) {
           setRadarData(radarData);
-          console.log("Radar Data Set in State:", radarData);  // ✅ Debug State Update
+        } else {
+          console.error("Invalid radar data format", radarData);
         }
       } catch (error) {
         console.error("Error fetching analytics data:", error);
@@ -127,8 +129,8 @@ const SEAnalytics = () => {
     setSelectedSE(newSE);
 
     // 🔥 Update the URL to reflect the selected SE
-    navigate(`/se-analytics/${newSEId}`); 
-};
+    navigate(`/se-analytics/${newSEId}`);
+  };
 
   // If no social enterprise is found, show an error message
   if (!selectedSE && socialEnterprises.length > 0) {
@@ -148,10 +150,43 @@ const SEAnalytics = () => {
               value={selectedSEId}
               onChange={handleChangeSE}
               label="Select SE"
+              sx={{
+                minWidth: 200, // Set a fixed minimum width
+                maxWidth: 250, // Optional: Set a maximum width to prevent overflow
+                height: 40, // Set a fixed height
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#fff", // White border color
+                  borderWidth: "1px", // Thin border
+                },
+                "&:hover .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#fff", // White border on hover
+                  borderWidth: "1px", // Maintain thin border on hover
+                },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#fff", // White border when focused
+                  borderWidth: "1px", // Maintain thin border when focused
+                },
+                "& .MuiSelect-select": {
+                  padding: "8px", // Adjust padding for better alignment
+                  fontSize: "14px", // Optional: Adjust font size for cleaner look
+                  whiteSpace: "nowrap", // Prevent text wrapping
+                  overflow: "hidden", // Hide overflowed text
+                  textOverflow: "ellipsis", // Add ellipsis for long text
+                },
+              }}
             >
               {socialEnterprises.map((se) => (
                 <MenuItem key={se.id} value={se.id}>
-                  {se.name}
+                  <Box
+                    sx={{
+                      whiteSpace: "nowrap", // Prevent text wrapping
+                      overflow: "hidden", // Hide overflowed text
+                      textOverflow: "ellipsis", // Add ellipsis for long text
+                      maxWidth: 200, // Match the dropdown's max width
+                    }}
+                  >
+                    {se.name}
+                  </Box>
                 </MenuItem>
               ))}
             </Select>
@@ -182,6 +217,7 @@ const SEAnalytics = () => {
 
       {/* Common Challenges & Performance Score */}
       <Box
+        mt="20px"
         sx={{
           backgroundColor: colors.primary[400],
           padding: "20px",
@@ -191,7 +227,12 @@ const SEAnalytics = () => {
         <Typography variant="h5" fontWeight="bold" color={colors.grey[100]}>
           Common Challenges
         </Typography>
-        <Box height="250px" display="flex" justifyContent="center" alignItems="center">
+        <Box
+          height="250px"
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+        >
           {pieData.length === 0 ? (
             <Typography variant="h6" color={colors.grey[300]}>
               No common challenges found.
@@ -200,27 +241,32 @@ const SEAnalytics = () => {
             <PieChart data={pieData} />
           )}
         </Box>
-
-        {/* Performance Score */}
+      </Box>
+      {/* Performance Score */}
+      <Box
+        mt="20px"
+        sx={{
+          backgroundColor: colors.primary[400],
+          padding: "20px",
+          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+        }}
+      >
+        <Typography variant="h5" fontWeight="bold" color={colors.grey[100]}>
+          Performance Score
+        </Typography>
         <Box
-          sx={{
-            backgroundColor: colors.primary[400],
-            padding: "20px",
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-          }}
+          height="250px"
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
         >
-          <Typography variant="h5" fontWeight="bold" color={colors.grey[100]}>
-            Performance Score
-          </Typography>
-          <Box height="250px" display="flex" justifyContent="center" alignItems="center">
           {likertData.length === 0 ? (
-              <Typography variant="h6" color={colors.grey[300]}>
-                No performance ratings available.
-              </Typography>
-            ) : (
-              <LikertChart data={likertData} />
-            )}
-          </Box>
+            <Typography variant="h6" color={colors.grey[300]}>
+              No performance ratings available.
+            </Typography>
+          ) : (
+            <LikertChart data={likertData} />
+          )}
         </Box>
       </Box>
 
@@ -236,7 +282,12 @@ const SEAnalytics = () => {
         <Typography variant="h5" fontWeight="bold" color={colors.grey[100]}>
           Performance Overview
         </Typography>
-        <Box height="300px" display="flex" justifyContent="center" alignItems="center">
+        <Box
+          height="300px"
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+        >
           {radarData.length === 0 ? (
             <Typography variant="h6" color={colors.grey[300]}>
               Performance Overview Unavailable.
@@ -245,7 +296,6 @@ const SEAnalytics = () => {
             <RadarChart radarData={radarData} />
           )}
         </Box>
-
       </Box>
 
       {/* Back Button with Spacing */}
