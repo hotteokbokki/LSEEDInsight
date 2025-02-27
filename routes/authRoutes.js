@@ -206,39 +206,6 @@ router.get("/mentors", async (req, res) => {
   }
 });
 
-
-router.post("/updateCalendarLink", async (req, res) => {
-  const { calendarLink } = req.body;  // We only need calendarlink to update
-  const userId = req.headers["x-user-id"];
-  console.log("[authRoutes] User ID: ", userId);
-  console.log("[authRoutes] calendarLink: ", calendarLink);
-  
-  try {
-    if (userId) {
-      // Assuming your mentors table has a column mentor_id to identify the mentor
-      const result = await pgDatabase.query(
-        `UPDATE mentors
-         SET calendarlink = $1
-         WHERE mentor_id = $2`,
-        [calendarLink, userId]  // Use userId from session
-      );
-
-      if (result.rowCount > 0) {
-        res.status(200).json({ message: "Calendar link updated successfully!" });
-      } else {
-        res.status(400).json({ error: "Failed to update calendar link. Mentor not found." });
-      }
-    } else {
-      res.status(400).json({ error: "User ID is required." });
-    }
-  } catch (error) {
-    console.error("Error updating calendar link:", error);
-    res.status(500).json({ error: "Server error." });
-  }
-});
-
-
-
 module.exports = {
   router,
   requireAuth,
