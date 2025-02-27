@@ -37,14 +37,18 @@ const Scheduling = ({ userRole }) => {
   const handleOpenModal = () => setOpenModal(true);
   const handleCloseModal = () => setOpenModal(false);
 
-  const handleUploadLink = async () => {
+  const handleUploadLink = async () => {  
     if (calendarLink) {
       try {
         // Assuming you have an API to handle the mentor link update
-        const response = await fetch("/api/mentors/updateCalendarLink", {
+        const response = await fetch("/auth/updateCalendarLink", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ calendarLink, userRole }),
+          headers: { "Content-Type": "application/json", "X-User-Id": user?.id },
+          body: JSON.stringify({ 
+            calendarLink, 
+            userRole,
+           }),
+           credentials: "include",
         });
 
         if (response.ok) {
@@ -62,6 +66,20 @@ const Scheduling = ({ userRole }) => {
       alert("Please provide a valid calendar link.");
     }
   };
+  
+  useEffect(() => {
+    fetch("/auth/session-check", {
+      method: "GET",
+      credentials: "include", // ✅ Required for sending cookies
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then(response => response.json())
+      .then(data => console.log("[Frontend] Session Check Response:", data))
+      .catch(error => console.error("[Frontend] Session Check Error:", error));
+  }, []);
+  
 
   return (
     <Box m="20px">

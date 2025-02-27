@@ -23,8 +23,6 @@ const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprise
 const { getPerformanceOverviewBySEID } = require("./controllers/evaluationcategoriesController.js");
 const app = express();
 
-
-
 // Enable CORS with credentials
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
@@ -39,6 +37,7 @@ app.use(
       pool: pgDatabase,
       tableName: "session", // Ensure this matches your actual session store table
     }),
+    
     secret: process.env.SESSION_SECRET, // Use a secure key
     resave: false,
     saveUninitialized: false,
@@ -51,12 +50,6 @@ app.use(
   })
 );
 app.use(cookieParser());
-
-
-app.use((req, res, next) => {
-  console.log("[DEBUG|server] Current session:", req.session);
-  next();
-});
 
 // Use authentication routes
 app.use("/auth", authRoutes);

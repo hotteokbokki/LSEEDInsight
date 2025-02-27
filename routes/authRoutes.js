@@ -11,14 +11,20 @@ router.post("/", login);
 router.get("/logout", logout);
 router.get("/protected", protectedRoute);
 
-const sessionId = crypto.randomUUID();
+// const sessionId = crypto.randomUUID();
 
 const requireAuth = (req, res, next) => {
-  const sessionId = req.cookies.session_id; // Access the session cookie
-  if (!sessionId) {
-    return res.status(401).json({ message: "Unauthorized: No session ID" });
+  console.log("🔹 Checking authentication...");
+  console.log("🔹 Session Data:", req.session); // Log the session object
+  console.log("🔹 Cookies:", req.cookies); // Log received cookies
+  console.log("🔹 Headers:", req.headers); // Log headers to check for missing JWT
+
+  if (!req.session || !req.session.user) {
+    console.log("🚨 Unauthorized: No session found.");
+    return res.status(401).json({ error: "Unauthorized: No session found." });
   }
 
+  console.log("[authRoutes]✅ User is authenticated:", req.session.user);
   // Add additional validation, like checking the session ID in a database or store if needed.
   next();
 };
@@ -49,7 +55,8 @@ router.post('/login', async (req, res) => {
     }
 
     // ✅ Generate a unique session ID
-    // const sessionId = crypto.randomUUID();
+    const sessionId = crypto.randomUUID();
+
     try {
       console.log('[authRoutes] Inserting session into active_sessions');
       // ✅ Insert the session ID into `active_sessions`
@@ -61,7 +68,7 @@ router.post('/login', async (req, res) => {
     } catch (error) {
       console.error('Error inserting session:', error);
     }
-    
+    console.log("[authRoutes] Session ID (global):", sessionId);
 
     // ✅ Store user details in the session
     req.session.user = {
@@ -73,7 +80,7 @@ router.post('/login', async (req, res) => {
       sessionId: sessionId,
     };
 
-    console.log("[authRoutes] Session after login:", req.session.user); // Add this log
+    console.log("[authRoutes] Session after login:", req.session.user.sessionId); // Add this log
 
     // ✅ Set session ID in a cookie
     res.cookie("session_id", sessionId, { httpOnly: true, secure: false });
@@ -101,9 +108,12 @@ router.post('/login', async (req, res) => {
 });
 
 router.get("/session-check", (req, res) => {
-  console.log("Checking session:", req.session); // Logs full session object
-  if (req.session.user) {
-    return res.json({ sessionUser: req.session.user });
+  console.log("🔍 [routes] Checking session...");
+  console.log("🔹 [routes] Cookies Received:", req.cookies); // Log cookies
+  console.log("🔹 [routes] Session Data:", req.session); // Log session data
+
+  if (req.session && req.session.user) {
+    return res.json({ sessionUser: req.session.user.id });
   } else {
     return res.status(401).json({ message: "No active session" });
   }
@@ -151,7 +161,7 @@ router.post('/logout', async  (req, res) => {
   console.log("[authRoutes] Logging Out");
   try {
     // Retrieve session ID from the cookie
-    console.log('[authRoutes] Session ID:', sessionId);
+    // console.log('[authRoutes] Session ID:', sessionId);
 
     if (sessionId === undefined) {
         return res.status(400).json({ message: 'No session found' });
@@ -197,10 +207,11 @@ router.get("/mentors", async (req, res) => {
 });
 
 
-router.post("/updateCalendarLink", requireAuth, async (req, res) => {
-  const { calendarlink } = req.body;  // We only need calendarlink to update
-  const userId = req.session.user.id; // Get the user ID from the session
+router.post("/updateCalendarLink", async (req, res) => {
+  const { calendarLink } = req.body;  // We only need calendarlink to update
+  const userId = req.headers["x-user-id"];
   console.log("[authRoutes] User ID: ", userId);
+  console.log("[authRoutes] calendarLink: ", calendarLink);
   
   try {
     if (userId) {
@@ -209,7 +220,7 @@ router.post("/updateCalendarLink", requireAuth, async (req, res) => {
         `UPDATE mentors
          SET calendarlink = $1
          WHERE mentor_id = $2`,
-        [calendarlink, userId]  // Use userId from session
+        [calendarLink, userId]  // Use userId from session
       );
 
       if (result.rowCount > 0) {
