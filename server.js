@@ -1093,6 +1093,35 @@ app.post("/api/mentorships", async (req, res) => {
   }
 });
 
+app.post("/updateMentorshipDate", async (req, res) => {
+  const { mentorship_id, mentorship_date } = req.body;
+
+  if (!mentorship_id || !mentorship_date) {
+    return res.status(400).json({ error: "Mentorship ID and date are required" });
+  }
+
+  try {
+    const query = `
+      UPDATE mentorships 
+      SET mentorship_date = $1 
+      WHERE mentorship_id = $2
+      RETURNING *;
+    `;
+
+    const { rows } = await pgDatabase.query(query, [mentorship_date, mentorship_id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Mentorship not found" });
+    }
+
+    res.json({ message: "Mentorship date updated", mentorship: rows[0] });
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   const { role } = req.body; // 'admin' or 'user'

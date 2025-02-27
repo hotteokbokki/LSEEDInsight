@@ -8,16 +8,20 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListItemButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   CircularProgress,
-  ListItemButton,
   TextField,
 } from "@mui/material";
+import { LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DatePicker } from "@mui/x-date-pickers";
 import Header from "../../components/Header";
 import { useAuth } from "../../context/authContext";
+import dayjs from "dayjs";
 
 const Scheduling = ({ userRole }) => {
   const [openModal, setOpenModal] = useState(false);
@@ -25,25 +29,26 @@ const Scheduling = ({ userRole }) => {
   const [mentors, setMentors] = useState([]);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [selectedSE, setSelectedSE] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(dayjs());
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   
   // Fetch mentors data from the backend
-  useEffect(() => {
-    const fetchMentors = async () => {
-      try {
-        const response = await fetch("/auth/mentors");  // Corrected endpoint
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const data = await response.json();
-        setMentors(data);
-      } catch (error) {
-        console.error("Error fetching mentors:", error);
-      }
-    };
-    fetchMentors();
-  }, []);
+  // useEffect(() => {
+  //   const fetchMentors = async () => {
+  //     try {
+  //       const response = await fetch("/auth/mentors");  // Corrected endpoint
+  //       if (!response.ok) {
+  //         throw new Error(`HTTP error! Status: ${response.status}`);
+  //       }
+  //       const data = await response.json();
+  //       setMentors(data);
+  //     } catch (error) {
+  //       console.error("Error fetching mentors:", error);
+  //     }
+  //   };
+  //   fetchMentors();
+  // }, []);
 
   const fetchSocialEnterprises = async () => {
     try {
@@ -78,6 +83,29 @@ const Scheduling = ({ userRole }) => {
       setIsLoading(false);
     }
   };  
+
+  const handleConfirmDate = async () => {
+    if (!selectedSE || !selectedDate) return;
+  
+    try {
+      setIsLoading(true);
+      const response = await fetch("http://localhost:4000/updateMentorshipDate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mentorship_id: selectedSE.id,
+          mentorship_date: selectedDate.format("YYYY-MM-DD"),
+        }),
+      });
+  
+      if (!response.ok) throw new Error("Failed to update mentorship date");
+      alert("Mentorship date updated successfully!");
+    } catch (error) {
+      console.error("Error updating mentorship date:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   const handleRedirect = () => window.open("https://calendar.google.com", "_blank");
   const handleOpenModal = () => setOpenModal(true);
@@ -161,11 +189,20 @@ const Scheduling = ({ userRole }) => {
               ))}
             </List>
           )}
+
+          {selectedSE && (
+              <>
+                <DialogTitle>Select a Date for Mentoring</DialogTitle>
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                  <DatePicker value={selectedDate} onChange={(newDate) => setSelectedDate(newDate)} />
+                  </LocalizationProvider>
+              </>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseSEModal} color="secondary">Cancel</Button>
-          <Button onClick={() => console.log("Scheduled for", selectedSE)} color="primary" variant="contained" disabled={!selectedSE}>
-            Confirm Selection
+          <Button onClick={handleCloseSEModal}>Cancel</Button>
+          <Button onClick={handleConfirmDate} disabled={!selectedSE || isLoading}>
+            {isLoading ? "Updating..." : "Confirm"}
           </Button>
         </DialogActions>
       </Dialog>
