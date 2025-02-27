@@ -53,3 +53,23 @@ exports.getProgramCount = async () => {
       return [];
   }
 };
+
+exports.addProgram = async (programData) => {
+  try {
+    const { name, description } = programData;
+
+    // Insert the program into the database
+    const query = `
+      INSERT INTO programs (name, description)
+      VALUES ($1, $2)
+      RETURNING program_id, name, description;
+    `;
+    const values = [name, description];
+    const result = await pgDatabase.query(query, values);
+
+    return result.rows[0]; // Return the newly created program
+  } catch (error) {
+    console.error("Error adding program:", error);
+    throw error; // Re-throw the error for upstream handling
+  }
+};

@@ -22,6 +22,7 @@ import Header from "../../components/Header";
 import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import { useNavigate } from "react-router-dom"; // For navigation
+import { Snackbar, Alert } from "@mui/material";
 
 const SocialEnterprise = () => {
   const theme = useTheme();
@@ -36,6 +37,13 @@ const SocialEnterprise = () => {
     selectedStatus: "",
     abbr: "", // Add abbreviation field
   });
+
+  const [programFormData, setProgramFormData] = useState({
+    name: "",
+    description: "",
+  });
+
+  const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
   // State for dialogs
   const [openAddSE, setOpenAddSE] = useState(false);
   const [openAddProgram, setOpenAddProgram] = useState(false);
@@ -117,6 +125,40 @@ const SocialEnterprise = () => {
     fetchPrograms();
   }, []);
 
+  const handleProgramInputChange = (e) => {
+    const { name, value } = e.target;
+    setProgramFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  const handleAddProgram = async () => {
+    try {
+      // Basic validation
+      if (!programFormData.name.trim()) {
+        alert("Program name is required");
+        return;
+      }
+
+      // Send the program data to the backend
+      const response = await axios.post(
+        "http://localhost:4000/api/programs",
+        programFormData
+      );
+
+      if (response.status === 201) {
+        console.log("Program added successfully:", response.data);
+        setIsSuccessPopupOpen(true);
+        handleCloseAddProgram(); // Close the dialog
+        setProgramFormData({ name: "", description: "" }); // Reset form fields
+      }
+    } catch (error) {
+      console.error("Failed to add program:", error);
+      alert("Failed to add program. Please try again.");
+    }
+  };
+
   const handleSubmit = async () => {
     try {
       // Basic validation
@@ -144,12 +186,12 @@ const SocialEnterprise = () => {
       // Proceed with submission
       const newSocialEnterprise = {
         name: socialEnterpriseData.name,
-        sdg_id: socialEnterpriseData.selectedSDG,
-        contactnum: socialEnterpriseData.contact, // Change this line
-        number_of_members: socialEnterpriseData.numberOfMembers || 0,
-        program_id: socialEnterpriseData.selectedProgram,
-        isactive: socialEnterpriseData.selectedStatus, // Convert status to boolean
-        abbr: socialEnterpriseData.abbr || null,
+        sdg_name: socialEnterpriseData.selectedSDG, // Send SDG name
+        contactnum: socialEnterpriseData.contact,
+        number_of_members: socialEnterpriseData.numberOfMembers || 0, // Default to 0 if not provided
+        program_name: socialEnterpriseData.selectedProgram, // Send program name
+        isactive: socialEnterpriseData.selectedStatus === "Active", // Convert to boolean
+        abbr: socialEnterpriseData.abbr || null, // Default to null if not provided
       };
 
       const response = await fetch("/api/social-enterprises", {
@@ -159,7 +201,11 @@ const SocialEnterprise = () => {
       });
 
       if (response.ok) {
-        console.log("Social Enterprise added successfully");
+        const data = await response.json();
+        console.log(
+          "Social Enterprise added successfully with SE ID:",
+          data.se_id
+        ); // Use se_id
         handleCloseAddSE(); // Close the dialog
         setSocialEnterpriseData({
           name: "",
@@ -558,6 +604,7 @@ const SocialEnterprise = () => {
                       },
                     }}
                   >
+                    <MenuItem value="">Select Status</MenuItem>
                     <MenuItem value="Active">Active</MenuItem>
                     <MenuItem value="Inactive">Inactive</MenuItem>
                   </Select>
@@ -705,9 +752,12 @@ const SocialEnterprise = () => {
                   Program Name
                 </Typography>
                 <TextField
+                  name="name"
                   label="Enter Program Name"
                   fullWidth
                   margin="dense"
+                  value={programFormData.name}
+                  onChange={handleProgramInputChange}
                   sx={{
                     "& .MuiOutlinedInput-notchedOutline": {
                       borderColor: "#000", // Consistent border color
@@ -738,10 +788,13 @@ const SocialEnterprise = () => {
                   Description
                 </Typography>
                 <TextField
+                  name="description"
                   label="Enter Description"
                   fullWidth
                   margin="dense"
                   multiline
+                  value={programFormData.description}
+                  onChange={handleProgramInputChange}
                   rows={3}
                   sx={{
                     "& .MuiOutlinedInput-notchedOutline": {
@@ -787,7 +840,7 @@ const SocialEnterprise = () => {
 
             {/* Add Button */}
             <Button
-              onClick={handleCloseAddProgram}
+              onClick={handleAddProgram}
               variant="contained"
               sx={{
                 backgroundColor: "#1E4D2B", // DLSU Green button
@@ -802,6 +855,22 @@ const SocialEnterprise = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        <Snackbar
+          open={isSuccessPopupOpen} // Controlled by state
+          autoHideDuration={3000} // Automatically close after 3 seconds
+          onClose={() => setIsSuccessPopupOpen(false)} // Close on click or timeout
+          anchorOrigin={{ vertical: "top", horizontal: "center" }} // Position of the popup
+        >
+          <Alert
+            onClose={() => setIsSuccessPopupOpen(false)}
+            severity="success"
+            sx={{ width: "100%" }}
+          >
+            Program added successfully!
+          </Alert>
+        </Snackbar>
+
         <Button
           variant="contained"
           sx={{ backgroundColor: colors.blueAccent[500], color: "black" }}

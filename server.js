@@ -12,9 +12,9 @@ const { getUsers, getUserName } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const pgSession = require("connect-pg-simple")(session);
 const cookieParser = require("cookie-parser");
+const { addProgram } = require("./controllers/programsController");
 const { getMentorsBySocialEnterprises, getMentorById, getAllMentors, getUnassignedMentors, getPreviousUnassignedMentors, getAssignedMentors } = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
-const { getMentorshipsByMentorId, getMentorBySEID } = require("./controllers/mentorshipsController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getMentorshipsByMentorId, getMentorBySEID, getSEWithMentors, getPreviousSEWithMentors } = require("./controllers/mentorshipsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
@@ -1155,6 +1155,22 @@ app.post("/send-message", async (req, res) => {
   } catch (error) {
     console.error("❌ Error in /send-feedback route:", error.message);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// API endpoint to add a new program
+app.post("/api/programs", async (req, res) => {
+  try {
+    const programData = req.body; // Extract data from the request body
+    const newProgram = await addProgram(programData); // Call the controller function
+
+    res.status(201).json({
+      message: "Program added successfully",
+      data: newProgram,
+    });
+  } catch (error) {
+    console.error("Error adding program:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 

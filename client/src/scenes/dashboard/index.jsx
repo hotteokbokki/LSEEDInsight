@@ -53,19 +53,24 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
-        const response = await fetch("http://localhost:4000/api/dashboard-stats");
+        const response = await fetch(
+          "http://localhost:4000/api/dashboard-stats"
+        );
         const data = await response.json();
 
         setStats(data);
 
         // ✅ Calculate percentage increase for unassigned mentors
         if (data.previousUnassignedMentors > 0) {
-          const change = ((data.unassignedMentors - data.previousUnassignedMentors) / data.previousUnassignedMentors) * 100;
+          const change =
+            ((data.unassignedMentors - data.previousUnassignedMentors) /
+              data.previousUnassignedMentors) *
+            100;
           setPercentageIncrease(`${change.toFixed(1)}%`);
         } else if (data.unassignedMentors > 0) {
-            setPercentageIncrease("100%"); // First-time assignments
+          setPercentageIncrease("100%"); // First-time assignments
         } else {
-            setPercentageIncrease("0%");
+          setPercentageIncrease("0%");
         }
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
@@ -127,61 +132,107 @@ const Dashboard = () => {
     }
   };
 
-return (
+  return (
     <Box m="20px">
       {/* HEADER */}
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Header title="DASHBOARD" subtitle="Welcome to your dashboard" />
       </Box>
 
-        {/* GRID & CHARTS */}
-        <Box
-          display="grid"
-          gridTemplateColumns="repeat(12, 1fr)"
-          gridAutoRows="140px"
-          gap="20px"
-        >
+      {/* GRID & CHARTS */}
+      <Box
+        display="grid"
+        gridTemplateColumns="repeat(12, 1fr)"
+        gridAutoRows="140px"
+        gap="20px"
+      >
         {/* Unassigned Mentors */}
-        <Box gridColumn="span 3" backgroundColor={colors.primary[400]} display="flex" alignItems="center" justifyContent="center">
+        <Box
+          gridColumn="span 3"
+          backgroundColor={colors.primary[400]}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
           <StatBox
             title={stats.unassignedMentors}
             subtitle="Unassigned Mentors"
-            progress={stats.unassignedMentors / (stats.unassignedMentors + stats.assignedMentors)}
+            progress={
+              stats.unassignedMentors /
+              (stats.unassignedMentors + stats.assignedMentors)
+            }
             increase={percentageIncrease}
-            icon={<EmailIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
+            icon={
+              <EmailIcon
+                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+              />
+            }
           />
         </Box>
 
         {/* Assigned Mentors */}
-        <Box gridColumn="span 3" backgroundColor={colors.primary[400]} display="flex" alignItems="center" justifyContent="center">
+        <Box
+          gridColumn="span 3"
+          backgroundColor={colors.primary[400]}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
           <StatBox
             title={stats.assignedMentors}
             subtitle="Assigned Mentors"
-            progress={stats.assignedMentors / (stats.unassignedMentors + stats.assignedMentors)}
+            progress={
+              stats.assignedMentors /
+              (stats.unassignedMentors + stats.assignedMentors)
+            }
             increase="+0%" // Static for now, can be dynamically calculated
-            icon={<PointOfSaleIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
+            icon={
+              <PointOfSaleIcon
+                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+              />
+            }
           />
         </Box>
 
         {/* Total Social Enterprises */}
-        <Box gridColumn="span 3" backgroundColor={colors.primary[400]} display="flex" alignItems="center" justifyContent="center">
+        <Box
+          gridColumn="span 3"
+          backgroundColor={colors.primary[400]}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
           <StatBox
             title={stats.totalSocialEnterprises}
             subtitle="Total SEs"
             progress={1}
             increase="+0%" // Static for now
-            icon={<PersonAddIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
+            icon={
+              <PersonAddIcon
+                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+              />
+            }
           />
         </Box>
 
         {/* Total Programs */}
-        <Box gridColumn="span 3" backgroundColor={colors.primary[400]} display="flex" alignItems="center" justifyContent="center">
+        <Box
+          gridColumn="span 3"
+          backgroundColor={colors.primary[400]}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
           <StatBox
             title={stats.totalPrograms}
             subtitle="No. of Programs"
             progress={1}
             increase="+0%" // Static for now
-            icon={<TrafficIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
+            icon={
+              <TrafficIcon
+                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+              />
+            }
           />
         </Box>
 
@@ -191,7 +242,8 @@ return (
           gridRow="span 2"
           backgroundColor={colors.primary[400]}
         >
-         <SEPerformanceTrendChart /> {/* ✅ Embed the SEPerformanceChart component here */}
+          <SEPerformanceTrendChart />{" "}
+          {/* ✅ Embed the SEPerformanceChart component here */}
         </Box>
 
         {/* ROW 3 */}
@@ -204,7 +256,7 @@ return (
         >
           {/* Left: Data Grid */}
           <Box
-            gridColumn="span 6"
+            gridColumn="span 12"
             height="100%" // Match height to the parent's gridRow span
             sx={{
               "& .MuiDataGrid-root": {
@@ -236,52 +288,6 @@ return (
             ) : (
               <DataGrid rows={socialEnterprises} columns={columns} autoHeight />
             )}
-          </Box>
-
-          {/* Right: Calendar */}
-          <Box
-            gridColumn="span 6"
-            backgroundColor={colors.primary[400]}
-            display="flex"
-            flexDirection="column"
-            alignItems="stretch"
-            justifyContent="stretch"
-            height="100%" // Match height to the parent's gridRow span
-          >
-            <FullCalendar
-              height="100%"
-              plugins={[
-                dayGridPlugin,
-                timeGridPlugin,
-                interactionPlugin,
-                listPlugin,
-              ]}
-              headerToolbar={{
-                left: "prev,next today",
-                center: "title",
-                right: "dayGridMonth,timeGridWeek,timeGridDay,listMonth",
-              }}
-              initialView="dayGridMonth"
-              editable={true}
-              selectable={true}
-              selectMirror={true}
-              dayMaxEvents={true}
-              select={handleDateClick}
-              eventClick={handleEventClick}
-              eventsSet={(events) => setCurrentEvents(events)}
-              initialEvents={[
-                {
-                  id: "12315",
-                  title: "All-day event",
-                  date: "2022-09-14",
-                },
-                {
-                  id: "5123",
-                  title: "Timed event",
-                  date: "2022-09-28",
-                },
-              ]}
-            />
           </Box>
         </Box>
       </Box>

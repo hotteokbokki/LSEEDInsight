@@ -149,14 +149,32 @@ exports.getTotalSECount = async () => {
 exports.addSocialEnterprise = async (socialEnterpriseData) => {
   try {
     const {
-      name,
-      sdg_id,
+      name, // team_name
+      sdg_name, // Expecting SDG name
       contactnum,
-      program_id,
-      isactive,
+      program_name, // Expecting program name
+      isactive, // Expecting a boolean
       abbr = null, // Default to null if not provided
+      number_of_members = 0, // Default to 0 if not provided
     } = socialEnterpriseData;
 
+    // Fetch SDG ID from the database
+    const sdgQuery = 'SELECT id FROM sdg WHERE name = $1';
+    const sdgResult = await pgDatabase.query(sdgQuery, [sdg_name]);
+    if (sdgResult.rows.length === 0) {
+      throw new Error(`SDG not found for name: ${sdg_name}`);
+    }
+    const sdg_id = sdgResult.rows[0].id;
+
+    // Fetch Program ID from the database
+    const programQuery = 'SELECT program_id FROM programs WHERE name = $1';
+    const programResult = await pgDatabase.query(programQuery, [program_name]);
+    if (programResult.rows.length === 0) {
+      throw new Error(`Program not found for name: ${program_name}`);
+    }
+    const program_id = programResult.rows[0].id;
+
+    // Insert into the socialenterprises table
     const query = `
       INSERT INTO socialenterprises (
         team_name,
@@ -164,22 +182,26 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
         contactnum,
         program_id,
         isactive,
-        abbr
+        abbr,
+        numMember
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *;
+      RETURNING se_id; // Use the correct primary key column name
     `;
     const values = [
       name,
       sdg_id,
       contactnum,
       program_id,
-      isactive,
-      abbr, // Include abbreviation
+      isactive, // Directly use the boolean value
+      abbr,
+      number_of_members,
     ];
 
     const result = await pgDatabase.query(query, values);
-    return result.rows[0];
+    const se_id = result.rows[0].se_id; // Extract the se_id from the result
+
+    return { se_id }; // Return the se_id to the caller
   } catch (error) {
     console.error("Error adding social enterprise:", error);
     throw error;
