@@ -59,23 +59,28 @@ const AssessSEPage = () => {
     const fetchEvaluations = async () => {
       try {
         setIsLoadingEvaluations(true);
-  
-        const response = await axios.get("http://localhost:4000/getMentorEvaluations", {
-          params: { mentor_id: userSession.id },
-        });
-  
+
+        const response = await axios.get(
+          "http://localhost:4000/getMentorEvaluations",
+          {
+            params: { mentor_id: userSession.id },
+          }
+        );
+
         console.log("📥 Evaluations Response:", response.data); // Debugging
-  
+
         // Ensure evaluation_id is included and set as `id`
         const formattedData = response.data.map((evaluation) => ({
           id: evaluation.evaluation_id, // Use evaluation_id as the unique ID
           evaluation_id: evaluation.evaluation_id, // Explicitly include evaluation_id
           evaluator_name: evaluation.evaluator_name,
           social_enterprise: evaluation.social_enterprise,
-          evaluation_date: new Date(evaluation.evaluation_date).toLocaleDateString(),
+          evaluation_date: new Date(
+            evaluation.evaluation_date
+          ).toLocaleDateString(),
           acknowledged: evaluation.acknowledged ? "Yes" : "No",
         }));
-  
+
         console.log("✅ Formatted EvaluationsData:", formattedData); // Debugging
         setEvaluationsData(formattedData);
       } catch (error) {
@@ -84,10 +89,10 @@ const AssessSEPage = () => {
         setIsLoadingEvaluations(false);
       }
     };
-  
+
     fetchEvaluations();
   }, [userSession.id]);
-  
+
   const columns = [
     { field: "social_enterprise", headerName: "Social Enterprise", flex: 1 },
     { field: "evaluator_name", headerName: "Evaluator", flex: 1 },
@@ -100,7 +105,7 @@ const AssessSEPage = () => {
       renderCell: (params) => (
         <Button
           variant="contained"
-          style={{ backgroundColor: colors.greenAccent[500], color: "white" }}
+          style={{ backgroundColor: colors.primary[600], color: "white" }}
           onClick={() => handleViewExistingEvaluation(params.row.evaluation_id)} // Pass only evaluation_id
         >
           View
@@ -111,41 +116,53 @@ const AssessSEPage = () => {
 
   const handleViewExistingEvaluation = async (evaluation_id) => {
     console.log("📌 Evaluation ID Passed:", evaluation_id); // Debugging log
-  
+
     try {
-      const response = await axios.get("http://localhost:4000/getEvaluationDetails", {
-        params: { evaluation_id },
-      });
-  
+      const response = await axios.get(
+        "http://localhost:4000/getEvaluationDetails",
+        {
+          params: { evaluation_id },
+        }
+      );
+
       console.log("📥 Raw API Response:", response); // Log raw response
       console.log("📥 API Response Data:", response.data); // Log parsed response
-  
+
       if (!response.data || response.data.length === 0) {
         console.warn("⚠️ No evaluation details found.");
         return;
       }
-  
+
       // Process evaluation details
       const groupedEvaluation = response.data.reduce((acc, evalItem) => {
-        const { evaluation_date, social_enterprise, category_name, star_rating, selected_comments, additional_comment } = evalItem;
-  
+        const {
+          evaluation_date,
+          social_enterprise,
+          category_name,
+          star_rating,
+          selected_comments,
+          additional_comment,
+        } = evalItem;
+
         if (!acc.id) {
           acc.id = evaluation_id;
           acc.social_enterprise = social_enterprise;
           acc.evaluation_date = new Date(evaluation_date).toLocaleDateString();
           acc.categories = [];
         }
-  
+
         acc.categories.push({
           category_name,
           star_rating,
-          selected_comments: Array.isArray(selected_comments) ? selected_comments : [], // Ensure selected_comments is always an array
+          selected_comments: Array.isArray(selected_comments)
+            ? selected_comments
+            : [], // Ensure selected_comments is always an array
           additional_comment,
         });
-  
+
         return acc;
       }, {});
-  
+
       console.log("✅ Processed Evaluation Data:", groupedEvaluation);
       setSelectedEvaluation(groupedEvaluation);
       setOpenDialog(true);
@@ -363,14 +380,22 @@ const AssessSEPage = () => {
     }
   };
 
-  // Disable submit button unless all required fields are completed
   const isSubmitDisabled = () => {
     const currentSEId = selectedSEs[currentSEIndex];
     const currentEvaluations = evaluations[currentSEId] || {};
-    return !Object.values(currentEvaluations).every(
-      (categoryEval) =>
-        categoryEval.rating > 0 && categoryEval.selectedCriteria?.length > 0
+
+    // Ensure every category meets the conditions
+    const allCategoriesValid = Object.keys(evaluationCriteria).every(
+      (category) => {
+        const categoryEval = currentEvaluations[category] || {};
+        return (
+          categoryEval.rating > 0 &&
+          (categoryEval.selectedCriteria?.length || 0) >= 2
+        );
+      }
     );
+
+    return !allCategoriesValid; // Disable if any category is invalid
   };
 
   // Close the evaluation dialog
@@ -476,7 +501,11 @@ const AssessSEPage = () => {
             },
           }}
         >
-          <DataGrid rows={evaluationsData} columns={columns} getRowId={(row) => row.id} />
+          <DataGrid
+            rows={evaluationsData}
+            columns={columns}
+            getRowId={(row) => row.id}
+          />
         </Box>
 
         {/* SE Selection Dialog */}
@@ -585,7 +614,9 @@ const AssessSEPage = () => {
             Evaluate Social Enterprise
           </DialogTitle>
 
+          {/* Content Section */}
           <DialogContent
+            ref={dialogContentRef} // Ref for scrolling to top
             sx={{
               padding: "24px",
               maxHeight: "70vh", // Ensure it doesn't overflow the screen
@@ -600,7 +631,6 @@ const AssessSEPage = () => {
                 fontWeight: "bold",
                 borderBottom: "1px solid #000", // Separator line
                 paddingBottom: "8px",
-                paddingTop: "8px",
               }}
             >
               {
@@ -615,7 +645,8 @@ const AssessSEPage = () => {
             >
               Evaluating {currentSEIndex + 1} / {selectedSEs.length}
             </Typography>
-            ;{/* Evaluation Categories */}
+
+            {/* Evaluation Categories */}
             {Object.keys(evaluationCriteria).map((category) => {
               const currentSEId = selectedSEs[currentSEIndex];
               const categoryEval = evaluations[currentSEId]?.[category] || {
@@ -644,7 +675,7 @@ const AssessSEPage = () => {
                     {category.charAt(0).toUpperCase() + category.slice(1)}
                   </Typography>
 
-                  {/* Star Rating Selection (Reverted to Original Style) */}
+                  {/* Star Rating Selection */}
                   <Box display="flex" gap={1} justifyContent="center" mt={1}>
                     {[1, 2, 3, 4, 5].map((value) => (
                       <Box
@@ -719,6 +750,7 @@ const AssessSEPage = () => {
                     </Box>
                   )}
 
+                  {/* Additional Comment Field */}
                   <TextField
                     label="Additional Comments"
                     value={categoryEval.comments}
@@ -804,44 +836,168 @@ const AssessSEPage = () => {
             >
               Submit
             </Button>
-            ;
           </DialogActions>
         </Dialog>
-        {/* Evaluation Details Dialog - Read-Only */}
-        <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
-          <DialogTitle>View Evaluation</DialogTitle>
-          <DialogContent>
-            {selectedEvaluation ? (
-              <Box>
-                <Typography><strong>Social Enterprise:</strong> {selectedEvaluation.social_enterprise}</Typography>
-                <Typography><strong>Evaluation Date:</strong> {selectedEvaluation.evaluation_date}</Typography>
 
-                {selectedEvaluation.categories && selectedEvaluation.categories.length > 0 ? (
+        {/* Evaluation Details Dialog - Read-Only */}
+        <Dialog
+          open={openDialog}
+          onClose={() => setOpenDialog(false)}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            style: {
+              backgroundColor: "#fff", // White background
+              color: "#000", // Black text
+              border: "1px solid #000", // Black border for contrast
+            },
+          }}
+        >
+          {/* Title with DLSU Green Background */}
+          <DialogTitle
+            sx={{
+              backgroundColor: "#1E4D2B", // DLSU Green header
+              color: "#fff", // White text
+              textAlign: "center",
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+            }}
+          >
+            View Evaluation
+          </DialogTitle>
+
+          {/* Content Section */}
+          <DialogContent
+            sx={{
+              padding: "24px",
+              maxHeight: "70vh", // Ensure it doesn't overflow the screen
+              overflowY: "auto", // Enable scrolling if content is too long
+            }}
+          >
+            {selectedEvaluation ? (
+              <>
+                {/* Social Enterprise and Evaluation Date */}
+                <Box
+                  sx={{
+                    marginBottom: "16px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: "bold",
+                      borderBottom: "1px solid #000", // Separator line
+                      paddingBottom: "8px",
+                    }}
+                  >
+                    Social Enterprise: {selectedEvaluation.social_enterprise}
+                  </Typography>
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      color: "#000",
+                    }}
+                  >
+                    Evaluation Date: {selectedEvaluation.evaluation_date}
+                  </Typography>
+                </Box>
+
+                {/* Categories Section */}
+                {selectedEvaluation.categories &&
+                selectedEvaluation.categories.length > 0 ? (
                   selectedEvaluation.categories.map((category, index) => (
-                    <Box key={index} mt={2}>
-                      <Typography><strong>{category.category_name}</strong></Typography>
-                      <Typography>Rating: {category.star_rating} ★</Typography>
-                      <Typography>
-                        Comments: {category.selected_comments.length > 0 ? category.selected_comments.join(", ") : "No comments"}
+                    <Box
+                      key={index}
+                      sx={{
+                        marginBottom: "24px",
+                        padding: "16px",
+                        border: "1px solid #000", // Border for each category
+                        borderRadius: "8px",
+                      }}
+                    >
+                      {/* Category Name and Rating */}
+                      <Typography
+                        variant="subtitle1"
+                        sx={{
+                          fontWeight: "bold",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        {category.category_name} - Rating:{" "}
+                        {category.star_rating} ★
                       </Typography>
-                      <Typography>
-                        Additional Comment: {category.additional_comment || "No additional comments"}
+
+                      {/* Selected Comments */}
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          marginBottom: "8px",
+                        }}
+                      >
+                        Comments:{" "}
+                        {category.selected_comments.length > 0 ? (
+                          category.selected_comments.join(", ")
+                        ) : (
+                          <i>No comments</i>
+                        )}
+                      </Typography>
+
+                      {/* Additional Comment */}
+                      <Typography variant="body1">
+                        Additional Comment:{" "}
+                        {category.additional_comment || (
+                          <i>No additional comments</i>
+                        )}
                       </Typography>
                     </Box>
                   ))
                 ) : (
-                  <Typography>No categories found for this evaluation.</Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      fontStyle: "italic",
+                    }}
+                  >
+                    No categories found for this evaluation.
+                  </Typography>
                 )}
-              </Box>
+              </>
             ) : (
-              <Typography>Loading evaluation details...</Typography>
+              <Typography
+                variant="body1"
+                sx={{
+                  fontStyle: "italic",
+                }}
+              >
+                Loading evaluation details...
+              </Typography>
             )}
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenDialog(false)}>Close</Button>
+
+          {/* Action Buttons */}
+          <DialogActions
+            sx={{
+              padding: "16px",
+              borderTop: "1px solid #000", // Separator line
+            }}
+          >
+            <Button
+              onClick={() => setOpenDialog(false)}
+              sx={{
+                color: "#000",
+                border: "1px solid #000",
+                "&:hover": {
+                  backgroundColor: "#f0f0f0", // Hover effect
+                },
+              }}
+            >
+              Close
+            </Button>
           </DialogActions>
         </Dialog>
-
       </Box>
     </Box>
   );

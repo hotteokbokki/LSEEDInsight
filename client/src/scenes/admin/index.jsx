@@ -10,6 +10,7 @@ import {
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
 import { DataGrid } from "@mui/x-data-grid";
+import { Snackbar, Alert } from "@mui/material";
 
 const AdminPage = () => {
   const [users, setUsers] = useState([]);
@@ -18,6 +19,8 @@ const AdminPage = () => {
   const [isEditing, setIsEditing] = useState(false); // Toggle editing mode
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
+  const [showEditButtons, setShowEditButtons] = useState(false);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -127,6 +130,11 @@ const AdminPage = () => {
     },
   ];
 
+  const toggleEditing = () => {
+    setIsEditing(true);
+    setShowEditButtons(true); // Toggle button visibility
+  };
+
   const handleRoleChange = (userId) => {
     console.log(`Change role for user ID: ${userId}`);
     // Implement role change logic here
@@ -215,22 +223,76 @@ const AdminPage = () => {
         <Header title="ADMIN PAGE" subtitle="Manage users and roles" />
       </Box>
 
-      {/* Enable Editing Button */}
-      <Box display="flex" alignItems="center">
-        <Button
-          variant="contained"
-          sx={{
-            backgroundColor: colors.blueAccent[500],
-            color: "black",
-            "&:hover": {
-              backgroundColor: colors.blueAccent[700],
-            },
-          }}
-          onClick={() => setIsEditing((prev) => !prev)}
-        >
-          {isEditing ? "Disable Editing" : "Enable Editing"}
-        </Button>
+      <Box display="flex" alignItems="center" gap={2}>
+        {!showEditButtons && (
+          <Button
+            variant="contained"
+            sx={{
+              backgroundColor: colors.blueAccent[500],
+              color: "black",
+              "&:hover": {
+                backgroundColor: colors.blueAccent[800],
+              },
+            }}
+            onClick={toggleEditing}
+          >
+            Enable Editing
+          </Button>
+        )}
+        {/* Cancel and Save Changes Buttons */}
+        {showEditButtons && (
+          <>
+            <Button
+              variant="outlined"
+              sx={{
+                backgroundColor: colors.redAccent[500],
+                color: "black",
+                "&:hover": {
+                  backgroundColor: colors.redAccent[600],
+                },
+              }}
+              onClick={() => {
+                setIsEditing(false); // Disable editing mode
+                setShowEditButtons(false);
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="contained"
+              sx={{
+                backgroundColor: colors.blueAccent[500],
+                color: "black",
+                "&:hover": {
+                  backgroundColor: colors.blueAccent[600],
+                },
+              }}
+              onClick={() => {
+                setIsEditing(false); // Disable editing mode
+                setShowEditButtons(false);
+                setIsSuccessEditPopupOpen(true);
+              }}
+            >
+              Save Changes
+            </Button>
+          </>
+        )}
       </Box>
+      <Snackbar
+        open={isSuccessEditPopupOpen}
+        autoHideDuration={3000} // Automatically close after 3 seconds
+        onClose={() => setIsSuccessEditPopupOpen(false)} // Close on click or timeout
+        anchorOrigin={{ vertical: "top", horizontal: "center" }} // Position of the popup
+      >
+        <Alert
+          onClose={() => setIsSuccessEditPopupOpen(false)}
+          severity="success"
+          sx={{ width: "100%" }}
+        >
+          Successfully saved!
+        </Alert>
+      </Snackbar>
 
       {/* GRID & TABLE */}
       <Box

@@ -7,14 +7,25 @@ const RadarChart = ({ radarData = [], isDashboard = false }) => {
   const colors = tokens(theme.palette.mode);
 
   // Ensure radarData is formatted correctly for Nivo
-  const formattedData = radarData?.map((item) => ({
-    category: item.category, 
-    Overview: parseFloat(item.score),
-  })) || [];
+  const formattedData =
+    radarData?.map((item) => ({
+      category: item.category,
+      Overview: parseFloat(item.score),
+    })) || [];
 
   // Adjust colors based on theme mode
-  const chartColor = theme.palette.mode === "dark" ? colors.greenAccent[300] : colors.greenAccent[400];
-  const borderChartColor = theme.palette.mode === "dark" ? colors.primary[300] : colors.primary[500];
+  const chartColor =
+    theme.palette.mode === "dark"
+      ? colors.greenAccent[300]
+      : colors.greenAccent[400];
+  const borderChartColor =
+    theme.palette.mode === "dark" ? colors.primary[300] : "#333333"; // Darker border in light mode
+
+  // Dynamically set grid and axis colors based on theme mode
+  const gridLineColor =
+    theme.palette.mode === "dark" ? colors.grey[100] : "black"; // Black in light mode
+  const axisTextColor =
+    theme.palette.mode === "dark" ? colors.grey[100] : "black"; // Black in light mode
 
   return (
     <ResponsiveRadar
@@ -25,7 +36,7 @@ const RadarChart = ({ radarData = [], isDashboard = false }) => {
       margin={{ top: 50, right: 80, bottom: 40, left: 80 }}
       curve="linearClosed"
       borderWidth={2}
-      borderColor={borderChartColor} // Brighter border in dark mode
+      borderColor={borderChartColor} // Brighter border in dark mode, darker in light mode
       gridLevels={5}
       gridShape="circular"
       gridLabelOffset={36}
@@ -33,7 +44,7 @@ const RadarChart = ({ radarData = [], isDashboard = false }) => {
       dotSize={8}
       dotColor={chartColor} // Brighter dots in dark mode
       dotBorderWidth={2}
-      dotBorderColor={borderChartColor}
+      dotBorderColor={borderChartColor} // Consistent with border color
       colors={chartColor} // More visible chart color
       fillOpacity={0.6} // Increased fill opacity for better visibility
       blendMode="multiply"
@@ -41,11 +52,11 @@ const RadarChart = ({ radarData = [], isDashboard = false }) => {
       theme={{
         axis: {
           domain: {
-            line: { stroke: colors.grey[100] },
+            line: { stroke: gridLineColor }, // Grid lines color
           },
           ticks: {
-            line: { stroke: colors.grey[100] },
-            text: { fill: colors.grey[100] },
+            line: { stroke: gridLineColor }, // Tick lines color
+            text: { fill: axisTextColor }, // Axis text color
           },
         },
         legends: {
@@ -53,8 +64,8 @@ const RadarChart = ({ radarData = [], isDashboard = false }) => {
         },
         tooltip: {
           container: {
-            background: colors.primary[500],
-            color: colors.grey[100],
+            background: colors.primary[500], // Tooltip background color
+            color: "#ffffff", // Tooltip text color (white)
           },
         },
       }}
@@ -69,13 +80,14 @@ const RadarChart = ({ radarData = [], isDashboard = false }) => {
           itemOpacity: 0.9, // Make legend more visible
           symbolSize: 12,
           symbolShape: "circle",
-          symbolBorderColor: colors.grey[100],
+          symbolBorderColor: colors.grey[700],
           effects: [
             {
               on: "hover",
               style: {
-                itemBackground: "rgba(255, 255, 255, 0.1)", // Slightly lighter background on hover
+                itemBackground: "rgba(0, 0, 0, 0.7)", // Dark background on hover
                 itemOpacity: 1,
+                color: "#ffffff", // White text color on hover
               },
             },
           ],

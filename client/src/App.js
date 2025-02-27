@@ -70,6 +70,14 @@ const MainContent = () => {
     }
   }, [user, loading]);
 
+   // Scroll to top on route change
+   useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth", // Optional: Adds smooth scrolling animation
+    });
+  }, [location]); // Trigger effect when the location changes
+
   if (loading) return <div>Loading...</div>; // Show a loading screen while user authentication is being checked
 
   return (
