@@ -55,4 +55,18 @@ exports.getMentorBySEID = async (se_id) => {
     }
 };
 
-  
+exports.getSEWithMentors = async () => {
+    try {
+        const query = `
+            SELECT COUNT(DISTINCT se_id) AS total_se_with_mentors 
+            FROM mentorships 
+            WHERE status = 'Active';
+        `;
+
+        const result = await pgDatabase.query(query);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching mentorships", error);
+        return []; // Return an empty array in case of an error
+    }
+};

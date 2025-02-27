@@ -6,7 +6,7 @@ const axios = require("axios");
 const ngrok = require("ngrok"); // Exposes your local server to the internet
 const { getPrograms, getProgramNameByID, getProgramCount } = require("./controllers/programsController");
 const { getTelegramUsers, insertTelegramUser } = require("./controllers/telegrambotController");
-const { getSocialEnterprisesByProgram, getSocialEnterpriseByID, getAllSocialEnterprises, getAllSocialEnterprisesWithMentorship, getTotalSECount } = require("./controllers/socialenterprisesController");
+const { getSocialEnterprisesByProgram, getSocialEnterpriseByID, getAllSocialEnterprises, getAllSocialEnterprisesWithMentorship, getTotalSECount, getSEWithOutMentors, getPreviousTotalSECount, getPreviousMonthSEWithOutMentors } = require("./controllers/socialenterprisesController");
 require("dotenv").config();
 const { getUsers, getUserName } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
@@ -14,9 +14,9 @@ const pgSession = require("connect-pg-simple")(session);
 const cookieParser = require("cookie-parser");
 const { getMentorsBySocialEnterprises, getMentorById, getAllMentors, getUnassignedMentors, getPreviousUnassignedMentors, getAssignedMentors } = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
-const { getMentorshipsByMentorId, getMentorBySEID } = require("./controllers/mentorshipsController.js");
+const { getMentorshipsByMentorId, getMentorBySEID, getSEWithMentors, getPreviousSEWithMentors } = require("./controllers/mentorshipsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
-const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID } = require("./controllers/evaluationsController.js");
+const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID, getAllSECommonChallenges, getAverageScoreForAllSEPerCategory, getImprovementScorePerMonthAnnually, getImprovementScoreOverallAnnually, getGrowthScoreOverallAnually, getMonthlyGrowthDetails } = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
@@ -179,6 +179,58 @@ app.get("/api/dashboard-stats", async (req, res) => {
       totalSocialEnterprises: parseInt(totalSocialEnterprises[0].count), // ✅ Fix here
       totalPrograms: parseInt(totalPrograms[0].count), // ✅ Fix here
     });
+  } catch (error) {
+    console.error("❌ Error fetching dashboard stats:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/test-api", async (req, res) => {
+  try {
+    const result  = await getGrowthScoreOverallAnually();
+
+    res.json(result);
+  } catch (error) {
+    console.error("❌ Error fetching dashboard stats:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/analytics-stats", async (req, res) => {
+  try {
+    // ✅ Fetch data
+    const totalSocialEnterprises = await getTotalSECount();
+    const withMentorship = await getSEWithMentors();
+    const withoutMentorship = await getSEWithOutMentors();
+    const growthScore = await getGrowthScoreOverallAnually();
+    const previousTotalSocialEnterprises = await getPreviousTotalSECount();
+
+    const currentWithMentorshipCount = parseInt(withMentorship[0]?.total_se_with_mentors || 0);
+    const currentWithoutMentorshipCount = parseInt(withoutMentorship[0]?.total_se_without_mentors || 0);
+    
+    // ✅ Total Growth (sum of `growth`)
+    const currentGrowthScoreValue = growthScore.reduce((sum, entry) => sum + parseFloat(entry.growth || 0), 0);
+    
+    // ✅ Get the latest cumulative growth value
+    const cumulativeGrowthValue = growthScore.length > 0 ? parseFloat(growthScore[growthScore.length - 1].cumulative_growth || 0) : 0;
+
+    const allCommonChallenges = await getAllSECommonChallenges();
+    const categoricalScoreForAllSE = await getAverageScoreForAllSEPerCategory();
+    const improvementScore = await getImprovementScorePerMonthAnnually();
+
+    // ✅ Return Response
+    res.json({
+      totalSocialEnterprises: parseInt(totalSocialEnterprises[0].count),
+      previousMonthSECount: parseInt(previousTotalSocialEnterprises[0].count),
+      withMentorship: currentWithMentorshipCount,
+      withoutMentorship: currentWithoutMentorshipCount,
+      allCommonChallenges,
+      categoricalScoreForAllSE,
+      improvementScore,
+      growthScoreTotal: currentGrowthScoreValue.toFixed(2), // Should return 1.17
+      cumulativeGrowth: cumulativeGrowthValue.toFixed(2),  // Should return 46.80
+    });
+
   } catch (error) {
     console.error("❌ Error fetching dashboard stats:", error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -397,7 +449,6 @@ app.get("/getMentorEvaluations", async (req, res) => {
   }
 });
 
-
 app.get("/getEvaluationDetails", async (req, res) => {
   try {
       const { evaluation_id } = req.query; // Extract evaluation_id from query parameters
@@ -458,7 +509,7 @@ app.get("/api/common-challenges/:se_id", async (req, res) => {
     const result = await getCommonChallengesBySEID(se_id);
     
     if (!result || result.length === 0) {
-      return res.json({ message: "No performance trend data available" });
+      return res.json({ message: "No common challenges data available" });
     }
 
     res.json(result);
@@ -471,7 +522,6 @@ app.get("/api/common-challenges/:se_id", async (req, res) => {
 app.get("/api/likert-data/:se_id", async (req, res) => {
   const { se_id } = req.params;
   try {
-    console.log(se_id);
     const result = await getPermanceScoreBySEID(se_id);
     
     if (!result || result.length === 0) {

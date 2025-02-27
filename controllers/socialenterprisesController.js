@@ -145,3 +145,36 @@ exports.getTotalSECount = async () => {
       return [];
   }
 };
+
+exports.getPreviousTotalSECount = async () => {
+  try {
+      const query = `
+        SELECT COUNT(*) AS count 
+        FROM socialenterprises 
+        WHERE created_at < NOW() - INTERVAL '1 month';
+      `;
+      const result = await pgDatabase.query(query);
+      return result.rows;
+  } catch (error) {
+      console.error("❌ Error fetching se count:", error);
+      return [];
+  }
+};
+
+exports.getSEWithOutMentors = async () => {
+  try {
+      const query = `
+          SELECT COUNT(*) AS total_se_without_mentors
+          FROM socialenterprises 
+          WHERE se_id NOT IN (
+              SELECT DISTINCT se_id FROM mentorships WHERE status = 'Active'
+          );
+      `;
+
+      const result = await pgDatabase.query(query);
+      return result.rows;
+  } catch (error) {
+      console.error("❌ Error fetching mentorships", error);
+      return []; // Return an empty array in case of an error
+  }
+};
