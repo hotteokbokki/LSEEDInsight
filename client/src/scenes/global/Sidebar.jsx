@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ProSidebar, Menu, MenuItem } from "react-pro-sidebar";
 import "react-pro-sidebar/dist/css/styles.css";
 import { Box, IconButton, Typography, useTheme } from "@mui/material";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom"; // Import useLocation
 import { tokens } from "../../theme";
 import GridViewOutlinedIcon from "@mui/icons-material/GridViewOutlined";
 import Diversity2OutlinedIcon from "@mui/icons-material/Diversity2Outlined";
@@ -13,7 +13,7 @@ import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined
 import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
-import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined"; // Import Admin icon
+import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
 import { useAuth } from "../../context/authContext";
 
 const Item = ({ title, to, icon, selected, setSelected }) => {
@@ -39,14 +39,24 @@ const Sidebar = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [selected, setSelected] = useState("Dashboard");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation(); // Get the current route
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
+  // Determine the default selected item based on the current route
+  const getSelectedTitle = () => {
+    if (location.pathname === "/dashboard") return "Dashboard";
+    if (location.pathname === "/assess") return "Assess SE";
+    if (location.pathname === "/socialenterprise") return "Manage SE";
+    if (location.pathname === "/mentors") return "LSEED Mentors";
+    if (location.pathname === "/analytics") return "Show Analytics";
+    if (location.pathname === "/reports") return "Show Reports";
+    if (location.pathname === "/scheduling") return "Scheduling Matrix";
+    if (location.pathname === "/admin") return "Admin Page";
+    return "Dashboard"; // Default fallback
   };
+
+  const [selected, setSelected] = useState(getSelectedTitle());
 
   return (
     <Box
@@ -99,7 +109,6 @@ const Sidebar = () => {
               </Box>
             )}
           </MenuItem>
-
           {/* Profile Section */}
           {!isCollapsed && user && (
             <Box textAlign="center" p="10px">
@@ -122,14 +131,13 @@ const Sidebar = () => {
                 fontWeight="bold"
                 mt={1}
               >
-                {user.firstname || "User"} {user.lastname || "User"} 
+                {user.firstname || "User"} {user.lastname || "User"}
               </Typography>
               <Typography variant="body2" color={colors.greenAccent[500]}>
                 {user.role || "LSEED User"}
               </Typography>
             </Box>
           )}
-
           {/* Navigation Items */}
           <Box paddingLeft={isCollapsed ? undefined : "10%"}>
             {/* Dashboard */}
@@ -140,7 +148,6 @@ const Sidebar = () => {
               selected={selected}
               setSelected={setSelected}
             />
-
             {/* Assess SE - Visible to Mentors and Administrators */}
             {(user?.role === "Mentor" || user?.role === "Administrator") && (
               <Item
@@ -151,7 +158,6 @@ const Sidebar = () => {
                 setSelected={setSelected}
               />
             )}
-
             {/* LSEED Pages - Visible to LSEED Users and Administrators */}
             {(user?.role === "LSEED" || user?.role === "Administrator") && (
               <>
@@ -192,7 +198,6 @@ const Sidebar = () => {
                 />
               </>
             )}
-
             {/* Scheduling Matrix - Visible to Mentors */}
             {user?.role === "Mentor" && (
               <Item
@@ -203,7 +208,6 @@ const Sidebar = () => {
                 setSelected={setSelected}
               />
             )}
-
             {/* Admin Page - Visible only to Administrators */}
             {user?.role === "Administrator" && (
               <Item

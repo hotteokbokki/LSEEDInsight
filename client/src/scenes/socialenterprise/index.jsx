@@ -50,6 +50,8 @@ const SocialEnterprise = () => {
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [showEditButtons, setShowEditButtons] = useState(false);
+  const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
 
   const [sdgs, setSdgs] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -70,6 +72,11 @@ const SocialEnterprise = () => {
       ...prevData,
       [name]: value,
     }));
+  };
+
+  const toggleEditing = () => {
+    setIsEditing((prev) => !prev); // Toggle editing mode
+    setShowEditButtons((prev) => !prev); // Show/hide the "Cancel" and "Save Changes" buttons
   };
 
   // Fetch social enterprises from the backend
@@ -238,15 +245,21 @@ const SocialEnterprise = () => {
     setSelectedRow({ ...selectedRow, [e.target.name]: e.target.value });
   };
 
-  const toggleEditing = () => {
-    setIsEditing((prev) => !prev);
-  };
-
   const columns = [
-    { field: "name", headerName: "Social Enterprise", flex: 1 },
-    { field: "program", headerName: "Program", flex: 1 }, // ✅ Added Program Name
-    { field: "mentorshipStatus", headerName: "Mentorship Status", flex: 1 },
-    { field: "mentors", headerName: "Mentors", flex: 1 },
+    {
+      field: "name",
+      headerName: "Social Enterprise",
+      flex: 1,
+      editable: isEditing,
+    },
+    { field: "program", headerName: "Program", flex: 1, editable: isEditing }, // ✅ Added Program Name
+    {
+      field: "mentorshipStatus",
+      headerName: "Mentorship Status",
+      flex: 1,
+      editable: isEditing,
+    },
+    { field: "mentors", headerName: "Mentors", flex: 1, editable: isEditing },
     {
       field: "actions",
       headerName: "Actions",
@@ -871,13 +884,76 @@ const SocialEnterprise = () => {
           </Alert>
         </Snackbar>
 
-        <Button
-          variant="contained"
-          sx={{ backgroundColor: colors.blueAccent[500], color: "black" }}
-          onClick={toggleEditing}
+        <Box display="flex" alignItems="center" gap={2}>
+          {!showEditButtons && (
+            <Button
+              variant="contained"
+              sx={{
+                backgroundColor: colors.blueAccent[500],
+                color: "black",
+                "&:hover": {
+                  backgroundColor: colors.blueAccent[800],
+                },
+              }}
+              onClick={toggleEditing}
+            >
+              Enable Editing
+            </Button>
+          )}
+          {/* Cancel and Save Changes Buttons */}
+          {showEditButtons && (
+            <>
+              <Button
+                variant="outlined"
+                sx={{
+                  backgroundColor: colors.redAccent[500],
+                  color: "black",
+                  "&:hover": {
+                    backgroundColor: colors.redAccent[600],
+                  },
+                }}
+                onClick={() => {
+                  setIsEditing(false); // Disable editing mode
+                  setShowEditButtons(false);
+                }}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                variant="contained"
+                sx={{
+                  backgroundColor: colors.blueAccent[500],
+                  color: "black",
+                  "&:hover": {
+                    backgroundColor: colors.blueAccent[600],
+                  },
+                }}
+                onClick={() => {
+                  setIsEditing(false); // Disable editing mode
+                  setShowEditButtons(false);
+                  setIsSuccessEditPopupOpen(true);
+                }}
+              >
+                Save Changes
+              </Button>
+            </>
+          )}
+        </Box>
+        <Snackbar
+          open={isSuccessEditPopupOpen}
+          autoHideDuration={3000} // Automatically close after 3 seconds
+          onClose={() => setIsSuccessEditPopupOpen(false)} // Close on click or timeout
+          anchorOrigin={{ vertical: "top", horizontal: "center" }} // Position of the popup
         >
-          {isEditing ? "Disable Editing" : "Enable Editing"}
-        </Button>
+          <Alert
+            onClose={() => setIsSuccessEditPopupOpen(false)}
+            severity="success"
+            sx={{ width: "100%" }}
+          >
+            Successfully saved!
+          </Alert>
+        </Snackbar>
       </Box>
       <Box
         height="75vh"

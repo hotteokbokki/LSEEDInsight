@@ -39,6 +39,7 @@ const Mentors = () => {
   const [mentors, setMentors] = useState([]);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
+  const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
   // Fetch mentors from the database
   useEffect(() => {
     const fetchMentors = async () => {
@@ -101,6 +102,7 @@ const Mentors = () => {
     contactNumber: "",
   });
   const [isEditing, setIsEditing] = useState(false); // Toggle editing mode
+  const [showEditButtons, setShowEditButtons] = useState(false);
 
   // Handle dialog open/close
   const handleDialogOpen = () => {
@@ -210,7 +212,8 @@ const Mentors = () => {
 
   // Toggle editing mode
   const toggleEditing = () => {
-    setIsEditing((prev) => !prev);
+    setIsEditing(true);
+    setShowEditButtons(true); // Toggle button visibility
   };
 
   const columns = [
@@ -386,19 +389,77 @@ const Mentors = () => {
         >
           Add Mentorship
         </Button>
-        <Button
-          variant="contained"
-          sx={{
-            backgroundColor: colors.blueAccent[500],
-            color: "black",
-            "&:hover": {
-              backgroundColor: colors.blueAccent[800],
-            },
-          }}
-          onClick={toggleEditing}
+
+        <Box display="flex" alignItems="center" gap={2}>
+          {!showEditButtons && (
+            <Button
+              variant="contained"
+              sx={{
+                backgroundColor: colors.blueAccent[500],
+                color: "black",
+                "&:hover": {
+                  backgroundColor: colors.blueAccent[800],
+                },
+              }}
+              onClick={toggleEditing}
+            >
+              Enable Editing
+            </Button>
+          )}
+          {/* Cancel and Save Changes Buttons */}
+          {showEditButtons && (
+            <>
+              <Button
+                variant="outlined"
+                sx={{
+                  backgroundColor: colors.redAccent[500],
+                  color: "black",
+                  "&:hover": {
+                    backgroundColor: colors.redAccent[600],
+                  },
+                }}
+                onClick={() => {
+                  setIsEditing(false); // Disable editing mode
+                  setShowEditButtons(false);
+                }}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                variant="contained"
+                sx={{
+                  backgroundColor: colors.blueAccent[500],
+                  color: "black",
+                  "&:hover": {
+                    backgroundColor: colors.blueAccent[600],
+                  },
+                }}
+                onClick={() => {
+                  setIsEditing(false); // Disable editing mode
+                  setShowEditButtons(false);
+                  setIsSuccessEditPopupOpen(true);
+                }}
+              >
+                Save Changes
+              </Button>
+            </>
+          )}
+        </Box>
+        <Snackbar
+          open={isSuccessEditPopupOpen}
+          autoHideDuration={3000} // Automatically close after 3 seconds
+          onClose={() => setIsSuccessEditPopupOpen(false)} // Close on click or timeout
+          anchorOrigin={{ vertical: "top", horizontal: "center" }} // Position of the popup
         >
-          {isEditing ? "Disable Editing" : "Enable Editing"}
-        </Button>
+          <Alert
+            onClose={() => setIsSuccessEditPopupOpen(false)}
+            severity="success"
+            sx={{ width: "100%" }}
+          >
+            Successfully saved!
+          </Alert>
+        </Snackbar>
       </Box>
       {/* DIALOG BOX */}
       <Dialog
