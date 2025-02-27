@@ -96,7 +96,7 @@ router.post('/login', async (req, res) => {
     } else {
       return res.json({
         message: "User login successful",
-        user: { id: user.user_id, email: user.email, role: user.roles },
+        user: { id: user.user_id, email: user.email, role: user.roles, firstname: user.first_name, lastname: user.last_name },
         session_id: sessionId,
         redirect: "/dashboard", // Normal users go to their dashboard
       });
