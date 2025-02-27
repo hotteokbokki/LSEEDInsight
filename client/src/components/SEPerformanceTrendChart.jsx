@@ -50,6 +50,7 @@ const SEPerformanceTrendChart = () => {
     
         // Step 1: Get Today's Date & Calculate Start Date (30 days before today)
         const today = new Date();
+        //const today = new Date("2025-03-27"); // Force today's date
         const startDate = new Date();
         startDate.setMonth(today.getMonth() - 1); // Move 1 month back (30 days approx)
         startDate.setDate(1); // Ensure we start at the beginning of the month

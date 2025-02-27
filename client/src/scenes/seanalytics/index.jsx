@@ -95,6 +95,7 @@ const SEAnalytics = () => {
         const rawLikertData = await likertResponse.json();
 
         setLikertData(rawLikertData);
+        console.log("Updated LikertData:", likertData);  // This will still log the old state!
 
         // Fetch radar chart data
         const radarResponse = await fetch(`/api/radar-data/${selectedSEId}`);
@@ -115,17 +116,19 @@ const SEAnalytics = () => {
     fetchAnalyticsData();
   }, [selectedSEId]);
 
-  // Handle SE change in the dropdown
   const handleChangeSE = (event) => {
     const newSEId = event.target.value;
     setSelectedSEId(newSEId);
-  
+
     // Find the new selected SE using strict string comparison
     const newSE = socialEnterprises.find((se) => se.id === newSEId);
     console.log("Selected SE:", newSE);
-  
+
     setSelectedSE(newSE);
-  };
+
+    // 🔥 Update the URL to reflect the selected SE
+    navigate(`/se-analytics/${newSEId}`); 
+};
 
   // If no social enterprise is found, show an error message
   if (!selectedSE && socialEnterprises.length > 0) {
@@ -258,7 +261,7 @@ const SEAnalytics = () => {
             width: "2/12",
             maxWidth: "150px",
           }}
-          onClick={() => navigate("/mentors")}
+          onClick={() => navigate("/socialenterprise")}
         >
           Back
         </Button>

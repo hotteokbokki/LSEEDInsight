@@ -70,29 +70,31 @@ exports.getTopSEPerformance = async () => {
         console.log("Fetching top SE performance for the last 3 months");
 
         const query = `
-                WITH MonthlyRatings AS (
+            WITH MonthlyRatings AS (
                 SELECT 
                     e.se_id,
                     s.abbr AS social_enterprise, -- Use abbreviation instead of full name
                     DATE_TRUNC('month', e.created_at) AS month,
-                    ROUND(AVG(ec.rating), 2) AS avg_rating
+                    ROUND(AVG(ec.rating), 2) AS avg_rating,
+                    COUNT(*) AS eval_count -- Count number of evaluations per SE per month
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                 JOIN socialenterprises s ON e.se_id = s.se_id
-                WHERE e.created_at >= (CURRENT_DATE - INTERVAL '3 months')
+                WHERE e.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '3 months') -- Ensures full months are considered
                 GROUP BY e.se_id, s.abbr, month
-                ),
-                TopSEs AS (
-                    SELECT se_id, social_enterprise, AVG(avg_rating) AS overall_avg_rating
-                    FROM MonthlyRatings
-                    GROUP BY se_id, social_enterprise
-                    ORDER BY overall_avg_rating DESC
-                    LIMIT 3
-                )
-                SELECT m.se_id, m.social_enterprise, m.month, m.avg_rating
-                FROM MonthlyRatings m
-                JOIN TopSEs t ON m.se_id = t.se_id
-                ORDER BY m.social_enterprise, m.month;
+            ),
+            TopSEs AS (
+                SELECT se_id, social_enterprise, 
+                    SUM(avg_rating * eval_count) / SUM(eval_count) AS weighted_avg_rating
+                FROM MonthlyRatings
+                GROUP BY se_id, social_enterprise
+                ORDER BY weighted_avg_rating DESC
+                LIMIT 3
+            )
+            SELECT m.se_id, m.social_enterprise, m.month, m.avg_rating
+            FROM MonthlyRatings m
+            JOIN TopSEs t ON m.se_id = t.se_id
+            ORDER BY m.social_enterprise, m.month;
         `;
 
         const result = await pgDatabase.query(query);
@@ -140,28 +142,31 @@ exports.getCommonChallengesBySEID = async (se_id) => {
         console.log("Fetching top SE performance for the last 3 months");
 
         const query = `
-            WITH total AS (
-                SELECT COUNT(esc2.selected_comment_id) AS total_count
-                FROM evaluations e2
-                JOIN evaluation_categories ec2 ON e2.evaluation_id = ec2.evaluation_id
-                JOIN evaluation_selected_comments esc2 ON ec2.evaluation_category_id = esc2.evaluation_category_id
-                WHERE e2.se_id = $1
-                AND ec2.rating <= 3
+            WITH top_comments AS (
+                SELECT 
+                    esc.comment, 
+                    ec.category_name AS category,
+                    COUNT(esc.selected_comment_id) AS count
+                FROM evaluations e
+                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+                JOIN evaluation_selected_comments esc ON ec.evaluation_category_id = esc.evaluation_category_id
+                WHERE e.se_id = $1
+                AND ec.rating <= 3  
+                GROUP BY esc.comment, ec.category_name
+                ORDER BY count DESC
+                LIMIT 5
+            ),
+            total_top AS (
+                SELECT SUM(count) AS top_total FROM top_comments
             )
             SELECT 
-                esc.comment, 
-                ec.category_name AS category,  -- Include category from evaluation_categories
-                COUNT(esc.selected_comment_id) AS count,
-                ROUND(COUNT(esc.selected_comment_id) * 100.0 / total.total_count, 0) AS percentage
-            FROM evaluations e
-            JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-            JOIN evaluation_selected_comments esc ON ec.evaluation_category_id = esc.evaluation_category_id
-            CROSS JOIN total  -- Ensures total_count is available for all rows
-            WHERE e.se_id = $1
-            AND ec.rating <= 3  
-            GROUP BY esc.comment, ec.category_name, total.total_count  -- Include category in GROUP BY
-            ORDER BY count DESC
-            LIMIT 5;
+                tc.comment, 
+                tc.category, 
+                tc.count,
+                ROUND(tc.count * 100.0 / tt.top_total, 0) AS percentage
+            FROM top_comments tc
+            CROSS JOIN total_top tt
+            ORDER BY tc.count DESC;
         `;
         const values = [se_id];
 
@@ -173,10 +178,45 @@ exports.getCommonChallengesBySEID = async (se_id) => {
     }
 };
 
+exports.getAllSECommonChallenges = async () => {
+    try {
+        const query = `
+            WITH top_comments AS (
+                SELECT 
+                    esc.comment, 
+                    ec.category_name AS category,
+                    COUNT(esc.selected_comment_id) AS count
+                FROM evaluations e
+                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+                JOIN evaluation_selected_comments esc ON ec.evaluation_category_id = esc.evaluation_category_id
+                WHERE ec.rating <= 3  
+                GROUP BY esc.comment, ec.category_name
+                ORDER BY count DESC
+                LIMIT 5
+            ),
+            total_top AS (
+                SELECT SUM(count) AS top_total FROM top_comments
+            )
+            SELECT 
+                tc.comment, 
+                tc.category, 
+                tc.count,
+                ROUND(tc.count * 100.0 / tt.top_total, 2) AS percentage
+            FROM top_comments tc
+            CROSS JOIN total_top tt
+            ORDER BY tc.count DESC;
+        `;
+        const result = await pgDatabase.query(query);
+
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+
 exports.getPermanceScoreBySEID = async (se_id) => {
     try {
-        console.log("Fetching top SE performance for the last 3 months");
-
         const query = `
             SELECT 
                 e.se_id,
@@ -199,3 +239,214 @@ exports.getPermanceScoreBySEID = async (se_id) => {
     }
 };
 
+exports.getAverageScoreForAllSEPerCategory = async () => {
+    try {
+        const query = `
+            SELECT 
+                ec.category_name AS category,
+                ROUND(AVG(ec.rating), 2) AS score
+            FROM evaluations e
+            JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+            GROUP BY ec.category_name
+            ORDER BY category;
+        `;
+        const result = await pgDatabase.query(query);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+//Line chart
+exports.getImprovementScorePerMonthAnnually= async () => {
+    try {
+        const query = `
+            WITH MonthlyRatings AS (
+                SELECT 
+                    e.se_id,
+                    s.abbr AS social_enterprise, 
+                    DATE_TRUNC('month', e.created_at) AS month,
+                    ROUND(AVG(ec.rating), 2) AS avg_rating
+                FROM evaluations e
+                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+                JOIN socialenterprises s ON e.se_id = s.se_id
+                WHERE DATE_PART('year', e.created_at) = DATE_PART('year', CURRENT_DATE) -- Filter by current year
+                GROUP BY e.se_id, s.abbr, month
+            ),
+            RankedRatings AS (
+                SELECT 
+                    se_id, 
+                    social_enterprise, 
+                    month, 
+                    avg_rating,
+                    LAG(avg_rating) OVER (PARTITION BY se_id ORDER BY month) AS prev_avg_rating
+                FROM MonthlyRatings
+            )
+            SELECT 
+                month,
+                ROUND(AVG(avg_rating - prev_avg_rating), 2) AS overall_avg_improvement
+            FROM RankedRatings
+            WHERE prev_avg_rating IS NOT NULL -- Exclude the first month of evaluations
+            GROUP BY month
+            ORDER BY month;
+        `;
+        const result = await pgDatabase.query(query);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+//Stat box
+exports.getImprovementScoreOverallAnnually= async () => {
+    try {
+        const query = `
+            WITH MonthlyRatings AS (
+                SELECT 
+                    e.se_id,
+                    s.abbr AS social_enterprise, 
+                    DATE_TRUNC('month', e.created_at) AS month,
+                    ROUND(AVG(ec.rating), 2) AS avg_rating
+                FROM evaluations e
+                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+                JOIN socialenterprises s ON e.se_id = s.se_id
+                WHERE DATE_PART('year', e.created_at) = DATE_PART('year', CURRENT_DATE) -- Filter by current year
+                GROUP BY e.se_id, s.abbr, month
+            ),
+            RankedRatings AS (
+                SELECT 
+                    se_id, 
+                    social_enterprise, 
+                    month, 
+                    avg_rating,
+                    LAG(avg_rating) OVER (PARTITION BY se_id ORDER BY month) AS prev_avg_rating
+                FROM MonthlyRatings
+            )
+            SELECT 
+                ROUND(AVG(avg_rating - prev_avg_rating), 2) AS overall_avg_improvement
+            FROM RankedRatings
+            WHERE prev_avg_rating IS NOT NULL; -- Exclude the first month
+        `;
+        const result = await pgDatabase.query(query);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+//Stat box
+exports.getGrowthScoreOverallAnually= async () => {
+    try {
+        const query = `
+            WITH MonthlyRatings AS (
+                SELECT 
+                    e.se_id,
+                    DATE_TRUNC('month', e.created_at) AS month,
+                    ROUND(AVG(ec.rating), 2) AS avg_rating
+                FROM evaluations e
+                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+                WHERE e.se_id = '94359e17-55f7-420a-abbb-ea4f8d693c47'  -- Specific SE ID
+                GROUP BY e.se_id, month
+            ),
+            RankedRatings AS (
+                SELECT 
+                    se_id, 
+                    month, 
+                    avg_rating,
+                    LAG(avg_rating) OVER (PARTITION BY se_id ORDER BY month) AS prev_avg_rating,
+                    FIRST_VALUE(avg_rating) OVER (PARTITION BY se_id ORDER BY month) AS first_recorded_rating
+                FROM MonthlyRatings
+            ),
+            Growth AS (
+                SELECT 
+                    se_id,
+                    month,
+                    avg_rating,
+                    prev_avg_rating,
+                    first_recorded_rating,
+                    (avg_rating - prev_avg_rating) AS monthly_growth,
+                    ((avg_rating - prev_avg_rating) / prev_avg_rating) * 100 AS monthly_growth_rate,
+                    ((avg_rating / first_recorded_rating) - 1) * 100 AS cumulative_growth_percentage
+                FROM RankedRatings
+                WHERE prev_avg_rating IS NOT NULL
+            )
+            SELECT 
+                se_id, 
+                month, 
+                ROUND(avg_rating, 2) AS current_avg_rating, 
+                ROUND(prev_avg_rating, 2) AS previous_avg_rating, 
+                ROUND(monthly_growth, 2) AS growth,
+                ROUND(monthly_growth_rate, 2) AS growth_change_rate,
+                ROUND(cumulative_growth_percentage, 2) AS cumulative_growth
+            FROM Growth
+            ORDER BY month;
+        `;
+        const result = await pgDatabase.query(query);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+
+exports.getMonthlyGrowthDetails= async () => {
+    try {
+        const query = `
+            WITH MonthlyRatings AS (
+          SELECT 
+              e.se_id,
+              DATE_TRUNC('month', e.created_at) AS month,
+              ROUND(AVG(ec.rating), 2) AS avg_rating
+          FROM evaluations e
+          JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+          GROUP BY e.se_id, month
+      ),
+      RankedRatings AS (
+          SELECT 
+              se_id, 
+              month, 
+              avg_rating,
+              LAG(avg_rating) OVER (PARTITION BY se_id ORDER BY month) AS prev_avg_rating
+          FROM MonthlyRatings
+      ),
+      Growth AS (
+          SELECT 
+              se_id,
+              month,
+              avg_rating,
+              prev_avg_rating,
+              (avg_rating - prev_avg_rating) AS monthly_growth
+          FROM RankedRatings
+          WHERE prev_avg_rating IS NOT NULL
+      ),
+      FinalGrowth AS (
+          SELECT 
+              se_id, 
+              month, 
+              avg_rating, 
+              prev_avg_rating, 
+              monthly_growth,
+              LAG(monthly_growth) OVER (PARTITION BY se_id ORDER BY month) AS prev_monthly_growth
+          FROM Growth
+      )
+      SELECT 
+          month, 
+          ROUND(avg_rating, 2) AS current_avg_rating, 
+          ROUND(prev_avg_rating, 2) AS previous_avg_rating, 
+          ROUND(monthly_growth, 2) AS growth,
+          ROUND(
+              CASE 
+                  WHEN prev_monthly_growth = 0 OR prev_monthly_growth IS NULL THEN 0 
+                  ELSE ((monthly_growth - prev_monthly_growth) / prev_monthly_growth) * 100 
+              END, 2
+          ) AS growth_change_rate
+      FROM FinalGrowth
+      ORDER BY month;
+        `;
+        const result = await pgDatabase.query(query);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};

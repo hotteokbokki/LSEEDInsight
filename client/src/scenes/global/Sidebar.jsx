@@ -122,7 +122,7 @@ const Sidebar = () => {
                 fontWeight="bold"
                 mt={1}
               >
-                {user.firstname || "User"}
+                {user.firstname || "User"} {user.lastname || "User"} 
               </Typography>
               <Typography variant="body2" color={colors.greenAccent[500]}>
                 {user.role || "LSEED User"}
