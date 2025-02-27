@@ -38,6 +38,65 @@ const AssessSEPage = () => {
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [evaluationCriteria, setEvaluationCriteria] = useState({});
   const userSession = JSON.parse(localStorage.getItem("user"));
+  const [openMentorshipDialog, setOpenMentorshipDialog] = useState(false); // For Mentorship Assessment dialog
+  const [programs, setPrograms] = useState([]); // List of programs
+  const [selectedPrograms, setSelectedPrograms] = useState([]); // Selected programs
+  const [isLoadingPrograms, setIsLoadingPrograms] = useState(false);
+
+  const handleProgramSelectionChange = (programId) => {
+    setSelectedPrograms(
+      (prev) =>
+        prev.includes(programId)
+          ? prev.filter((id) => id !== programId) // Deselect
+          : [...prev, programId] // Select
+    );
+  };
+
+  const handleSubmitEvaluations = async () => {
+    if (selectedPrograms.length === 0) {
+      alert("Please select at least one program to evaluate.");
+      return;
+    }
+
+    try {
+      console.log("Submitting evaluations for programs:", selectedPrograms);
+      // Perform API call or other actions here
+      alert(
+        `Evaluations submitted for programs: ${selectedPrograms.join(", ")}`
+      );
+    } catch (error) {
+      console.error("❌ Error submitting evaluations:", error);
+    } finally {
+      handleCloseMentorshipDialog(); // Close dialog after submission
+    }
+  };
+
+  const handleOpenMentorshipDialog = () => {
+    setOpenMentorshipDialog(true);
+  };
+
+  const handleCloseMentorshipDialog = () => {
+    setOpenMentorshipDialog(false);
+    setSelectedPrograms([]); // Reset selected programs when closing
+  };
+
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      try {
+        setIsLoadingPrograms(true);
+        const response = await axios.get("http://localhost:4000/getPrograms");
+        setPrograms(response.data); // Store fetched programs in state
+      } catch (error) {
+        console.error("❌ Error fetching programs:", error);
+      } finally {
+        setIsLoadingPrograms(false);
+      }
+    };
+
+    if (openMentorshipDialog) {
+      fetchPrograms();
+    }
+  }, [openMentorshipDialog]);
 
   useEffect(() => {
     const fetchPredefinedComments = async () => {
@@ -472,6 +531,7 @@ const AssessSEPage = () => {
             Evaluate SE
           </Button>
           <Button
+            onClick={handleOpenMentorshipDialog}
             variant="contained"
             color="secondary"
             sx={{ fontSize: "20px", padding: "20px", width: "48%" }}
@@ -479,6 +539,105 @@ const AssessSEPage = () => {
             Mentorship Assessment
           </Button>
         </Box>
+
+        {/* Mentorship Assessment Dialog */}
+        <Dialog
+          open={openMentorshipDialog}
+          onClose={handleCloseMentorshipDialog}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            style: {
+              backgroundColor: "#fff", // White background
+              color: "#000", // Black text
+              border: "1px solid #000", // Black border for contrast
+            },
+          }}
+        >
+          <DialogTitle
+            sx={{
+              backgroundColor: "#1E4D2B", // DLSU Green header
+              color: "#fff", // White text
+              textAlign: "center",
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+            }}
+          >
+            Select Programs for Evaluation
+          </DialogTitle>
+          <DialogContent
+            sx={{
+              display: "flex",
+              flexDirection: "column", // Ensure vertical stacking
+              gap: "8px", // Add spacing between items
+            }}
+          >
+            {isLoadingPrograms ? (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {[1, 2, 3].map((index) => (
+                  <Skeleton key={index} variant="rectangular" height={40} />
+                ))}
+              </Box>
+            ) : programs.length === 0 ? (
+              <Typography>No programs found.</Typography>
+            ) : (
+              programs.map((program) => (
+                <FormControlLabel
+                  key={program.id}
+                  control={
+                    <Checkbox
+                      checked={selectedPrograms.includes(program.id)}
+                      onChange={() => handleProgramSelectionChange(program.id)}
+                      sx={{
+                        color: "#000",
+                        "&.Mui-checked": { color: "#000" },
+                      }}
+                    />
+                  }
+                  label={program.name}
+                  sx={{
+                    display: "flex", // Ensure label and checkbox align properly
+                    alignItems: "center", // Align checkbox and text vertically
+                    marginBottom: "8px", // Add spacing between entries
+                  }}
+                />
+              ))
+            )}
+            {error && <Alert severity="error">{error}</Alert>}
+          </DialogContent>
+          <DialogActions
+            sx={{
+              padding: "16px",
+              borderTop: "1px solid #000", // Separator line
+            }}
+          >
+            <Button
+              onClick={handleCloseMentorshipDialog}
+              sx={{
+                color: "#000",
+                border: "1px solid #000",
+                "&:hover": {
+                  backgroundColor: "#f0f0f0", // Hover effect
+                },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitEvaluations}
+              variant="contained"
+              sx={{
+                backgroundColor: "#1E4D2B",
+                color: "#fff",
+                "&:hover": {
+                  backgroundColor: "#1E4D2B",
+                },
+              }}
+            >
+              Send Evaluations
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* DataGrid */}
         <Box
