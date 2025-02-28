@@ -141,28 +141,27 @@ async function deleteMessage(chatId, messageId) {
 
 async function sendMessageWithOptions(chatId, message, options) {
   try {
-    console.log("Inline Keyboard:", options); // Debugging log
-
     const response = await axios.post(TELEGRAM_API_URL, {
       chat_id: chatId,
       text: message,
-      parse_mode: 'Markdown',
+      parse_mode: "Markdown",
       reply_markup: {
-        inline_keyboard: options, // Use directly without additional mapping
+        inline_keyboard: options, // Use directly without mapping
       },
     });
+
     if (response.data && response.data.result) {
-      console.log(`📩 Message sent successfully. Message ID: ${response.data.result.message_id}`);
-      return response.data.result;
-  } else {
+      return response.data.result; // Ensure it returns the actual message object
+    } else {
       console.error("⚠️ Failed to send message with options. Response:", response.data);
       return null;
-  }
-    return response.data;
+    }
   } catch (error) {
-    console.error("Failed to send message with inline keyboard:", error.response?.data || error.message);
+    console.error("❌ Failed to send message:", error.response?.data || error.message);
+    return null;
   }
 }
+
 
 app.get("/api/mentors", async (req, res) => {
   try {
@@ -710,7 +709,7 @@ app.post("/api/social-enterprises", async (req, res) => {
 
 app.get("/test-api", async (req, res) => {
   try {
-    const result = await getSocialEnterprisesByProgram('301aff84-fb30-4ac9-bc58-5b66d01290d6')
+    const result = await getProgramsForTelegram()
 
     res.json(result);
   } catch (error) {
@@ -782,13 +781,16 @@ app.post("/webhook", async (req, res) => {
         return res.sendStatus(200);
       }
 
+      const formattedOptions = options.map(option => [option]); // Ensure 2D array
+      console.log("✅ Formatted Inline Keyboard:", JSON.stringify(formattedOptions, null, 2)); 
+
       // If user enters password and options are available
       if (
         userStates[chatId]?.state === "awaiting_password" &&
         message.text.trim().toLowerCase() === PASSWORD.toLowerCase()
       ) {
         setUserState(chatId, "awaiting_program_selection"); // Transition to program selection
-        if (options.length === 0) {
+        if (formattedOptions.length === 0) {
           await sendMessage(
             chatId,
             "⚠️ No programs available at the moment. Please try again later."
@@ -796,11 +798,15 @@ app.post("/webhook", async (req, res) => {
           delete userStates[chatId]; // Reset state if no programs are available
           return res.sendStatus(200);
         }
-        await sendMessageWithInlineKeyboard(
+        const confirmationMessage = await sendMessageWithOptions(
           chatId,
           "✅ Password correct! You have been successfully registered.\n\nPlease choose your program:",
-          options
+          formattedOptions
         );
+        
+        // Update userStates
+        userStates[chatId] = { confirmationMessageId: confirmationMessage?.message_id || null };
+
         return res.sendStatus(200);
       }
 
@@ -840,7 +846,11 @@ app.post("/webhook", async (req, res) => {
     }
 
     try {
+      console.log("This is the current data: ", data)
+      console.log("This is the chatid: ", chatId)
       if (data.startsWith("program_")) {
+            await deletePreviousMessages(chatId, ["confirmationMessageId"]);
+            await deletePreviousMessages(chatId, ["chooseAgainID"]);
             const programId = data.replace("program_", "");
             const selectedProgram = await getProgramNameByID(programId);
             if (!selectedProgram) return res.sendStatus(400);
@@ -880,7 +890,9 @@ app.post("/webhook", async (req, res) => {
           }
       
           const inlineKeyboard = socialEnterprises.map(se => [{ text: se.abbr, callback_data: se.callback_data }]);
-          await sendMessageWithOptions(chatId, `✅ *${selectedProgram}* confirmed!\n\nPlease select a Social Enterprise:`, inlineKeyboard);
+          const enterpriseOptionsMessage = await sendMessageWithOptions(chatId, `✅ *${selectedProgram}* confirmed!\n\nPlease select a Social Enterprise:`, inlineKeyboard);
+          userStates[chatId] = { enterpriseOptionsMessageID: enterpriseOptionsMessage.message_id };
+
           return res.sendStatus(200);
       }
         
@@ -893,13 +905,17 @@ app.post("/webhook", async (req, res) => {
                 await sendMessage(chatId, "⚠️ No programs available at the moment.");
                 return res.sendStatus(200);
             }
+            const formattedOptions = programs.map(option => [option]); // Ensure 2D array
         
-            const newSelectionMessage = await sendMessageWithInlineKeyboard(chatId, "🔄 Please choose your program again:", programs);
+            const newSelectionMessage = await sendMessageWithOptions(chatId, "🔄 Please choose your program again:", formattedOptions);
+            userStates[chatId] = { chooseAgainID: newSelectionMessage.message_id };
             if (newSelectionMessage?.message_id) userStates[chatId].programSelectionMessageId = newSelectionMessage.message_id;
             return res.sendStatus(200);
       }
         
       if (data.startsWith("enterprise_")) {
+          await deletePreviousMessages(chatId, ["enterpriseOptionsMessageID"]);
+          await deletePreviousMessages(chatId, ["newSeOptionsMessageID"]);
           const enterpriseId = data.replace("enterprise_", "");
           const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
           if (!selectedEnterprise) return res.sendStatus(400);
@@ -926,16 +942,16 @@ app.post("/webhook", async (req, res) => {
               `✅ You selected *${selectedEnterprise.team_name}*!\n\nPlease confirm your selection:`,
               inlineKeyboard
           );
-          userStates[chatId].confirmationMessageId = confirmationMessage.message_id;
+          userStates[chatId] = { confirmationMessageID: confirmationMessage.message_id };
           return res.sendStatus(200);
       }
         
       if (data.startsWith("confirm_")) {
+            await deletePreviousMessages(chatId, ["confirmationMessageID"]);
             const enterpriseId = data.replace("confirm_", "");
             const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
             if (!selectedEnterprise) return res.sendStatus(400);
         
-            await deletePreviousMessages(chatId, ["seOptionsMessageId", "confirmationMessageId"]);
             const mentors = await getMentorBySEID(enterpriseId);
             if (!mentors.length) {
                 await sendMessage(chatId, `⚠️ No mentors available under *${selectedEnterprise.team_name}*.`);
@@ -952,7 +968,7 @@ app.post("/webhook", async (req, res) => {
       }
         
       if (data === "pick_again") {
-          await deletePreviousMessages(chatId, ["confirmationMessageId", "seOptionsMessageId", "selectionClearedMessageId"]);
+          await deletePreviousMessages(chatId, ["confirmationMessageID"]);
       
           console.log("userSelections before processing:", userSelections[chatId]); // Debugging
       
@@ -971,11 +987,6 @@ app.post("/webhook", async (req, res) => {
       
           setUserState(chatId, "awaiting_program_selection");
       
-          const selectionClearedMessage = await sendMessage(chatId, "🔄 Selection cleared. Please choose your social enterprise again.");
-          if (selectionClearedMessage?.message_id) {
-              userStates[chatId].selectionClearedMessageId = selectionClearedMessage.message_id;
-          }
-      
           // Fetch social enterprises for the preserved programId
           const socialEnterprises = await getSocialEnterprisesByProgram(programId);
           if (!socialEnterprises.length) {
@@ -986,9 +997,9 @@ app.post("/webhook", async (req, res) => {
           // Create inline keyboard for social enterprises
           const inlineKeyboard = socialEnterprises.map(se => [{ text: se.abbr, callback_data: se.callback_data }]);
           const newSeOptionsMessage = await sendMessageWithOptions(chatId, "🔄 Please choose a social enterprise again:", inlineKeyboard);
-          if (newSeOptionsMessage?.message_id) {
-              userStates[chatId].seOptionsMessageId = newSeOptionsMessage.message_id;
-          }
+          
+          userStates[chatId] = { newSeOptionsMessageID: newSeOptionsMessage.message_id };
+
       
           return res.sendStatus(200);
       }
@@ -998,31 +1009,6 @@ app.post("/webhook", async (req, res) => {
     }
   }
 });
-
-async function deleteMessage(chatId, messageId) {
-  try {
-    // Make a POST request to the Telegram Bot API to delete the message
-    const response = await axios.post(
-      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`,
-      {
-        chat_id: chatId,
-        message_id: messageId,
-      }
-    );
-
-    // Check if the deletion was successful
-    if (response.data && response.data.ok) {
-      console.log(`✅ Message ${messageId} deleted successfully from chat ${chatId}`);
-    } else {
-      console.error(`❌ Failed to delete message ${messageId}:`, response.data);
-      throw new Error(`Failed to delete message: ${response.data.description}`);
-    }
-  } catch (error) {
-    // Handle errors (e.g., message not found, bot lacks permissions)
-    console.error(`❌ Error deleting message ${messageId} in chat ${chatId}:`, error.message);
-    throw error; // Re-throw the error for upstream handling
-  }
-}
 
 // Send Message to a User (using stored Telegram User ID)
 app.post("/send-message", async (req, res) => {
