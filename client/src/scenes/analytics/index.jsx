@@ -76,8 +76,8 @@ const Analytics = () => {
 
         <Box flex="1 1 22%" backgroundColor={colors.primary[400]} display="flex" alignItems="center" justifyContent="center" p="20px">
           <StatBox
-            title={stats.growthScoreTotal}
-            subtitle="Overall Growth Score"
+            title={`${stats.growthScoreTotal} ${stats.topGrowingSE?.abbr}`}
+            subtitle="SE with Significant growth"
             progress={stats.cumulativeGrowth / 100} // Normalize percentage
             increase={`${stats.cumulativeGrowth}%`}
             icon={<TrafficIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}

@@ -4,7 +4,7 @@ const cors = require("cors");
 const { router: authRoutes, requireAuth } = require("./routes/authRoutes");
 const axios = require("axios");
 const ngrok = require("ngrok"); // Exposes your local server to the internet
-const { getPrograms, getProgramNameByID, getProgramCount } = require("./controllers/programsController");
+const { getPrograms, getProgramNameByID, getProgramCount, getProgramsForTelegram } = require("./controllers/programsController");
 const { getTelegramUsers, insertTelegramUser } = require("./controllers/telegrambotController");
 const { getSocialEnterprisesByProgram, getSocialEnterpriseByID, getAllSocialEnterprises, getAllSocialEnterprisesWithMentorship, getTotalSECount, getSEWithOutMentors, getPreviousTotalSECount, getPreviousMonthSEWithOutMentors } = require("./controllers/socialenterprisesController");
 require("dotenv").config();
@@ -94,6 +94,23 @@ async function sendMessageWithInlineKeyboard(chatId, message, options) {
       return response.data;
   } catch (error) {
     console.error("Failed to send message with inline keyboard:", error.response?.data || error.message);
+  }
+}
+
+async function acknowledgeCallback(callbackQueryId) {
+  await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+      callback_query_id: callbackQueryId,
+      text: "✅ Choice received!",
+      show_alert: false,
+  });
+}
+
+async function deletePreviousMessages(chatId, keys) {
+  for (const key of keys) {
+      if (userStates[chatId]?.[key]) {
+          await deleteMessage(chatId, userStates[chatId][key]);
+          delete userStates[chatId][key];
+      }
   }
 }
 
@@ -225,7 +242,7 @@ app.get("/api/analytics-stats", async (req, res) => {
     
     // ✅ Total Growth (sum of `growth`)
     const currentGrowthScoreValue = growthScore.reduce((sum, entry) => sum + parseFloat(entry.growth || 0), 0);
-    
+
     // ✅ Get the latest cumulative growth value
     const cumulativeGrowthValue = growthScore.length > 0 ? parseFloat(growthScore[growthScore.length - 1].cumulative_growth || 0) : 0;
 
@@ -248,6 +265,7 @@ app.get("/api/analytics-stats", async (req, res) => {
       cumulativeGrowth: cumulativeGrowthValue.toFixed(2),  
       evaluationScoreDistribution,
       leaderboardData,
+      growthScore,
     });
 
   } catch (error) {
@@ -690,6 +708,18 @@ app.post("/api/social-enterprises", async (req, res) => {
   }
 });
 
+app.get("/test-api", async (req, res) => {
+  try {
+    const result = await getSocialEnterprisesByProgram('301aff84-fb30-4ac9-bc58-5b66d01290d6')
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error in testing:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+
+});
+
 app.post("/webhook", async (req, res) => {
   const message = req.body.message || req.body.edited_message;
   const callbackQuery = req.body.callback_query;
@@ -717,7 +747,7 @@ app.post("/webhook", async (req, res) => {
       // Fetch user and programs in parallel
       const [existingUser, options] = await Promise.all([
         getTelegramUsers(chatId),
-        getPrograms(),
+        getProgramsForTelegram(),
       ]);
 
       // If user already exists, prevent re-registration
@@ -811,272 +841,156 @@ app.post("/webhook", async (req, res) => {
 
     try {
       if (data.startsWith("program_")) {
-        const programId = data.replace("program_", "");
-        const selectedProgram = await getProgramNameByID(programId);
-        if (!selectedProgram) {
-          return res.sendStatus(400); // Invalid selection
-        }
-
-        userSelections[chatId] = { programId, programName: selectedProgram };
-        const programInlineKeyboard = [
-          [{ text: "Confirm", callback_data: `confirm_program_${programId}` }],
-          [{ text: "Pick Again", callback_data: "pick_program_again" }],
-        ];
-
-        const ProgramconfirmationMessage = await sendMessageWithOptions(
-          chatId,
-          `✅ You selected *${selectedProgram}*!\n\nPlease confirm your selection:`,
-          programInlineKeyboard
-        );
-
-        userStates[chatId] = { ProgramconfirmationMessageId: ProgramconfirmationMessage.message_id };
-
-        return res.sendStatus(200);
-      } 
-
+            const programId = data.replace("program_", "");
+            const selectedProgram = await getProgramNameByID(programId);
+            if (!selectedProgram) return res.sendStatus(400);
+        
+            userSelections[chatId] = { programId, programName: selectedProgram };
+            const programInlineKeyboard = [
+                [{ text: "Confirm", callback_data: `confirm_program_${programId}` }],
+                [{ text: "Pick Again", callback_data: "pick_program_again" }],
+            ];
+        
+            const confirmationMessage = await sendMessageWithOptions(
+                chatId,
+                `✅ You selected *${selectedProgram}*!\n\nPlease confirm your selection:`,
+                programInlineKeyboard
+            );
+            userStates[chatId] = { confirmationMessageId: confirmationMessage.message_id };
+            return res.sendStatus(200);
+      }
+        
+      if (data.startsWith("confirm_program_")) {
           const programId = data.replace("confirm_program_", "");
-          const selectedProgram = userSelections[chatId]?.programName;
-  
-          if (userStates[chatId]?.confirmationMessageId) {
-            console.log(`Deleting previous confirmation message: ${userStates[chatId].confirmationMessageId}`);
-            await deleteMessage(chatId, userStates[chatId].confirmationMessageId);
-            delete userStates[chatId].confirmationMessageId;
-          }
-
-          if (userStates[chatId]?.programSelectionMessageId) {
-          console.log(`Deleting previous program selection message: ${userStates[chatId].programSelectionMessageId}`);
-          await deleteMessage(chatId, userStates[chatId].programSelectionMessageId);
-          delete userStates[chatId].programSelectionMessageId;
-        }
-
-        if (data.startsWith("confirm_program_")) {
-          const programId = data.replace("confirm_program_", "");
-          const selectedProgram = userSelections[chatId]?.programName;
-      
-          // Fetch SEs under the chosen program
-          const socialEnterprises = await getSocialEnterprisesByProgram(programId);
+          const selectedProgram = await getProgramNameByID(programId);
           
+          if (!selectedProgram) return res.sendStatus(400);
+      
+          // Store the program in userSelections
+          userSelections[chatId] = { programId, programName: selectedProgram };
+          
+          console.log("Stored programId in userSelections:", userSelections[chatId]); // Debugging
+      
+          await deletePreviousMessages(chatId, ["confirmationMessageId", "programSelectionMessageId"]);
+      
+          const socialEnterprises = await getSocialEnterprisesByProgram(programId);
           if (!socialEnterprises.length) {
               await sendMessage(chatId, `⚠️ No Social Enterprises found under *${selectedProgram}*.`);
               return res.sendStatus(200);
           }
       
-          // Create inline keyboard options for SE selection
-          const enterpriseOptions = socialEnterprises.map(se => ({
-              text: se.text, // Display SE name
-              callback_data: `enterprise_${se.callback_data.split("_")[1]}` // Use SE ID
-          }));
-      
-          const inlineKeyboard = enterpriseOptions.map(option => [option]); // Convert to Telegram format
-      
-          // Send SE selection message
-          await sendMessageWithOptions(
-              chatId,
-              `✅ *${selectedProgram}* confirmed!\n\nPlease select a Social Enterprise:`,
-              inlineKeyboard
-          );
-      
+          const inlineKeyboard = socialEnterprises.map(se => [{ text: se.abbr, callback_data: se.callback_data }]);
+          await sendMessageWithOptions(chatId, `✅ *${selectedProgram}* confirmed!\n\nPlease select a Social Enterprise:`, inlineKeyboard);
           return res.sendStatus(200);
       }
+        
+      if (data === "pick_program_again") {
+            await deletePreviousMessages(chatId, ["confirmationMessageId"]);
+            setUserState(chatId, "awaiting_program_selection");
+        
+            const programs = await getProgramsForTelegram();
+            if (!programs.length) {
+                await sendMessage(chatId, "⚠️ No programs available at the moment.");
+                return res.sendStatus(200);
+            }
+        
+            const newSelectionMessage = await sendMessageWithInlineKeyboard(chatId, "🔄 Please choose your program again:", programs);
+            if (newSelectionMessage?.message_id) userStates[chatId].programSelectionMessageId = newSelectionMessage.message_id;
+            return res.sendStatus(200);
+      }
+        
+      if (data.startsWith("enterprise_")) {
+          const enterpriseId = data.replace("enterprise_", "");
+          const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
+          if (!selectedEnterprise) return res.sendStatus(400);
       
-
-        if (data === "pick_program_again") {
-          // Delete previous confirmation message
-          if (userStates[chatId]?.ProgramconfirmationMessageId) {
-              await deleteMessage(chatId, userStates[chatId].ProgramconfirmationMessageId);
-              delete userStates[chatId].ProgramconfirmationMessageId;
+          // Preserve programId while adding SE selection
+          const existingSelection = userSelections[chatId] || {};
+          userSelections[chatId] = { 
+              ...existingSelection, // Preserve existing data
+              se_id: selectedEnterprise.se_id, 
+              se_name: selectedEnterprise.team_name 
+          };
+      
+          console.log("Updated userSelections:", userSelections[chatId]); // Debugging
+      
+          await acknowledgeCallback(callbackQueryId);
+      
+          const inlineKeyboard = [
+              [{ text: "Confirm", callback_data: `confirm_${enterpriseId}` }],
+              [{ text: "Pick Again", callback_data: "pick_again" }],
+          ];
+          
+          const confirmationMessage = await sendMessageWithOptions(
+              chatId,
+              `✅ You selected *${selectedEnterprise.team_name}*!\n\nPlease confirm your selection:`,
+              inlineKeyboard
+          );
+          userStates[chatId].confirmationMessageId = confirmationMessage.message_id;
+          return res.sendStatus(200);
+      }
+        
+      if (data.startsWith("confirm_")) {
+            const enterpriseId = data.replace("confirm_", "");
+            const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
+            if (!selectedEnterprise) return res.sendStatus(400);
+        
+            await deletePreviousMessages(chatId, ["seOptionsMessageId", "confirmationMessageId"]);
+            const mentors = await getMentorBySEID(enterpriseId);
+            if (!mentors.length) {
+                await sendMessage(chatId, `⚠️ No mentors available under *${selectedEnterprise.team_name}*.`);
+                return res.sendStatus(200);
+            }
+        
+            const mentor = mentors[0];
+            await sendMessage(chatId, `✅ You are now registered under *${selectedEnterprise.team_name}* with Mentor *${mentor.name}*.`);
+        
+            await insertTelegramUser(chatId, userName, firstName, userSelections, mentor.mentor_id);
+            delete userSelections[chatId];
+            delete userStates[chatId];
+            return res.sendStatus(200);
+      }
+        
+      if (data === "pick_again") {
+          await deletePreviousMessages(chatId, ["confirmationMessageId", "seOptionsMessageId", "selectionClearedMessageId"]);
+      
+          console.log("userSelections before processing:", userSelections[chatId]); // Debugging
+      
+          // Retrieve programId from userSelections before clearing other data
+          const programId = userSelections[chatId]?.programId;
+          if (!programId) {
+              await sendMessage(chatId, "⚠️ No program selected. Please start again.");
+              console.log("Error: programId is undefined!"); // Debugging
+              return res.sendStatus(400);
           }
       
-          // Reset state and fetch programs again
+          console.log("Program ID found:", programId); // Debugging
+      
+          // Preserve only the programId in userSelections
+          userSelections[chatId] = { programId };
+      
           setUserState(chatId, "awaiting_program_selection");
-          
-          const programs = await getPrograms();
-          if (programs.length === 0) {
-              await sendMessage(chatId, "⚠️ No programs available at the moment.");
+      
+          const selectionClearedMessage = await sendMessage(chatId, "🔄 Selection cleared. Please choose your social enterprise again.");
+          if (selectionClearedMessage?.message_id) {
+              userStates[chatId].selectionClearedMessageId = selectionClearedMessage.message_id;
+          }
+      
+          // Fetch social enterprises for the preserved programId
+          const socialEnterprises = await getSocialEnterprisesByProgram(programId);
+          if (!socialEnterprises.length) {
+              await sendMessage(chatId, "⚠️ No social enterprises available at the moment.");
               return res.sendStatus(200);
           }
       
-          // Resend the program selection message
-          const newProgramSelectionMessage = await sendMessageWithInlineKeyboard(
-              chatId,
-              "🔄 Please choose your program again:",
-              programs
-          );
-      
-          // Store the new message ID for future deletion
-          if (newProgramSelectionMessage && newProgramSelectionMessage.message_id) {
-              userStates[chatId].programSelectionMessageId = newProgramSelectionMessage.message_id;
-              console.log(`📌 Stored new program selection message ID: ${newProgramSelectionMessage.message_id}`);
+          // Create inline keyboard for social enterprises
+          const inlineKeyboard = socialEnterprises.map(se => [{ text: se.abbr, callback_data: se.callback_data }]);
+          const newSeOptionsMessage = await sendMessageWithOptions(chatId, "🔄 Please choose a social enterprise again:", inlineKeyboard);
+          if (newSeOptionsMessage?.message_id) {
+              userStates[chatId].seOptionsMessageId = newSeOptionsMessage.message_id;
           }
       
           return res.sendStatus(200);
-      } else if (data.startsWith("enterprise_")) {
-        const enterpriseId = data.replace("enterprise_", "");
-        const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
-        if (!selectedEnterprise) {
-          return res.sendStatus(400); // Invalid selection
-        }
-
-        // Store the SE selection temporarily
-        userSelections[chatId] = {
-          se_id: selectedEnterprise.se_id,
-          se_name: selectedEnterprise.team_name,
-        };
-
-        // Acknowledge the callback query immediately
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-          callback_query_id: callbackQueryId,
-          text: "✅ Choice received!",
-          show_alert: false,
-        });
-
-        // Prompt confirmation before proceeding
-        const inlineKeyboard = [
-          [{ text: "Confirm", callback_data: `confirm_${enterpriseId}` }],
-          [{ text: "Pick Again", callback_data: "pick_again" }],
-        ];
-
-        // Send the confirmation message and store its ID
-        const confirmationMessage = await sendMessageWithOptions(
-          chatId,
-          `✅ You selected *${selectedEnterprise.team_name}*!\n\nPlease confirm your selection:`,
-          inlineKeyboard
-        );
-
-        // Store the confirmation message ID for deletion later
-        userStates[chatId].confirmationMessageId = confirmationMessage.message_id;
-
-        return res.sendStatus(200);
-      } else if (data.startsWith("confirm_")) {
-        const enterpriseId = data.replace("confirm_", "");
-        const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
-        if (!selectedEnterprise) {
-          return res.sendStatus(400); // Invalid selection
-        }
-
-        // Delete the SE options message
-        if (userStates[chatId]?.seOptionsMessageId) {
-          await deleteMessage(chatId, userStates[chatId].seOptionsMessageId);
-          delete userStates[chatId].seOptionsMessageId;
-        }
-
-        // Delete the confirmation message
-        if (userStates[chatId]?.confirmationMessageId) {
-          await deleteMessage(chatId, userStates[chatId].confirmationMessageId);
-          delete userStates[chatId].confirmationMessageId;
-        }
-
-        // Fetch mentors for the selected SE
-        const mentors = await getMentorBySEID(enterpriseId);
-
-        // Access the first mentor's name and ID
-        const mentorName = mentors[0]?.name;
-        const mentorID = mentors[0]?.mentor_id;
-
-        if (mentors.length === 0) {
-          await sendMessage(chatId, `⚠️ No mentors available under *${selectedEnterprise.team_name}*.`);
-          return res.sendStatus(200);
-        }
-
-        // Ensure SE data is already stored
-        if (!userSelections[chatId]) {
-          console.error("❌ No SE selection found for user:", chatId);
-          return res.sendStatus(400);
-        }
-
-        // Final confirmation message with the automatically assigned mentor
-        await sendMessage(
-          chatId,
-          `✅ You are now registered under *${userSelections[chatId].se_name}* with Mentor *${mentorName}*.\n\nWelcome to LSEED Insight!`
-        );
-
-        // Insert into Database
-        await insertTelegramUser(chatId, userName, firstName, userSelections, mentorID);
-        delete userSelections[chatId];
-        delete userStates[chatId]; // Clear user state after successful registration
-        console.log(`🗑️ Cleared stored selections and state for user ${chatId}`);
-        return res.sendStatus(200);
-      } else if (data === "pick_again") {
-        // Delete the confirmation message
-        if (userStates[chatId]?.confirmationMessageId) {
-          await deleteMessage(chatId, userStates[chatId].confirmationMessageId);
-          delete userStates[chatId].confirmationMessageId;
-        }
-
-        // Delete the bot's social enterprise selection message
-        if (userStates[chatId]?.seOptionsMessageId) {
-          console.log(`🗑️ Deleting bot social enterprise selection message ID: ${userStates[chatId].seOptionsMessageId}`);
-          await deleteMessage(chatId, userStates[chatId].seOptionsMessageId);
-          delete userStates[chatId].seOptionsMessageId;
-      } else {
-          console.log("⚠️ No social enterprise selection message ID found.");
-      }
-
-      // Delete the previous "Selection Cleared" message if it exists
-      if (userStates[chatId]?.selectionClearedMessageId) {
-        console.log(`🗑️ Deleting previous "Selection Cleared" message ID: ${userStates[chatId].selectionClearedMessageId}`);
-        await deleteMessage(chatId, userStates[chatId].selectionClearedMessageId);
-        delete userStates[chatId].selectionClearedMessageId;
-      } else {
-          console.log("⚠️ No previous 'Selection Cleared' message found.");
-      }
-
-        // Reset selections and restart the process
-        delete userSelections[chatId];
-        setUserState(chatId, "awaiting_program_selection"); // Restart from program selection
-
-        // Send "Selection cleared" message and store its ID
-        const selectionClearedMessage = await sendMessage(chatId, "🔄 Selection cleared. Please choose your program again.");
-
-        // Ensure the message ID is stored correctly
-        if (selectionClearedMessage && selectionClearedMessage.result && selectionClearedMessage.result.message_id) {
-            userStates[chatId].selectionClearedMessageId = selectionClearedMessage.result.message_id;
-            console.log(`📌 Stored new "Selection Cleared" message ID: ${selectionClearedMessage.result.message_id}`);
-        } else {
-            console.log("⚠️ Failed to store new 'Selection Cleared' message ID. Response:", selectionClearedMessage);
-        }
-
-        // Fetch the list of social enterprises again
-        const socialEnterprises = await getAllSocialEnterprises();
-        if (socialEnterprises.length === 0) {
-            await sendMessage(chatId, "⚠️ No social enterprises available at the moment.");
-            return res.sendStatus(200);
-        }
-
-
-        // Create inline keyboard options for social enterprises
-        const enterpriseOptions = socialEnterprises.map(se => ({
-          text: se.abbr,
-          callback_data: `enterprise_${se.se_id}`
-      }));
-
-      // Convert to a 2D array for Telegram's inline keyboard
-      const inlineKeyboard = enterpriseOptions.map(option => [option]);
-
-      console.log("📩 Resending social enterprise choices...");
-
-      // Send the new selection message and store the new message ID
-      const newSeOptionsMessage = await sendMessageWithOptions(
-          chatId,
-          "🔄 Please choose a social enterprise again:",
-          inlineKeyboard
-      );
-
-      if (newSeOptionsMessage && newSeOptionsMessage.message_id) {
-        userStates[chatId].seOptionsMessageId = newSeOptionsMessage.message_id;
-        console.log(`📌 Stored new SE Options Message ID: ${newSeOptionsMessage.message_id}`);
-    } else {
-        console.log("⚠️ Failed to store new SE Options Message ID.");
-    }
-
-    console.log(`✅ Successfully reset selection for user ${chatId}.`);
-
-    return res.sendStatus(200);
-
-            /* Store the selection cleared message ID for deletion later
-        userStates[chatId].selectionClearedMessageId = selectionClearedMessage.message_id;
-
-        return res.sendStatus(200);*/
       }
     } catch (error) {
       console.error("Error processing callback query:", error);

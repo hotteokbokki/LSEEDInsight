@@ -22,6 +22,30 @@ exports.getPrograms = async () => {
   }
 };
 
+exports.getProgramsForTelegram = async () => {
+  try {
+    // Query to get all programs
+    const query = ` SELECT DISTINCT p.program_id, p.name
+                    FROM programs p
+                    INNER JOIN socialenterprises se ON p.program_id = se.program_id
+                    INNER JOIN mentorships m ON se.se_id = m.se_id`;
+    const result = await pgDatabase.query(query);
+
+    // If there's no data, return an empty array
+    if (!result.rows.length) {
+      return [];
+    }
+
+    return result.rows.map(program => ({ 
+      text: program.name, 
+      callback_data: `program_${program.program_id}` 
+    })); // Return a flat array of objects
+  } catch (error) {
+    console.error("Error fetching programs:", error);
+    return [];
+  }
+};
+
 exports.getProgramNameByID = async (programId) => {
   try {
     // Query to get program name by ID

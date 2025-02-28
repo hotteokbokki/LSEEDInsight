@@ -3,7 +3,13 @@ const pgDatabase = require('../database.js'); // Import PostgreSQL client
 exports.getSocialEnterprisesByProgram = async (programId) => {
   try {
     // Query to get social enterprises by program_id
-    const query = 'SELECT se_id, team_name, abbr FROM SocialEnterprises WHERE program_id = $1';
+    const query = ` SELECT DISTINCT ON (se.se_id) 
+                        se.se_id, 
+                        se.team_name, 
+                        se.abbr
+                    FROM SocialEnterprises se
+                    INNER JOIN Mentorships m ON se.se_id = m.se_id
+                    WHERE se.program_id = $1`;
     const values = [programId];
 
     const result = await pgDatabase.query(query, values);

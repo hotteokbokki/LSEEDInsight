@@ -57,3 +57,30 @@ exports.insertTelegramUser = async (chatid, username, firstname, userData, mento
     throw error; // Propagate error for further handling
   }
 };
+
+exports.getSocialEnterprisesUsersByProgram = async (program_id) => {
+  try {
+    // Query chatid
+    const query = `
+      SELECT t.chatid
+      FROM telegrambot t
+      JOIN socialenterprises se ON t."se_ID" = se.se_id
+      WHERE se.program_id = $1`
+    ;
+    const values = [program_id];
+
+    const result = await pgDatabase.query(query, values);
+
+    // If no user is found, return null
+    if (!result.rows.length) {
+      return null;
+    }
+
+    // Return the user object
+    return result.rows[0]; // Return the first (and only) row for the single user
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    return null;
+  }
+};
+
