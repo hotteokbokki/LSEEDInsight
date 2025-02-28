@@ -90,11 +90,20 @@ const SEAnalytics = () => {
         );
         const rawPieData = await pieResponse.json();
         const formattedPieData = rawPieData.map((item) => ({
-          id: item.comment,
-          label: `${item.percentage}%`,
-          value: parseInt(item.count, 10),
-          category: item.category,
+          id: item.comment || "Unknown", // Ensure it's a string
+          label: item.percentage && !isNaN(item.percentage) ? `${parseInt(item.percentage, 10)}%` : "0%",
+          value: item.count && !isNaN(item.count) ? parseInt(item.count, 10) : 0, // Ensure value is a number
+          category: item.category || "Unknown",
         }));
+
+        console.log("Formatted Pie Data:", formattedPieData);
+       
+        formattedPieData.forEach((item, index) => {
+          if (isNaN(item.value)) {
+            console.error(`NaN detected in value at index ${index}:`, item);
+          }
+        });
+        
         setPieData(formattedPieData);
 
         // Fetch Likert scale data

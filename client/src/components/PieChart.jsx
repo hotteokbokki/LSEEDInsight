@@ -1,100 +1,78 @@
-import { ResponsiveBar } from "@nivo/bar";
+import { ResponsivePie } from "@nivo/pie";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
 
-const BarChart = ({ data, isDashboard = false }) => {
+const PieChart = ({ data, isDashboard = false }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
-  // Ensure text contrast for both modes
-  const textColor = theme.palette.mode === "dark" ? "#FFFFFF" : "#333333";
-  const backgroundColor = theme.palette.mode === "dark" ? colors.grey[900] : "#FFFFFF";
-
-  // Ensure data is valid before processing
-  if (!data || !Array.isArray(data)) return null;
-
-  // Aggregate ratings per category
-  const categoryMap = data.reduce((acc, { category_name, rating }) => {
-    if (!acc[category_name]) {
-      acc[category_name] = { total: 0, count: 0 };
-    }
-    acc[category_name].total += rating;
-    acc[category_name].count += 1;
-    return acc;
-  }, {});
-
-  // Compute average rating per category
-  const formattedData = Object.entries(categoryMap).map(([category, { total, count }]) => ({
-    category,
-    avg_rating: (total / count).toFixed(2),
-  }));
+  // Ensure valid data
+  if (!data || !Array.isArray(data) || data.length === 0) return <p>No data available</p>;
 
   return (
-    <ResponsiveBar
-      data={formattedData}
-      keys={["avg_rating"]}
-      indexBy="category"
-      margin={{ top: 40, right: 40, bottom: 70, left: 60 }}
-      padding={0.3}
-      colors={({ index }) => colors.blueAccent[400]} // Use consistent theme colors
-      axisBottom={{
-        legend: isDashboard ? undefined : "Evaluation Categories",
-        legendPosition: "middle",
-        legendOffset: 50,
-        tickRotation: -45,
-        tickTextColor: textColor,
-      }}
-      axisLeft={{
-        legend: isDashboard ? undefined : "Average Score",
-        legendPosition: "middle",
-        legendOffset: -40,
-        tickValues: [1, 2, 3, 4, 5],
-        format: (v) => Math.round(v),
-        tickTextColor: textColor,
-      }}
-      tooltip={({ value, indexValue }) => (
-        <div
-          style={{
-            background: backgroundColor,
-            color: textColor,
-            padding: "5px",
-            borderRadius: "5px",
-            boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.1)",
-          }}
-        >
-          <strong>{indexValue}</strong>
-          <div>Avg Rating: {value}</div>
-        </div>
-      )}
-      layout="vertical"
-      labelSkipWidth={12}
-      labelSkipHeight={12}
-      labelTextColor={textColor}
+    <ResponsivePie
+      data={data}
+      margin={{ top: 40, right: 100, bottom: 80, left: 100 }}
+      innerRadius={0.4} // Slight inner radius for better aesthetics
+      padAngle={2}
+      cornerRadius={6}
+      activeOuterRadiusOffset={10}
+      colors={{ scheme: "category10" }} // Uses a diverse color scheme
+      borderWidth={2}
+      borderColor={{ from: "color", modifiers: [["darker", 0.3]] }}
+      enableArcLabels={false} // ❌ Hides numbers inside pie chart
+      arcLinkLabelsSkipAngle={10}
+      arcLinkLabelsTextColor={theme.palette.mode === "dark" ? "#fff" : "#333"}
+      arcLinkLabelsThickness={2}
+      arcLinkLabelsColor={{ from: "color" }}
       theme={{
         axis: {
-          domain: {
-            line: { stroke: textColor },
-          },
-          legend: {
-            text: { fill: textColor },
-          },
-          ticks: {
-            line: { stroke: textColor, strokeWidth: 1 },
-            text: { fill: textColor },
-          },
+          ticks: { text: { fill: theme.palette.mode === "dark" ? "#fff" : "#333" } },
         },
         legends: {
-          text: { fill: textColor },
+          text: { fill: theme.palette.mode === "dark" ? "#fff" : "#333" },
         },
         tooltip: {
           container: {
-            background: backgroundColor,
-            color: textColor,
+            background: theme.palette.mode === "dark" ? "#333" : "#fff",
+            color: theme.palette.mode === "dark" ? "#fff" : "#333",
+            padding: "10px",
+            borderRadius: "5px",
+            boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.1)",
           },
         },
       }}
+      tooltip={({ datum }) => (
+        <div
+          style={{
+            background: theme.palette.mode === "dark" ? "#222" : "#fff",
+            color: theme.palette.mode === "dark" ? "#fff" : "#333",
+            padding: "8px",
+            borderRadius: "5px",
+            boxShadow: "0px 2px 10px rgba(0, 0, 0, 0.1)",
+          }}
+        >
+          <strong>{datum.id}</strong>
+          <div>Percentage: {datum.label}</div> {/* ✅ Shows only category & percentage */}
+        </div>
+      )}
+      legends={[
+        {
+          anchor: "bottom",
+          direction: "row",
+          justify: false,
+          translateX: 0,
+          translateY: 56,
+          itemsSpacing: 10,
+          itemWidth: 120,
+          itemHeight: 18,
+          itemTextColor: theme.palette.mode === "dark" ? "#fff" : "#333",
+          symbolSize: 18,
+          symbolShape: "circle",
+        },
+      ]}
     />
   );
 };
 
-export default BarChart;
+export default PieChart;
