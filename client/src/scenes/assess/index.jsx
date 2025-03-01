@@ -53,21 +53,30 @@ const AssessSEPage = () => {
   };
 
   const handleSubmitEvaluations = async () => {
-    if (selectedPrograms.length === 0) {
-      alert("Please select at least one program to evaluate.");
+    const mentorId = userSession.id;
+    if (!mentorId) {
+      console.error("❌ ERROR: mentorId is missing!");
       return;
     }
-
+  
+    if (!selectedPrograms.length) {
+      console.error("❌ ERROR: No programs selected!");
+      return;
+    }
+  
     try {
-      console.log("Submitting evaluations for programs:", selectedPrograms);
-      // Perform API call or other actions here
-      alert(
-        `Evaluations submitted for programs: ${selectedPrograms.join(", ")}`
-      );
+      console.log("📤 Submitting evaluations for programs:", selectedPrograms);
+  
+      await axios.post("http://localhost:4000/evaluate-mentor", {
+        mentorId,
+        programs: selectedPrograms, // Send selected program IDs
+      });
+  
+      console.log("✅ Evaluation Submitted Successfully!");
     } catch (error) {
-      console.error("❌ Error submitting evaluations:", error);
+      console.error("❌ Error submitting mentor evaluation:", error.response?.data || error.message);
     } finally {
-      handleCloseMentorshipDialog(); // Close dialog after submission
+      handleCloseMentorshipDialog();
     }
   };
 

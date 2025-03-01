@@ -60,26 +60,23 @@ exports.insertTelegramUser = async (chatid, username, firstname, userData, mento
 
 exports.getSocialEnterprisesUsersByProgram = async (program_id) => {
   try {
+    console.log("🔍 Querying chat IDs for programs:", program_id); // Debugging
+
     // Query chatid
     const query = `
-      SELECT t.chatid
+      SELECT DISTINCT t.chatid
       FROM telegrambot t
       JOIN socialenterprises se ON t."se_ID" = se.se_id
-      WHERE se.program_id = $1`
-    ;
-    const values = [program_id];
+      WHERE se.program_id = ANY($1::uuid[])
+    `;
+    
+    const { rows } = await pgDatabase.query(query, [program_id]); // Pass array as parameter
+    
+    console.log("📌 Query result:", rows); // Log output
 
-    const result = await pgDatabase.query(query, values);
-
-    // If no user is found, return null
-    if (!result.rows.length) {
-      return null;
-    }
-
-    // Return the user object
-    return result.rows[0]; // Return the first (and only) row for the single user
+    return rows.map(row => row.chatid); // Extract chat IDs from result
   } catch (error) {
-    console.error("Error fetching user:", error);
+    console.error("❌ Error fetching user:", error);
     return null;
   }
 };

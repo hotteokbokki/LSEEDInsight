@@ -5,7 +5,7 @@ const { router: authRoutes, requireAuth } = require("./routes/authRoutes");
 const axios = require("axios");
 const ngrok = require("ngrok"); // Exposes your local server to the internet
 const { getPrograms, getProgramNameByID, getProgramCount, getProgramsForTelegram } = require("./controllers/programsController");
-const { getTelegramUsers, insertTelegramUser } = require("./controllers/telegrambotController");
+const { getTelegramUsers, insertTelegramUser, getSocialEnterprisesUsersByProgram } = require("./controllers/telegrambotController");
 const { getSocialEnterprisesByProgram, getSocialEnterpriseByID, getAllSocialEnterprises, getAllSocialEnterprisesWithMentorship, getTotalSECount, getSEWithOutMentors, getPreviousTotalSECount, getPreviousMonthSEWithOutMentors } = require("./controllers/socialenterprisesController");
 require("dotenv").config();
 const { getUsers, getUserName } = require("./controllers/usersController");
@@ -13,7 +13,7 @@ const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const pgSession = require("connect-pg-simple")(session);
 const cookieParser = require("cookie-parser");
 const { addProgram } = require("./controllers/programsController");
-const { getMentorsBySocialEnterprises, getMentorById, getAllMentors, getUnassignedMentors, getPreviousUnassignedMentors, getAssignedMentors, getWithoutMentorshipCount, getLeastAssignedMentor, getMostAssignedMentor } = require("./controllers/mentorsController.js");
+const { getMentorsBySocialEnterprises, getMentorById, getAllMentors, getUnassignedMentors, getPreviousUnassignedMentors, getAssignedMentors, getWithoutMentorshipCount, getLeastAssignedMentor, getMostAssignedMentor, getMentorDetails } = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getMentorshipsByMentorId, getMentorBySEID, getSEWithMentors, getPreviousSEWithMentors, getMentorshipCount } = require("./controllers/mentorshipsController.js");
@@ -98,6 +98,27 @@ async function sendAcknowledgeButton(chatId, message, evaluationId) {
     userStates[chatId] = { acknowledgeMessageId: response.data.result.message_id };
     console.log(`📌 Stored acknowledgeMessageId for chat ${chatId}:`, userStates[chatId].acknowledgeMessageId);
 
+    return response.data.result;
+  } catch (error) {
+    console.error("❌ Failed to send acknowledgment button:", error.response?.data || error.message);
+    throw new Error(`Failed to send acknowledgment button: ${error.message}`);
+  }
+}
+
+// Function to send message with "Acknowledge" button
+async function sendStartMentorButton(chatId, message, mentorId) {
+  try {
+    const payload = {
+      chat_id: chatId,
+      text: message,
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [[{ text: "Start Evaluation", callback_data: `mentoreval_${mentorId}` }]],
+      },
+    };
+
+    const response = await axios.post(TELEGRAM_API_URL, payload);
+    
     return response.data.result;
   } catch (error) {
     console.error("❌ Failed to send acknowledgment button:", error.response?.data || error.message);
@@ -422,6 +443,46 @@ app.post("/evaluate", async (req, res) => {
     }
 
     res.status(201).json({ message: "Evaluations added successfully", evaluations: insertedEvaluations });
+  } catch (error) {
+    console.error("❌ INTERNAL SERVER ERROR:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+});
+
+app.post("/evaluate-mentor", async (req, res) => {
+  try {
+    let { mentorId, programs } = req.body;
+
+    if (!mentorId || !Array.isArray(programs) || programs.length === 0) {
+      return res.status(400).json({ message: "Invalid request. Missing mentorId or programs." });
+    }
+
+    const mentorDetails = await getMentorDetails(mentorId);
+    console.log("This is the programs ", programs)
+    console.log(`This is the mentor name: ${mentorDetails[0].mentor_firstname} ${mentorDetails[0].mentor_lastname}`);
+
+    // ✅ Fetch chat IDs
+    const chatIdResults = await getSocialEnterprisesUsersByProgram(programs);
+
+    console.log("📡 Chat IDs Retrieved:", chatIdResults);
+
+    if (!chatIdResults || chatIdResults.length === 0) {
+      return res.status(404).json({ message: "No chat IDs found for the selected programs." });
+    }
+
+    // ✅ Send messages
+    console.log("📨 Sending messages to:", chatIdResults);
+
+    // Send the "Acknowledge" button separately with a meaningful message
+    //const sendAcknowledgeButtonMessage = 
+    if (chatIdResults.length > 0) {
+      for (const chatId of chatIdResults) {
+        const startEvaluationMessage = await sendStartMentorButton(chatId, `Start Evaluation for ${mentorDetails[0].mentor_firstname} ${mentorDetails[0].mentor_lastname}`, mentorId);
+        userStates[chatId] = { startEvaluationMessageId: startEvaluationMessage.message_id };
+      }
+    } else {
+      console.log("❌ No chat IDs found to send messages.");
+    }
   } catch (error) {
     console.error("❌ INTERNAL SERVER ERROR:", error);
     res.status(500).json({ message: "Internal Server Error", error: error.message });
@@ -855,6 +916,7 @@ app.post("/webhook", async (req, res) => {
     try {
       console.log("This is the current data: ", data)
       console.log("This is the chatid: ", chatId)
+      
       if (data.startsWith("program_")) {
             await deletePreviousMessages(chatId, ["confirmationMessageId"]);
             await deletePreviousMessages(chatId, ["chooseAgainID"]);
@@ -1029,6 +1091,23 @@ app.post("/webhook", async (req, res) => {
             await sendMessage(chatId, "❌ Failed to acknowledge evaluation. Please try again.");
     
             if (res) return res.sendStatus(500);
+        }
+      }
+      if (data.startsWith("mentoreval_")) {
+        try {
+          await deletePreviousMessages(chatId, ["startEvaluationMessageId"]);
+          const mentorEvalID = data.replace("mentoreval_", "");
+          
+          // Send confirmation message
+          await sendMessage(chatId, `✅ Starting Evaluation Now ${mentorEvalID}`);
+      
+          // If inside an Express handler, send response
+          if (res) return res.sendStatus(200);
+        } catch (error) {
+          console.error("❌ Error acknowledging evaluation:", error);
+          await sendMessage(chatId, "❌ Failed to acknowledge evaluation. Please try again.");
+      
+          if (res) return res.sendStatus(500);
         }
       }
     } catch (error) {

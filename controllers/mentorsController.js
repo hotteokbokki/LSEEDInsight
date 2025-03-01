@@ -181,6 +181,30 @@ exports.getWithoutMentorshipCount = async () => {
   }
 };
 
+exports.getMentorDetails = async (mentor_id) => {
+  try {
+      const query = `
+          SELECT 
+              m.mentor_id,
+              m.mentor_firstname,
+              m.mentor_lastname,
+              m."number_SE_assigned",
+              m.email,
+              m.contactnum,
+              m.status,
+              m.isactive
+          FROM mentors m
+          WHERE m.mentor_id = $1;
+      `;
+      const values = [mentor_id];
+      const result = await pgDatabase.query(query, values);
+      return result.rows;
+  } catch (error) {
+      console.error("❌ Error fetching assigned mentors:", error);
+      return [];
+  }
+};
+
 exports.getMostAssignedMentor = async () => {
   try {
       const query = `
