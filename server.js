@@ -18,7 +18,7 @@ const { getAllSDG } = require("./controllers/sdgController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getMentorshipsByMentorId, getMentorBySEID, getSEWithMentors, getPreviousSEWithMentors, getMentorshipCount } = require("./controllers/mentorshipsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
-const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID, getAllSECommonChallenges, getAverageScoreForAllSEPerCategory, getImprovementScorePerMonthAnnually, getImprovementScoreOverallAnnually, getGrowthScoreOverallAnually, getMonthlyGrowthDetails, getSELeaderboards } = require("./controllers/evaluationsController.js");
+const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID, getAllSECommonChallenges, getAverageScoreForAllSEPerCategory, getImprovementScorePerMonthAnnually, getImprovementScoreOverallAnnually, getGrowthScoreOverallAnually, getMonthlyGrowthDetails, getSELeaderboards, updateAcknowledgeEvaluation } = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
@@ -63,37 +63,45 @@ const STATE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 const PASSWORD = 'q@P#3_4)V5vUw+LJ!F'; // Set a secure password for authentication
 const userSelections = {}; // Store selections temporarily before final save
 
-// Helper function to send messages
+// Helper function to send plain messages (without buttons)
 async function sendMessage(chatId, message) {
   try {
-      const response = await axios.post(TELEGRAM_API_URL, {
-          chat_id: chatId,
-          text: message,
-          parse_mode: 'Markdown' // Optional: If you want Markdown formatting in your messages
-      });
-      return response.data;
+    const payload = {
+      chat_id: chatId,
+      text: message,
+      parse_mode: "Markdown",
+    };
+
+    const response = await axios.post(TELEGRAM_API_URL, payload);
+    return response.data.result; // Returns the message details
   } catch (error) {
-      throw new Error(`Failed to send message: ${error.message}`);
+    console.error("❌ Failed to send message:", error.response?.data || error.message);
+    throw new Error(`Failed to send message: ${error.message}`);
   }
 }
 
-// Helper function to send messages with inline keyboard
-async function sendMessageWithInlineKeyboard(chatId, message, options) {
+// Function to send message with "Acknowledge" button
+async function sendAcknowledgeButton(chatId, message, evaluationId) {
   try {
-    const inlineKeyboard = options.map(option => [option]);// Convert to 2D array inside the function
-    console.log("Inline Keyboard:", inlineKeyboard); // Debugging log
+    const payload = {
+      chat_id: chatId,
+      text: message,
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [[{ text: "✅ Acknowledge", callback_data: `ack_${evaluationId}` }]],
+      },
+    };
 
-      const response = await axios.post(TELEGRAM_API_URL, {
-          chat_id: chatId,
-          text: message,
-          parse_mode: 'Markdown',
-          reply_markup: {
-              inline_keyboard: inlineKeyboard,
-          },
-      });
-      return response.data;
+    const response = await axios.post(TELEGRAM_API_URL, payload);
+    
+    // ✅ Store the message ID for future removal
+    userStates[chatId] = { acknowledgeMessageId: response.data.result.message_id };
+    console.log(`📌 Stored acknowledgeMessageId for chat ${chatId}:`, userStates[chatId].acknowledgeMessageId);
+
+    return response.data.result;
   } catch (error) {
-    console.error("Failed to send message with inline keyboard:", error.response?.data || error.message);
+    console.error("❌ Failed to send acknowledgment button:", error.response?.data || error.message);
+    throw new Error(`Failed to send acknowledgment button: ${error.message}`);
   }
 }
 
@@ -404,14 +412,12 @@ app.post("/evaluate", async (req, res) => {
         message += `🏢 *Social Enterprise:* ${socialEnterprise.team_name}\n\n`;
         message += evaluationDetails;
 
-        // ✅ Add "Acknowledge" button
-        const inlineKeyboard = {
-          reply_markup: JSON.stringify({
-            inline_keyboard: [[{ text: "✅ Acknowledge", callback_data: `ack_${evaluationId}` }]],
-          }),
-        };
+        await sendMessage(chatId, message);
 
-        await sendMessage(chatId, message, inlineKeyboard);
+        // Send the "Acknowledge" button separately with a meaningful message
+        const sendAcknowledgeButtonMessage = await sendAcknowledgeButton(chatId, "Please acknowledge this evaluation.", evaluationId);   
+
+        userStates[chatId] = { sendAcknowledgeButtonId: sendAcknowledgeButtonMessage.message_id };
       }
     }
 
@@ -707,6 +713,7 @@ app.post("/api/social-enterprises", async (req, res) => {
   }
 });
 
+//For Testing only
 app.get("/test-api", async (req, res) => {
   try {
     const result = await getProgramsForTelegram()
@@ -1002,6 +1009,27 @@ app.post("/webhook", async (req, res) => {
 
       
           return res.sendStatus(200);
+      }
+      if (data.startsWith("ack_")) {
+        const evaluationId = data.replace("ack_", "");
+    
+        try {
+            await deletePreviousMessages(chatId, ["sendAcknowledgeButtonId"]);
+    
+            // Mark evaluation as acknowledged in the database
+            await updateAcknowledgeEvaluation(evaluationId);
+    
+            // Send confirmation message
+            await sendMessage(chatId, "✅ Evaluation successfully acknowledged!");
+    
+            // If inside an Express handler, send response
+            if (res) return res.sendStatus(200);
+        } catch (error) {
+            console.error("❌ Error acknowledging evaluation:", error);
+            await sendMessage(chatId, "❌ Failed to acknowledge evaluation. Please try again.");
+    
+            if (res) return res.sendStatus(500);
+        }
       }
     } catch (error) {
       console.error("Error processing callback query:", error);

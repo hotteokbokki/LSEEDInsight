@@ -490,3 +490,17 @@ exports.getSELeaderboards= async () => {
         return [];
     }
 };
+
+exports.updateAcknowledgeEvaluation= async (evaluationId) => {
+    try {
+        const query = `
+            UPDATE evaluations SET "isAcknowledge" = true WHERE evaluation_id = $1 RETURNING *
+        `;
+        const values = [evaluationId];
+        const result = await pgDatabase.query(query, values);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
