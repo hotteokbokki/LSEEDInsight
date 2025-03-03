@@ -24,7 +24,6 @@ const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenter
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
 const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution } = require("./controllers/evaluationcategoriesController.js");
 const app = express();
-const bot = require("./controllers/telegrambotController.js");
 
 
 // Enable CORS with credentials
@@ -214,7 +213,7 @@ function sendMentorshipMessage(chatId, mentorship_id, mentorship_date) {
     }
   };
 
-  bot.sendMessage(chatId, message, options)
+  sendMessage(chatId, message, options)
     .then(() => console.log("✅ Mentorship Message Sent!"))
     .catch(err => console.error("❌ Error sending mentorship message:", err));
 }
@@ -389,8 +388,8 @@ app.post("/evaluate", async (req, res) => {
 
       // ✅ Insert into `evaluations`
       const evalQuery = `
-        INSERT INTO evaluations (mentor_id, se_id, created_at, "isAcknowledge")
-        VALUES ($1, $2, NOW(), false)
+        INSERT INTO evaluations (mentor_id, se_id, created_at, "isAcknowledge", evaluation_type)
+        VALUES ($1, $2, NOW(), false, 'Social Enterprise')
         RETURNING evaluation_id;
       `;
       console.log("Evaluation Query: ", evalQuery);
@@ -1219,7 +1218,7 @@ app.post("/webhook", async (req, res) => {
             WHERE mentorship_id = $1
           `, [mentorship_id]);
       
-          bot.sendMessage(chatId, "✅ You have acknowledged the mentorship schedule.");
+          sendMessage(chatId, "✅ You have acknowledged the mentorship schedule.");
         } else if (data.startsWith("decline_")) {
           const mentorship_id = data.split("_")[1];
       
@@ -1232,7 +1231,7 @@ app.post("/webhook", async (req, res) => {
             WHERE mentorship_id = $1
           `, [mentorship_id]);
       
-          bot.sendMessage(chatId, "❌ You have declined the mentorship schedule.");
+          sendMessage(chatId, "❌ You have declined the mentorship schedule.");
         }
 
       } catch (error) {

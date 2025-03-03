@@ -18,7 +18,8 @@ exports.getEvaluationsByMentorID = async (mentor_id) => {
             JOIN 
                 socialenterprises AS se ON e.se_id = se.se_id
             WHERE	
-                e.mentor_id = $1;
+                e.mentor_id = $1 AND
+				evaluation_type = 'Social Enterprise';
         `;
 
         const values = [mentor_id];

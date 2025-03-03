@@ -1,18 +1,4 @@
 const pgDatabase = require('../database.js'); // Import PostgreSQL client
-const TelegramBot = require("node-telegram-bot-api");
-
-// Load the bot token from your environment variables
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-if (!TELEGRAM_BOT_TOKEN) {
-  console.error("❌ ERROR: TELEGRAM_BOT_TOKEN is not defined! Please check your .env file.");
-  process.exit(1);
-}
-
-// ✅ Initialize the bot and export it
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
-console.log("✅ Telegram Bot Initialized!");
-
-module.exports = bot;
 
 
 exports.getTelegramUsers = async (chatID) => {
