@@ -197,17 +197,27 @@ const Scheduling = ({ userRole }) => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {mentorshipDates.map((mentorship) => (
-                    <TableRow key={mentorship.se_id}>
-                      <TableCell>{mentorship.team_name}</TableCell>
-                      <TableCell>{mentorship.name}</TableCell>
-                      <TableCell>
-                        {mentorship.mentorship_date.map((date) => (
-                          <Chip key={date} label={new Date(date).toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" })}  sx={{ margin: "2px" }} />
-                        ))}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {Array.isArray(mentorshipDates) &&
+                    mentorshipDates.map((mentorships) => (
+                      <TableRow key={mentorships.se_id}>
+                        <TableCell>{mentorships.team_name}</TableCell>
+                        <TableCell>{mentorships.name}</TableCell>
+                        <TableCell>
+                          {Array.isArray(mentorships.mentorship_date) &&
+                            mentorships.mentorship_date.map((date) => (
+                              <Chip
+                                key={date}
+                                label={new Date(date).toLocaleDateString("en-US", {
+                                  month: "long",
+                                  day: "2-digit",
+                                  year: "numeric",
+                                })}
+                                sx={{ margin: "2px" }}
+                              />
+                            ))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </Table>
             </TableContainer>
