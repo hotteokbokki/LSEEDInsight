@@ -161,39 +161,39 @@ const AdminPage = () => {
   //   // Implement role change logic here
   // };
 
-  const handleStatusChange = async (userId) => {
-    try {
-      const user = users.find((user) => user.id === userId);
-      const newStatus = !user.isActive;
+  // const handleStatusChange = async (userId) => {
+  //   try {
+  //     const user = users.find((user) => user.id === userId);
+  //     const newStatus = !user.isActive;
 
-      // Update the status on the frontend
-      setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user.id === userId ? { ...user, isActive: newStatus } : user
-        )
-      );
+  //     // Update the status on the frontend
+  //     setUsers((prevUsers) =>
+  //       prevUsers.map((user) =>
+  //         user.id === userId ? { ...user, isActive: newStatus } : user
+  //       )
+  //     );
 
-      // Send the updated status to the backend
-      const response = await fetch(
-        `http://localhost:4000/api/admin/users/${userId}/status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ isActive: newStatus }),
-        }
-      );
+  //     // Send the updated status to the backend
+  //     const response = await fetch(
+  //       `http://localhost:4000/api/admin/users/${userId}/status`,
+  //       {
+  //         method: "PATCH",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify({ isActive: newStatus }),
+  //       }
+  //     );
 
-      if (!response.ok) {
-        throw new Error("Failed to update user status");
-      }
+  //     if (!response.ok) {
+  //       throw new Error("Failed to update user status");
+  //     }
 
-      console.log(`User ${userId} status updated to ${newStatus}`);
-    } catch (err) {
-      console.error(err.message || "An error occurred while updating status.");
-    }
-  };
+  //     console.log(`User ${userId} status updated to ${newStatus}`);
+  //   } catch (err) {
+  //     console.error(err.message || "An error occurred while updating status.");
+  //   }
+  // };
 
   // Handle row updates
   const handleRowUpdate = async (updatedRow, oldRow) => {
@@ -213,13 +213,19 @@ const AdminPage = () => {
         throw new Error(`Failed to update user: ${response.status} ${response.statusText}`);
       }
   
-      const updatedUser = await response.json();
+      const { user: updatedUser } = await response.json();
       console.log("User updated successfully:", updatedUser);
+
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user.user_id === updatedUser.user_id ? updatedUser : user
+        )
+      );
   
-      return { ...updatedUser.user, id: updatedUser.user.user_id }; // ✅ Ensure `id` is returned correctly
+      return updatedUser; // Ensure the DataGrid updates immediately
     } catch (error) {
       console.error("Error updating user:", error);
-      return oldRow; // ❌ Revert changes if the update fails
+      // return oldRow; // ❌ Revert changes if the update fails
     }
   };
 
