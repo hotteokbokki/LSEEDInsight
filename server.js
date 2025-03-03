@@ -529,6 +529,7 @@ app.get("/protected", requireAuth, (req, res) => {
 app.get("/api/admin/users", async (req, res) => {
   try {
     const users = await getUsers(); // Fetch users from DB
+    // console.log("[server] Fetched users:", users); // Debug here
     if (!users || users.length === 0) {
       return res.status(404).json({ message: "No users found" });
     }
@@ -1345,7 +1346,7 @@ app.post("/api/mentorships", async (req, res) => {
     res.status(201).json({ message: "Mentorship added successfully" });
   } catch (error) {
     console.error("Error adding mentorship:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({ message: "Internal Server Error" });ZZ
   }
 });
 
@@ -1382,7 +1383,7 @@ app.post("/updateMentorshipDate", async (req, res) => {
 
 app.get("/getMentorshipDates", async (req, res) => {
   const { mentor_id } = req.query;
-  console.log("server/getMentorshipDate: mentor_id: ", mentor_id);
+  // console.log("server/getMentorshipDate: mentor_id: ", mentor_id);
 
   try {
     const result = await pgDatabase.query(
@@ -1393,7 +1394,7 @@ app.get("/getMentorshipDates", async (req, res) => {
        WHERE m.mentor_id = $1`,
       [mentor_id]
     );
-    console.log("server/getMentorshipDate: results: ", result.rows);
+    // console.log("server/getMentorshipDate: results: ", result.rows);
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching mentorship dates:", error);
@@ -1401,25 +1402,75 @@ app.get("/getMentorshipDates", async (req, res) => {
   }
 });
 
-app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
+app.put("/api/admin/users/:id", async (req, res) => {
   const { id } = req.params;
   const updatedUser = req.body;
 
-  // console.log("Received update request for user ID:", id);
+  console.log("Received update request for user ID:", id);
 
   try {
     const result = await updateUser(id, updatedUser);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    res.json(result.rows[0]); // Respond with updated user data
+    const updatedRow = result.rows[0];
+
+    res.json({ 
+      message: "User updated successfully", 
+      user: { ...updatedRow, id: updatedRow.user_id } // Ensure `id` exists
+    });
   } catch (error) {
-    console.error("Error updating user role:", error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Error updating user:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
+async function updateUser(id, updatedUser) {
+  const { first_name, last_name, roles, isactive, email } = updatedUser; // Modify based on your schema
+
+  const query = `
+    UPDATE users
+    SET first_name = $1, last_name = $2, roles = $3, isactive = $4, email = $5
+    WHERE user_id = $6
+    RETURNING *;
+  `;
+
+  const values = [first_name, last_name, roles, isactive, email, id];
+
+  try {
+    const result = await pgDatabase.query(query, values);
+    return result;
+  } catch (error) {
+    console.error("Database update error:", error);
+    throw error;
+  }
+}
+
+// app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
+//   const { id } = req.params;
+//   const { role } = req.body; // 'admin' or 'user'
+//   const updatedUser = req.body;
+
+//   // console.log("Received update request for user ID:", id);
+
+//   try {
+//     // Update the user's role in the database
+//     const query = 'UPDATE users SET role = $1 WHERE id = $2 RETURNING *';
+//     const values = [role, id];
+//     const result = await pgDatabase.query(query, values);
+
+//     if (result.rows.length === 0) {
+//       return res.status(404).json({ error: 'User not found' });
+//     }
+
+//     res.json(result.rows[0]); // Respond with updated user data
+//   } catch (error) {
+//     console.error("Error updating user role:", error);
+//     res.status(500).json({ error: 'Internal server error' });
+//   }
+// });
 
 // ==========================
 // 📌 API: Check Pending Meetings (Telegram Notification)
