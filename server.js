@@ -1403,13 +1403,12 @@ app.get("/getMentorshipDates", async (req, res) => {
 
 app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
-  const { role } = req.body; // 'admin' or 'user'
+  const updatedUser = req.body;
+
+  // console.log("Received update request for user ID:", id);
 
   try {
-    // Update the user's role in the database
-    const query = 'UPDATE users SET role = $1 WHERE id = $2 RETURNING *';
-    const values = [role, id];
-    const result = await pgDatabase.query(query, values);
+    const result = await updateUser(id, updatedUser);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
