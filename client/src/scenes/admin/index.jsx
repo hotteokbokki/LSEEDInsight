@@ -79,7 +79,20 @@ const AdminPage = () => {
       field: "roles",
       headerName: "Role",
       flex: 1,
-      editable: isEditing, // Make editable when in edit mode
+      editable: isEditing,
+      renderEditCell: (params) => (
+        <Select
+          value={params.value || ""}
+          onChange={(e) =>
+            params.api.setEditCellValue({ id: params.id, field: params.field, value: e.target.value })
+          }
+          fullWidth
+        >
+          <MenuItem value="Guest User">Guest User</MenuItem>
+          <MenuItem value="Mentor">Mentor</MenuItem>
+          <MenuItem value="LSEED">LSEED</MenuItem>
+        </Select>
+      ),
     },
     {
       field: "isActive",
@@ -115,16 +128,16 @@ const AdminPage = () => {
       editable: isEditing, // Make editable when in edit mode
     },
     {
-      field: "actions",
-      headerName: "Actions",
+      field: "password",
+      headerName: "Change Password",
       flex: 1,
       renderCell: (params) => (
         <Button
           variant="contained"
           color="secondary"
-          onClick={() => handleRoleChange(params.row.id)}
+          // onClick={() => handleRoleChange(params.row.id)}
         >
-          Change Role
+          Change Password
         </Button>
       ),
     },
@@ -135,10 +148,10 @@ const AdminPage = () => {
     setShowEditButtons(true); // Toggle button visibility
   };
 
-  const handleRoleChange = (userId) => {
-    console.log(`Change role for user ID: ${userId}`);
-    // Implement role change logic here
-  };
+  // const handleRoleChange = (userId) => {
+  //   console.log(`Change role for user ID: ${userId}`);
+  //   // Implement role change logic here
+  // };
 
   const handleStatusChange = async (userId) => {
     try {
@@ -175,44 +188,32 @@ const AdminPage = () => {
   };
 
   // Handle row updates
-  const handleRowEditCommit = async (params) => {
-    const { id, field, value } = params;
-    // Update state first for instant UI feedback
-    const updatedUsers = users.map((user) =>
-      user.id === id ? { ...user, [field]: value } : user
-    );
-    setUsers(updatedUsers);
-
-    // Find the updated user
-    const updatedUser = updatedUsers.find((user) => user.id === id);
-    if (!updatedUser) return;
-
-    // Send only the necessary fields to update
-    const updatedUserData = {
-      id: updatedUser.id,
-      first_name: updatedUser.first_name,
-      last_name: updatedUser.last_name,
-      email: updatedUser.email,
-      roles: updatedUser.roles,
-      isActive: updatedUser.isActive,
-    };
+  const handleRowUpdate = async (updatedRow, oldRow) => {
     try {
       const response = await fetch(
-        `http://localhost:4000/api/admin/users/${id}`,
+        `http://localhost:4000/api/admin/users/${updatedRow.id}`,
         {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatedUserData),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedRow),
         }
       );
+  
       if (!response.ok) {
         throw new Error("Failed to update user in database");
       }
+  
       console.log("User updated successfully");
+
+      // Update state with the new row data
+      setUsers((prevUsers) =>
+        prevUsers.map((user) => (user.id === updatedRow.id ? updatedRow : user))
+      );
+  
+      return updatedRow; // ✅ Return updated data for DataGrid
     } catch (error) {
       console.error("Error updating user:", error);
+      return oldRow; // ❌ Revert changes if the update fails
     }
   };
 
@@ -223,7 +224,7 @@ const AdminPage = () => {
         <Header title="ADMIN PAGE" subtitle="Manage users and roles" />
       </Box>
 
-      <Box display="flex" alignItems="center" gap={2}>
+      <Box display="flex" alignItems="center" gap={2} mb={2}>
         {!showEditButtons && (
           <Button
             variant="contained"
@@ -331,13 +332,14 @@ const AdminPage = () => {
           <DataGrid
             rows={users.map((user, index) => ({
               ...user,
-              id: user.email || index, // Use email as the unique ID, fallback to index
+              id: user.id || index, // Use email as the unique ID, fallback to index
             }))}
             columns={columns}
             pageSize={5}
             rowsPerPageOptions={[5]}
             getRowId={(row) => row.email || row.id} // Ensure unique ID
-            onCellEditCommit={handleRowEditCommit}
+            processRowUpdate={handleRowUpdate}
+            onProcessRowUpdateError={(error) => console.error("Update failed:", error)}
           />
         </Box>
       </Box>

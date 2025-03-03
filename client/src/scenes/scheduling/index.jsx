@@ -14,13 +14,22 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
-  TextField,
+  Typography,
+  TableContainer,
+  Paper,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Chip,
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers";
-import Header from "../../components/Header";
 import { useAuth } from "../../context/authContext";
+import Header from "../../components/Header";
+import axios from "axios";
 import dayjs from "dayjs";
 
 const Scheduling = ({ userRole }) => {
@@ -31,24 +40,25 @@ const Scheduling = ({ userRole }) => {
   const [selectedSE, setSelectedSE] = useState(null);
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [isLoading, setIsLoading] = useState(false);
+  const [mentorshipDates, setMentorshipDates] = useState([]);
   const { user } = useAuth();
   
-  // Fetch mentors data from the backend
-  // useEffect(() => {
-  //   const fetchMentors = async () => {
-  //     try {
-  //       const response = await fetch("/auth/mentors");  // Corrected endpoint
-  //       if (!response.ok) {
-  //         throw new Error(`HTTP error! Status: ${response.status}`);
-  //       }
-  //       const data = await response.json();
-  //       setMentors(data);
-  //     } catch (error) {
-  //       console.error("Error fetching mentors:", error);
-  //     }
-  //   };
-  //   fetchMentors();
-  // }, []);
+  useEffect(() => {
+    const fetchMentorshipDates = async () => {
+      try {
+        const response = await axios.get("http://localhost:4000/getMentorshipDates", {
+          params: { mentor_id: user.id }, // Fetch mentorships for this mentor
+        });
+        console.log("📅 Mentorship Dates:", response.data);
+        setMentorshipDates(response.data || []);
+      } catch (error) {
+        console.error("Error fetching mentorship dates:", error);
+        setMentorshipDates([]);
+      }
+    };
+  
+    fetchMentorshipDates();
+  }, [user.id]); // Refetch when the user changes
 
   const fetchSocialEnterprises = async () => {
     try {
@@ -168,6 +178,42 @@ const Scheduling = ({ userRole }) => {
               </ListItem>
             ))}
           </List>
+        </Box>
+      )}
+
+      {user.role === "Mentor" && (
+        <Box mt={4}>
+          <Typography variant="h6" gutterBottom>
+            Your Scheduled Mentorship Dates
+          </Typography>
+          {mentorshipDates.length > 0 ? (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell><strong>Social Enterprise</strong></TableCell>
+                    <TableCell><strong>Program</strong></TableCell>
+                    <TableCell><strong>Mentorship Dates</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {mentorshipDates.map((mentorship) => (
+                    <TableRow key={mentorship.se_id}>
+                      <TableCell>{mentorship.team_name}</TableCell>
+                      <TableCell>{mentorship.name}</TableCell>
+                      <TableCell>
+                        {mentorship.mentorship_date.map((date) => (
+                          <Chip key={date} label={new Date(date).toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" })}  sx={{ margin: "2px" }} />
+                        ))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Typography>No mentorship dates scheduled.</Typography>
+          )}
         </Box>
       )}
 

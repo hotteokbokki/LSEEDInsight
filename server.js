@@ -496,13 +496,13 @@ app.get("/protected", requireAuth, (req, res) => {
 
 app.get("/api/admin/users", async (req, res) => {
   try {
-    const users = await getUsers(); // Fetch SEs from DB
+    const users = await getUsers(); // Fetch users from DB
     if (!users || users.length === 0) {
-      return res.status(404).json({ message: "No social enterprises found" });
+      return res.status(404).json({ message: "No users found" });
     }
     res.json(users);
   } catch (error) {
-    console.error("Error fetching social enterprises:", error);
+    console.error("Error fetching users:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
@@ -1234,7 +1234,7 @@ app.post("/updateMentorshipDate", async (req, res) => {
   try {
     const query = `
       UPDATE mentorships 
-      SET mentorship_date = $1 
+      SET mentorship_date = array_append(mentorship_date ,$1) 
       WHERE mentorship_id = $2
       RETURNING *;
     `;
@@ -1252,6 +1252,26 @@ app.post("/updateMentorshipDate", async (req, res) => {
   }
 });
 
+app.get("/getMentorshipDates", async (req, res) => {
+  const { mentor_id } = req.query;
+  console.log("server/getMentorshipDate: mentor_id: ", mentor_id);
+
+  try {
+    const result = await pgDatabase.query(
+      `SELECT m.se_id, m.mentorship_date, se.team_name, p.name
+       FROM mentorships m
+       JOIN socialenterprises se ON m.se_id = se.se_id
+       JOIN programs p ON se.program_id = p.program_id
+       WHERE m.mentor_id = $1`,
+      [mentor_id]
+    );
+    console.log("server/getMentorshipDate: results: ", result.rows);
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching mentorship dates:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
