@@ -52,7 +52,7 @@ exports.getEvaluationDetails = async (evaluation_id) => {
             JOIN socialenterprises se ON e.se_id = se.se_id
             LEFT JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
             LEFT JOIN evaluation_selected_comments esc ON ec.evaluation_category_id = esc.evaluation_category_id
-            WHERE e.evaluation_id = $1
+            WHERE e.evaluation_id = $1 AND e.evaluation_type = 'Social Enterprise'
             GROUP BY e.evaluation_id, e.created_at, se.team_name, ec.category_name, ec.rating, ec.additional_comment;
         `;
 
@@ -79,7 +79,7 @@ exports.getTopSEPerformance = async () => {
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                 JOIN socialenterprises s ON e.se_id = s.se_id
-                WHERE e.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '3 months') -- Ensures full months are considered
+                WHERE e.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '3 months') AND e.evaluation_type = 'Social Enterprise'
                 GROUP BY e.se_id, s.abbr, month
             ),
             TopSEs AS (
@@ -116,7 +116,7 @@ exports.getPerformanceTrendBySEID = async (se_id) => {
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                 JOIN socialenterprises s ON e.se_id = s.se_id
-                WHERE e.created_at >= (CURRENT_DATE - INTERVAL '3 months') 
+                WHERE e.created_at >= (CURRENT_DATE - INTERVAL '3 months') AND e.evaluation_type = 'Social Enterprise'
                 AND e.se_id = $1  -- Filter by specific SE ID
                 GROUP BY e.se_id, s.abbr, month
             )
@@ -145,7 +145,7 @@ exports.getCommonChallengesBySEID = async (se_id) => {
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                 JOIN evaluation_selected_comments esc ON ec.evaluation_category_id = esc.evaluation_category_id
-                WHERE e.se_id = $1
+                WHERE e.se_id = $1 AND e.evaluation_type = 'Social Enterprise'
                 AND ec.rating <= 3  
                 GROUP BY esc.comment, ec.category_name
                 ORDER BY count DESC
@@ -184,7 +184,7 @@ exports.getAllSECommonChallenges = async () => {
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                 JOIN evaluation_selected_comments esc ON ec.evaluation_category_id = esc.evaluation_category_id
-                WHERE ec.rating <= 3  
+                WHERE ec.rating <= 3 AND e.evaluation_type = 'Social Enterprise'
                 GROUP BY esc.comment, ec.category_name
                 ORDER BY count DESC
                 LIMIT 5
@@ -220,7 +220,7 @@ exports.getPermanceScoreBySEID = async (se_id) => {
                 COUNT(ec.rating) AS rating_count
             FROM evaluations e
             JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-            WHERE e.se_id = $1
+            WHERE e.se_id = $1 AND e.evaluation_type = 'Social Enterprise'
             GROUP BY e.se_id, ec.category_name, ec.rating
             ORDER BY ec.category_name, ec.rating;
         `;
@@ -242,6 +242,7 @@ exports.getAverageScoreForAllSEPerCategory = async () => {
                 ROUND(AVG(ec.rating), 2) AS score
             FROM evaluations e
             JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+            WHERE e.evaluation_type = 'Social Enterprise'
             GROUP BY ec.category_name
             ORDER BY category;
         `;
@@ -265,7 +266,7 @@ exports.getImprovementScorePerMonthAnnually= async () => {
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                 JOIN socialenterprises s ON e.se_id = s.se_id
-                WHERE DATE_PART('year', e.created_at) = DATE_PART('year', CURRENT_DATE) -- Filter by current year
+                WHERE DATE_PART('year', e.created_at) = DATE_PART('year', CURRENT_DATE) AND e.evaluation_type = 'Social Enterprise'
                 GROUP BY e.se_id, s.abbr, month
             ),
             RankedRatings AS (
@@ -305,7 +306,7 @@ exports.getImprovementScoreOverallAnnually= async () => {
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                 JOIN socialenterprises s ON e.se_id = s.se_id
-                WHERE DATE_PART('year', e.created_at) = DATE_PART('year', CURRENT_DATE) -- Filter by current year
+                WHERE DATE_PART('year', e.created_at) = DATE_PART('year', CURRENT_DATE) AND e.evaluation_type = 'Social Enterprise'
                 GROUP BY e.se_id, s.abbr, month
             ),
             RankedRatings AS (
@@ -329,7 +330,7 @@ exports.getImprovementScoreOverallAnnually= async () => {
         return [];
     }
 };
-//Stat box
+/* TODO */
 exports.getGrowthScoreOverallAnually= async () => {
     try {
         const query = `
@@ -340,7 +341,7 @@ exports.getGrowthScoreOverallAnually= async () => {
                     ROUND(AVG(ec.rating), 2) AS avg_rating
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                WHERE e.se_id = '94359e17-55f7-420a-abbb-ea4f8d693c47'  -- Specific SE ID
+                WHERE e.se_id = '94359e17-55f7-420a-abbb-ea4f8d693c47'  AND e.evaluation_type = 'Social Enterprise'
                 GROUP BY e.se_id, month
             ),
             RankedRatings AS (
@@ -394,6 +395,7 @@ exports.getMonthlyGrowthDetails= async () => {
               ROUND(AVG(ec.rating), 2) AS avg_rating
           FROM evaluations e
           JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+          WHERE e.evaluation_type = 'Social Enterprise'
           GROUP BY e.se_id, month
       ),
       RankedRatings AS (
@@ -459,7 +461,7 @@ exports.getSELeaderboards= async () => {
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                 JOIN socialenterprises s ON e.se_id = s.se_id
-                WHERE e.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '3 months') -- Ensures full months are considered
+                WHERE e.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '3 months') AND e.evaluation_type = 'Social Enterprise'
                 GROUP BY e.se_id, s.abbr, month
             ),
             LatestRatings AS (
