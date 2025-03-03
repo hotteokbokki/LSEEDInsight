@@ -24,6 +24,8 @@ const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenter
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
 const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution } = require("./controllers/evaluationcategoriesController.js");
 const app = express();
+const bot = require("./controllers/telegrambotController.js");
+
 
 // Enable CORS with credentials
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
@@ -190,6 +192,33 @@ async function sendMessageWithOptions(chatId, message, options) {
     return null;
   }
 }
+
+// ==========================
+// 📌 FUNCTION 2: Send Mentorship Scheduling Message (New Function)
+// ==========================
+function sendMentorshipMessage(chatId, mentorship_id, mentorship_date) {
+  console.log(`📩 Sending Mentorship Schedule Message to Chat ID: ${chatId}`);
+
+  const message = `📅 *New Mentorship Request*\n\n`
+    + `🔹 *Date:* ${mentorship_date}\n`
+    + `🔹 *Mentorship ID:* ${mentorship_id}\n\n`
+    + `✅ Please acknowledge or decline this schedule.`;
+
+  const options = {
+    parse_mode: "Markdown",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "✅ Acknowledge", callback_data: `acknowledge_${mentorship_id}` }],
+        [{ text: "❌ Decline", callback_data: `decline_${mentorship_id}` }]
+      ]
+    }
+  };
+
+  bot.sendMessage(chatId, message, options)
+    .then(() => console.log("✅ Mentorship Message Sent!"))
+    .catch(err => console.error("❌ Error sending mentorship message:", err));
+}
+
 
 
 app.get("/api/mentors", async (req, res) => {
@@ -794,6 +823,14 @@ app.post("/webhook", async (req, res) => {
   const message = req.body.message || req.body.edited_message;
   const callbackQuery = req.body.callback_query;
 
+  async function acknowledgeCallback(callbackQueryId) {
+    await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+      callback_query_id: callbackQueryId,
+      text: "✅ Choice received!",
+      show_alert: false,
+    });
+  }
+
   // Helper function to set or reset the user state with a timeout
   const setUserState = (chatId, state) => {
     if (userStates[chatId]?.timeoutId) {
@@ -1168,6 +1205,35 @@ app.post("/webhook", async (req, res) => {
             if (res) return res.sendStatus(500);
           }
         }
+
+        if (data.startsWith("acknowledge_")) {
+          const mentorship_id = data.split("_")[1];
+      
+          console.log(`🔹 SE acknowledged mentorship ${mentorship_id}`);
+      
+          // Update status in the database
+          await pgDatabase.query(`
+            UPDATE mentorships 
+            SET telegramstatus = 'Acknowledged'
+            WHERE mentorship_id = $1
+          `, [mentorship_id]);
+      
+          bot.sendMessage(chatId, "✅ You have acknowledged the mentorship schedule.");
+        } else if (data.startsWith("decline_")) {
+          const mentorship_id = data.split("_")[1];
+      
+          console.log(`🔹 SE declined mentorship ${mentorship_id}`);
+      
+          // Update status in the database
+          await pgDatabase.query(`
+            UPDATE mentorships 
+            SET telegramstatus = 'Declined'
+            WHERE mentorship_id = $1
+          `, [mentorship_id]);
+      
+          bot.sendMessage(chatId, "❌ You have declined the mentorship schedule.");
+        }
+
       } catch (error) {
         console.error("Error processing callback query:", error);
         return res.sendStatus(500); // Internal server error if callback fails
@@ -1284,10 +1350,12 @@ app.post("/api/mentorships", async (req, res) => {
 });
 
 app.post("/updateMentorshipDate", async (req, res) => {
+  console.log("🔹 Received request at /updateMentorshipDate");
   const { mentorship_id, mentorship_date } = req.body;
 
   if (!mentorship_id || !mentorship_date) {
     return res.status(400).json({ error: "Mentorship ID and date are required" });
+    console.log(`📥 Request data: mentorship_id=${mentorship_id}, mentorship_date=${mentorship_date}`);
   }
 
   try {
@@ -1299,6 +1367,7 @@ app.post("/updateMentorshipDate", async (req, res) => {
     `;
 
     const { rows } = await pgDatabase.query(query, [mentorship_date, mentorship_id]);
+    console.log(`✅ Mentorship ${mentorship_id} updated to "Pending".`);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Mentorship not found" });
@@ -1350,6 +1419,48 @@ app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Error updating user role:", error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ==========================
+// 📌 API: Check Pending Meetings (Telegram Notification)
+// ==========================
+app.get("/checkPendingMeetings", async (req, res) => {
+  try {
+    console.log("🔍 Running checkPendingMeetings API...");
+
+    const query = `
+      SELECT m.mentorship_id, m.se_id, m.mentorship_date, t.chatid
+      FROM mentorships m
+      JOIN telegrambot t ON m.se_id = t."se_ID"
+      WHERE m.telegramstatus = 'Pending'
+    `;
+
+    const result = await pgDatabase.query(query);
+    console.log("📄 Query Result:", result.rows);
+
+    if (result.rows.length === 0) {
+      console.log("❌ No pending mentorships found.");
+      return res.json({ message: "No pending mentorship requests." });
+    }
+
+    for (const row of result.rows) {
+      const { mentorship_id, se_id, mentorship_date, chatid } = row;
+
+      if (!chatid) {
+        console.warn(`⚠️ No Telegram chat ID found for SE ID ${se_id}`);
+        continue;
+      }
+
+      console.log(`📩 Sending message to Chat ID: ${chatid} for mentorship ${mentorship_id}`);
+      sendMentorshipMessage(chatid, mentorship_id, mentorship_date);
+    }
+
+    res.json({ success: true, message: "Mentorship messages sent." });
+
+  } catch (error) {
+    console.error("❌ ERROR in /checkPendingMeetings:", error.stack);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
