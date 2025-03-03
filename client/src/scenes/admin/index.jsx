@@ -62,11 +62,19 @@ const AdminPage = () => {
   // Define DataGrid columns
   const columns = [
     {
-      field: "name",
-      headerName: "Name",
+      field: "first_name",
+      headerName: "First Name",
       flex: 1,
       renderCell: (params) =>
-        `${params.row.first_name} ${params.row.last_name}`,
+        `${params.row.first_name}`,
+      editable: isEditing, // Make editable when in edit mode
+    },
+    {
+      field: "last_name",
+      headerName: "Last Name",
+      flex: 1,
+      renderCell: (params) =>
+        `${params.row.last_name}`,
       editable: isEditing, // Make editable when in edit mode
     },
     {
@@ -95,7 +103,7 @@ const AdminPage = () => {
       ),
     },
     {
-      field: "isActive",
+      field: "isactive",
       headerName: "Active Status",
       flex: 1,
       renderCell: (params) => (
@@ -189,9 +197,11 @@ const AdminPage = () => {
 
   // Handle row updates
   const handleRowUpdate = async (updatedRow, oldRow) => {
+    console.log("Updating user:", updatedRow);
+  
     try {
       const response = await fetch(
-        `http://localhost:4000/api/admin/users/${updatedRow.id}`,
+        `http://localhost:4000/api/admin/users/${updatedRow.user_id}`, // ✅ Use `user_id`
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -200,17 +210,13 @@ const AdminPage = () => {
       );
   
       if (!response.ok) {
-        throw new Error("Failed to update user in database");
+        throw new Error(`Failed to update user: ${response.status} ${response.statusText}`);
       }
   
-      console.log("User updated successfully");
-
-      // Update state with the new row data
-      setUsers((prevUsers) =>
-        prevUsers.map((user) => (user.id === updatedRow.id ? updatedRow : user))
-      );
+      const updatedUser = await response.json();
+      console.log("User updated successfully:", updatedUser);
   
-      return updatedRow; // ✅ Return updated data for DataGrid
+      return { ...updatedUser.user, id: updatedUser.user.user_id }; // ✅ Ensure `id` is returned correctly
     } catch (error) {
       console.error("Error updating user:", error);
       return oldRow; // ❌ Revert changes if the update fails
@@ -330,14 +336,14 @@ const AdminPage = () => {
           }}
         >
           <DataGrid
-            rows={users.map((user, index) => ({
+            rows={users.map(user => ({
               ...user,
-              id: user.id || index, // Use email as the unique ID, fallback to index
+              id: user.user_id // ✅ Ensure `id` is assigned properly
             }))}
             columns={columns}
             pageSize={5}
             rowsPerPageOptions={[5]}
-            getRowId={(row) => row.email || row.id} // Ensure unique ID
+            getRowId={(row) => row.user_id} // ✅ Use `user_id` as row ID
             processRowUpdate={handleRowUpdate}
             onProcessRowUpdateError={(error) => console.error("Update failed:", error)}
           />

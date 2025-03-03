@@ -14,10 +14,10 @@ router.get("/protected", protectedRoute);
 // const sessionId = crypto.randomUUID();
 
 const requireAuth = (req, res, next) => {
-  console.log("🔹 Checking authentication...");
-  console.log("🔹 Session Data:", req.session); // Log the session object
-  console.log("🔹 Cookies:", req.cookies); // Log received cookies
-  console.log("🔹 Headers:", req.headers); // Log headers to check for missing JWT
+  // console.log("🔹 Checking authentication...");
+  // console.log("🔹 Session Data:", req.session); // Log the session object
+  // console.log("🔹 Cookies:", req.cookies); // Log received cookies
+  // console.log("🔹 Headers:", req.headers); // Log headers to check for missing JWT
 
   if (!req.session || !req.session.user) {
     console.log("🚨 Unauthorized: No session found.");
