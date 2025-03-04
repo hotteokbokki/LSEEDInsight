@@ -341,7 +341,7 @@ exports.getGrowthScoreOverallAnually= async () => {
                     ROUND(AVG(ec.rating), 2) AS avg_rating
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                WHERE e.se_id = '94359e17-55f7-420a-abbb-ea4f8d693c47'  AND e.evaluation_type = 'Social Enterprise'
+                WHERE e.evaluation_type = 'Social Enterprise'
                 GROUP BY e.se_id, month
             ),
             RankedRatings AS (
@@ -361,21 +361,24 @@ exports.getGrowthScoreOverallAnually= async () => {
                     prev_avg_rating,
                     first_recorded_rating,
                     (avg_rating - prev_avg_rating) AS monthly_growth,
-                    ((avg_rating - prev_avg_rating) / prev_avg_rating) * 100 AS monthly_growth_rate,
-                    ((avg_rating / first_recorded_rating) - 1) * 100 AS cumulative_growth_percentage
+                    ((avg_rating - prev_avg_rating) / NULLIF(prev_avg_rating, 0)) * 100 AS monthly_growth_rate,
+                    ((avg_rating / NULLIF(first_recorded_rating, 0)) - 1) * 100 AS cumulative_growth_percentage  -- ✅ Keep original name
                 FROM RankedRatings
-                WHERE prev_avg_rating IS NOT NULL
             )
             SELECT 
-                se_id, 
-                month, 
-                ROUND(avg_rating, 2) AS current_avg_rating, 
-                ROUND(prev_avg_rating, 2) AS previous_avg_rating, 
-                ROUND(monthly_growth, 2) AS growth,
-                ROUND(monthly_growth_rate, 2) AS growth_change_rate,
-                ROUND(cumulative_growth_percentage, 2) AS cumulative_growth
-            FROM Growth
-            ORDER BY month;
+                g.se_id, 
+                g.month, 
+                s.abbr,  -- ✅ Fetch the abbreviation from socialenterprises
+                ROUND(g.avg_rating, 2) AS current_avg_rating, 
+                ROUND(COALESCE(g.prev_avg_rating, g.avg_rating), 2) AS previous_avg_rating, 
+                ROUND(g.monthly_growth, 2) AS growth,
+                ROUND(g.monthly_growth_rate, 2) AS growth_change_rate,
+                ROUND(g.cumulative_growth_percentage, 2) AS cumulative_growth  -- ✅ Correct column name
+            FROM Growth g
+            JOIN socialenterprises s ON g.se_id = s.se_id 
+            WHERE g.cumulative_growth_percentage IS NOT NULL
+            ORDER BY g.cumulative_growth_percentage DESC  -- ✅ Correct column name
+            LIMIT 1;  -- ✅ Return only 1 record
         `;
         const result = await pgDatabase.query(query);
         return result.rows;

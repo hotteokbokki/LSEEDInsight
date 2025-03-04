@@ -75,7 +75,6 @@ const Mentors = () => {
       try {
         const response = await fetch(`/api/mentor-stats`);
         const data = await response.json();
-        console.log(data)
         setStats(data);
       } catch (error) {
         console.error("Error fetching analytics stats:", error);

@@ -163,42 +163,40 @@ const SEPerformanceTrendChart = () => {
     console.log("Top performer: ", topPerformerName);
 
     return (
-        <Box
-        gridColumn="span 12"
-        gridRow="span 2"
-        backgroundColor={colors.primary[400]}
-        >
-        <Box
-            mt="25px"
-            p="0 30px"
-            display="flex "
-            justifyContent="space-between"
-            alignItems="center"
-        >
+        <Box gridColumn="span 12" gridRow="span 2" backgroundColor={colors.primary[400]}>
+          <Box mt="25px" p="0 30px" display="flex" justifyContent="space-between" alignItems="center">
             <Box>
-            <Typography variant="h5" fontWeight="600" color={colors.grey[100]}>
-                {topPerformerName || "No Available Data"}
-            </Typography>
-            <Typography
-                variant="h3"
-                fontWeight="bold"
-                color={colors.greenAccent[500]}
-            >
-                Top Performer
-            </Typography>
+              <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
+                {chartData === "Insufficient data" ? "" : "Top Performer"} 
+                {/* ✅ Show "Top Performer" only when data is available */}
+              </Typography>
+              <Typography variant="h5" fontWeight="600" color={colors.grey[100]}>
+                {chartData === "Insufficient data" ? "No Available Data" : topPerformerName} 
+                {/* ✅ Show Team Abbreviation if data is available */}
+              </Typography>
             </Box>
-        </Box>
-        <Box height="250px" m="-20px 0 0 0">
+          </Box>
+          
+          <Box height="250px" m="-20px 0 0 0">
             {chartData === "Insufficient data" ? (
-            <Typography variant="h6" color={colors.grey[300]}>
+              <Typography 
+                variant="h6" 
+                color={colors.grey[300]}
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+                height="100%"
+                textAlign="center"
+              >
                 No data available for plotting.
-            </Typography>
+              </Typography>
             ) : (
-            <LineChart isDashboard={true} data={chartData} />
+              <LineChart isDashboard={true} data={chartData} />
             )}
+          </Box>
         </Box>
-        </Box>
-    );
+      );
+      
 };
 
 export default SEPerformanceTrendChart;

@@ -75,13 +75,13 @@ const Analytics = () => {
         </Box>
 
         <Box flex="1 1 22%" backgroundColor={colors.primary[400]} display="flex" alignItems="center" justifyContent="center" p="20px">
-          <StatBox
-            title={`${stats.growthScoreTotal} ${stats.topGrowingSE?.abbr}`}
-            subtitle="SE with Significant growth"
-            progress={stats.cumulativeGrowth / 100} // Normalize percentage
-            increase={`${stats.cumulativeGrowth}%`}
-            icon={<TrafficIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
-          />
+        <StatBox
+          title={`${stats.growthScoreTotal} ${stats.growthScore?.[0]?.abbr || "N/A"}`}
+          subtitle="SE with Significant Growth"
+          progress={Math.min(stats.cumulativeGrowth / 100, 1)} // ✅ Cap at 100%
+          increase={`${stats.cumulativeGrowth}%`}
+          icon={<TrafficIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
+        />
         </Box>
       </Box>
 
@@ -99,74 +99,154 @@ const Analytics = () => {
 
       {/* Row 2 - Horizontal Bar Charts */}
       <Box display="flex" flexWrap="wrap" gap="20px" justifyContent="space-between" mt="20px">
+        
         {/* Common Challenges */}
         <Box flex="1 1 48%" height="300px" backgroundColor={colors.primary[400]} p="20px">
           <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
-            Common Challenges
+            {stats.allCommonChallenges && stats.allCommonChallenges.length > 0 ? "Common Challenges" : ""}
+            {/* ✅ Show title only if data exists */}
           </Typography>
-          <HorizontalBarChart 
-            data={(stats.allCommonChallenges || []).map(challenge => ({
-              comment: challenge.comment, 
-              category: challenge.category, 
-              percentage: parseFloat(challenge.percentage) || 0
-            }))} 
-            type="allCommonChallenges" // Pass the correct type
-          />
+          <Box height="100%" display="flex" justifyContent="center" alignItems="center">
+            {stats.allCommonChallenges && stats.allCommonChallenges.length > 0 ? (
+              <HorizontalBarChart 
+                data={stats.allCommonChallenges.map(challenge => ({
+                  comment: challenge.comment, 
+                  category: challenge.category, 
+                  percentage: parseFloat(challenge.percentage) || 0
+                }))} 
+                type="allCommonChallenges"
+              />
+            ) : (
+              <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                No Available Data
+              </Typography>
+            )}
+          </Box>
         </Box>
 
         {/* Overall SE Performance */}
         <Box flex="1 1 48%" height="300px" backgroundColor={colors.primary[400]} p="20px">
           <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
-            Overall SE Performance
+            {stats.categoricalScoreForAllSE && stats.categoricalScoreForAllSE.length > 0 ? "Overall SE Performance" : ""}
+            {/* ✅ Show title only if data exists */}
           </Typography>
-          <HorizontalBarChart 
-            data={(stats.categoricalScoreForAllSE || []).map(score => ({
-              category: score.category, 
-              score: parseFloat(score.score) || 0
-            }))} 
-            type="categoricalScoreForAllSE" // Pass the correct type
-          />
+          <Box height="100%" display="flex" justifyContent="center" alignItems="center">
+            {stats.categoricalScoreForAllSE && stats.categoricalScoreForAllSE.length > 0 ? (
+              <HorizontalBarChart 
+                data={stats.categoricalScoreForAllSE.map(score => ({
+                  category: score.category, 
+                  score: parseFloat(score.score) || 0
+                }))} 
+                type="categoricalScoreForAllSE"
+              />
+            ) : (
+              <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                No Available Data
+              </Typography>
+            )}
+          </Box>
         </Box>
+
       </Box>
 
       {/* Row 3 - Leaderboard */}
       <Box display="flex" flexWrap="wrap" gap="20px" justifyContent="space-between" mt="20px">
         <Box flex="1 1 100%" height="300px" backgroundColor={colors.primary[400]} p="20px">
           <Typography variant="h4" fontWeight="bold" color={colors.greenAccent[500]}>
-            Leaderboard - Ratings
+            {stats?.leaderboardData?.length > 0 ? "Leaderboard - Ratings" : ""}
+            {/* ✅ Show title only if data exists */}
           </Typography>
           <Box height="100%">
-            <LeaderboardChart data={stats.leaderboardData} />
+            {stats?.leaderboardData ? (
+              stats.leaderboardData.length > 0 ? (
+                <LeaderboardChart data={stats.leaderboardData} />
+              ) : (
+                <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                  Leaderboards Unavailable
+                </Typography>
+              )
+            ) : (
+              <Typography variant="h6" color="red" textAlign="center">
+                Error loading data
+              </Typography>
+            )}
           </Box>
         </Box>
       </Box>
 
-      {/* Row 4 - Line Chart */}
+      {/* Row 4 - Line & Scatter Charts */}
       <Box display="flex" flexWrap="wrap" gap="20px" justifyContent="space-between" mt="20px">
+
+        {/* Improvement Score Over Time */}
         <Box flex="1 1 48%" height="300px" backgroundColor={colors.primary[400]} p="20px">
           <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
-            Average Improvement Score Over Time
+            {stats?.improvementScore?.length > 0 ? "Average Improvement Score Over Time" : ""}
+            {/* ✅ Show title only if data exists */}
           </Typography>
-          <DualAxisLineChart 
-            data={[{
-              id: "Improvement Score",
-              data: (stats.improvementScore || []).map(point => ({ 
-                x: point.month?.substring(0, 7) || "Unknown", 
-                y: parseFloat(point.overall_avg_improvement) || 0 
-              }))
-            }]} 
-          />
+          <Box height="100%" display="flex" justifyContent="center" alignItems="center">
+            {(() => {
+              try {
+                if (!stats?.improvementScore) throw new Error("Data not found");
+                if (stats.improvementScore.length === 0) {
+                  return (
+                    <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                      No Available Data
+                    </Typography>
+                  );
+                }
+                return (
+                  <DualAxisLineChart 
+                    data={[{
+                      id: "Improvement Score",
+                      data: stats.improvementScore.map(point => ({ 
+                        x: point.month?.substring(0, 7) || "Unknown", 
+                        y: parseFloat(point.overall_avg_improvement) || 0 
+                      }))
+                    }]} 
+                  />
+                );
+              } catch (error) {
+                return (
+                  <Typography variant="h6" color="red" textAlign="center">
+                    Error loading data
+                  </Typography>
+                );
+              }
+            })()}
+          </Box>
         </Box>
 
+        {/* Evaluation Score Distribution */}
         <Box flex="1 1 48%" height="300px" backgroundColor={colors.primary[400]} p="20px">
           <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
-            Evaluation Score Distribution
+            {stats?.evaluationScoreDistribution?.length > 0 ? "Evaluation Score Distribution" : ""}
+            {/* ✅ Show title only if data exists */}
           </Typography>
-          <ScatterPlot 
-            data={stats.evaluationScoreDistribution}
-          />
+          <Box height="100%" display="flex" justifyContent="center" alignItems="center">
+            {(() => {
+              try {
+                if (!stats?.evaluationScoreDistribution) throw new Error("Data not found");
+                if (stats.evaluationScoreDistribution.length === 0) {
+                  return (
+                    <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                      No Available Data
+                    </Typography>
+                  );
+                }
+                return <ScatterPlot data={stats.evaluationScoreDistribution} />;
+              } catch (error) {
+                return (
+                  <Typography variant="h6" color="red" textAlign="center">
+                    Error loading data
+                  </Typography>
+                );
+              }
+            })()}
+          </Box>
         </Box>
+
       </Box>
+
     </Box>
   );
 };

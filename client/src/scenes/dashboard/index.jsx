@@ -29,6 +29,9 @@ const Dashboard = () => {
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
+    mentorWithoutMentorshipCount: [{ count: "0" }], // Default structure to prevent undefined errors
+    mentorWithMentorshipCount: [{ count: "0" }],
+    mentorCountTotal: [{ count: "1" }], // Avoid division by zero
     unassignedMentors: 0,
     assignedMentors: 0,
     totalSocialEnterprises: 0,
@@ -53,27 +56,30 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:4000/api/dashboard-stats"
-        );
+        setLoading(true); // ✅ Set loading state before fetching
+
+        const response = await fetch("http://localhost:4000/api/dashboard-stats");
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
         const data = await response.json();
-
         setStats(data);
-
-        // ✅ Calculate percentage increase for unassigned mentors
-        if (data.previousUnassignedMentors > 0) {
-          const change =
-            ((data.unassignedMentors - data.previousUnassignedMentors) /
-              data.previousUnassignedMentors) *
-            100;
+        
+        // ✅ Calculate percentage increase for unassigned mentors safely
+        if (data.previousUnassignedMentors !== undefined && data.previousUnassignedMentors > 0) {
+          const change = ((data.unassignedMentors - data.previousUnassignedMentors) / data.previousUnassignedMentors) * 100;
           setPercentageIncrease(`${change.toFixed(1)}%`);
         } else if (data.unassignedMentors > 0) {
           setPercentageIncrease("100%"); // First-time assignments
         } else {
           setPercentageIncrease("0%");
         }
+
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
+      } finally {
+        setLoading(false); // ✅ Ensure loading state is reset
       }
     };
 
@@ -146,7 +152,6 @@ const Dashboard = () => {
         gridAutoRows="140px"
         gap="20px"
       >
-        {/* Unassigned Mentors */}
         <Box
           gridColumn="span 3"
           backgroundColor={colors.primary[400]}
@@ -155,22 +160,16 @@ const Dashboard = () => {
           justifyContent="center"
         >
           <StatBox
-            title={stats.unassignedMentors}
+            title={stats?.mentorWithoutMentorshipCount[0]?.count} // Render dynamic value
             subtitle="Unassigned Mentors"
-            progress={
-              stats.unassignedMentors /
-              (stats.unassignedMentors + stats.assignedMentors)
-            }
-            increase={percentageIncrease}
-            icon={
-              <EmailIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
-              />
-            }
+            progress={parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)} // Calculate percentage of unassigned mentors
+            increase={`${(
+              (parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)) * 100
+            ).toFixed(2)}%`} // Calculate percentage of mentors with mentorship
+            icon={<EmailIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
           />
         </Box>
 
-        {/* Assigned Mentors */}
         <Box
           gridColumn="span 3"
           backgroundColor={colors.primary[400]}
@@ -179,18 +178,13 @@ const Dashboard = () => {
           justifyContent="center"
         >
           <StatBox
-            title={stats.assignedMentors}
+            title={stats?.mentorWithMentorshipCount[0]?.count}
             subtitle="Assigned Mentors"
-            progress={
-              stats.assignedMentors /
-              (stats.unassignedMentors + stats.assignedMentors)
-            }
-            increase="+0%" // Static for now, can be dynamically calculated
-            icon={
-              <PointOfSaleIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
-              />
-            }
+            progress={parseInt(stats?.mentorWithMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)} // Calculate percentage filled
+            increase={`${(
+              (parseInt(stats?.mentorWithMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)) * 100
+            ).toFixed(2)}%`} // Calculate percentage of mentors with mentorship
+            icon={<PointOfSaleIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
           />
         </Box>
 

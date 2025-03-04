@@ -13,7 +13,7 @@ const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const pgSession = require("connect-pg-simple")(session);
 const cookieParser = require("cookie-parser");
 const { addProgram } = require("./controllers/programsController");
-const { getMentorsBySocialEnterprises, getMentorById, getAllMentors, getUnassignedMentors, getPreviousUnassignedMentors, getAssignedMentors, getWithoutMentorshipCount, getLeastAssignedMentor, getMostAssignedMentor, getMentorDetails } = require("./controllers/mentorsController.js");
+const { getMentorsBySocialEnterprises, getMentorById, getAllMentors, getUnassignedMentors, getPreviousUnassignedMentors, getAssignedMentors, getWithoutMentorshipCount, getLeastAssignedMentor, getMostAssignedMentor, getMentorDetails, getMentorCount } = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getMentorshipsByMentorId, getMentorBySEID, getSEWithMentors, getPreviousSEWithMentors, getMentorshipCount } = require("./controllers/mentorshipsController.js");
@@ -243,6 +243,21 @@ async function deletePreviousMessages(chatId, keys) {
   }
 }
 
+async function storeAndDeletePreviousQuestion(chatId, newMessageId, isLastQuestion = false) {
+  if (!userStates[chatId]) return;
+
+  // ✅ Delete the last question message before storing the new one
+  if (userStates[chatId].questionMessageIds?.length > 0) {
+    const lastMessageId = userStates[chatId].questionMessageIds.pop(); // Remove last stored message ID
+    await deleteMessage(chatId, lastMessageId);
+  }
+
+  // ✅ Store the new question message ID only if it's not the last question
+  if (!isLastQuestion) {
+    userStates[chatId].questionMessageIds.push(newMessageId);
+  }
+}
+
 async function deleteMessage(chatId, messageId) {
   try {
     // Make a POST request to the Telegram Bot API to delete the message
@@ -389,12 +404,9 @@ app.get("/api/mentors", async (req, res) => {
 
 app.get("/api/dashboard-stats", async (req, res) => {
   try {
-    // ✅ Fetch the number of unassigned mentors (mentors with no active mentorship)
-    const unassignedMentors = await getUnassignedMentors();
-
-    // ✅ Fetch unassigned mentors from the previous week
-    const previousUnassignedMentors = await getPreviousUnassignedMentors();
-
+    const mentorshipCount = await getMentorCount();
+    const mentorsWithMentorshipCount = await getMentorshipCount();
+    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount();
     // ✅ Fetch the number of assigned mentors (mentors with at least one active mentorship)
     const assignedMentors = await getAssignedMentors();
 
@@ -405,8 +417,9 @@ app.get("/api/dashboard-stats", async (req, res) => {
     const totalPrograms = await getProgramCount();
 
     res.json({
-      unassignedMentors: parseInt(unassignedMentors[0].count), // ✅ Fix here
-      previousUnassignedMentors: parseInt(previousUnassignedMentors[0].count), // ✅ Fix here
+      mentorCountTotal: mentorshipCount,
+      mentorWithMentorshipCount: mentorsWithMentorshipCount,
+      mentorWithoutMentorshipCount: mentorsWithoutMentorshipCount,
       assignedMentors: parseInt(assignedMentors[0].count), // ✅ Fix here
       totalSocialEnterprises: parseInt(totalSocialEnterprises[0].count), // ✅ Fix here
       totalPrograms: parseInt(totalPrograms[0].count), // ✅ Fix here
@@ -420,7 +433,7 @@ app.get("/api/dashboard-stats", async (req, res) => {
 app.get("/api/mentor-stats", async (req, res) => {
   try {
     // ✅ Fetch data
-    const mentorshipCount = await getMentorshipCount();
+    const mentorshipCount = await getMentorCount();
     const mentorsWithMentorshipCount = await getMentorshipCount();
     const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount();
     const leastAssignedMentor = await getLeastAssignedMentor();
@@ -976,7 +989,7 @@ app.post("/api/social-enterprises", async (req, res) => {
 //For Testing only
 app.get("/test-api", async (req, res) => {
   try {
-    const result = await getMentorQuestions()
+    const result = await getGrowthScoreOverallAnually()
 
     res.json(result);
   } catch (error) {
@@ -1611,12 +1624,6 @@ app.post("/webhook", async (req, res) => {
               comments: "", // Can be extended later
             };
         
-            // ✅ Delete only the last question message before sending the next one
-            if (userState.questionMessageIds.length > 0) {
-              const lastMessageId = userState.questionMessageIds.pop(); // Remove last message ID
-              await deletePreviousMessages(chatId, [lastMessageId]); // Delete only that message
-            }
-        
             // Move to the next question
             userState.currentQuestionIndex++;
         
@@ -1638,15 +1645,19 @@ app.post("/webhook", async (req, res) => {
                 ],
               ];
         
-              // ✅ Send the next question and store its message ID
+              // ✅ Send the next question
               const nextQuestionMessage = await sendMessageWithOptions(
                 chatId,
                 `📢 *Question ${userState.currentQuestionIndex + 1}:* ${nextQuestion.question_text}\n\n(Select a rating from 1 to 5)`,
                 options
               );
         
-              userState.questionMessageIds.push(nextQuestionMessage.message_id); // ✅ Store message ID
+              // ✅ Store and delete the previous question properly
+              await storeAndDeletePreviousQuestion(chatId, nextQuestionMessage.message_id);
             } else {
+              // ✅ Last question reached, delete its message before submitting evaluation
+              await storeAndDeletePreviousQuestion(chatId, null, true);
+        
               // ✅ All questions answered → Submit evaluation
               await submitMentorEvaluation(chatId, userState.responses);
               delete userStates[chatId]; // Clear user state
@@ -1659,7 +1670,7 @@ app.post("/webhook", async (req, res) => {
             return res.sendStatus(500);
           }
         }
-
+        
         if (data.startsWith("acknowledgeschedule_")) {
           const mentorship_id = data.split("_")[1];
       
