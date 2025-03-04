@@ -164,21 +164,18 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
       number_of_members = 0, // Default to 0 if not provided
     } = socialEnterpriseData;
 
-    // Fetch SDG ID from the database
-    const sdgQuery = 'SELECT id FROM sdg WHERE name = $1';
-    const sdgResult = await pgDatabase.query(sdgQuery, [sdg_name]);
-    if (sdgResult.rows.length === 0) {
-      throw new Error(`SDG not found for name: ${sdg_name}`);
-    }
-    const sdg_id = sdgResult.rows[0].id;
+    console.log("[controller] SDG_Name: ", sdg_name);
+    console.log("[controller]Program Name: ", program_name);
 
-    // Fetch Program ID from the database
-    const programQuery = 'SELECT program_id FROM programs WHERE name = $1';
-    const programResult = await pgDatabase.query(programQuery, [program_name]);
-    if (programResult.rows.length === 0) {
-      throw new Error(`Program not found for name: ${program_name}`);
+    if (!sdg_name) {
+      throw new Error("SDG ID is required but missing.");
     }
-    const program_id = programResult.rows[0].id;
+    if (!program_name) {
+      throw new Error("Program ID is required but missing.");
+    }
+
+    const program_id = Array.isArray(program_name) ? program_name[0] : program_name;
+    const sdg_id = Array.isArray(sdg_name) ? sdg_name[0] : sdg_name; // Ensure single UUID
 
     // Insert into the socialenterprises table
     const query = `
@@ -191,15 +188,15 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
         abbr,
         numMember
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING se_id; // Use the correct primary key column name
+      VALUES ($1, ARRAY[$2]::uuid[], $3, $4, $5, $6, $7)
+      RETURNING se_id;
     `;
     const values = [
       name,
       sdg_id,
       contactnum,
       program_id,
-      isactive, // Directly use the boolean value
+      isactive, 
       abbr,
       number_of_members,
     ];
