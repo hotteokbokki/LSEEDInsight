@@ -309,11 +309,11 @@ async function sendMentorshipMessage(chatId, mentorship_id, mentorship_date) {
   // Generate inline keyboard dynamically for multiple dates
   const inline_keyboard = mentorship_date.map(dateObj => {
     const dateStr = new Date(dateObj).toISOString().split("T")[0]; // Convert Date to 'YYYY-MM-DD' format
-    return [{ text: `Decline ${dateStr}`, callback_data: `declineschedule_${mentorship_id}_${dateStr.replace(/-/g, "")}` }];
+    return [
+      { text: `✅ Accept ${dateStr}`, callback_data: `acceptschedule_${mentorship_id}_${dateStr.replace(/-/g, "")}` },
+      { text: `❌ Decline ${dateStr}`, callback_data: `declineschedule_${mentorship_id}_${dateStr.replace(/-/g, "")}` }
+    ];
   });
-
-  // Add acknowledge button
-  inline_keyboard.unshift([{ text: "✅ Acknowledge", callback_data: `acknowledgeschedule_${mentorship_id}` }]);
 
   const payload = {
     chat_id: chatId,
@@ -329,6 +329,7 @@ async function sendMentorshipMessage(chatId, mentorship_id, mentorship_date) {
     console.error("❌ Error sending mentorship message:", error.response?.data || error.message);
   }
 }
+
 
 app.get("/api/mentors", async (req, res) => {
   try {
@@ -1306,25 +1307,25 @@ app.post("/webhook", async (req, res) => {
         if (data.startsWith("acceptschedule_")) {
           const parts = data.split("_");
         
-          // Ensure we have enough parts (acceptschedule, full mentorship_id, date)
           if (parts.length < 3) {
             console.error("❌ Invalid accept callback format:", data);
             return res.sendStatus(400);
           }
         
-          const mentorship_id = parts[1]; // Extract the full mentorship_id
-          const accepted_date = `${parts[2].slice(0, 4)}-${parts[2].slice(4, 6)}-${parts[2].slice(6, 8)}`; // Format date properly
+          const mentorship_id = parts[1];
+          const accepted_date = `${parts[2].slice(0, 4)}-${parts[2].slice(4, 6)}-${parts[2].slice(6, 8)}`;
+          const messageId = callbackQuery.message.message_id; // Store message ID to delete
         
           console.log(`🔹 SE accepted mentorship ${mentorship_id} on ${accepted_date}`);
         
           try {
-            // Validate mentorship_id as a UUID
+            // Validate UUID
             if (!/^[0-9a-fA-F-]{36}$/.test(mentorship_id)) {
               console.error(`❌ Invalid mentorship_id format: ${mentorship_id}`);
               return res.sendStatus(400);
             }
         
-            // Fetch the mentorship details from the database
+            // Fetch mentorship details
             const result = await pgDatabase.query(
               `SELECT mentorship_id, mentorship_date, se_id, mentor_id 
                FROM mentorships 
@@ -1339,6 +1340,22 @@ app.post("/webhook", async (req, res) => {
         
             const { mentorship_date, se_id, mentor_id } = result.rows[0];
         
+            // Fetch mentor name
+            const mentorResult = await pgDatabase.query(
+              `SELECT mentor_firstname, mentor_lastname FROM mentors WHERE mentor_id = $1`,
+              [mentor_id]
+            );
+        
+            if (mentorResult.rows.length === 0) {
+              console.error(`❌ Mentor not found for ID ${mentor_id}`);
+              return res.sendStatus(404);
+            }
+        
+            const mentorName = `${mentorResult.rows[0].mentor_firstname} ${mentorResult.rows[0].mentor_lastname}`;
+        
+            // ✅ Delete the original message (New Mentorship Request)
+            await deleteMessage(chatId, messageId);
+        
             if (mentorship_date.length === 1) {
               // ✅ Only 1 date exists → Set telegramstatus to "Acknowledged"
               await pgDatabase.query(
@@ -1347,7 +1364,6 @@ app.post("/webhook", async (req, res) => {
                  WHERE mentorship_id = $1`,
                 [mentorship_id]
               );
-              await sendMessage(chatId, "✅ You have acknowledged the mentorship schedule.");
             } else {
               // ✅ More than 1 date → Move accepted date to `accepted_schedule`
               await pgDatabase.query(
@@ -1363,9 +1379,11 @@ app.post("/webhook", async (req, res) => {
                  WHERE mentorship_id = $2`,
                 [accepted_date, mentorship_id]
               );
-        
-              await sendMessage(chatId, `✅ The mentorship date *${accepted_date}* has been acknowledged and moved to accepted schedules.`);
             }
+        
+            // ✅ Send the confirmation message
+            const confirmationMessage = `📅 *Confirmed Mentor Schedule*\n\n🔹 *Date:* ${accepted_date}\n🔹 *Mentor:* ${mentorName}`;
+            await sendMessage(chatId, confirmationMessage);
         
             return res.sendStatus(200);
           } catch (error) {
@@ -1375,29 +1393,29 @@ app.post("/webhook", async (req, res) => {
           }
         }
         
-
+        
         if (data.startsWith("declineschedule_")) {
           const parts = data.split("_");
         
-          // Ensure we have enough parts (declineschedule, full mentorship_id, date)
           if (parts.length < 3) {
             console.error("❌ Invalid decline callback format:", data);
             return res.sendStatus(400);
           }
         
-          const mentorship_id = parts[1]; // Extract the full mentorship_id
-          const declined_date = `${parts[2].slice(0, 4)}-${parts[2].slice(4, 6)}-${parts[2].slice(6, 8)}`; // Format date properly
+          const mentorship_id = parts[1];
+          const declined_date = `${parts[2].slice(0, 4)}-${parts[2].slice(4, 6)}-${parts[2].slice(6, 8)}`;
+          const messageId = callbackQuery.message.message_id; // Store message ID to delete
         
           console.log(`🔹 SE declined mentorship ${mentorship_id} on ${declined_date}`);
         
           try {
-            // Validate mentorship_id as a UUID
+            // Validate UUID
             if (!/^[0-9a-fA-F-]{36}$/.test(mentorship_id)) {
               console.error(`❌ Invalid mentorship_id format: ${mentorship_id}`);
               return res.sendStatus(400);
             }
         
-            // Fetch the mentorship details from the database
+            // Fetch mentorship details
             const result = await pgDatabase.query(
               `SELECT mentorship_id, mentorship_date, se_id, mentor_id 
                FROM mentorships 
@@ -1412,6 +1430,9 @@ app.post("/webhook", async (req, res) => {
         
             const { mentorship_date, se_id, mentor_id } = result.rows[0];
         
+            // ✅ Delete the original message (New Mentorship Request)
+            await deleteMessage(chatId, messageId);
+        
             if (mentorship_date.length === 1) {
               // ✅ Only 1 date exists → Set telegramstatus to "Declined"
               await pgDatabase.query(
@@ -1420,7 +1441,7 @@ app.post("/webhook", async (req, res) => {
                  WHERE mentorship_id = $1`,
                 [mentorship_id]
               );
-              await sendMessage(chatId, "❌ You have declined the mentorship schedule.");
+              await sendMessage(chatId, "❌ You have declined the mentorship schedule meeting.");
             } else {
               // ✅ More than 1 date → Move declined date to `declined_schedule`
               await pgDatabase.query(
@@ -1447,6 +1468,7 @@ app.post("/webhook", async (req, res) => {
             return res.sendStatus(500);
           }
         }
+        
         
         
         if (data.startsWith("mentoreval_")) {
