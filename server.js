@@ -23,6 +23,7 @@ const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
 const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution } = require("./controllers/evaluationcategoriesController.js");
+const { getMentorQuestions } = require("./controllers/mentorEvaluationsQuestionsController.js");
 const app = express();
 
 
@@ -79,6 +80,104 @@ async function sendMessage(chatId, message) {
     console.error("❌ Failed to send message:", error.response?.data || error.message);
     throw new Error(`Failed to send message: ${error.message}`);
   }
+}
+
+async function submitMentorEvaluation(chatId, responses) {
+  try {
+    console.log(`✅ Mentor evaluation completed for Chat ID: ${chatId}`);
+    console.log("📋 Submitted Responses:");
+    Object.entries(responses).forEach(([category, details]) => {
+      console.log(`  - ${category}: ${"⭐".repeat(details.rating)} (${details.rating}/5)`);
+    });
+
+    const userState = userStates[chatId];
+    if (!userState || !userState.mentorEvalID) {
+      console.error("❌ Error: No evaluation session found for this user.");
+      return;
+    }
+
+    const mentorId = userState.mentorId; // Ensure this is captured when evaluation starts
+    const seId = userState.seId; // Ensure this is captured too
+    const createdAt = new Date().toISOString();
+    const evaluationType = "Mentors"; // Distinguishing this from SE evaluations
+
+    // Insert into evaluations table
+    const evalQuery = `
+      INSERT INTO public.evaluations (mentor_id, se_id, created_at, "isAcknowledge", evaluation_type)
+      VALUES ($1, $2, $3, false, $4)
+      RETURNING evaluation_id;
+    `;
+    const evalRes = await pgDatabase.query(evalQuery, [mentorId, seId, createdAt, evaluationType]);
+    const evaluationId = evalRes.rows[0].evaluation_id;
+    console.log("✅ Inserted Evaluation ID:", evaluationId);
+
+    // Insert into evaluation_categories table
+    for (const [category, details] of Object.entries(responses)) {
+      const categoryQuery = `
+        INSERT INTO public.evaluation_categories (evaluation_id, category_name, rating, additional_comment)
+        VALUES ($1, $2, $3, $4);
+      `;
+      await pgDatabase.query(categoryQuery, [evaluationId, category, details.rating, details.comments || ""]);
+    }
+
+    console.log("✅ Mentor evaluation data successfully stored in DB!");
+
+    // Notify user that evaluation is complete
+    await sendMessageWithOptions(chatId, "✅ Mentor evaluation completed! Thank you.", []);
+
+    delete userStates[chatId]; // Clear user state
+  } catch (error) {
+    console.error("❌ Error submitting mentor evaluation:", error);
+  }
+}
+
+async function sendNextMentorQuestion(chatId) {
+  const userState = userStates[chatId];
+
+  // Fetch questions if not already loaded
+  if (!userState.questions || userState.questions.length === 0) {
+    userState.questions = await getMentorQuestions();
+  }
+
+  // Ensure index is within range
+  if (userState.currentQuestionIndex >= userState.questions.length) {
+    console.error(`⚠️ Invalid question index for chat ${chatId}`);
+    return;
+  }
+
+  const question = userState.questions[userState.currentQuestionIndex];
+
+  const options = [
+    [
+      { text: "1️⃣ - Strongly Disagree", callback_data: "mentorans_1" },
+      { text: "2️⃣ - Disagree", callback_data: "mentorans_2" },
+    ],
+    [
+      { text: "3️⃣ - Neutral", callback_data: "mentorans_3" },
+      { text: "4️⃣ - Agree", callback_data: "mentorans_4" },
+    ],
+    [
+      { text: "5️⃣ - Strongly Agree", callback_data: "mentorans_5" },
+    ],
+  ];
+
+  // ✅ Delete previous question messages before sending the new one
+  if (userState.mentorQuestionsMessageIds && userState.mentorQuestionsMessageIds.length > 0) {
+    await deletePreviousMessages(chatId, userState.mentorQuestionsMessageIds);
+  }
+
+  // ✅ Send the new question
+  const mentorQuestionsMessage = await sendMessageWithOptions(
+    chatId,
+    `📢 *Question ${userState.currentQuestionIndex + 1}:* ${question.question_text}\n\n(Select a rating from 1 to 5)`,
+    options
+  );
+
+  // ✅ Store the message ID in an array
+  if (!userState.mentorQuestionsMessageIds) {
+    userState.mentorQuestionsMessageIds = [];
+  }
+  userState.mentorQuestionsMessageIds.push(mentorQuestionsMessage.message_id);
 }
 
 // Function to send message with "Acknowledge" button
@@ -489,10 +588,10 @@ app.post("/evaluate-mentor", async (req, res) => {
     }
 
     const mentorDetails = await getMentorDetails(mentorId);
-    console.log("This is the programs ", programs)
+    console.log("This is the programs ", programs);
     console.log(`This is the mentor name: ${mentorDetails[0].mentor_firstname} ${mentorDetails[0].mentor_lastname}`);
 
-    // ✅ Fetch chat IDs
+    // ✅ Fetch chat IDs along with associated SE IDs
     const chatIdResults = await getSocialEnterprisesUsersByProgram(programs);
 
     console.log("📡 Chat IDs Retrieved:", chatIdResults);
@@ -501,18 +600,22 @@ app.post("/evaluate-mentor", async (req, res) => {
       return res.status(404).json({ message: "No chat IDs found for the selected programs." });
     }
 
-    // ✅ Send messages
     console.log("📨 Sending messages to:", chatIdResults);
 
-    // Send the "Acknowledge" button separately with a meaningful message
-    //const sendAcknowledgeButtonMessage = 
-    if (chatIdResults.length > 0) {
-      for (const chatId of chatIdResults) {
-        const startEvaluationMessage = await sendStartMentorButton(chatId, `Start Evaluation for ${mentorDetails[0].mentor_firstname} ${mentorDetails[0].mentor_lastname}`, mentorId);
-        userStates[chatId] = { startEvaluationMessageId: startEvaluationMessage.message_id };
-      }
-    } else {
-      console.log("❌ No chat IDs found to send messages.");
+    // ✅ Send Start Evaluation Button
+    for (const { chatId, seId } of chatIdResults) {
+      const startEvaluationMessage = await sendStartMentorButton(
+        chatId,
+        `Start Evaluation for ${mentorDetails[0].mentor_firstname} ${mentorDetails[0].mentor_lastname}`,
+        mentorId
+      );
+
+      // Store mentorId & seId in userStates when starting evaluation
+      userStates[chatId] = {
+        startEvaluationMessageId: startEvaluationMessage.message_id,
+        mentorId,  // Capture the mentor being evaluated
+        seId,      // Capture the SE evaluating the mentor
+      };
     }
   } catch (error) {
     console.error("❌ INTERNAL SERVER ERROR:", error);
@@ -809,7 +912,7 @@ app.post("/api/social-enterprises", async (req, res) => {
 //For Testing only
 app.get("/test-api", async (req, res) => {
   try {
-    const result = await getProgramsForTelegram()
+    const result = await getMentorQuestions()
 
     res.json(result);
   } catch (error) {
@@ -1188,23 +1291,145 @@ app.post("/webhook", async (req, res) => {
               if (res) return res.sendStatus(500);
           }
         }
+
         if (data.startsWith("mentoreval_")) {
           try {
             await deletePreviousMessages(chatId, ["startEvaluationMessageId"]);
             const mentorEvalID = data.replace("mentoreval_", "");
-            
-            // Send confirmation message
-            await sendMessage(chatId, `✅ Starting Evaluation Now ${mentorEvalID}`);
         
-            // If inside an Express handler, send response
-            if (res) return res.sendStatus(200);
+            // Retrieve mentorId and seId from stored state
+            const { mentorId, seId } = userStates[chatId] || {};
+        
+            if (!mentorId || !seId) {
+              console.error("❌ Error: Missing mentorId or SE ID for evaluation.");
+              return res.status(400).json({ message: "Mentor or SE ID missing" });
+            }
+        
+            // Store evaluation progress
+            userStates[chatId] = {
+              type: "mentorEvaluation",
+              mentorEvalID,
+              mentorId,
+              seId,
+              currentQuestionIndex: 0,
+              responses: {},
+              questionMessageIds: [], // ✅ Initialize array to store message IDs
+            };
+        
+            // ✅ Load mentor evaluation questions from the database
+            userStates[chatId].questions = await getMentorQuestions();
+        
+            // ✅ Send the first question directly
+            if (userStates[chatId].questions.length > 0) {
+              const firstQuestion = userStates[chatId].questions[0];
+        
+              const options = [
+                [
+                  { text: "1️⃣ - Strongly Disagree", callback_data: "mentorans_1" },
+                  { text: "2️⃣ - Disagree", callback_data: "mentorans_2" },
+                ],
+                [
+                  { text: "3️⃣ - Neutral", callback_data: "mentorans_3" },
+                  { text: "4️⃣ - Agree", callback_data: "mentorans_4" },
+                ],
+                [
+                  { text: "5️⃣ - Strongly Agree", callback_data: "mentorans_5" },
+                ],
+              ];
+        
+              const firstQuestionMessage = await sendMessageWithOptions(
+                chatId,
+                `📢 *Question 1:* ${firstQuestion.question_text}\n\n(Select a rating from 1 to 5)`,
+                options
+              );
+        
+              // ✅ Store the first question's message ID in the array
+              userStates[chatId].questionMessageIds.push(firstQuestionMessage.message_id);
+            } else {
+              console.error("❌ No mentor evaluation questions found!");
+              await sendMessage(chatId, "❌ No evaluation questions available.");
+            }
+        
+            return res.sendStatus(200);
           } catch (error) {
             console.error("❌ Error acknowledging evaluation:", error);
-            await sendMessage(chatId, "❌ Failed to acknowledge evaluation. Please try again.");
-        
-            if (res) return res.sendStatus(500);
+            await sendMessage(chatId, "❌ Failed to start evaluation. Please try again.");
+            return res.sendStatus(500);
           }
         }
+        
+        if (data.startsWith("mentorans_")) {
+          try {
+            const rating = parseInt(data.replace("mentorans_", ""));
+            const userState = userStates[chatId];
+        
+            if (!userState || userState.type !== "mentorEvaluation") {
+              return res.sendStatus(400);
+            }
+        
+            // Ensure questions are loaded
+            if (!userState.questions || userState.questions.length === 0) {
+              userState.questions = await getMentorQuestions();
+            }
+        
+            // Get the current question
+            const currentQuestion = userState.questions[userState.currentQuestionIndex];
+        
+            // Store the response
+            userState.responses[currentQuestion.category] = {
+              rating,
+              comments: "", // Can be extended later
+            };
+        
+            // ✅ Delete only the last question message before sending the next one
+            if (userState.questionMessageIds.length > 0) {
+              const lastMessageId = userState.questionMessageIds.pop(); // Remove last message ID
+              await deletePreviousMessages(chatId, [lastMessageId]); // Delete only that message
+            }
+        
+            // Move to the next question
+            userState.currentQuestionIndex++;
+        
+            // ✅ Check if there are more questions
+            if (userState.currentQuestionIndex < userState.questions.length) {
+              const nextQuestion = userState.questions[userState.currentQuestionIndex];
+        
+              const options = [
+                [
+                  { text: "1️⃣ - Strongly Disagree", callback_data: "mentorans_1" },
+                  { text: "2️⃣ - Disagree", callback_data: "mentorans_2" },
+                ],
+                [
+                  { text: "3️⃣ - Neutral", callback_data: "mentorans_3" },
+                  { text: "4️⃣ - Agree", callback_data: "mentorans_4" },
+                ],
+                [
+                  { text: "5️⃣ - Strongly Agree", callback_data: "mentorans_5" },
+                ],
+              ];
+        
+              // ✅ Send the next question and store its message ID
+              const nextQuestionMessage = await sendMessageWithOptions(
+                chatId,
+                `📢 *Question ${userState.currentQuestionIndex + 1}:* ${nextQuestion.question_text}\n\n(Select a rating from 1 to 5)`,
+                options
+              );
+        
+              userState.questionMessageIds.push(nextQuestionMessage.message_id); // ✅ Store message ID
+            } else {
+              // ✅ All questions answered → Submit evaluation
+              await submitMentorEvaluation(chatId, userState.responses);
+              delete userStates[chatId]; // Clear user state
+            }
+        
+            return res.sendStatus(200);
+          } catch (error) {
+            console.error("❌ Error processing mentor evaluation:", error);
+            await sendMessage(chatId, "❌ Failed to process evaluation. Please try again.");
+            return res.sendStatus(500);
+          }
+        }
+        
 
         if (data.startsWith("acknowledge_")) {
           const mentorship_id = data.split("_")[1];

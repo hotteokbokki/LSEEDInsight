@@ -191,7 +191,6 @@ exports.getMentorDetails = async (mentor_id) => {
               m."number_SE_assigned",
               m.email,
               m.contactnum,
-              m.status,
               m.isactive
           FROM mentors m
           WHERE m.mentor_id = $1;
