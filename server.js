@@ -302,33 +302,79 @@ async function sendMentorshipMessage(chatId, mentorship_id, mentorship_date) {
     mentorship_date = [mentorship_date]; // Convert to array if it's a single value
   }
 
-  const message = `📅 *New Mentorship Request*\n\n`
-    + `🔹 *Mentorship ID:* ${mentorship_id}\n\n`
-    + `✅ Please acknowledge or decline a schedule:`;
-
-  // Generate inline keyboard dynamically for multiple dates
-  const inline_keyboard = mentorship_date.map(dateObj => {
-    const dateStr = new Date(dateObj).toISOString().split("T")[0]; // Convert Date to 'YYYY-MM-DD' format
-    return [
-      { text: `✅ Accept ${dateStr}`, callback_data: `acceptschedule_${mentorship_id}_${dateStr.replace(/-/g, "")}` },
-      { text: `❌ Decline ${dateStr}`, callback_data: `declineschedule_${mentorship_id}_${dateStr.replace(/-/g, "")}` }
-    ];
-  });
-
-  const payload = {
-    chat_id: chatId,
-    text: message,
-    parse_mode: "Markdown",
-    reply_markup: JSON.stringify({ inline_keyboard }) // Ensure proper JSON format
-  };
-
   try {
+    // Fetch Mentor Name
+    const mentorResult = await pgDatabase.query(
+      `SELECT mentor_firstname, mentor_lastname, mentor_id FROM mentors 
+       WHERE mentor_id = (SELECT mentor_id FROM mentorships WHERE mentorship_id = $1)`,
+      [mentorship_id]
+    );
+
+    if (mentorResult.rows.length === 0) {
+      console.error(`❌ Mentor not found for mentorship ID ${mentorship_id}`);
+      return;
+    }
+
+    const mentorName = `${mentorResult.rows[0].mentor_firstname} ${mentorResult.rows[0].mentor_lastname}`;
+    const mentorId = mentorResult.rows[0].mentor_id;
+
+    // Fetch SE (Social Enterprise) Name
+    const seResult = await pgDatabase.query(
+      `SELECT team_name FROM socialenterprises 
+       WHERE se_id = (SELECT se_id FROM mentorships WHERE mentorship_id = $1)`,
+      [mentorship_id]
+    );
+
+    if (seResult.rows.length === 0) {
+      console.error(`❌ SE not found for mentorship ID ${mentorship_id}`);
+      return;
+    }
+
+    const seName = seResult.rows[0].team_name;
+
+    // Format Dates
+    const formattedDates = mentorship_date
+      .map(dateObj => {
+        if (typeof dateObj === "string") {
+          return new Date(dateObj).toISOString().split("T")[0]; // Convert String to YYYY-MM-DD
+        } else if (dateObj instanceof Date) {
+          return dateObj.toISOString().split("T")[0]; // Convert Date Object to YYYY-MM-DD
+        } else {
+          console.warn("⚠️ Unexpected date format:", dateObj);
+          return "Invalid Date"; // Fallback if the date isn't recognized
+        }
+      })
+      .filter(date => date !== "Invalid Date") // Remove any invalid dates
+      .join("\n🔹 "); // List all available dates
+
+    const message = `📅 *New Mentorship Meeting Request*\n\n`
+      + `🔹 *Mentor:* ${mentorName}\n`
+      + `🔹 *Social Enterprise:* ${seName}\n`
+      + `🔹 *Date:* ${formattedDates}\n`;
+
+    // Generate inline keyboard dynamically for multiple dates
+    const inline_keyboard = mentorship_date.map(dateObj => {
+      const dateStr = new Date(dateObj).toISOString().split("T")[0]; // Convert Date to 'YYYY-MM-DD' format
+      return [
+        { text: `✅ Accept`, callback_data: `acceptschedule_${mentorship_id}_${dateStr.replace(/-/g, "")}` },
+        { text: `❌ Decline`, callback_data: `declineschedule_${mentorship_id}_${dateStr.replace(/-/g, "")}` }
+      ];
+    });
+
+    const payload = {
+      chat_id: chatId,
+      text: message,
+      parse_mode: "Markdown",
+      reply_markup: JSON.stringify({ inline_keyboard }) // Ensure proper JSON format
+    };
+
     const response = await axios.post(TELEGRAM_API_URL, payload);
     console.log("✅ Mentorship message sent:", response.data);
   } catch (error) {
     console.error("❌ Error sending mentorship message:", error.response?.data || error.message);
   }
 }
+
 
 
 app.get("/api/mentors", async (req, res) => {
@@ -1622,7 +1668,7 @@ app.post("/webhook", async (req, res) => {
             WHERE mentorship_id = $1
           `, [mentorship_id]);
       
-          sendMessage(chatId, "✅ You have acknowledged the mentorship schedule.");
+          sendMessage(chatId, "✅ You have acknowledged the mentorship schedule meeting.");
         } else if (data.startsWith("declineschedule_")) {
           const mentorship_id = data.split("_")[1];
       
