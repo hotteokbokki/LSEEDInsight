@@ -12,6 +12,7 @@ import Scheduling from "./scenes/scheduling";
 import AssessSEPage from "./scenes/assess";
 import SEAnalytics from "./scenes/seanalytics";
 import MentorAnalytics from "./scenes/mentoranalytics";
+import Mentorships from "./scenes/mentorships";
 import Sidebar from "./scenes/global/Sidebar";
 import Topbar from "./scenes/global/Topbar";
 import Unauthorized from "./scenes/unauthorized";
@@ -100,6 +101,7 @@ const MainContent = () => {
           <Route path="/assess" element={user ? <AssessSEPage /> : <Navigate to="/" />} />
           <Route path="/se-analytics/:id" element={<SEAnalytics />} />
           <Route path="/mentor-analytics/:id" element={<MentorAnalytics />} />
+          <Route path="/mentorships" element={<Mentorships />} />
           <Route path="/admin" element={user ? <Admin /> : <Navigate to="/" />} />
 
           {/* Protected Routes - Only for Logged-in Users */}

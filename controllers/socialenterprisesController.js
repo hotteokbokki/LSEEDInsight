@@ -70,6 +70,43 @@ exports.getAllSocialEnterprises = async () => {
   }
 };
 
+exports.getAllSocialEnterpriseswithMentorID = async (mentor_id) => {
+  try {
+      const query = `
+        SELECT 
+            se.se_id, 
+            se.team_name, 
+            p.name AS program_name, -- ✅ Fetch program name
+            COALESCE(
+                JSON_AGG(
+                    CASE 
+                        WHEN m.mentor_id IS NOT NULL 
+                        THEN JSON_BUILD_OBJECT(
+                            'mentor_id', m.mentor_id,
+                            'mentor_name', CONCAT(m.mentor_firstname, ' ', m.mentor_lastname)
+                        ) 
+                        ELSE NULL 
+                    END
+                ) FILTER (WHERE m.mentor_id IS NOT NULL), 
+                '[]'
+            ) AS mentors
+        FROM socialenterprises AS se
+        LEFT JOIN mentorships AS ms ON se.se_id = ms.se_id
+        LEFT JOIN mentors AS m ON ms.mentor_id = m.mentor_id
+        LEFT JOIN programs AS p ON se.program_id = p.program_id -- ✅ Join with programs table
+        WHERE m.mentor_id = $1 -- 🔍 Filter by a specific mentor
+        GROUP BY se.se_id, se.team_name, p.name;
+      `;
+      const values = [mentor_id];
+
+      const result = await pgDatabase.query(query, values);
+      return result.rows.length ? result.rows : [];
+  } catch (error) {
+      console.error("❌ Error fetching social enterprises with mentorship info:", error);
+      return [];
+  }
+};
+
 exports.getAllSocialEnterprisesWithMentorship = async () => {
   try {
       const query = `

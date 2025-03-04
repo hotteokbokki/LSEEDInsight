@@ -158,6 +158,16 @@ const Sidebar = () => {
                 setSelected={setSelected}
               />
             )}
+            {/* Assess SE - Visible to Mentors and Administrators */}
+            {(user?.role === "Mentor" || user?.role === "Administrator") && (
+              <Item
+                title="Manage Mentorships"
+                to="/mentorships"
+                icon={<AssignmentTurnedInOutlinedIcon />}
+                selected={selected}
+                setSelected={setSelected}
+              />
+            )}
             {/* LSEED Pages - Visible to LSEED Users and Administrators */}
             {(user?.role === "LSEED" || user?.role === "Administrator") && (
               <>
