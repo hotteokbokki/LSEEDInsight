@@ -193,7 +193,8 @@ const Scheduling = ({ userRole }) => {
                   <TableRow>
                     <TableCell><strong>Social Enterprise</strong></TableCell>
                     <TableCell><strong>Program</strong></TableCell>
-                    <TableCell><strong>Mentorship Dates</strong></TableCell>
+                    <TableCell><strong>Pending Dates</strong></TableCell>
+                    <TableCell><strong>Approved Session Dates</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
