@@ -53,12 +53,6 @@ const AssessSEPage = () => {
   };
 
   const handleSubmitEvaluations = async () => {
-    const mentorId = userSession.id;
-    if (!mentorId) {
-      console.error("❌ ERROR: mentorId is missing!");
-      return;
-    }
-  
     if (!selectedPrograms.length) {
       console.error("❌ ERROR: No programs selected!");
       return;
@@ -68,7 +62,6 @@ const AssessSEPage = () => {
       console.log("📤 Submitting evaluations for programs:", selectedPrograms);
   
       await axios.post("http://localhost:4000/evaluate-mentor", {
-        mentorId,
         programs: selectedPrograms, // Send selected program IDs
       });
   

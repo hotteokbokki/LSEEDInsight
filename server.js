@@ -639,15 +639,11 @@ app.post("/evaluate", async (req, res) => {
 
 app.post("/evaluate-mentor", async (req, res) => {
   try {
-    let { mentorId, programs } = req.body;
+    let { programs } = req.body;
 
-    if (!mentorId || !Array.isArray(programs) || programs.length === 0) {
-      return res.status(400).json({ message: "Invalid request. Missing mentorId or programs." });
+    if (!Array.isArray(programs) || programs.length === 0) {
+      return res.status(400).json({ message: "Invalid request. Missing programs." });
     }
-
-    const mentorDetails = await getMentorDetails(mentorId);
-    console.log("This is the programs ", programs);
-    console.log(`This is the mentor name: ${mentorDetails[0].mentor_firstname} ${mentorDetails[0].mentor_lastname}`);
 
     // ✅ Fetch chat IDs along with associated SE IDs
     const chatIdResults = await getSocialEnterprisesUsersByProgram(programs);
@@ -658,23 +654,33 @@ app.post("/evaluate-mentor", async (req, res) => {
       return res.status(404).json({ message: "No chat IDs found for the selected programs." });
     }
 
-    console.log("📨 Sending messages to:", chatIdResults);
-
-    // ✅ Send Start Evaluation Button
+    // ✅ Fetch mentor details for each SE from the `mentorship` table
     for (const { chatId, seId } of chatIdResults) {
+      const mentorDetails = await getMentorBySEID(seId); 
+
+      if (!mentorDetails) {
+        console.warn(`⚠️ No mentor found for SE: ${seId}, skipping evaluation.`);
+        continue; // Skip if no mentor is assigned
+      }
+
+      console.log(`📨 Sending evaluation request to SE: ${seId} for Mentor: ${mentorDetails.name}`);
+
+      // ✅ Send Start Evaluation Button
       const startEvaluationMessage = await sendStartMentorButton(
         chatId,
-        `Start Evaluation for ${mentorDetails[0].mentor_firstname} ${mentorDetails[0].mentor_lastname}`,
-        mentorId
+        `Start Evaluation for ${mentorDetails.name}`,
+        mentorDetails.mentor_id // ✅ Use the correct mentor ID
       );
 
       // Store mentorId & seId in userStates when starting evaluation
       userStates[chatId] = {
         startEvaluationMessageId: startEvaluationMessage.message_id,
-        mentorId,  // Capture the mentor being evaluated
+        mentorId: mentorDetails.mentor_id,  // ✅ Store the correct mentor ID
         seId,      // Capture the SE evaluating the mentor
       };
     }
+
+    res.status(200).json({ message: "Evaluation messages sent." });
   } catch (error) {
     console.error("❌ INTERNAL SERVER ERROR:", error);
     res.status(500).json({ message: "Internal Server Error", error: error.message });
@@ -1272,24 +1278,25 @@ app.post("/webhook", async (req, res) => {
         }
           
         if (data.startsWith("confirm_")) {
-              await deletePreviousMessages(chatId, ["confirmationMessageID"]);
-              const enterpriseId = data.replace("confirm_", "");
-              const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
-              if (!selectedEnterprise) return res.sendStatus(400);
-          
-              const mentors = await getMentorBySEID(enterpriseId);
-              if (!mentors.length) {
-                  await sendMessage(chatId, `⚠️ No mentors available under *${selectedEnterprise.team_name}*.`);
-                  return res.sendStatus(200);
-              }
-          
-              const mentor = mentors[0];
-              await sendMessage(chatId, `✅ You are now registered under *${selectedEnterprise.team_name}* with Mentor *${mentor.name}*.`);
-          
-              await insertTelegramUser(chatId, userName, firstName, userSelections, mentor.mentor_id);
-              delete userSelections[chatId];
-              delete userStates[chatId];
+          await deletePreviousMessages(chatId, ["confirmationMessageID"]);
+          const enterpriseId = data.replace("confirm_", "");
+          const selectedEnterprise = await getSocialEnterpriseByID(enterpriseId);
+          if (!selectedEnterprise) return res.sendStatus(400);
+      
+          // ✅ Fetch a single mentor instead of expecting an array
+          const mentor = await getMentorBySEID(enterpriseId);
+      
+          if (!mentor) {
+              await sendMessage(chatId, `⚠️ No mentors available under *${selectedEnterprise.team_name}*.`);
               return res.sendStatus(200);
+          }
+      
+          await sendMessage(chatId, `✅ You are now registered under *${selectedEnterprise.team_name}* with Mentor *${mentor.name}*.`);
+      
+          await insertTelegramUser(chatId, userName, firstName, userSelections, mentor.mentor_id);
+          delete userSelections[chatId];
+          delete userStates[chatId];
+          return res.sendStatus(200);
         }
           
         if (data === "pick_again") {
@@ -1515,8 +1522,6 @@ app.post("/webhook", async (req, res) => {
           }
         }
         
-        
-        
         if (data.startsWith("mentoreval_")) {
           try {
             await deletePreviousMessages(chatId, ["startEvaluationMessageId"]);
@@ -1654,7 +1659,6 @@ app.post("/webhook", async (req, res) => {
             return res.sendStatus(500);
           }
         }
-        
 
         if (data.startsWith("acknowledgeschedule_")) {
           const mentorship_id = data.split("_")[1];

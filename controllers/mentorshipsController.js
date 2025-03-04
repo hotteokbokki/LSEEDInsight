@@ -33,25 +33,29 @@ exports.getMentorshipsByMentorId = async (mentor_id) => {
 exports.getMentorBySEID = async (se_id) => {
     try {
         const query = `
-          SELECT * 
+          SELECT 
+            m.mentor_id, 
+            m.mentor_firstname, 
+            m.mentor_lastname 
           FROM mentorships AS ms 
-          JOIN mentors AS m ON ms."mentor_id" = m."mentor_id" 
-          WHERE ms."se_id" = $1;
+          JOIN mentors AS m ON ms.mentor_id = m.mentor_id 
+          WHERE ms.se_id = $1
+          LIMIT 1;  -- ✅ Ensure only one mentor is returned
         `;
 
         const values = [se_id];
         const result = await pgDatabase.query(query, values);
 
-        // ✅ Map results correctly
-        return result.rows.length
-            ? result.rows.map(mentor => ({
-                  name: `${mentor.mentor_firstname} ${mentor.mentor_lastname}`, // Fixed casing issue
-                  mentor_id: mentor.mentor_id
-              }))
-            : []; // Return an empty array if no results are found
+        // ✅ Return a single object instead of an array
+        return result.rows.length > 0 
+            ? {
+                  name: `${result.rows[0].mentor_firstname} ${result.rows[0].mentor_lastname}`, 
+                  mentor_id: result.rows[0].mentor_id
+              }
+            : null; // Return null if no mentor is found
     } catch (error) {
-        console.error("❌ Error fetching mentorships by SE_ID:", error);
-        return []; // Return an empty array in case of an error
+        console.error("❌ Error fetching mentorship by SE_ID:", error);
+        return null; // Return null in case of an error
     }
 };
 
