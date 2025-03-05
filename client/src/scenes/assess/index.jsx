@@ -29,8 +29,7 @@ const AssessSEPage = () => {
   const [currentSEIndex, setCurrentSEIndex] = useState(0); // Index of the current SE being evaluated
   const [evaluations, setEvaluations] = useState({}); // Store evaluations for all SEs
   const [error, setError] = useState("");
-  const [isLoadingSocialEnterprises, setIsLoadingSocialEnterprises] =
-    useState(false);
+  const [isLoadingSocialEnterprises, setIsLoadingSocialEnterprises] = useState(false);
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
   const [evaluationsData, setEvaluationsData] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
@@ -127,8 +126,6 @@ const AssessSEPage = () => {
             params: { mentor_id: userSession.id },
           }
         );
-
-        console.log("📥 Evaluations Response:", response.data); // Debugging
 
         // Ensure evaluation_id is included and set as `id`
         const formattedData = response.data.map((evaluation) => ({
@@ -649,9 +646,8 @@ const AssessSEPage = () => {
             "& .MuiDataGrid-root": { border: "none" },
             "& .MuiDataGrid-cell": { borderBottom: "none" },
             "& .name-column--cell": { color: colors.greenAccent[300] },
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: colors.blueAccent[700],
-              borderBottom: "none",
+            "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+              backgroundColor: colors.blueAccent[700] + " !important",
             },
             "& .MuiDataGrid-virtualScroller": {
               backgroundColor: colors.primary[400],

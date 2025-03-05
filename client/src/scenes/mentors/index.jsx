@@ -73,7 +73,7 @@ const Mentors = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch(`/api/mentor-stats`);
+        const response = await fetch(`http://localhost:4000/api/mentor-stats`);
         const data = await response.json();
         setStats(data);
       } catch (error) {
@@ -87,13 +87,13 @@ const Mentors = () => {
     const fetchData = async () => {
       try {
         // Fetch active mentors
-        const mentorsResponse = await fetch("/api/active-mentors");
+        const mentorsResponse = await fetch("http://localhost:4000/api/active-mentors");
         const mentorsData = await mentorsResponse.json();
         setMentors(mentorsData);
 
         // Fetch social enterprises without mentors
         const seResponse = await fetch(
-          "/api/social-enterprises-without-mentor"
+          "http://localhost:4000/api/social-enterprises-without-mentor"
         );
         const seData = await seResponse.json();
         setSocialEnterprises(
@@ -143,7 +143,7 @@ const Mentors = () => {
     }
 
     try {
-      const response = await fetch("/api/mentorships", {
+      const response = await fetch("http://localhost:4000/api/mentorships", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -175,7 +175,7 @@ const Mentors = () => {
 
   const fetchLatestMentorships = async () => {
     try {
-      const response = await fetch("/api/mentorships"); // Adjust the endpoint as needed
+      const response = await fetch("http://localhost:4000/api/mentorships"); // Adjust the endpoint as needed
       if (response.ok) {
         const updatedMentorships = await response.json();
         // Update the state with the latest mentorship data
@@ -211,7 +211,7 @@ const Mentors = () => {
       number_SE_assigned: updatedMentor.numberOfSEsAssigned,
     };
     try {
-      const response = await fetch(`/api/mentors/${id}`, {
+      const response = await fetch(`http://localhost:4000/api/mentors/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedMentorData),
@@ -697,10 +697,8 @@ const Mentors = () => {
           "& .name-column--cell": {
             color: colors.greenAccent[300],
           },
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: colors.blueAccent[700],
-            borderBottom: "none",
-            color: colors.grey[100],
+          "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+            backgroundColor: colors.blueAccent[700] + " !important",
           },
           "& .MuiDataGrid-virtualScroller": {
             backgroundColor: colors.primary[400],

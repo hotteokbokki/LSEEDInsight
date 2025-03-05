@@ -109,7 +109,7 @@ const SocialEnterprise = () => {
   useEffect(() => {
     const fetchSDGs = async () => {
       try {
-        const response = await fetch("/getAllSDG"); // Call the API endpoint
+        const response = await fetch("http://localhost:4000/getAllSDG"); // Call the API endpoint
         const data = await response.json();
         setSdgs(data); // Update the state with the fetched SDGs
       } catch (error) {
@@ -122,7 +122,7 @@ const SocialEnterprise = () => {
   useEffect(() => {
     const fetchPrograms = async () => {
       try {
-        const response = await fetch("/getPrograms"); // Call the API endpoint
+        const response = await fetch("http://localhost:4000/getPrograms"); // Call the API endpoint
         const data = await response.json();
         setPrograms(data); // Update the state with the fetched programs
       } catch (error) {
@@ -201,7 +201,7 @@ const SocialEnterprise = () => {
         abbr: socialEnterpriseData.abbr || null, // Default to null if not provided
       };
 
-      const response = await fetch("/api/social-enterprises", {
+      const response = await fetch("http://localhost:4000/api/social-enterprises", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newSocialEnterprise),
@@ -962,9 +962,8 @@ const SocialEnterprise = () => {
           "& .MuiDataGrid-root": { border: "none" },
           "& .MuiDataGrid-cell": { borderBottom: "none" },
           "& .name-column--cell": { color: colors.greenAccent[300] },
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: colors.blueAccent[700],
-            borderBottom: "none",
+          "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+              backgroundColor: colors.blueAccent[700] + " !important",
           },
           "& .MuiDataGrid-virtualScroller": {
             backgroundColor: colors.primary[400],

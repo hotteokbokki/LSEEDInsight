@@ -326,10 +326,8 @@ const AdminPage = () => {
             "& .MuiDataGrid-cell": {
               borderBottom: "none",
             },
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: colors.blueAccent[700],
-              borderBottom: "none",
-              color: colors.grey[100],
+            "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+              backgroundColor: colors.blueAccent[700] + " !important",
             },
             "& .MuiDataGrid-virtualScroller": {
               backgroundColor: colors.primary[400],

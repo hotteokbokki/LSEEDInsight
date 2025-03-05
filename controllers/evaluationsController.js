@@ -30,6 +30,36 @@ exports.getEvaluationsByMentorID = async (mentor_id) => {
     }
 };
 
+exports.getEvaluationsBySEID = async (se_id) => {
+    try {
+        const query = `
+            SELECT 
+                e.evaluation_id,
+                m.mentor_firstname || ' ' || m.mentor_lastname AS evaluator_name,
+                se.team_name AS social_enterprise,
+                e.created_at AS evaluation_date,
+                e."isAcknowledge" AS acknowledged
+            FROM 
+                evaluations AS e
+            JOIN 
+                mentors AS m ON e.mentor_id = m.mentor_id
+            JOIN 
+                socialenterprises AS se ON e.se_id = se.se_id
+            WHERE	
+                e.se_id = $1 AND
+				evaluation_type = 'Social Enterprise';
+        `;
+
+        const values = [se_id];
+        const result = await pgDatabase.query(query, values);
+
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching evaluations:", error);
+        return [];
+    }
+};
+
 exports.getEvaluationDetails = async (evaluation_id) => {
     try {
         console.log(`Fetching evaluation details for Evaluation ID: ${evaluation_id}`);

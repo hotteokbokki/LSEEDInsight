@@ -18,7 +18,7 @@ const { getAllSDG } = require("./controllers/sdgController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getMentorshipsByMentorId, getMentorBySEID, getSEWithMentors, getPreviousSEWithMentors, getMentorshipCount } = require("./controllers/mentorshipsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
-const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID, getAllSECommonChallenges, getAverageScoreForAllSEPerCategory, getImprovementScorePerMonthAnnually, getImprovementScoreOverallAnnually, getGrowthScoreOverallAnually, getMonthlyGrowthDetails, getSELeaderboards, updateAcknowledgeEvaluation, getTopSEPerformanceByMentorships } = require("./controllers/evaluationsController.js");
+const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID, getAllSECommonChallenges, getAverageScoreForAllSEPerCategory, getImprovementScorePerMonthAnnually, getImprovementScoreOverallAnnually, getGrowthScoreOverallAnually, getMonthlyGrowthDetails, getSELeaderboards, updateAcknowledgeEvaluation, getTopSEPerformanceByMentorships, getEvaluationsBySEID } = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
@@ -779,6 +779,25 @@ app.get("/getMentorEvaluations", async (req, res) => {
     }
 
     const result = await getEvaluationsByMentorID(mentor_id); // Fetch SEs from DB
+    if (!result || result.length === 0) {
+      return res.status(404).json({ message: "No evaluations found" });
+    }
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching social enterprises:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/getMentorEvaluationsBySEID", async (req, res) => {
+  try {
+    const { se_id } = req.query; // Extract se_id from query parameters
+
+    if (!se_id) {
+      return res.status(400).json({ message: "se_id is required" });
+    }
+
+    const result = await getEvaluationsBySEID(se_id); // Fetch SEs from DB
     if (!result || result.length === 0) {
       return res.status(404).json({ message: "No evaluations found" });
     }

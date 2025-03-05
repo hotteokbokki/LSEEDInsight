@@ -201,9 +201,6 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
       number_of_members = 0, // Default to 0 if not provided
     } = socialEnterpriseData;
 
-    console.log("[controller] SDG_Name: ", sdg_name);
-    console.log("[controller]Program Name: ", program_name);
-
     if (!sdg_name) {
       throw new Error("SDG ID is required but missing.");
     }

@@ -262,10 +262,8 @@ const Dashboard = () => {
               "& .name-column--cell": {
                 color: colors.greenAccent[300],
               },
-              "& .MuiDataGrid-columnHeaders": {
-                backgroundColor: colors.blueAccent[700], // Header background color
-                borderBottom: "none",
-                color: colors.grey[100],
+              "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+              backgroundColor: colors.blueAccent[700] + " !important",
               },
               "& .MuiDataGrid-virtualScroller": {
                 backgroundColor: colors.primary[400],
