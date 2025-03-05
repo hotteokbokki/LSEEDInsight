@@ -1,7 +1,9 @@
 // Sample LSEED Insight Google Calendar
 // https://calendar.google.com/calendar/u/0?cid=MWJlZDcwNTZhNzNhOGRhZGU0MjZkZjI2MzMyMTYzNDBjMDE3OWJhZGJmMjUyMGYyMjI0NmVlMTkyMzg2OTBiY0Bncm91cC5jYWxlbmRhci5nb29nbGUuY29t
 
+import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
+import { DataGrid } from "@mui/x-data-grid";
 import {
   Box,
   Button,
@@ -23,6 +25,10 @@ import {
   TableCell,
   TableBody,
   Chip,
+  Snackbar,
+  TextField,
+  Alert,
+  useTheme,
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -42,13 +48,25 @@ const Scheduling = ({ userRole }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [mentorshipDates, setMentorshipDates] = useState([]);
   const { user } = useAuth();
-  
+  const theme = useTheme();
+  const colors = tokens(theme.palette.mode);
+
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+
+  // Function to handle Snackbar close
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
+
   useEffect(() => {
     const fetchMentorshipDates = async () => {
       try {
-        const response = await axios.get("http://localhost:4000/getMentorshipDates", {
-          params: { mentor_id: user.id }, // Fetch mentorships for this mentor
-        });
+        const response = await axios.get(
+          "http://localhost:4000/getMentorshipDates",
+          {
+            params: { mentor_id: user.id }, // Fetch mentorships for this mentor
+          }
+        );
         console.log("📅 Mentorship Dates:", response.data);
         setMentorshipDates(response.data || []);
       } catch (error) {
@@ -56,26 +74,30 @@ const Scheduling = ({ userRole }) => {
         setMentorshipDates([]);
       }
     };
-  
+
     fetchMentorshipDates();
   }, [user.id]); // Refetch when the user changes
 
   const fetchSocialEnterprises = async () => {
     try {
       setIsLoading(true);
-      
+
       console.log("Fetching SEs for Mentor ID:", user?.id);
-      const response = await fetch(`http://localhost:4000/getMentorshipsbyID?mentor_id=${encodeURIComponent(user.id)}`);
+      const response = await fetch(
+        `http://localhost:4000/getMentorshipsbyID?mentor_id=${encodeURIComponent(
+          user.id
+        )}`
+      );
       const data = await response.json();
-      
+
       console.log("📥 Received Data in Scheduling:", data);
-      
+
       if (!Array.isArray(data)) {
         console.error("Invalid data format:", data);
         setSocialEnterprises([]);
         return;
       }
-      
+
       // Transform if needed (like in assess.js)
       const updatedSocialEnterprises = data.map((se) => ({
         id: se.id,
@@ -92,32 +114,45 @@ const Scheduling = ({ userRole }) => {
     } finally {
       setIsLoading(false);
     }
-  };  
+  };
 
   const handleConfirmDate = async () => {
     if (!selectedSE || !selectedDate) return;
-  
+
     try {
       setIsLoading(true);
-      const response = await fetch("http://localhost:4000/updateMentorshipDate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mentorship_id: selectedSE.id,
-          mentorship_date: selectedDate.format("YYYY-MM-DD"),
-        }),
-      });
-  
+      const response = await fetch(
+        "http://localhost:4000/updateMentorshipDate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mentorship_id: selectedSE.id,
+            mentorship_date: selectedDate.format("YYYY-MM-DD"),
+          }),
+        }
+      );
+
       if (!response.ok) throw new Error("Failed to update mentorship date");
-      alert("Mentorship date updated successfully!");
+
+      // Show success Snackbar
+      setSnackbarOpen(true);
+
+      // Close the dialog
+      handleCloseSEModal();
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 500); // Adjust delay if needed
     } catch (error) {
       console.error("Error updating mentorship date:", error);
     } finally {
       setIsLoading(false);
     }
   };
-  
-  const handleRedirect = () => window.open("https://calendar.google.com", "_blank");
+
+  const handleRedirect = () =>
+    window.open("https://calendar.google.com", "_blank");
   const handleOpenModal = () => setOpenModal(true);
   const handleCloseModal = () => setOpenModal(false);
   const handleOpenSEModal = () => {
@@ -126,7 +161,7 @@ const Scheduling = ({ userRole }) => {
   };
   const handleCloseSEModal = () => setOpenSEModal(false);
   const handleSelectSE = (se) => setSelectedSE(se);
-  
+
   useEffect(() => {
     fetch("/auth/session-check", {
       method: "GET",
@@ -135,27 +170,42 @@ const Scheduling = ({ userRole }) => {
         "Content-Type": "application/json",
       },
     })
-      .then(response => response.json())
-      .then(data => console.log("[Frontend] Session Check Response:", data))
-      .catch(error => console.error("[Frontend] Session Check Error:", error));
+      .then((response) => response.json())
+      .then((data) => console.log("[Frontend] Session Check Response:", data))
+      .catch((error) =>
+        console.error("[Frontend] Session Check Error:", error)
+      );
   }, []);
-  
 
   return (
     <Box m="20px">
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Header title="Scheduling Matrix" subtitle={user.role === "LSEED" ? "See the schedule of the mentors" : "Find the Appropriate Schedule"}  />
+        <Header
+          title="Scheduling Matrix"
+          subtitle={
+            user.role === "LSEED"
+              ? "See the schedule of the mentors"
+              : "Find the Appropriate Schedule"
+          }
+        />
       </Box>
-
       {user.role === "Mentor" ? (
         <Box display="flex" justifyContent="center" mt={2}>
-          <Button variant="contained" sx={{ backgroundColor: "#1976D2", color: "white" }} onClick={handleRedirect}>
+          <Button
+            variant="contained"
+            sx={{ backgroundColor: "#1976D2", color: "white" }}
+            onClick={handleRedirect}
+          >
             Open LSEED Calendar
           </Button>
           <Button
             variant="contained"
-            sx={{ backgroundColor: "#4caf50", color: "white", marginLeft: "10px" }}
+            sx={{
+              backgroundColor: "#4caf50",
+              color: "white",
+              marginLeft: "10px",
+            }}
             onClick={handleOpenSEModal}
           >
             Schedule a Mentoring Session
@@ -169,11 +219,21 @@ const Scheduling = ({ userRole }) => {
                 <ListItemText primary={mentor.name} />
                 <Button
                   variant="contained"
-                  sx={{ backgroundColor: mentor.calendarlink ? "#1976D2" : "#B0B0B0", color: "white" }}
-                  onClick={() => mentor.calendarlink && window.open(mentor.calendarlink, "_blank")}
+                  sx={{
+                    backgroundColor: mentor.calendarlink
+                      ? "#1976D2"
+                      : "#B0B0B0",
+                    color: "white",
+                  }}
+                  onClick={() =>
+                    mentor.calendarlink &&
+                    window.open(mentor.calendarlink, "_blank")
+                  }
                   disabled={!mentor.calendarlink}
                 >
-                  {mentor.calendarlink ? "View Calendar" : "No Calendar Available"}
+                  {mentor.calendarlink
+                    ? "View Calendar"
+                    : "No Calendar Available"}
                 </Button>
               </ListItem>
             ))}
@@ -187,82 +247,313 @@ const Scheduling = ({ userRole }) => {
             Your Scheduled Mentorship Dates
           </Typography>
           {mentorshipDates.length > 0 ? (
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell><strong>Social Enterprise</strong></TableCell>
-                    <TableCell><strong>Program</strong></TableCell>
-                    <TableCell><strong>Pending Dates</strong></TableCell>
-                    <TableCell><strong>Approved Session Dates</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {Array.isArray(mentorshipDates) &&
-                    mentorshipDates.map((mentorships) => (
-                      <TableRow key={mentorships.se_id}>
-                        <TableCell>{mentorships.team_name}</TableCell>
-                        <TableCell>{mentorships.name}</TableCell>
-                        <TableCell>
-                          {Array.isArray(mentorships.mentorship_date) &&
-                            mentorships.mentorship_date.map((date) => (
+            <Box
+              sx={{
+                height: 400,
+                width: "100%", // ✅ Ensures full DataGrid width
+                overflowX: "auto", // ✅ Enables global left-right scrolling
+                "& .MuiDataGrid-root": {
+                  border: "none",
+                },
+                "& .MuiDataGrid-cell": {
+                  borderBottom: "none",
+                },
+                "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                  backgroundColor: colors.blueAccent[700] + " !important",
+                },
+                "& .MuiDataGrid-virtualScroller": {
+                  backgroundColor: colors.primary[400],
+                },
+                "& .MuiDataGrid-footerContainer": {
+                  borderTop: "none",
+                  backgroundColor: colors.blueAccent[700],
+                  color: colors.grey[100],
+                },
+              }}
+            >
+              <DataGrid
+                rows={mentorshipDates.map((mentorship, index) => ({
+                  id: index,
+                  team_name: mentorship.team_name || "N/A",
+                  program_name: mentorship.name || "N/A",
+                  mentorship_date: Array.isArray(mentorship.mentorship_date)
+                    ? mentorship.mentorship_date.filter(Boolean).map((date) =>
+                        date
+                          ? new Date(date).toLocaleDateString("en-US", {
+                              month: "long",
+                              day: "2-digit",
+                              year: "numeric",
+                            })
+                          : "Invalid Date"
+                      )
+                    : ["N/A"],
+                  accepted_dates: Array.isArray(mentorship.accepted_dates)
+                    ? mentorship.accepted_dates.filter(Boolean).map((date) =>
+                        date
+                          ? new Date(date).toLocaleDateString("en-US", {
+                              month: "long",
+                              day: "2-digit",
+                              year: "numeric",
+                            })
+                          : "Invalid Date"
+                      )
+                    : ["N/A"],
+                }))}
+                columns={[
+                  {
+                    field: "team_name",
+                    headerName: "Social Enterprise",
+                    flex: 1,
+                    minWidth: 200,
+                  },
+                  {
+                    field: "program_name",
+                    headerName: "Program",
+                    width: 150, //
+                  },
+                  {
+                    field: "mentorship_date",
+                    headerName: "Pending Dates",
+                    width: 500, // ✅ Fixed width for scrolling
+                    renderCell: (params) => (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          overflowX: "auto", // ✅ Enables scrolling inside the cell
+                          maxWidth: "100%",
+                          whiteSpace: "nowrap",
+                          padding: "4px",
+                        }}
+                      >
+                        {params.value.length > 0
+                          ? params.value.map((date, idx) => (
                               <Chip
-                                key={date}
-                                label={new Date(date).toLocaleDateString("en-US", {
-                                  month: "long",
-                                  day: "2-digit",
-                                  year: "numeric",
-                                })}
-                                sx={{ margin: "2px" }}
+                                key={idx}
+                                label={date}
+                                sx={{ marginRight: "4px" }}
                               />
-                            ))}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                            ))
+                          : "N/A"}
+                      </Box>
+                    ),
+                  },
+                  {
+                    field: "accepted_dates",
+                    headerName: "Accepted Dates",
+                    width: 350, // ✅ Same width as Pending Dates
+                    renderCell: (params) => (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          overflowX: "auto", // ✅ Enables scrolling inside the cell
+                          maxWidth: "100%",
+                          whiteSpace: "nowrap",
+                          padding: "4px",
+                        }}
+                      >
+                        {params.value.length > 0
+                          ? params.value.map((date, idx) => (
+                              <Chip
+                                key={idx}
+                                label={date}
+                                sx={{ marginRight: "4px" }}
+                              />
+                            ))
+                          : "N/A"}
+                      </Box>
+                    ),
+                  },
+                ]}
+                pageSize={5}
+                rowsPerPageOptions={[5, 10]}
+                autoHeight
+              />
+            </Box>
           ) : (
             <Typography>No mentorship dates scheduled.</Typography>
           )}
         </Box>
       )}
 
-      <Dialog open={openSEModal} onClose={handleCloseSEModal} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ backgroundColor: "#1E4D2B", color: "#fff", textAlign: "center", fontSize: "1.5rem", fontWeight: "bold" }}>
+      <Dialog
+        open={openSEModal}
+        onClose={handleCloseSEModal}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          style: {
+            backgroundColor: "#fff", // White background
+            color: "#000", // Black text
+            border: "1px solid #000", // Black border for contrast
+          },
+        }}
+      >
+        {/* Dialog Title */}
+        <DialogTitle
+          sx={{
+            backgroundColor: "#1E4D2B", // DLSU Green header
+            color: "#fff", // White text
+            textAlign: "center",
+            fontSize: "1.5rem",
+            fontWeight: "bold",
+          }}
+        >
           Select a Social Enterprise
         </DialogTitle>
-        <DialogContent>
+
+        {/* Dialog Content */}
+        <DialogContent
+          sx={{
+            padding: "24px",
+            maxHeight: "70vh", // Ensure it doesn't overflow the screen
+            overflowY: "auto", // Enable scrolling if content is too long
+          }}
+        >
+          {/* Loading Indicator */}
           {isLoading ? (
-            <CircularProgress />
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              height="100%"
+            >
+              <CircularProgress />
+            </Box>
           ) : (
             <List>
               {socialEnterprises.map((se) => (
                 <ListItem key={se.id} disablePadding>
-                  <ListItemButton onClick={() => handleSelectSE(se)}>
-                    <ListItemText primary={se.team_name} secondary={se.program_name} />
+                  <ListItemButton
+                    onClick={() => handleSelectSE(se)}
+                    sx={{
+                      border:
+                        selectedSE?.id === se.id ? "2px solid #000" : "none", // Add black outline for selected SE
+                      borderRadius: "4px", // Rounded corners for better aesthetics
+                      "&:hover": {
+                        backgroundColor: "#f0f0f0", // Hover effect
+                      },
+                    }}
+                  >
+                    <ListItemText
+                      primary={se.team_name}
+                      secondary={se.program_name}
+                      primaryTypographyProps={{
+                        fontWeight:
+                          selectedSE?.id === se.id ? "bold" : "normal", // Bold text for selected SE
+                      }}
+                    />
                   </ListItemButton>
                 </ListItem>
               ))}
             </List>
           )}
 
+          {/* Date Selection Section */}
           {selectedSE && (
-              <>
-                <DialogTitle>Select a Date for Mentoring</DialogTitle>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker value={selectedDate} onChange={(newDate) => setSelectedDate(newDate)} />
-                  </LocalizationProvider>
-              </>
+            <>
+              <Typography
+                variant="h6"
+                sx={{
+                  marginTop: "20px",
+                  marginBottom: "10px",
+                  fontWeight: "bold",
+                }}
+              >
+                Select a Date for Mentoring
+              </Typography>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Select Date"
+                  value={selectedDate}
+                  onChange={(newDate) => setSelectedDate(newDate)}
+                  slotProps={{
+                    textField: {
+                      sx: {
+                        "& .MuiOutlinedInput-root": {
+                          "& fieldset": {
+                            borderColor: "#000", // Black border
+                          },
+                          "&:hover fieldset": {
+                            borderColor: "#000", // Black border on hover
+                          },
+                          "&.Mui-focused fieldset": {
+                            borderColor: "#000", // Black border when focused
+                          },
+                        },
+                        "& .MuiInputBase-input": {
+                          color: "#000", // Black text
+                        },
+                        "& .MuiInputLabel-root": {
+                          color: "#000", // Black label text
+                        },
+                        "& .MuiInputLabel-root.Mui-focused": {
+                          color: "#000", // Black label text when focused
+                        },
+                      },
+                      InputProps: {
+                        sx: {
+                          "& .MuiSvgIcon-root": {
+                            color: "#000", // Black icon
+                          },
+                        },
+                      },
+                    },
+                  }}
+                />
+              </LocalizationProvider>
+            </>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button sx={{ color: "#fff", textAlign: "center", fontWeight: "bold" }} onClick={handleCloseSEModal}>Cancel</Button>
-          <Button sx={{ color: "#fff", textAlign: "center", fontWeight: "bold" }} onClick={handleConfirmDate} disabled={!selectedSE || isLoading}>
+
+        {/* Dialog Actions */}
+        <DialogActions
+          sx={{
+            padding: "16px",
+            borderTop: "1px solid #000", // Separator line
+          }}
+        >
+          <Button
+            onClick={handleCloseSEModal}
+            sx={{
+              color: "#000",
+              border: "1px solid #000",
+              "&:hover": {
+                backgroundColor: "#f0f0f0", // Hover effect
+              },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDate}
+            disabled={!selectedSE || isLoading}
+            sx={{
+              backgroundColor: "#1E4D2B", // DLSU Green button
+              color: "#fff",
+              "&:hover": {
+                backgroundColor: "#145A32", // Darker green on hover
+              },
+            }}
+          >
             {isLoading ? "Updating..." : "Confirm"}
           </Button>
         </DialogActions>
       </Dialog>
+      {/* Snackbar for Success Alert */}
+      <Snackbar
+        open={snackbarOpen} // Controlled by state
+        autoHideDuration={3000} // Automatically close after 3 seconds
+        onClose={() => setSnackbarOpen(false)} // Close on click or timeout
+        anchorOrigin={{ vertical: "top", horizontal: "center" }} // Position of the popup
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity="success"
+          sx={{ width: "100%" }}
+        >
+          Scheduled successfully!
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

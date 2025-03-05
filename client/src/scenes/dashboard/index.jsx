@@ -58,24 +58,31 @@ const Dashboard = () => {
       try {
         setLoading(true); // ✅ Set loading state before fetching
 
-        const response = await fetch("http://localhost:4000/api/dashboard-stats");
+        const response = await fetch(
+          "http://localhost:4000/api/dashboard-stats"
+        );
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
 
         const data = await response.json();
         setStats(data);
-        
+
         // ✅ Calculate percentage increase for unassigned mentors safely
-        if (data.previousUnassignedMentors !== undefined && data.previousUnassignedMentors > 0) {
-          const change = ((data.unassignedMentors - data.previousUnassignedMentors) / data.previousUnassignedMentors) * 100;
+        if (
+          data.previousUnassignedMentors !== undefined &&
+          data.previousUnassignedMentors > 0
+        ) {
+          const change =
+            ((data.unassignedMentors - data.previousUnassignedMentors) /
+              data.previousUnassignedMentors) *
+            100;
           setPercentageIncrease(`${change.toFixed(1)}%`);
         } else if (data.unassignedMentors > 0) {
           setPercentageIncrease("100%"); // First-time assignments
         } else {
           setPercentageIncrease("0%");
         }
-
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
       } finally {
@@ -162,11 +169,20 @@ const Dashboard = () => {
           <StatBox
             title={stats?.mentorWithoutMentorshipCount[0]?.count} // Render dynamic value
             subtitle="Unassigned Mentors"
-            progress={parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)} // Calculate percentage of unassigned mentors
+            progress={
+              parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
+              parseInt(stats?.mentorCountTotal[0]?.count)
+            } // Calculate percentage of unassigned mentors
             increase={`${(
-              (parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)) * 100
+              (parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
+                parseInt(stats?.mentorCountTotal[0]?.count)) *
+              100
             ).toFixed(2)}%`} // Calculate percentage of mentors with mentorship
-            icon={<EmailIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
+            icon={
+              <EmailIcon
+                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+              />
+            }
           />
         </Box>
 
@@ -180,11 +196,20 @@ const Dashboard = () => {
           <StatBox
             title={stats?.mentorWithMentorshipCount[0]?.count}
             subtitle="Assigned Mentors"
-            progress={parseInt(stats?.mentorWithMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)} // Calculate percentage filled
+            progress={
+              parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
+              parseInt(stats?.mentorCountTotal[0]?.count)
+            } // Calculate percentage filled
             increase={`${(
-              (parseInt(stats?.mentorWithMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)) * 100
+              (parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
+                parseInt(stats?.mentorCountTotal[0]?.count)) *
+              100
             ).toFixed(2)}%`} // Calculate percentage of mentors with mentorship
-            icon={<PointOfSaleIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
+            icon={
+              <PointOfSaleIcon
+                sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
+              />
+            }
           />
         </Box>
 
@@ -263,7 +288,7 @@ const Dashboard = () => {
                 color: colors.greenAccent[300],
               },
               "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-              backgroundColor: colors.blueAccent[700] + " !important",
+                backgroundColor: colors.blueAccent[700] + " !important",
               },
               "& .MuiDataGrid-virtualScroller": {
                 backgroundColor: colors.primary[400],

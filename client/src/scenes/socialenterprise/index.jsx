@@ -43,8 +43,6 @@ const SocialEnterprise = () => {
     description: "",
   });
 
-  const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
-  // State for dialogs
   const [openAddSE, setOpenAddSE] = useState(false);
   const [openAddProgram, setOpenAddProgram] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
@@ -52,6 +50,8 @@ const SocialEnterprise = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [showEditButtons, setShowEditButtons] = useState(false);
   const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
+  const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
+  const [isSuccessSEPopupOpen, setIsSuccessSEPopupOpen] = useState(false);
 
   const [sdgs, setSdgs] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -159,6 +159,9 @@ const SocialEnterprise = () => {
         setIsSuccessPopupOpen(true);
         handleCloseAddProgram(); // Close the dialog
         setProgramFormData({ name: "", description: "" }); // Reset form fields
+        setTimeout(() => {
+          window.location.reload();
+        }, 500); // Adjust delay if needed
       }
     } catch (error) {
       console.error("Failed to add program:", error);
@@ -201,11 +204,14 @@ const SocialEnterprise = () => {
         abbr: socialEnterpriseData.abbr || null, // Default to null if not provided
       };
 
-      const response = await fetch("http://localhost:4000/api/social-enterprises", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newSocialEnterprise),
-      });
+      const response = await fetch(
+        "http://localhost:4000/api/social-enterprises",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newSocialEnterprise),
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -213,6 +219,7 @@ const SocialEnterprise = () => {
           "Social Enterprise added successfully with SE ID:",
           data.se_id
         ); // Use se_id
+        setIsSuccessSEPopupOpen(true);
         handleCloseAddSE(); // Close the dialog
         setSocialEnterpriseData({
           name: "",
@@ -223,6 +230,10 @@ const SocialEnterprise = () => {
           selectedStatus: "",
           abbr: "",
         });
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 500); // Adjust delay if needed
       } else {
         console.error("Error adding Social Enterprise");
       }
@@ -707,6 +718,21 @@ const SocialEnterprise = () => {
           </DialogActions>
         </Dialog>
 
+        <Snackbar
+          open={isSuccessSEPopupOpen} // Controlled by state
+          autoHideDuration={3000} // Automatically close after 3 seconds
+          onClose={() => setIsSuccessSEPopupOpen(false)} // Close on click or timeout
+          anchorOrigin={{ vertical: "top", horizontal: "center" }} // Position of the popup
+        >
+          <Alert
+            onClose={() => setIsSuccessSEPopupOpen(false)}
+            severity="success"
+            sx={{ width: "100%" }}
+          >
+            Social Enterprise added successfully!
+          </Alert>
+        </Snackbar>
+
         <Button
           variant="contained"
           sx={{ backgroundColor: colors.greenAccent[500], color: "black" }}
@@ -963,7 +989,7 @@ const SocialEnterprise = () => {
           "& .MuiDataGrid-cell": { borderBottom: "none" },
           "& .name-column--cell": { color: colors.greenAccent[300] },
           "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-              backgroundColor: colors.blueAccent[700] + " !important",
+            backgroundColor: colors.blueAccent[700] + " !important",
           },
           "& .MuiDataGrid-virtualScroller": {
             backgroundColor: colors.primary[400],

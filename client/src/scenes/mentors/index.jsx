@@ -87,7 +87,9 @@ const Mentors = () => {
     const fetchData = async () => {
       try {
         // Fetch active mentors
-        const mentorsResponse = await fetch("http://localhost:4000/api/active-mentors");
+        const mentorsResponse = await fetch(
+          "http://localhost:4000/api/active-mentors"
+        );
         const mentorsData = await mentorsResponse.json();
         setMentors(mentorsData);
 
@@ -164,7 +166,13 @@ const Mentors = () => {
         // Show success popup
         setIsSuccessPopupOpen(true);
 
+        // Fetch latest data
         await fetchLatestMentorships();
+
+        // Refresh the page after a short delay to ensure updates are reflected
+        setTimeout(() => {
+          window.location.reload();
+        }, 500); // Adjust delay if needed
       } else {
         console.error("Error adding mentorship");
       }
@@ -321,11 +329,20 @@ const Mentors = () => {
           <StatBox
             title={stats?.mentorWithoutMentorshipCount[0]?.count} // Render dynamic value
             subtitle="Unassigned Mentors"
-            progress={parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)} // Calculate percentage of unassigned mentors
+            progress={
+              parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
+              parseInt(stats?.mentorCountTotal[0]?.count)
+            } // Calculate percentage of unassigned mentors
             increase={`${(
-              (parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)) * 100
+              (parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
+                parseInt(stats?.mentorCountTotal[0]?.count)) *
+              100
             ).toFixed(2)}%`} // Calculate percentage of mentors with mentorship
-            icon={<EmailIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
+            icon={
+              <EmailIcon
+                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+              />
+            }
           />
         </Box>
 
@@ -339,11 +356,20 @@ const Mentors = () => {
           <StatBox
             title={stats?.mentorWithMentorshipCount[0]?.count}
             subtitle="Assigned Mentors"
-            progress={parseInt(stats?.mentorWithMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)} // Calculate percentage filled
+            progress={
+              parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
+              parseInt(stats?.mentorCountTotal[0]?.count)
+            } // Calculate percentage filled
             increase={`${(
-              (parseInt(stats?.mentorWithMentorshipCount[0]?.count) / parseInt(stats?.mentorCountTotal[0]?.count)) * 100
+              (parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
+                parseInt(stats?.mentorCountTotal[0]?.count)) *
+              100
             ).toFixed(2)}%`} // Calculate percentage of mentors with mentorship
-            icon={<PointOfSaleIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
+            icon={
+              <PointOfSaleIcon
+                sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
+              />
+            }
           />
         </Box>
         <Box
@@ -354,11 +380,17 @@ const Mentors = () => {
           justifyContent="center"
         >
           <StatBox
-            title={`${stats?.mostAssignedMentor[0]?.mentor_firstname} ${stats?.mostAssignedMentor[0]?.mentor_lastname}`} 
+            title={`${stats?.mostAssignedMentor[0]?.mentor_firstname} ${stats?.mostAssignedMentor[0]?.mentor_lastname}`}
             subtitle="Most Assigned"
-            progress={(stats?.mostAssignedMentor[0]?.num_assigned_se / stats?.totalSECount[0]?.count).toFixed(2)} // Calculate progress (assigned SE count / total SE count)
+            progress={(
+              stats?.mostAssignedMentor[0]?.num_assigned_se /
+              stats?.totalSECount[0]?.count
+            ).toFixed(2)} // Calculate progress (assigned SE count / total SE count)
             increase={`${(
-              ((stats?.mostAssignedMentor[0]?.num_assigned_se / stats?.totalSECount[0]?.count) - 0) * 100
+              (stats?.mostAssignedMentor[0]?.num_assigned_se /
+                stats?.totalSECount[0]?.count -
+                0) *
+              100
             ).toFixed(2)}%`} // Adjust to calculate increase
             icon={
               <PersonAddIcon
@@ -374,18 +406,24 @@ const Mentors = () => {
           alignItems="center"
           justifyContent="center"
         >
-        <StatBox
-          title={`${stats?.leastAssignedMentor[0]?.mentor_firstname} ${stats?.leastAssignedMentor[0]?.mentor_lastname}`}
-          subtitle="Least Assigned"
-          progress={(stats?.leastAssignedMentor[0]?.num_assigned_se / stats?.totalSECount[0]?.count).toFixed(2)} // Calculate progress (assigned SE count / total SE count)
-          increase={`${(
-            ((stats?.leastAssignedMentor[0]?.num_assigned_se / stats?.totalSECount[0]?.count) - 0) * 100
-          ).toFixed(2)}%`} // Adjust to calculate increase
-          icon={
-            <TrafficIcon
-              sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
-            />
-          }
+          <StatBox
+            title={`${stats?.leastAssignedMentor[0]?.mentor_firstname} ${stats?.leastAssignedMentor[0]?.mentor_lastname}`}
+            subtitle="Least Assigned"
+            progress={(
+              stats?.leastAssignedMentor[0]?.num_assigned_se /
+              stats?.totalSECount[0]?.count
+            ).toFixed(2)} // Calculate progress (assigned SE count / total SE count)
+            increase={`${(
+              (stats?.leastAssignedMentor[0]?.num_assigned_se /
+                stats?.totalSECount[0]?.count -
+                0) *
+              100
+            ).toFixed(2)}%`} // Adjust to calculate increase
+            icon={
+              <TrafficIcon
+                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+              />
+            }
           />
         </Box>
       </Box>
