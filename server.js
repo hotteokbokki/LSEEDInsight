@@ -390,8 +390,6 @@ async function sendMentorshipMessage(chatId, mentorship_id, mentorship_date) {
   }
 }
 
-
-
 app.get("/api/mentors", async (req, res) => {
   try {
     const mentors = await getAllMentors();
@@ -518,27 +516,53 @@ app.post("/api/mentors", async (req, res) => {
 });
 
 app.put("/api/mentors/:id", async (req, res) => {
+  const { id } = req.params;
+  const updatedMentor = req.body;
+
+  // console.log(" [server] Received update request for Mentor ID:", id);
+
   try {
-    const { id } = req.params;
-    const { mentor_firstName, mentor_lastName, email, contactNum, number_SE_assigned } = req.body;
-
-    const result = await pgDatabase.query(
-      `UPDATE mentors 
-       SET "mentor_firstName" = $1, "mentor_lastName" = $2, "email" = $3, "contactNum" = $4, "number_SE_assigned" = $5
-       WHERE "mentor_id" = $6`,
-      [mentor_firstName, mentor_lastName, email, contactNum, number_SE_assigned, id]
-    );
-
+    // console.log(" [mentors/id] Updating Mentor ID:", id, "\n");
+    const result = await updateMentor(id, updatedMentor);
+    
     if (result.rowCount === 0) {
-      return res.status(404).json({ message: "Mentor not found" });
+      return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({ message: "Mentor updated successfully" });
+    const updatedRow = result.rows[0];
+    // console.log(" [mentors/id] Mentor Updated!", updatedRow, "\n");
+    res.json({ 
+      message: "Mentor updated successfully", 
+      user: { ...updatedRow, id: updatedRow.mentor_id } // ✅ Ensure frontend receives correct data
+    });
   } catch (error) {
-    console.error("Error updating mentor:", error);
+    console.error("Error updating user:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
+async function updateMentor(id, updatedMentor) {
+  const { mentor_firstName, mentor_lastName, email, contactnum, isactive } = updatedMentor; // Modify based on your schema
+  // console.log(" [updateMentor] Processing:", id, "\n");
+  const query = `
+    UPDATE mentors
+    SET mentor_firstname = $1, mentor_lastname = $2, email = $3, contactnum = $4, isactive = $5
+    WHERE mentor_id = $6
+    RETURNING *;
+  `;
+
+  const values = [mentor_firstName, mentor_lastName, email, contactnum, isactive, id];
+
+  try {
+    const result = await pgDatabase.query(query, values);
+    console.log("✅ Update Complete ", id);
+    return result;
+  } catch (error) {
+    console.error("Database update error:", error);
+    throw error;
+  }
+}
+
 
 //API for evaluation
 
@@ -715,6 +739,31 @@ app.get("/api/admin/users", async (req, res) => {
     res.json(users);
   } catch (error) {
     console.error("Error fetching users:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.put("/api/admin/users/:id", async (req, res) => {
+  const { id } = req.params;
+  const updatedUser = req.body;
+
+  console.log("Received update request for user ID:", id);
+
+  try {
+    const result = await updateUser(id, updatedUser);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const updatedRow = result.rows[0];
+
+    res.json({ 
+      message: "User updated successfully", 
+      user: { ...updatedRow, id: updatedRow.user_id } // Ensure `id` exists
+    });
+  } catch (error) {
+    console.error("Error updating user:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
@@ -971,6 +1020,23 @@ app.get("/getPrograms", async (req, res) => {
   } catch (error) {
     console.error("Error fetching programs:", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/getProgramIdByName/:name", async (req, res) => {
+  const { name } = req.params;
+
+  try {
+    const result = await pgDatabase.query("SELECT program_id FROM programs WHERE name = $1", [name]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Program not found" });
+    }
+
+    res.json({ program_id: result.rows[0].program_id });
+  } catch (error) {
+    console.error("Error fetching program_id:", error);
+    res.status(500).json({ message: "Error fetching program_id" });
   }
 });
 
@@ -1929,30 +1995,7 @@ app.get("/getMentorshipDates", async (req, res) => {
   }
 });
 
-app.put("/api/admin/users/:id", async (req, res) => {
-  const { id } = req.params;
-  const updatedUser = req.body;
 
-  console.log("Received update request for user ID:", id);
-
-  try {
-    const result = await updateUser(id, updatedUser);
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const updatedRow = result.rows[0];
-
-    res.json({ 
-      message: "User updated successfully", 
-      user: { ...updatedRow, id: updatedRow.user_id } // Ensure `id` exists
-    });
-  } catch (error) {
-    console.error("Error updating user:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
 
 async function updateUser(id, updatedUser) {
   const { first_name, last_name, roles, isactive, email } = updatedUser; // Modify based on your schema

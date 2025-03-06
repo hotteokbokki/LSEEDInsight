@@ -172,45 +172,6 @@ const AdminPage = () => {
     setSnackbarOpen(false);
   };
 
-  // const handleRoleChange = (userId) => {
-  //   console.log(`Change role for user ID: ${userId}`);
-  //   // Implement role change logic here
-  // };
-
-  // const handleStatusChange = async (userId) => {
-  //   try {
-  //     const user = users.find((user) => user.id === userId);
-  //     const newStatus = !user.isActive;
-
-  //     // Update the status on the frontend
-  //     setUsers((prevUsers) =>
-  //       prevUsers.map((user) =>
-  //         user.id === userId ? { ...user, isActive: newStatus } : user
-  //       )
-  //     );
-
-  //     // Send the updated status to the backend
-  //     const response = await fetch(
-  //       `http://localhost:4000/api/admin/users/${userId}/status`,
-  //       {
-  //         method: "PATCH",
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //         },
-  //         body: JSON.stringify({ isActive: newStatus }),
-  //       }
-  //     );
-
-  //     if (!response.ok) {
-  //       throw new Error("Failed to update user status");
-  //     }
-
-  //     console.log(`User ${userId} status updated to ${newStatus}`);
-  //   } catch (err) {
-  //     console.error(err.message || "An error occurred while updating status.");
-  //   }
-  // };
-
   // Handle row updates
   const handleRowUpdate = async (updatedRow, oldRow) => {
     console.log("Updating user:", updatedRow);

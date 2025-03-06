@@ -41,7 +41,8 @@ const Mentors = () => {
   const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
   const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
   const [stats, setStats] = useState(null);
-
+  const [selectedRowId, setSelectedRowId] = useState(null);
+  
   // Fetch mentors from the database
   useEffect(() => {
     const fetchMentors = async () => {
@@ -55,7 +56,7 @@ const Mentors = () => {
           mentor_lastName: mentor.mentor_lastName,
           mentorName: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
           email: mentor.email,
-          number: mentor.contactNum || "N/A", // ✅ Handle null values
+          contactnum: mentor.contactNum || "N/A", // ✅ Handle null values
           numberOfSEsAssigned: mentor.number_SE_assigned || 0, // ✅ Ensure it's a number
           status: "Active", // Assuming active by default
         }));
@@ -69,6 +70,44 @@ const Mentors = () => {
 
     fetchMentors();
   }, []);
+
+  // Handle row updates
+  const handleMentorRowUpdate = async (params) => {
+    console.log("🔍 handleMentorRowUpdate received:", params);
+
+    // Prepare updated mentor data for the API
+    const updatedMentorData = {
+      mentor_firstName: params.mentor_firstName,
+      mentor_lastName: params.mentor_lastName,
+      email: params.email,
+      contactnum: params.contactnum,
+      isactive: params.status === "Active" ? true : false,
+    };
+    
+    // Check if params contains the expected structure
+    Object.keys(params).forEach((key) => {
+        console.log(`🛠 params[${key}]:`, params[key]);
+    });
+
+    setRows(updatedMentorData);
+
+    try {
+        const response = await axios.put(
+            `http://localhost:4000/api/mentors/${params.id}`,
+            updatedMentorData,
+            { headers: { "Content-Type": "application/json" } }
+        );
+
+        if (response.status === 200) {
+            console.log("✅ Mentor updated successfully:", response.data);
+        } else {
+            throw new Error("Failed to update mentor in database");
+        }
+    } catch (error) {
+        console.error("❌ Error updating mentor:", error);
+    }
+};
+
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -196,43 +235,6 @@ const Mentors = () => {
     }
   };
 
-  // Handle row updates
-  const handleRowEditCommit = async (params) => {
-    const { id, field, value } = params;
-    // Update state first for instant UI feedback
-    const updatedRows = rows.map((row) =>
-      row.id === id ? { ...row, [field]: value } : row
-    );
-    setRows(updatedRows);
-
-    // Find the updated mentor
-    const updatedMentor = updatedRows.find((row) => row.id === id);
-    if (!updatedMentor) return;
-
-    // Send only the necessary fields to update
-    const updatedMentorData = {
-      mentor_id: id,
-      mentor_firstName: updatedMentor.mentor_firstName,
-      mentor_lastName: updatedMentor.mentor_lastName,
-      email: updatedMentor.email,
-      contactNum: updatedMentor.number,
-      number_SE_assigned: updatedMentor.numberOfSEsAssigned,
-    };
-    try {
-      const response = await fetch(`http://localhost:4000/api/mentors/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedMentorData),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to update mentor in database");
-      }
-      console.log("Mentor updated successfully");
-    } catch (error) {
-      console.error("Error updating mentor:", error);
-    }
-  };
-
   // Toggle editing mode
   const toggleEditing = () => {
     setIsEditing(true);
@@ -241,22 +243,33 @@ const Mentors = () => {
 
   const columns = [
     {
-      field: "mentorName",
-      headerName: "Mentor Name",
+      field: "mentor_firstName",
+      headerName: "First Name",
       flex: 1,
       cellClassName: "name-column--cell",
+      renderCell: (params) => `${params.row.mentor_firstName}`,
+      editable: isEditing, // Make editable when in edit mode
+    },
+    {
+      field: "mentor_lastName",
+      headerName: "Last Name",
+      flex: 1,
+      cellClassName: "name-column--cell",
+      renderCell: (params) => `${params.row.mentor_lastName}`,
       editable: isEditing, // Make editable when in edit mode
     },
     {
       field: "email",
       headerName: "Email",
       flex: 1,
+      renderCell: (params) => `${params.row.email}`,
       editable: isEditing, // Make editable when in edit mode
     },
     {
-      field: "number",
+      field: "contactnum",
       headerName: "Contact Number",
       flex: 1,
+      renderCell: (params) => `${params.row.contactnum}`,
       editable: isEditing, // Make editable when in edit mode
     },
     {
@@ -491,10 +504,21 @@ const Mentors = () => {
                     backgroundColor: colors.blueAccent[600],
                   },
                 }}
-                onClick={() => {
-                  setIsEditing(false); // Disable editing mode
-                  setShowEditButtons(false);
-                  setIsSuccessEditPopupOpen(true);
+                onClick={async () => {
+                  try {
+                    const selectedRow = rows.find((row) => row.id === selectedRowId); // Replace `selectedRowId`
+                    if (selectedRow) {
+                      handleMentorRowUpdate({ id: selectedRow.id, field: "email", value: selectedRow.email }); 
+                    } else {
+                      console.error("No mentor selected for update");
+                    }
+                    setIsEditing(false);
+                    setShowEditButtons(false);
+                    setIsSuccessEditPopupOpen(true);
+                  } catch (error) {
+                    console.error("Failed to update mentor:", error);
+                    alert("Failed to save changes. Please try again.");
+                  }
                   setTimeout(() => {
                     window.location.reload();
                   }, 500); // Adjust delay if needed
@@ -770,7 +794,11 @@ const Mentors = () => {
         <DataGrid
           rows={rows}
           columns={columns}
-          onCellEditCommit={handleRowEditCommit}
+          processRowUpdate={(params) => {
+            console.log("🚨 processRowUpdate params:", params, "\n");
+            handleMentorRowUpdate(params);
+            return params;
+          }}
           editMode="row"
         />
       </Box>
