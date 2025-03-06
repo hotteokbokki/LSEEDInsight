@@ -29,7 +29,8 @@ const AssessSEPage = () => {
   const [currentSEIndex, setCurrentSEIndex] = useState(0); // Index of the current SE being evaluated
   const [evaluations, setEvaluations] = useState({}); // Store evaluations for all SEs
   const [error, setError] = useState("");
-  const [isLoadingSocialEnterprises, setIsLoadingSocialEnterprises] = useState(false);
+  const [isLoadingSocialEnterprises, setIsLoadingSocialEnterprises] =
+    useState(false);
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
   const [evaluationsData, setEvaluationsData] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
@@ -56,17 +57,20 @@ const AssessSEPage = () => {
       console.error("❌ ERROR: No programs selected!");
       return;
     }
-  
+
     try {
       console.log("📤 Submitting evaluations for programs:", selectedPrograms);
-  
+
       await axios.post("http://localhost:4000/evaluate-mentor", {
         programs: selectedPrograms, // Send selected program IDs
       });
-  
+
       console.log("✅ Evaluation Submitted Successfully!");
     } catch (error) {
-      console.error("❌ Error submitting mentor evaluation:", error.response?.data || error.message);
+      console.error(
+        "❌ Error submitting mentor evaluation:",
+        error.response?.data || error.message
+      );
     } finally {
       handleCloseMentorshipDialog();
     }
@@ -625,11 +629,14 @@ const AssessSEPage = () => {
             <Button
               onClick={handleSubmitEvaluations}
               variant="contained"
+              disabled={selectedPrograms.length === 0}
               sx={{
-                backgroundColor: "#1E4D2B",
+                backgroundColor:
+                  selectedPrograms.length > 0 ? "#1E4D2B" : "#A0A0A0", // Change color if disabled
                 color: "#fff",
                 "&:hover": {
-                  backgroundColor: "#1E4D2B",
+                  backgroundColor:
+                    selectedPrograms.length > 0 ? "#145A32" : "#A0A0A0",
                 },
               }}
             >
@@ -732,11 +739,13 @@ const AssessSEPage = () => {
             <Button
               onClick={handleStartEvaluation}
               variant="contained"
+              disabled={selectedSEs.length === 0} // 🔥 Disable if no SE is selected
               sx={{
-                backgroundColor: "#1E4D2B",
+                backgroundColor: selectedSEs.length > 0 ? "#1E4D2B" : "#A0A0A0", // Change color if disabled
                 color: "#fff",
                 "&:hover": {
-                  backgroundColor: "#1E4D2B",
+                  backgroundColor:
+                    selectedSEs.length > 0 ? "#145A32" : "#A0A0A0",
                 },
               }}
             >

@@ -22,6 +22,10 @@ const AdminPage = () => {
   const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
   const [showEditButtons, setShowEditButtons] = useState(false);
 
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [selectedUser, setSelectedUser] = useState(null); // Track selected user
+
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -65,16 +69,14 @@ const AdminPage = () => {
       field: "first_name",
       headerName: "First Name",
       flex: 1,
-      renderCell: (params) =>
-        `${params.row.first_name}`,
+      renderCell: (params) => `${params.row.first_name}`,
       editable: isEditing, // Make editable when in edit mode
     },
     {
       field: "last_name",
       headerName: "Last Name",
       flex: 1,
-      renderCell: (params) =>
-        `${params.row.last_name}`,
+      renderCell: (params) => `${params.row.last_name}`,
       editable: isEditing, // Make editable when in edit mode
     },
     {
@@ -92,7 +94,11 @@ const AdminPage = () => {
         <Select
           value={params.value || ""}
           onChange={(e) =>
-            params.api.setEditCellValue({ id: params.id, field: params.field, value: e.target.value })
+            params.api.setEditCellValue({
+              id: params.id,
+              field: params.field,
+              value: e.target.value,
+            })
           }
           fullWidth
         >
@@ -152,8 +158,18 @@ const AdminPage = () => {
   ];
 
   const toggleEditing = () => {
-    setIsEditing(true);
-    setShowEditButtons(true); // Toggle button visibility
+    if (!selectedUser || selectedUser.isactive) {
+      setIsEditing(true);
+      setShowEditButtons(true);
+    } else {
+      setSnackbarMessage("Account needs to be activated first.");
+      setSnackbarOpen(true);
+    }
+  };
+
+  // Close Snackbar Function
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
   };
 
   // const handleRoleChange = (userId) => {
@@ -198,7 +214,7 @@ const AdminPage = () => {
   // Handle row updates
   const handleRowUpdate = async (updatedRow, oldRow) => {
     console.log("Updating user:", updatedRow);
-  
+
     try {
       const response = await fetch(
         `http://localhost:4000/api/admin/users/${updatedRow.user_id}`, // ✅ Use `user_id`
@@ -208,11 +224,13 @@ const AdminPage = () => {
           body: JSON.stringify(updatedRow),
         }
       );
-  
+
       if (!response.ok) {
-        throw new Error(`Failed to update user: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to update user: ${response.status} ${response.statusText}`
+        );
       }
-  
+
       const { user: updatedUser } = await response.json();
       console.log("User updated successfully:", updatedUser);
 
@@ -221,7 +239,7 @@ const AdminPage = () => {
           user.user_id === updatedUser.user_id ? updatedUser : user
         )
       );
-  
+
       return updatedUser; // Ensure the DataGrid updates immediately
     } catch (error) {
       console.error("Error updating user:", error);
@@ -267,6 +285,9 @@ const AdminPage = () => {
               onClick={() => {
                 setIsEditing(false); // Disable editing mode
                 setShowEditButtons(false);
+                setTimeout(() => {
+                  window.location.reload();
+                }, 500); // Adjust delay if needed
               }}
             >
               Cancel
@@ -285,6 +306,9 @@ const AdminPage = () => {
                 setIsEditing(false); // Disable editing mode
                 setShowEditButtons(false);
                 setIsSuccessEditPopupOpen(true);
+                setTimeout(() => {
+                  window.location.reload();
+                }, 500); // Adjust delay if needed
               }}
             >
               Save Changes
@@ -340,17 +364,36 @@ const AdminPage = () => {
           }}
         >
           <DataGrid
-            rows={users.map(user => ({
+            rows={users.map((user) => ({
               ...user,
-              id: user.user_id // ✅ Ensure `id` is assigned properly
+              id: user.user_id, // ✅ Ensure `id` is assigned properly
             }))}
             columns={columns}
             pageSize={5}
             rowsPerPageOptions={[5]}
             getRowId={(row) => row.user_id} // ✅ Use `user_id` as row ID
             processRowUpdate={handleRowUpdate}
-            onProcessRowUpdateError={(error) => console.error("Update failed:", error)}
+            onProcessRowUpdateError={(error) =>
+              console.error("Update failed:", error)
+            }
+            onRowClick={(params) => setSelectedUser(params.row)}
           />
+
+          {/* Snackbar for error messages */}
+          <Snackbar
+            open={snackbarOpen}
+            autoHideDuration={3000}
+            onClose={handleSnackbarClose}
+            anchorOrigin={{ vertical: "top", horizontal: "center" }}
+          >
+            <Alert
+              onClose={handleSnackbarClose}
+              severity="warning"
+              sx={{ width: "100%" }}
+            >
+              {snackbarMessage}
+            </Alert>
+          </Snackbar>
         </Box>
       </Box>
     </Box>

@@ -474,6 +474,9 @@ const Mentors = () => {
                 onClick={() => {
                   setIsEditing(false); // Disable editing mode
                   setShowEditButtons(false);
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 500); // Adjust delay if needed
                 }}
               >
                 Cancel
@@ -492,6 +495,9 @@ const Mentors = () => {
                   setIsEditing(false); // Disable editing mode
                   setShowEditButtons(false);
                   setIsSuccessEditPopupOpen(true);
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 500); // Adjust delay if needed
                 }}
               >
                 Save Changes
@@ -691,14 +697,27 @@ const Mentors = () => {
           >
             Cancel
           </Button>
+
           <Button
             onClick={handleSubmit} // Calls the updated handleSubmit function
             variant="contained"
+            disabled={
+              !mentorshipData.selectedMentor ||
+              !mentorshipData.selectedSocialEnterprise
+            } // 🔥 Disables if either field is empty
             sx={{
-              backgroundColor: "#1E4D2B", // DLSU Green button
+              backgroundColor:
+                mentorshipData.selectedMentor &&
+                mentorshipData.selectedSocialEnterprise
+                  ? "#1E4D2B"
+                  : "#A0A0A0", // Gray when disabled
               color: "#fff",
               "&:hover": {
-                backgroundColor: "#145A32", // Darker green on hover
+                backgroundColor:
+                  mentorshipData.selectedMentor &&
+                  mentorshipData.selectedSocialEnterprise
+                    ? "#145A32"
+                    : "#A0A0A0", // Keep gray on hover if disabled
               },
             }}
           >

@@ -180,36 +180,47 @@ const Scheduling = ({ userRole }) => {
   return (
     <Box m="20px">
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Header
-          title="Scheduling Matrix"
-          subtitle={
-            user.role === "LSEED"
-              ? "See the schedule of the mentors"
-              : "Find the Appropriate Schedule"
-          }
-        />
-      </Box>
+      <Header
+        title="Scheduling Matrix"
+        subtitle={
+          user.role === "LSEED"
+            ? "See the schedule of the mentors"
+            : "Find the Appropriate Schedule"
+        }
+      />
+
       {user.role === "Mentor" ? (
-        <Box display="flex" justifyContent="center" mt={2}>
-          <Button
-            variant="contained"
-            sx={{ backgroundColor: "#1976D2", color: "white" }}
-            onClick={handleRedirect}
+        <Box
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          gap={4}
+          mt={2}
+        >
+          <Box
+            width="80%"
+            p={3}
+            bgcolor={colors.primary[400]}
+            display="flex"
+            justifyContent="space-between"
           >
-            Open LSEED Calendar
-          </Button>
-          <Button
-            variant="contained"
-            sx={{
-              backgroundColor: "#4caf50",
-              color: "white",
-              marginLeft: "10px",
-            }}
-            onClick={handleOpenSEModal}
-          >
-            Schedule a Mentoring Session
-          </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              sx={{ fontSize: "20px", padding: "20px", width: "48%" }}
+              onClick={handleRedirect}
+            >
+              Open LSEED Calendar
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              sx={{ fontSize: "20px", padding: "20px", width: "48%" }}
+              onClick={handleOpenSEModal}
+            >
+              Schedule a Mentoring Session
+            </Button>
+          </Box>
         </Box>
       ) : (
         <Box mt={2}>
@@ -219,11 +230,19 @@ const Scheduling = ({ userRole }) => {
                 <ListItemText primary={mentor.name} />
                 <Button
                   variant="contained"
+                  color={mentor.calendarlink ? "secondary" : "inherit"}
                   sx={{
+                    fontSize: "16px",
+                    padding: "10px",
                     backgroundColor: mentor.calendarlink
-                      ? "#1976D2"
+                      ? colors.primary[500]
                       : "#B0B0B0",
                     color: "white",
+                    "&:hover": {
+                      backgroundColor: mentor.calendarlink
+                        ? colors.primary[700]
+                        : "#A0A0A0",
+                    },
                   }}
                   onClick={() =>
                     mentor.calendarlink &&

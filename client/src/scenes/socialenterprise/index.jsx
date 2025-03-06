@@ -705,11 +705,33 @@ const SocialEnterprise = () => {
             <Button
               onClick={handleSubmit}
               variant="contained"
+              disabled={
+                !socialEnterpriseData.name ||
+                !socialEnterpriseData.selectedSDG ||
+                !socialEnterpriseData.contact ||
+                !socialEnterpriseData.selectedProgram ||
+                !socialEnterpriseData.selectedStatus ||
+                !socialEnterpriseData.abbr
+              }
               sx={{
-                backgroundColor: "#1E4D2B", // DLSU Green button
+                backgroundColor:
+                  socialEnterpriseData.name &&
+                  socialEnterpriseData.selectedSDG &&
+                  socialEnterpriseData.contact &&
+                  socialEnterpriseData.selectedProgram &&
+                  socialEnterpriseData.selectedStatus
+                    ? "#1E4D2B"
+                    : "#A0A0A0", // Change color if disabled
                 color: "#fff",
                 "&:hover": {
-                  backgroundColor: "#145A32", // Darker green on hover
+                  backgroundColor:
+                    socialEnterpriseData.name &&
+                    socialEnterpriseData.selectedSDG &&
+                    socialEnterpriseData.contact &&
+                    socialEnterpriseData.selectedProgram &&
+                    socialEnterpriseData.selectedStatus
+                      ? "#145A32"
+                      : "#A0A0A0",
                 },
               }}
             >
@@ -881,12 +903,19 @@ const SocialEnterprise = () => {
             <Button
               onClick={handleAddProgram}
               variant="contained"
+              disabled={!programFormData.name || !programFormData.description} // 🔥 Disables if name or description is empty
               sx={{
-                backgroundColor: "#1E4D2B", // DLSU Green button
+                backgroundColor:
+                  programFormData.name && programFormData.description
+                    ? "#1E4D2B"
+                    : "#A0A0A0", // Gray if disabled
                 color: "#fff",
                 borderRadius: "4px", // Rounded corners
                 "&:hover": {
-                  backgroundColor: "#145A32", // Darker green on hover
+                  backgroundColor:
+                    programFormData.name && programFormData.description
+                      ? "#145A32"
+                      : "#A0A0A0", // Keep gray on hover when disabled
                 },
               }}
             >
@@ -941,6 +970,9 @@ const SocialEnterprise = () => {
                 onClick={() => {
                   setIsEditing(false); // Disable editing mode
                   setShowEditButtons(false);
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 500); // Adjust delay if needed
                 }}
               >
                 Cancel
@@ -959,6 +991,9 @@ const SocialEnterprise = () => {
                   setIsEditing(false); // Disable editing mode
                   setShowEditButtons(false);
                   setIsSuccessEditPopupOpen(true);
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 500); // Adjust delay if needed
                 }}
               >
                 Save Changes

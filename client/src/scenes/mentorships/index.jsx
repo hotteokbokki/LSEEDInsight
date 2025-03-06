@@ -88,8 +88,8 @@ const Mentorships = () => {
         const mentor_id = userSession.id; // Replace with actual mentor ID
 
         const response = await axios.get(
-        "http://localhost:4000/getAllSocialEnterpriseswithMentorID",
-        { params: { mentor_id } } // Pass mentor_id as a query parameter
+          "http://localhost:4000/getAllSocialEnterpriseswithMentorID",
+          { params: { mentor_id } } // Pass mentor_id as a query parameter
         );
 
         const updatedSocialEnterprises = response.data.map((se) => ({
@@ -206,11 +206,14 @@ const Mentorships = () => {
         abbr: socialEnterpriseData.abbr || null, // Default to null if not provided
       };
 
-      const response = await fetch("http://localhost:4000/api/social-enterprises", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newSocialEnterprise),
-      });
+      const response = await fetch(
+        "http://localhost:4000/api/social-enterprises",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newSocialEnterprise),
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -312,13 +315,15 @@ const Mentorships = () => {
         {/* ✅ Embed the SEPerformanceChart component here */}
       </Box>
       <Box display="flex" gap="10px" mt="20px">
-        <Button
-          variant="contained"
-          sx={{ backgroundColor: colors.greenAccent[500], color: "black" }}
-          onClick={handleOpenAddSE}
-        >
-          Add SE
-        </Button>
+        {userSession.role !== "Mentor" && (
+          <Button
+            variant="contained"
+            sx={{ backgroundColor: colors.greenAccent[500], color: "black" }}
+            onClick={handleOpenAddSE}
+          >
+            Add SE
+          </Button>
+        )}
         <Dialog
           open={openAddSE}
           onClose={handleCloseAddSE}
@@ -725,15 +730,15 @@ const Mentorships = () => {
             </Button>
           </DialogActions>
         </Dialog>
-
-        <Button
-          variant="contained"
-          sx={{ backgroundColor: colors.greenAccent[500], color: "black" }}
-          onClick={handleOpenAddProgram}
-        >
-          Add Program
-        </Button>
-
+        {userSession.role !== "Mentor" && (
+          <Button
+            variant="contained"
+            sx={{ backgroundColor: colors.greenAccent[500], color: "black" }}
+            onClick={handleOpenAddProgram}
+          >
+            Add Program
+          </Button>
+        )}
         <Dialog
           open={openAddProgram}
           onClose={handleCloseAddProgram}
@@ -904,7 +909,7 @@ const Mentorships = () => {
         </Snackbar>
 
         <Box display="flex" alignItems="center" gap={2}>
-          {!showEditButtons && (
+          {userSession.role !== "Mentor" && !showEditButtons && (
             <Button
               variant="contained"
               sx={{
@@ -982,7 +987,7 @@ const Mentorships = () => {
           "& .MuiDataGrid-cell": { borderBottom: "none" },
           "& .name-column--cell": { color: colors.greenAccent[300] },
           "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-              backgroundColor: colors.blueAccent[700] + " !important",
+            backgroundColor: colors.blueAccent[700] + " !important",
           },
           "& .MuiDataGrid-virtualScroller": {
             backgroundColor: colors.primary[400],
