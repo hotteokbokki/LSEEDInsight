@@ -52,7 +52,7 @@ const PieChart = ({ data, isDashboard = false }) => {
             boxShadow: "0px 2px 10px rgba(0, 0, 0, 0.1)",
           }}
         >
-          <strong>{datum.id}</strong>
+          <strong>{datum.data.comment}</strong>
           <div>Percentage: {datum.label}</div> {/* ✅ Shows only category & percentage */}
         </div>
       )}

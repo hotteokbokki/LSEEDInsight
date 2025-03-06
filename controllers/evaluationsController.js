@@ -215,31 +215,51 @@ exports.getPerformanceTrendBySEID = async (se_id) => {
 exports.getCommonChallengesBySEID = async (se_id) => {
     try {
         const query = `
-            WITH top_comments AS (
-                SELECT 
-                    esc.comment, 
-                    ec.category_name AS category,
-                    COUNT(esc.selected_comment_id) AS count
-                FROM evaluations e
-                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                JOIN evaluation_selected_comments esc ON ec.evaluation_category_id = esc.evaluation_category_id
-                WHERE e.se_id = $1 AND e.evaluation_type = 'Social Enterprise'
-                AND ec.rating <= 3  
-                GROUP BY esc.comment, ec.category_name
-                ORDER BY count DESC
-                LIMIT 5
-            ),
-            total_top AS (
-                SELECT SUM(count) AS top_total FROM top_comments
-            )
-            SELECT 
-                tc.comment, 
-                tc.category, 
-                tc.count,
-                ROUND(tc.count * 100.0 / tt.top_total, 0) AS percentage
-            FROM top_comments tc
-            CROSS JOIN total_top tt
-            ORDER BY tc.count DESC;
+WITH low_rated_categories AS (
+    SELECT 
+        ec.category_name AS category,
+        ec.rating,
+        COUNT(ec.evaluation_category_id) AS count
+    FROM evaluations e
+    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+    WHERE e.se_id = $1  -- ✅ Using parameterized input
+    AND e.evaluation_type = 'Social Enterprise'
+    AND ec.rating <= 2  
+    GROUP BY ec.category_name, ec.rating
+),
+ranked_low_ratings AS (
+    SELECT 
+        category, 
+        rating, 
+        count,
+        RANK() OVER (PARTITION BY category ORDER BY count DESC, rating ASC) AS rank
+    FROM low_rated_categories
+),
+top_low_rated AS (
+    SELECT 
+        category,
+        rating,
+        count
+    FROM ranked_low_ratings
+    WHERE rank = 1  -- ✅ Select only the most common low rating per category
+),
+total_top AS (
+    SELECT SUM(count) AS top_total FROM top_low_rated
+),
+final_result AS (
+    SELECT 
+        tlr.category, 
+        tlr.rating,
+        esc.comment,  -- ✅ Fetch associated comment
+        tlr.count,
+        ROUND(tlr.count * 100.0 / tt.top_total, 0) AS percentage
+    FROM top_low_rated tlr
+    CROSS JOIN total_top tt
+    LEFT JOIN evaluation_categories ec ON tlr.category = ec.category_name AND tlr.rating = ec.rating
+    LEFT JOIN evaluation_selected_comments esc ON ec.evaluation_category_id = esc.evaluation_category_id
+)
+SELECT DISTINCT * FROM final_result
+ORDER BY count DESC;
         `;
         const values = [se_id];
 
@@ -251,39 +271,41 @@ exports.getCommonChallengesBySEID = async (se_id) => {
     }
 };
 
-exports.getAllSECommonChallenges = async () => {
+exports.getStatsForHeatmap = async () => {
     try {
         const query = `
-            WITH top_comments AS (
+            WITH recent_evaluations AS (
                 SELECT 
-                    esc.comment, 
-                    ec.category_name AS category,
-                    COUNT(esc.selected_comment_id) AS count
-                FROM evaluations e
-                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                JOIN evaluation_selected_comments esc ON ec.evaluation_category_id = esc.evaluation_category_id
-                WHERE ec.rating <= 3 AND e.evaluation_type = 'Social Enterprise'
-                GROUP BY esc.comment, ec.category_name
-                ORDER BY count DESC
-                LIMIT 5
-            ),
-            total_top AS (
-                SELECT SUM(count) AS top_total FROM top_comments
+                    e.se_id,  
+                    ec.category_name,
+                    AVG(ec.rating) AS avg_rating
+                FROM public.evaluation_categories ec
+                JOIN public.evaluations e ON ec.evaluation_id = e.evaluation_id
+                WHERE 
+                    e.created_at >= CURRENT_DATE - INTERVAL '3 months' 
+                    AND e.evaluation_type = 'Social Enterprise'
+                GROUP BY e.se_id, ec.category_name
             )
             SELECT 
-                tc.comment, 
-                tc.category, 
-                tc.count,
-                ROUND(tc.count * 100.0 / tt.top_total, 2) AS percentage
-            FROM top_comments tc
-            CROSS JOIN total_top tt
-            ORDER BY tc.count DESC;
+                ROW_NUMBER() OVER () AS row_id,  -- ✅ Unique row ID
+                se.se_id,
+                se.team_name,
+                se.abbr,  -- ✅ Use the existing abbreviation from the database
+                jsonb_object_agg(re.category_name, re.avg_rating) AS category_ratings  -- ✅ Pivot into JSON
+            FROM recent_evaluations re
+            JOIN public.socialenterprises se ON re.se_id = se.se_id
+            GROUP BY se.se_id, se.team_name, se.abbr
+            ORDER BY se.team_name;
         `;
         const result = await pgDatabase.query(query);
 
-        return result.rows;
+        return result.rows.map(row => ({
+            team_name: row.team_name.trim(),
+            abbr: row.abbr ? row.abbr.trim() : row.team_name.trim(), // ✅ Include abbreviation
+            ...row.category_ratings // Expand JSON into object properties
+        }));
     } catch (error) {
-        console.error("❌ Error fetching top SE performance:", error);
+        console.error("❌ Error fetching heatmap data:", error);
         return [];
     }
 };

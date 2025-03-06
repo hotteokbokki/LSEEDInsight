@@ -18,7 +18,7 @@ const { getAllSDG } = require("./controllers/sdgController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getMentorshipsByMentorId, getMentorBySEID, getSEWithMentors, getPreviousSEWithMentors, getMentorshipCount } = require("./controllers/mentorshipsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
-const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID, getAllSECommonChallenges, getAverageScoreForAllSEPerCategory, getImprovementScorePerMonthAnnually, getImprovementScoreOverallAnnually, getGrowthScoreOverallAnually, getMonthlyGrowthDetails, getSELeaderboards, updateAcknowledgeEvaluation, getTopSEPerformanceByMentorships, getEvaluationsBySEID } = require("./controllers/evaluationsController.js");
+const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID, getAverageScoreForAllSEPerCategory, getImprovementScorePerMonthAnnually, getImprovementScoreOverallAnnually, getGrowthScoreOverallAnually, getMonthlyGrowthDetails, getSELeaderboards, updateAcknowledgeEvaluation, getTopSEPerformanceByMentorships, getEvaluationsBySEID, getStatsForHeatmap } = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
@@ -470,7 +470,7 @@ app.get("/api/analytics-stats", async (req, res) => {
     // ✅ Get the latest cumulative growth value
     const cumulativeGrowthValue = growthScore.length > 0 ? parseFloat(growthScore[growthScore.length - 1].cumulative_growth || 0) : 0;
 
-    const allCommonChallenges = await getAllSECommonChallenges();
+    const heatmapStats = await getStatsForHeatmap();
     const categoricalScoreForAllSE = await getAverageScoreForAllSEPerCategory();
     const improvementScore = await getImprovementScorePerMonthAnnually();
     const evaluationScoreDistribution = await getEvaluationScoreDistribution();
@@ -482,7 +482,7 @@ app.get("/api/analytics-stats", async (req, res) => {
       previousMonthSECount: parseInt(previousTotalSocialEnterprises[0].count),
       withMentorship: currentWithMentorshipCount,
       withoutMentorship: currentWithoutMentorshipCount,
-      allCommonChallenges,
+      heatmapStats,
       categoricalScoreForAllSE,
       improvementScore,
       growthScoreTotal: currentGrowthScoreValue.toFixed(2), 
@@ -1103,9 +1103,7 @@ app.post("/api/social-enterprises", async (req, res) => {
 //For Testing only
 app.get("/test-api", async (req, res) => {
   try {
-    const { mentor_id } = req.query;
-
-    const result = await getAllSocialEnterpriseswithMentorID(mentor_id)
+    const result = await getStatsForHeatmap()
 
     res.json(result);
   } catch (error) {

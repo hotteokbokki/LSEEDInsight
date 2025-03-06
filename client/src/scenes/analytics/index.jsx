@@ -10,6 +10,7 @@ import EmailIcon from "@mui/icons-material/Email";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import TrafficIcon from "@mui/icons-material/Traffic";
+import HeatmapWrapper from "../../components/MyHeatMap";
 import { tokens } from "../../theme";
 import { useEffect, useState } from "react";
 
@@ -23,9 +24,16 @@ const Analytics = () => {
       try {
         const response = await fetch(`http://localhost:4000/api/analytics-stats`);
         const data = await response.json();
+        
+        // Validate data structure
+        if (!data?.heatmapStats || !Array.isArray(data.heatmapStats)) {
+          throw new Error("Invalid heatmapStats format");
+        }
+        
         setStats(data);
       } catch (error) {
         console.error("Error fetching analytics stats:", error);
+        setStats({ heatmapStats: [] }); // Fallback to empty array
       }
     };
     fetchStats();
@@ -99,39 +107,14 @@ const Analytics = () => {
 
       {/* Row 2 - Horizontal Bar Charts */}
       <Box display="flex" flexWrap="wrap" gap="20px" justifyContent="space-between" mt="20px">
-        
-        {/* Common Challenges */}
-        <Box flex="1 1 48%" height="300px" backgroundColor={colors.primary[400]} p="20px">
-          <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
-            {stats.allCommonChallenges && stats.allCommonChallenges.length > 0 ? "Common Challenges" : ""}
-            {/* ✅ Show title only if data exists */}
-          </Typography>
-          <Box height="100%" display="flex" justifyContent="center" alignItems="center">
-            {stats.allCommonChallenges && stats.allCommonChallenges.length > 0 ? (
-              <HorizontalBarChart 
-                data={stats.allCommonChallenges.map(challenge => ({
-                  comment: challenge.comment, 
-                  category: challenge.category, 
-                  percentage: parseFloat(challenge.percentage) || 0
-                }))} 
-                type="allCommonChallenges"
-              />
-            ) : (
-              <Typography variant="h6" color={colors.grey[300]} textAlign="center">
-                No Available Data
-              </Typography>
-            )}
-          </Box>
-        </Box>
 
         {/* Overall SE Performance */}
-        <Box flex="1 1 48%" height="300px" backgroundColor={colors.primary[400]} p="20px">
+        <Box flex="1 1 100%" height="300px" backgroundColor={colors.primary[400]} p="20px">
           <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
-            {stats.categoricalScoreForAllSE && stats.categoricalScoreForAllSE.length > 0 ? "Overall SE Performance" : ""}
-            {/* ✅ Show title only if data exists */}
+            {stats.categoricalScoreForAllSE?.length > 0 ? "Overall SE Performance" : ""}
           </Typography>
           <Box height="100%" display="flex" justifyContent="center" alignItems="center">
-            {stats.categoricalScoreForAllSE && stats.categoricalScoreForAllSE.length > 0 ? (
+            {stats.categoricalScoreForAllSE?.length > 0 ? (
               <HorizontalBarChart 
                 data={stats.categoricalScoreForAllSE.map(score => ({
                   category: score.category, 
@@ -149,30 +132,64 @@ const Analytics = () => {
 
       </Box>
 
-      {/* Row 3 - Leaderboard */}
+      {/* Row 3 - Social Enterprise Performance Heatmap
       <Box display="flex" flexWrap="wrap" gap="20px" justifyContent="space-between" mt="20px">
-        <Box flex="1 1 100%" height="300px" backgroundColor={colors.primary[400]} p="20px">
-          <Typography variant="h4" fontWeight="bold" color={colors.greenAccent[500]}>
-            {stats?.leaderboardData?.length > 0 ? "Leaderboard - Ratings" : ""}
-            {/* ✅ Show title only if data exists */}
+
+        <Box flex="1 1 100%" minHeight="400px" backgroundColor={colors.primary[400]} p="20px">
+          <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
+            {stats?.heatmapStats?.length > 0 ? "Social Enterprise Performance Heatmap" : ""}
           </Typography>
-          <Box height="100%">
-            {stats?.leaderboardData ? (
-              stats.leaderboardData.length > 0 ? (
-                <LeaderboardChart data={stats.leaderboardData} />
-              ) : (
-                <Typography variant="h6" color={colors.grey[300]} textAlign="center">
-                  Leaderboards Unavailable
-                </Typography>
-              )
+          <Box flex="1" display="flex" justifyContent="center" alignItems="center">
+            {stats?.heatmapStats?.length > 0 ? (
+              <Box width="100%" height="100%">
+                <HeatmapChart heatmapData={Array.isArray(stats?.heatmapStats) ? stats.heatmapStats : []} />
+              </Box>
             ) : (
-              <Typography variant="h6" color="red" textAlign="center">
-                Error loading data
+              <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                No Available Data
               </Typography>
             )}
           </Box>
         </Box>
+
+      </Box> */}
+
+{/* Main container to ensure sections don't overlap */}
+<Box display="flex" flexDirection="column" gap="20px" mt="20px">
+
+  {/* Row 3 - Social Enterprise Performance Heatmap */}
+  <Box width="100%" minHeight="400px" minWidth="300px" p={2} backgroundColor={colors.primary[400]}>
+  <Typography variant="h4" fontWeight="bold" color={colors.greenAccent[500]}>
+        Heat Map
+      </Typography>
+    <HeatmapWrapper />
+  </Box>
+
+  {/* Row 4 - Leaderboard */}
+  <Box display="flex" flexDirection="column" gap="20px">
+    <Box width="100%" height="300px" backgroundColor={colors.primary[400]} p="20px">
+      <Typography variant="h4" fontWeight="bold" color={colors.greenAccent[500]}>
+        {stats?.leaderboardData?.length > 0 ? "Leaderboard - Ratings" : ""}
+      </Typography>
+      <Box height="100%">
+        {stats?.leaderboardData ? (
+          stats.leaderboardData.length > 0 ? (
+            <LeaderboardChart data={stats.leaderboardData} />
+          ) : (
+            <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+              Leaderboards Unavailable
+            </Typography>
+          )
+        ) : (
+          <Typography variant="h6" color="red" textAlign="center">
+            Error loading data
+          </Typography>
+        )}
       </Box>
+    </Box>
+  </Box>
+
+</Box>
 
       {/* Row 4 - Line & Scatter Charts */}
       <Box display="flex" flexWrap="wrap" gap="20px" justifyContent="space-between" mt="20px">

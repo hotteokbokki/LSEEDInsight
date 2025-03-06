@@ -55,10 +55,6 @@ const SEAnalytics = () => {
 
         setSocialEnterprises(formattedData);
 
-        // Debugging
-        console.log("Fetched Social Enterprises:", formattedData);
-        console.log("URL ID:", id);
-
         // Set the initial selected SE if `id` is provided
         if (id) {
           const initialSE = formattedData.find((se) => se.id === id);
@@ -99,12 +95,25 @@ const SEAnalytics = () => {
           `http://localhost:4000/api/common-challenges/${selectedSEId}`
         );
         const rawPieData = await pieResponse.json();
-        const formattedPieData = rawPieData.map((item) => ({
-          id: item.comment || "Unknown", // Ensure it's a string
-          label: item.percentage && !isNaN(item.percentage) ? `${parseInt(item.percentage, 10)}%` : "0%",
-          value: item.count && !isNaN(item.count) ? parseInt(item.count, 10) : 0, // Ensure value is a number
-          category: item.category || "Unknown",
-        }));
+
+        // ✅ Ensure unique IDs and remove duplicates by category
+        const formattedPieData = Array.from(
+          new Map(
+            rawPieData.map((item, index) => [
+              item.category || `Unknown-${index}`, // ✅ Unique key per category
+              {
+                id: item.category || `Unknown-${index}`, // ✅ Category as the unique ID
+                label:
+                  item.percentage && !isNaN(item.percentage)
+                    ? `${parseInt(item.percentage, 10)}%`
+                    : "0%",
+                value:
+                  item.count && !isNaN(item.count) ? parseInt(item.count, 10) : 0,
+                comment: item.comment || "No comment available", // ✅ Keep comment for tooltip
+              },
+            ])
+          ).values()
+        );
 
         console.log("Formatted Pie Data:", formattedPieData);
        
@@ -551,7 +560,7 @@ const SEAnalytics = () => {
         }}
       >
         <Typography variant="h5" fontWeight="bold" color={colors.grey[100]}>
-          Common Challenges
+          Recurring Issues
         </Typography>
         <Box
           height="250px"
