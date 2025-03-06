@@ -4,7 +4,9 @@ exports.getPrograms = async () => {
   try {
     // Query to get all programs
     const query = ` SELECT DISTINCT p.program_id, p.name
-                    FROM programs p`
+                    FROM programs p
+                    INNER JOIN socialenterprises se ON p.program_id = se.program_id
+                    INNER JOIN mentorships m ON se.se_id = m.se_id`
     const result = await pgDatabase.query(query);
 
     // If there's no data, return an empty array

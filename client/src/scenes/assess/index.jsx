@@ -29,8 +29,7 @@ const AssessSEPage = () => {
   const [currentSEIndex, setCurrentSEIndex] = useState(0); // Index of the current SE being evaluated
   const [evaluations, setEvaluations] = useState({}); // Store evaluations for all SEs
   const [error, setError] = useState("");
-  const [isLoadingSocialEnterprises, setIsLoadingSocialEnterprises] =
-    useState(false);
+  const [isLoadingSocialEnterprises, setIsLoadingSocialEnterprises] = useState(false);
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
   const [evaluationsData, setEvaluationsData] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
@@ -452,7 +451,7 @@ const AssessSEPage = () => {
         const categoryEval = currentEvaluations[category] || {};
         return (
           categoryEval.rating > 0 &&
-          (categoryEval.selectedCriteria?.length || 0) >= 2
+          (categoryEval.selectedCriteria?.length || 0) >= 1
         );
       }
     );

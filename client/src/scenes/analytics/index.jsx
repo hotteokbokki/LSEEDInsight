@@ -159,9 +159,9 @@ const Analytics = () => {
 
   {/* Row 3 - Social Enterprise Performance Heatmap */}
   <Box width="100%" minHeight="400px" minWidth="300px" p={2} backgroundColor={colors.primary[400]}>
-  <Typography variant="h4" fontWeight="bold" color={colors.greenAccent[500]}>
+    <Typography variant="h4" fontWeight="bold" color={colors.greenAccent[500]}>
         Heat Map
-      </Typography>
+    </Typography>
     <HeatmapWrapper />
   </Box>
 
