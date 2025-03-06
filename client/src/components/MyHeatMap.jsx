@@ -11,7 +11,7 @@ const HeatmapWrapper = () => {
     useEffect(() => {
         const fetchHeatMapStats = async () => {
             try {
-                const response = await fetch("http://localhost:4000/test-api");
+                const response = await fetch("http://localhost:4000/heatmap-stats");
                 const data = await response.json();
     
                 console.log("Fetched Data:", data); 
@@ -51,9 +51,9 @@ const HeatmapWrapper = () => {
                     data={transformedData}
                     margin={{ top: 60, right: 90, bottom: 60, left: 90 }}
                     valueFormat=">-.2f"
-                    axisTop={{ tickSize: 5, tickPadding: 5, tickRotation: -90, truncateTickAt: 0 }}
-                    axisRight={{ tickSize: 5, tickPadding: 5, legend: "Category", legendPosition: "middle", legendOffset: 70 }}
-                    axisLeft={{ tickSize: 5, tickPadding: 5, legend: "Team Name", legendPosition: "middle", legendOffset: -72 }}
+                    axisTop={{ tickSize: 5, tickPadding: 5,legend: "Category", legendOffset: -40, legendPosition: "middle", tickRotation: -90, truncateTickAt: 0 }}
+                    axisRight={{ tickSize: 5, tickPadding: 5, legendPosition: "middle"}}
+                    axisLeft={{ tickSize: 5, tickPadding: 5, legend: "Social Enterprise", legendPosition: "middle", legendOffset: -72 }}
                     colors={({ value }) => {
                         if (value <= 1.5) return theme.palette.mode === "dark" ? colors.redAccent[300] : colors.redAccent[500];
                         if (value <= 3) return theme.palette.mode === "dark" ? colors.primary[300] : colors.grey[700]; // Updated for light mode contrast
@@ -93,8 +93,23 @@ const HeatmapWrapper = () => {
                         );
                     }}
                     theme={{
-                        axis: { ticks: { text: { fill: theme.palette.mode === "dark" ? colors.grey[100] : colors.grey[200] } } },
-                        legends: { text: { fill: theme.palette.mode === "dark" ? colors.grey[100] : colors.grey[900] } },
+                        axis: {
+                            ticks: {
+                                text: {
+                                    fill: theme.palette.mode === "dark" ? colors.grey[100] : colors.grey[200], // For axis ticks text color
+                                },
+                            },
+                            legend: {
+                                text: {
+                                    fill: theme.palette.mode === "dark" ? colors.grey[100] : colors.grey[200], // Axis legend text color
+                                },
+                            },
+                        },
+                        legends: {
+                            text: {
+                                fill: theme.palette.mode === "dark" ? colors.grey[100] : colors.grey[900], // Color for legends
+                            },
+                        },
                     }}
                 />
             </div>

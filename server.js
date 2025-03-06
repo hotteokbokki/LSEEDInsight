@@ -1101,7 +1101,7 @@ app.post("/api/social-enterprises", async (req, res) => {
 });
 
 //For Testing only
-app.get("/test-api", async (req, res) => {
+app.get("/heatmap-stats", async (req, res) => {
   try {
     const result = await getStatsForHeatmap()
 
