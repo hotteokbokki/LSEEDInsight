@@ -368,7 +368,7 @@ const Scheduling = ({ userRole }) => {
                           maxWidth: "100%",
                           whiteSpace: "nowrap",
                           padding: "4px",
-                        }}
+                        }}  
                       >
                         {params.value.length > 0
                           ? params.value.map((date, idx) => (
