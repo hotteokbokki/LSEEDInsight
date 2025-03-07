@@ -5,6 +5,7 @@ import {
   MenuItem,
   Typography,
   useTheme,
+  Divider,
 } from "@mui/material";
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -24,11 +25,36 @@ const Topbar = () => {
   const colors = tokens(theme.palette.mode);
   const colorMode = useContext(ColorModeContext);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [notifAnchorEl, setNotifAnchorEl] = useState(null);
   const navigate = useNavigate();
   const { logout } = useAuth();
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
+
+  const handleNotifOpen = (event) => setNotifAnchorEl(event.currentTarget);
+  const handleNotifClose = () => setNotifAnchorEl(null);
+
+  const notifications = [
+    {
+      id: 1,
+      title: "New Mentorship",
+      message: "John Doe has been assigned.",
+      time: "5m ago",
+    },
+    {
+      id: 2,
+      title: "System Update",
+      message: "System maintenance at 2 AM.",
+      time: "1h ago",
+    },
+    {
+      id: 3,
+      title: "Reminder",
+      message: "Monthly report due tomorrow.",
+      time: "1d ago",
+    },
+  ];
 
   return (
     <Box display="flex" justifyContent="space-between" p={2}>
@@ -53,15 +79,82 @@ const Topbar = () => {
             <LightModeOutlinedIcon />
           )}
         </IconButton>
-        <IconButton>
+
+        {/* Notifications Button */}
+        <IconButton onClick={handleNotifOpen}>
           <NotificationsOutlinedIcon />
         </IconButton>
+
+        {/* Notifications Menu */}
+        <Menu
+          anchorEl={notifAnchorEl}
+          open={Boolean(notifAnchorEl)}
+          onClose={handleNotifClose}
+          sx={{
+            "& .MuiPaper-root": {
+              width: "300px",
+              backgroundColor: "#fff",
+              color: "#000",
+              border: "1px solid #000",
+              boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)",
+            },
+          }}
+        >
+          {/* Header */}
+          <Typography
+            sx={{
+              backgroundColor: "#1E4D2B",
+              color: "#fff",
+              textAlign: "center",
+              fontSize: "1.2rem",
+              fontWeight: "bold",
+              padding: "10px",
+            }}
+          >
+            Notifications
+          </Typography>
+
+          {/* Notification Items */}
+          {notifications.length > 0 ? (
+            notifications.map((notif, index) => (
+              <Box key={notif.id}>
+                <MenuItem
+                  onClick={handleNotifClose}
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    padding: "12px",
+                    "&:hover": { backgroundColor: "#f0f0f0" },
+                  }}
+                >
+                  <Typography sx={{ fontWeight: "bold" }}>
+                    {notif.title}
+                  </Typography>
+                  <Typography variant="body2">{notif.message}</Typography>
+                  <Typography variant="caption" color="gray">
+                    {notif.time}
+                  </Typography>
+                </MenuItem>
+
+                {/* Divider Between Items */}
+                {index < notifications.length - 1 && <Divider />}
+              </Box>
+            ))
+          ) : (
+            <MenuItem sx={{ textAlign: "center", padding: "15px" }}>
+              No new notifications
+            </MenuItem>
+          )}
+        </Menu>
+
         <IconButton>
           <SettingsOutlinedIcon />
         </IconButton>
         <IconButton onClick={handleMenuOpen}>
           <PersonOutlinedIcon />
         </IconButton>
+
         <Menu
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}

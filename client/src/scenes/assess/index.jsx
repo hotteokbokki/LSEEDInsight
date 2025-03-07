@@ -29,7 +29,8 @@ const AssessSEPage = () => {
   const [currentSEIndex, setCurrentSEIndex] = useState(0); // Index of the current SE being evaluated
   const [evaluations, setEvaluations] = useState({}); // Store evaluations for all SEs
   const [error, setError] = useState("");
-  const [isLoadingSocialEnterprises, setIsLoadingSocialEnterprises] = useState(false);
+  const [isLoadingSocialEnterprises, setIsLoadingSocialEnterprises] =
+    useState(false);
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
   const [evaluationsData, setEvaluationsData] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
@@ -72,6 +73,9 @@ const AssessSEPage = () => {
       );
     } finally {
       handleCloseMentorshipDialog();
+      setTimeout(() => {
+        window.location.reload();
+      }, 500); // Adjust delay if needed
     }
   };
 
