@@ -309,7 +309,7 @@ async function sendMessageWithOptions(chatId, message, options) {
 // ==========================
 // 📌 FUNCTION 2: Send Mentorship Scheduling Message (New Function)
 // ==========================
-async function sendMentorshipMessage(chatId, mentorship_id, mentorship_date) {
+async function sendMentorshipMessage(chatId, mentorship_id, mentorship_date, mentorship_time) {
   console.log(`📩 Sending Mentorship Schedule Message to Chat ID: ${chatId}`);
 
   // Ensure mentorship_date is an array
@@ -318,6 +318,22 @@ async function sendMentorshipMessage(chatId, mentorship_id, mentorship_date) {
   }
 
   try {
+    const mentorshipQuery = `
+    SELECT mentorship_date, mentorship_time
+    FROM mentorships 
+    WHERE mentorship_id = $1
+`;
+const mentorshipResult = await pgDatabase.query(mentorshipQuery, [mentorship_id]);
+
+if (mentorshipResult.rows.length === 0) {
+    console.error(`❌ No mentorship found for ID ${mentorship_id}`);
+    return;
+}
+
+const mentorship = mentorshipResult.rows[0]; // ✅ Now, mentorship is defined
+
+
+
     // Fetch Mentor Name
     const mentorResult = await pgDatabase.query(
       `SELECT mentor_firstname, mentor_lastname, mentor_id FROM mentors 
@@ -348,24 +364,26 @@ async function sendMentorshipMessage(chatId, mentorship_id, mentorship_date) {
     const seName = seResult.rows[0].team_name;
 
     // Format Dates
-    const formattedDates = mentorship_date
-      .map(dateObj => {
-        if (typeof dateObj === "string") {
-          return new Date(dateObj).toISOString().split("T")[0]; // Convert String to YYYY-MM-DD
-        } else if (dateObj instanceof Date) {
-          return dateObj.toISOString().split("T")[0]; // Convert Date Object to YYYY-MM-DD
-        } else {
-          console.warn("⚠️ Unexpected date format:", dateObj);
-          return "Invalid Date"; // Fallback if the date isn't recognized
-        }
-      })
-      .filter(date => date !== "Invalid Date") // Remove any invalid dates
-      .join("\n🔹 "); // List all available dates
+    const formattedDates = mentorship.mentorship_date.map((date, idx) => {
+            const formattedDate = new Date(date).toLocaleDateString("en-US", {
+                month: "long",
+                day: "2-digit",
+                year: "numeric",
+            });
 
-    const message = `📅 *New Mentorship Meeting Request*\n\n`
-      + `🔹 *Mentor:* ${mentorName}\n`
-      + `🔹 *Social Enterprise:* ${seName}\n`
-      + `🔹 *Date:* ${formattedDates}\n`;
+            let rawTime = "N/A";
+            if (Array.isArray(mentorship.mentorship_time) && mentorship.mentorship_time.length > idx) {
+                rawTime = mentorship.mentorship_time[idx]; // ✅ Use raw PostgreSQL time
+            }
+
+            return `${formattedDate} - ${rawTime}`;
+        }).join("\n🔹 ");
+
+
+  const message = `📅 *New Mentorship Meeting Request*\n\n`
+            + `🔹 *Mentor:* ${mentorName}\n`
+            + `🔹 *Social Enterprise:* ${seName}\n`
+            + `🔹 *Schedule:* ${formattedDates}\n`;
 
     // Generate inline keyboard dynamically for multiple dates
     const inline_keyboard = mentorship_date.map(dateObj => {
@@ -1941,26 +1959,28 @@ app.post("/api/mentorships", async (req, res) => {
 
 app.post("/updateMentorshipDate", async (req, res) => {
   console.log("🔹 Received request at /updateMentorshipDate");
-  const { mentorship_id, mentorship_date } = req.body;
+  const { mentorship_id, mentorship_date, mentorship_time } = req.body;
 
-  if (!mentorship_id || !mentorship_date) {
+  if (!mentorship_id || !mentorship_date || !mentorship_time) {
     return res.status(400).json({ error: "Mentorship ID and date are required" });
   }
 
   try {
     const query = `
       UPDATE mentorships 
-      SET mentorship_date = array_append(mentorship_date ,$1) 
-      WHERE mentorship_id = $2
+      SET mentorship_date = array_append(mentorship_date ,$1),
+      mentorship_time = array_append(mentorship_time, $2)
+      WHERE mentorship_id = $3
       RETURNING *;
     `;
 
-    const { rows } = await pgDatabase.query(query, [mentorship_date, mentorship_id]);
+    const { rows } = await pgDatabase.query(query, [mentorship_date, mentorship_time, mentorship_id]);
     if (rows.length === 0) {
       return res.status(404).json({ error: "Mentorship not found" });
     }
 
     console.log(`✅ Mentorship ${mentorship_id} updated to "Pending".`);
+    console.log(`Updating mentorship_id: ${mentorship_id} with date: ${mentorship_date} and time: ${mentorship_time}`);
 
     // Retrieve chat ID for the mentorship
     const chatQuery = `SELECT t.chatid FROM telegrambot t JOIN mentorships m ON t."se_ID" = m.se_id WHERE m.mentorship_id = $1`;
@@ -1971,7 +1991,7 @@ app.post("/updateMentorshipDate", async (req, res) => {
       console.log(`📩 Sending Mentorship Message to Chat ID: ${chatId}`);
 
       // Send mentorship message
-      sendMentorshipMessage(chatId, mentorship_id, mentorship_date);
+      sendMentorshipMessage(chatId, mentorship_id, mentorship_date, mentorship_time);
     } else {
       console.warn(`⚠️ No chat ID found for mentorship ${mentorship_id}`);
     }
@@ -1993,9 +2013,10 @@ app.get("/getMentorshipDates", async (req, res) => {
       `SELECT 
           m.mentorship_id, 
           m.mentorship_date, 
+          m.mentorship_time, 
           se.team_name, 
           p.name AS program_name,
-          COALESCE(array_agg(a.mentorship_date), '{}') AS accepted_dates
+          COALESCE(array_agg(a.mentorship_date), '{}') AS accepted_dates  
       FROM public.mentorships m
       LEFT JOIN public.accepted_schedule a ON m.mentorship_id = a.mentorship_id
       LEFT JOIN public.socialenterprises se ON m.se_id = se.se_id

@@ -4,6 +4,7 @@
 import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
+import { TimePicker } from "@mui/x-date-pickers";
 import {
   Box,
   Button,
@@ -37,6 +38,11 @@ import { useAuth } from "../../context/authContext";
 import Header from "../../components/Header";
 import axios from "axios";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const Scheduling = ({ userRole }) => {
   const [openModal, setOpenModal] = useState(false);
@@ -50,11 +56,11 @@ const Scheduling = ({ userRole }) => {
   const { user } = useAuth();
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-
+  const [selectedTime, setSelectedTime] = useState(dayjs().startOf("hour"));
   const [snackbarOpen, setSnackbarOpen] = useState(false);
 
   // Function to handle Snackbar close
-  const handleSnackbarClose = () => {
+  const handleSnackbarClose = () => { 
     setSnackbarOpen(false);
   };
 
@@ -116,11 +122,12 @@ const Scheduling = ({ userRole }) => {
     }
   };
 
-  const handleConfirmDate = async () => {
+  const handleConfirmDate = async () => { 
     if (!selectedSE || !selectedDate) return;
 
     try {
       setIsLoading(true);
+      const formattedTime = selectedTime ? selectedTime.format("HH:mm:ss") : null;
       const response = await fetch(
         "http://localhost:4000/updateMentorshipDate",
         {
@@ -129,6 +136,7 @@ const Scheduling = ({ userRole }) => {
           body: JSON.stringify({
             mentorship_id: selectedSE.id,
             mentorship_date: selectedDate.format("YYYY-MM-DD"),
+            mentorship_time: formattedTime,
           }),
         }
       );
@@ -295,29 +303,49 @@ const Scheduling = ({ userRole }) => {
                   id: index,
                   team_name: mentorship.team_name || "N/A",
                   program_name: mentorship.name || "N/A",
-                  mentorship_date: Array.isArray(mentorship.mentorship_date)
-                    ? mentorship.mentorship_date.filter(Boolean).map((date) =>
-                        date
-                          ? new Date(date).toLocaleDateString("en-US", {
-                              month: "long",
-                              day: "2-digit",
-                              year: "numeric",
-                            })
-                          : "Invalid Date"
-                      )
+                  mentorship_date: Array.isArray(mentorship.mentorship_date) && Array.isArray(mentorship.mentorship_time)
+                    ? mentorship.mentorship_date.map((date, idx) => {
+                        if (!date) return "N/A"; // ✅ Handle missing dates
+                
+                        const formattedDate = new Date(date).toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "2-digit",
+                          year: "numeric",
+                        });
+                
+                        // ✅ Fix: Use raw PostgreSQL time instead of `new Date()`
+                        const formattedTime =
+                          Array.isArray(mentorship.mentorship_time) &&
+                          mentorship.mentorship_time.length > idx && mentorship.mentorship_time[idx]
+                            ? mentorship.mentorship_time[idx] // ✅ Use raw time string (HH:mm)
+                            : "N/A"; // ✅ Handle missing time
+                
+                        return formattedTime !== "N/A" ? `${formattedDate} - ${formattedTime}` : formattedDate;
+                      })
                     : ["N/A"],
-                  accepted_dates: Array.isArray(mentorship.accepted_dates)
-                    ? mentorship.accepted_dates.filter(Boolean).map((date) =>
-                        date
-                          ? new Date(date).toLocaleDateString("en-US", {
-                              month: "long",
-                              day: "2-digit",
-                              year: "numeric",
-                            })
-                          : "Invalid Date"
-                      )
+                
+                  // ✅ Fix Approved Dates: Same logic as Pending Dates
+                  accepted_dates: Array.isArray(mentorship.accepted_dates) && Array.isArray(mentorship.mentorship_time)
+                    ? mentorship.accepted_dates.map((date, idx) => {
+                        if (!date) return "N/A"; // ✅ Handle missing dates
+                
+                        const formattedDate = new Date(date).toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "2-digit",
+                          year: "numeric",
+                        });
+                
+                        // ✅ Fix: Use raw PostgreSQL time instead of `new Date()`
+                        const formattedTime =
+                          Array.isArray(mentorship.mentorship_time) &&
+                          mentorship.mentorship_time.length > idx && mentorship.mentorship_time[idx]
+                            ? mentorship.mentorship_time[idx] // ✅ Use raw time string (HH:mm)
+                            : "N/A"; // ✅ Handle missing time
+                
+                        return formattedTime !== "N/A" ? `${formattedDate} - ${formattedTime}` : formattedDate;
+                      })
                     : ["N/A"],
-                }))}
+                }))}                
                 columns={[
                   {
                     field: "team_name",
@@ -333,24 +361,20 @@ const Scheduling = ({ userRole }) => {
                   {
                     field: "mentorship_date",
                     headerName: "Pending Dates",
-                    width: 500, // ✅ Fixed width for scrolling
+                    width: 500,
                     renderCell: (params) => (
                       <Box
                         sx={{
                           display: "flex",
-                          overflowX: "auto", // ✅ Enables scrolling inside the cell
+                          overflowX: "auto",
                           maxWidth: "100%",
                           whiteSpace: "nowrap",
                           padding: "4px",
                         }}
                       >
-                        {params.value.length > 0
-                          ? params.value.map((date, idx) => (
-                              <Chip
-                                key={idx}
-                                label={date}
-                                sx={{ marginRight: "4px" }}
-                              />
+                        {Array.isArray(params.value) && params.value.length > 0
+                          ? params.value.map((entry, idx) => (
+                              <Chip key={idx} label={entry} sx={{ marginRight: "4px" }} />
                             ))
                           : "N/A"}
                       </Box>
@@ -358,7 +382,7 @@ const Scheduling = ({ userRole }) => {
                   },
                   {
                     field: "accepted_dates",
-                    headerName: "Accepted Dates",
+                    headerName: "Approved Dates",
                     width: 350, // ✅ Same width as Pending Dates
                     renderCell: (params) => (
                       <Box
@@ -368,7 +392,7 @@ const Scheduling = ({ userRole }) => {
                           maxWidth: "100%",
                           whiteSpace: "nowrap",
                           padding: "4px",
-                        }}  
+                        }}
                       >
                         {params.value.length > 0
                           ? params.value.map((date, idx) => (
@@ -523,6 +547,62 @@ const Scheduling = ({ userRole }) => {
             </>
           )}
         </DialogContent>
+
+        {/* Date Selection Section */}
+        {selectedSE && (
+            <>
+              <Typography
+                variant="h6"
+                sx={{
+                  marginTop: "20px",
+                  marginBottom: "10px",
+                  fontWeight: "bold",
+                }}
+              >
+                Select Time for Mentoring
+              </Typography>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <TimePicker
+                  label="Select Time"
+                  value={selectedTime}
+                  onChange={(newTime) => setSelectedTime(newTime)}
+                  slotProps={{
+                    textField: {
+                      sx: {
+                        "& .MuiOutlinedInput-root": {
+                          "& fieldset": {
+                            borderColor: "#000", // Black border
+                          },
+                          "&:hover fieldset": {
+                            borderColor: "#000", // Black border on hover
+                          },
+                          "&.Mui-focused fieldset": {
+                            borderColor: "#000", // Black border when focused
+                          },
+                        },
+                        "& .MuiInputBase-input": {
+                          color: "#000", // Black text
+                        },
+                        "& .MuiInputLabel-root": {
+                          color: "#000", // Black label text
+                        },
+                        "& .MuiInputLabel-root.Mui-focused": {
+                          color: "#000", // Black label text when focused
+                        },
+                      },
+                      InputProps: {
+                        sx: {
+                          "& .MuiSvgIcon-root": {
+                            color: "#000", // Black icon
+                          },
+                        },
+                      },
+                    },
+                  }}
+                />
+              </LocalizationProvider>
+            </>
+          )}
 
         {/* Dialog Actions */}
         <DialogActions
