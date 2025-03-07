@@ -15,6 +15,8 @@ import {
   DialogActions,
   TextField,
   MenuItem,
+  Snackbar,
+  Alert
 } from "@mui/material";
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
 import { tokens } from "../../theme";
@@ -22,7 +24,6 @@ import Header from "../../components/Header";
 import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import { useNavigate } from "react-router-dom"; // For navigation
-import { Snackbar, Alert } from "@mui/material";
 
 const SocialEnterprise = () => {
   const theme = useTheme();
@@ -52,8 +53,8 @@ const SocialEnterprise = () => {
   const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
   const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
   const [isSuccessSEPopupOpen, setIsSuccessSEPopupOpen] = useState(false);
-
-  const [sdgs, setSdgs] = useState([]);
+  const [mentors, setMentors] = useState([]);
+  const [sdgs, setSdgs] = useState([]); 
   const [programs, setPrograms] = useState([]);
   const [topPerformers, setTopPerformers] = useState([]);
   // State for fetched data
@@ -103,7 +104,19 @@ const SocialEnterprise = () => {
         setLoading(false);
       }
     };
+
+    const fetchMentors = async () => {
+      try {
+        const response = await axios.get("http://localhost:4000/api/mentors"); // Fetch mentors from API
+        setMentors(response.data);
+        console.log("mentorsdata",response.data)
+      } catch (error) {
+        console.error("❌ Error fetching mentors:", error);
+      }
+    };
+
     fetchSocialEnterprise();
+    fetchMentors(); 
   }, []);
 
   useEffect(() => {
@@ -131,6 +144,47 @@ const SocialEnterprise = () => {
     };
     fetchPrograms();
   }, []);
+
+  const MentorDropdown = ({ value, onChange, mentors = [] }) => {
+    return (
+      <Select
+        value={value || ""}
+        onChange={(event) => onChange(event.target.value)}
+        fullWidth
+      >
+        {mentors.length === 0 ? (
+          <MenuItem disabled>No mentors available</MenuItem>
+        ) : (
+          mentors.map((mentor) => {
+            const fullName = `${mentor.mentor_firstName} ${mentor.mentor_lastName}`;
+            return (
+              <MenuItem key={mentor.mentor_id} value={fullName}>
+                {fullName}
+              </MenuItem>
+            );
+          })
+        )}
+      </Select>
+    );
+  };
+
+  const handleSERowUpdate = async (updatedRow) => {
+    try {
+      const response = await axios.put(
+        `http://localhost:4000/updateSocialEnterprise/${updatedRow.id}`,
+        updatedRow
+      );
+  
+      if (response.status === 200) {
+        console.log("✅ Social Enterprise updated successfully:", response.data);
+        setIsSuccessEditPopupOpen(true);
+      } else {
+        console.error("❌ Failed to update Social Enterprise:", response.data);
+      }
+    } catch (error) {
+      console.error("❌ Error updating SE:", error);
+    }
+  };
 
   const handleProgramInputChange = (e) => {
     const { name, value } = e.target;
@@ -262,15 +316,32 @@ const SocialEnterprise = () => {
       headerName: "Social Enterprise",
       flex: 1,
       editable: isEditing,
+      renderCell: (params) => `${params.row.name}`,
     },
     { field: "program", headerName: "Program", flex: 1, editable: isEditing }, // ✅ Added Program Name
     {
       field: "mentorshipStatus",
       headerName: "Mentorship Status",
       flex: 1,
-      editable: isEditing,
+      editable: false,
+      renderCell: (params) => `${params.row.mentorshipStatus}`,
     },
-    { field: "mentors", headerName: "Mentors", flex: 1, editable: isEditing },
+    {
+      field: "mentors",
+      headerName: "Mentors",
+      flex: 1,
+      editable: isEditing,
+      renderCell: (params) => `${params.row.mentors}`,
+      renderEditCell: (params) => (
+        <MentorDropdown
+          value={params.value}
+          onChange={(newValue) =>
+            params.api.setEditCellValue({ id: params.id, field: params.field, value: newValue })
+          }
+          mentors={mentors} // Pass the fetched mentors
+        />
+      ),
+    },
     {
       field: "actions",
       headerName: "Actions",
@@ -1042,6 +1113,12 @@ const SocialEnterprise = () => {
             rows={socialEnterprises}
             columns={columns}
             getRowId={(row) => row.id} // Use `id` as the unique identifier
+            // onRowEditStop={(params) => handleSERowUpdate(params.row)} 
+            processRowUpdate={(params) => {
+              // console.log("🚨 processRowUpdate params:", params, "\n");
+              handleSERowUpdate(params);
+              return params;
+            }}
             onRowClick={handleRowClick}
             editMode="row" // Enable row editing
             autoHeight

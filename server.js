@@ -6,24 +6,62 @@ const axios = require("axios");
 const ngrok = require("ngrok"); // Exposes your local server to the internet
 const { getPrograms, getProgramNameByID, getProgramCount, getProgramsForTelegram } = require("./controllers/programsController");
 const { getTelegramUsers, insertTelegramUser, getSocialEnterprisesUsersByProgram } = require("./controllers/telegrambotController");
-const { getSocialEnterprisesByProgram, getSocialEnterpriseByID, getAllSocialEnterprises, getAllSocialEnterprisesWithMentorship, getTotalSECount, getSEWithOutMentors, getPreviousTotalSECount, getPreviousMonthSEWithOutMentors, getAllSocialEnterpriseswithMentorID } = require("./controllers/socialenterprisesController");
+const { getSocialEnterprisesByProgram, 
+        getSocialEnterpriseByID, 
+        getAllSocialEnterprises, 
+        getAllSocialEnterprisesWithMentorship, 
+        getTotalSECount, 
+        getSEWithOutMentors, 
+        getPreviousTotalSECount, 
+        getPreviousMonthSEWithOutMentors, 
+        getAllSocialEnterpriseswithMentorID, 
+        updateSERowUpdate } = require("./controllers/socialenterprisesController");
 require("dotenv").config();
 const { getUsers, getUserName } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const pgSession = require("connect-pg-simple")(session);
 const cookieParser = require("cookie-parser");
 const { addProgram } = require("./controllers/programsController");
-const { getMentorsBySocialEnterprises, getMentorById, getAllMentors, getUnassignedMentors, getPreviousUnassignedMentors, getAssignedMentors, getWithoutMentorshipCount, getLeastAssignedMentor, getMostAssignedMentor, getMentorDetails, getMentorCount } = require("./controllers/mentorsController.js");
+const { getMentorsBySocialEnterprises, 
+        getMentorById, 
+        getAllMentors, 
+        getUnassignedMentors, 
+        getPreviousUnassignedMentors, 
+        getAssignedMentors, 
+        getWithoutMentorshipCount, 
+        getLeastAssignedMentor, 
+        getMostAssignedMentor, 
+        getMentorDetails, 
+        getMentorCount } = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
+const { getMentorshipsByMentorId, 
+        getMentorBySEID, 
+        getSEWithMentors, 
+        getPreviousSEWithMentors, 
+        getMentorshipCount } = require("./controllers/mentorshipsController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
-const { getMentorshipsByMentorId, getMentorBySEID, getSEWithMentors, getPreviousSEWithMentors, getMentorshipCount } = require("./controllers/mentorshipsController.js");
-const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
-const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID, getAverageScoreForAllSEPerCategory, getImprovementScorePerMonthAnnually, getGrowthScoreOverallAnually, getMonthlyGrowthDetails, getSELeaderboards, updateAcknowledgeEvaluation, getTopSEPerformanceByMentorships, getEvaluationsBySEID, getStatsForHeatmap } = require("./controllers/evaluationsController.js");
+const { getEvaluationsByMentorID, 
+        getEvaluationDetails, 
+        getTopSEPerformance, 
+        getSingleSEPerformanceTrend, 
+        getPerformanceTrendBySEID, 
+        getCommonChallengesBySEID, 
+        getPermanceScoreBySEID, 
+        getAverageScoreForAllSEPerCategory, 
+        getImprovementScorePerMonthAnnually, 
+        getGrowthScoreOverallAnually, 
+        getMonthlyGrowthDetails, 
+        getSELeaderboards, 
+        updateAcknowledgeEvaluation, 
+        getTopSEPerformanceByMentorships, 
+        getEvaluationsBySEID, 
+        getStatsForHeatmap } = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
 const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution } = require("./controllers/evaluationcategoriesController.js");
 const { getMentorQuestions } = require("./controllers/mentorEvaluationsQuestionsController.js");
+const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
 const app = express();
 
 
@@ -1137,6 +1175,23 @@ app.post("/api/social-enterprises", async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding social enterprise:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.put("/updateSocialEnterprise/:se_id", async (req, res) => {
+  const { se_id } = req.params;
+  const updatedData = req.body;
+  
+  try {
+    const result = await updateSERowUpdate(se_id, updatedData);
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error("Server error updating SE:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });

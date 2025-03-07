@@ -142,6 +142,8 @@ exports.getAllSocialEnterprisesWithMentorship = async () => {
   }
 };
 
+
+
 exports.getSocialEnterprisesWithoutMentor = async () => {
   try {
     const query = `
@@ -157,6 +159,57 @@ exports.getSocialEnterprisesWithoutMentor = async () => {
   } catch (error) {
     console.error("❌ Error fetching social enterprises without mentors:", error);
     return [];
+  }
+};
+
+exports.updateSERowUpdate = async (se_id, updatedData) => {
+  try {
+    const { name, program_name, mentorshipStatus, mentors } = updatedData;
+    console.log("[ctrl] updatingSE: ", se_id, "\n Data: ", updatedData);
+
+    // Update the social enterprise name and program
+    const updateSEQuery = `
+      UPDATE socialenterprises
+      SET team_name = $1
+      WHERE se_id = $2
+      RETURNING *;
+    `;
+    await pgDatabase.query(updateSEQuery, [name, se_id]);
+
+    console.log("updatedData.mentors: ", updatedData.mentors);
+
+    // Proceed only if there are mentors
+    if (updatedData.mentors.toLowerCase() !== 'no mentors') {
+      // Remove existing mentorships for this SE
+      const deleteMentorshipQuery = `DELETE FROM mentorships WHERE se_id = $1;`;
+      await pgDatabase.query(deleteMentorshipQuery, [se_id]);
+
+      const selectMentorQuery = `
+          SELECT mentor_id 
+          FROM mentors 
+          WHERE CONCAT(mentor_firstname, ' ', mentor_lastname) = $1;
+      `;
+      const selectedMentors = await pgDatabase.query(selectMentorQuery, [updatedData.mentors]);
+
+      // console.log("updatedData.mentors: ", updatedData.mentors); // Debugging purposes only
+      // console.log("selectedMentors: ", selectedMentors.rows[0]?.mentor_id, "rowCount: ", selectedMentors.rowCount); // Debugging purposes only
+
+      // // Add new mentorships if there are mentors
+      const mentorNamesArray = Array.isArray(mentors) ? mentors : [mentors];
+      if (selectedMentors.rowCount > 0) {
+          const mentorInsertQuery = `
+              INSERT INTO mentorships (se_id, mentor_id)
+              SELECT $1, mentor_id FROM mentors WHERE CONCAT(mentor_firstname, ' ', mentor_lastname) = ANY($2::text[]);
+          `;
+          await pgDatabase.query(mentorInsertQuery, [se_id, mentorNamesArray]);
+      }
+      console.log("[updateSERowUpdate] You have updated the mentorships table.")
+    }
+    
+    return { success: true, message: "Social Enterprise updated successfully" };
+  } catch (error) {
+    console.error("❌ Error updating Social Enterprise:", error);
+    return { success: false, message: "Failed to update Social Enterprise" };
   }
 };
 
