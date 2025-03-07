@@ -97,31 +97,39 @@ exports.getEvaluationDetails = async (evaluation_id) => {
 exports.getTopSEPerformance = async () => {
     try {
         const query = `
-            WITH MonthlyRatings AS (
+            WITH QuarterlyRatings AS (
                 SELECT 
                     e.se_id,
                     s.abbr AS social_enterprise, -- Use abbreviation instead of full name
-                    DATE_TRUNC('month', e.created_at) AS month,
+                    DATE_TRUNC('quarter', e.created_at) AS quarter, -- Aggregate by quarter
                     ROUND(AVG(ec.rating), 2) AS avg_rating,
-                    COUNT(*) AS eval_count -- Count number of evaluations per SE per month
+                    COUNT(*) AS eval_count -- Count number of evaluations per SE per quarter
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                 JOIN socialenterprises s ON e.se_id = s.se_id
-                WHERE e.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '3 months') AND e.evaluation_type = 'Social Enterprise'
-                GROUP BY e.se_id, s.abbr, month
+                WHERE 
+                    e.created_at >= DATE_TRUNC('quarter', CURRENT_DATE - INTERVAL '6 months') -- Consider last 6 months
+                    AND e.evaluation_type = 'Social Enterprise'
+                GROUP BY e.se_id, s.abbr, quarter
             ),
             TopSEs AS (
-                SELECT se_id, social_enterprise, 
+                SELECT 
+                    se_id, 
+                    social_enterprise, 
                     SUM(avg_rating * eval_count) / SUM(eval_count) AS weighted_avg_rating
-                FROM MonthlyRatings
+                FROM QuarterlyRatings
                 GROUP BY se_id, social_enterprise
                 ORDER BY weighted_avg_rating DESC
-                LIMIT 3
+                LIMIT 3 -- Get the top 3 SEs
             )
-            SELECT m.se_id, m.social_enterprise, m.month, m.avg_rating
-            FROM MonthlyRatings m
-            JOIN TopSEs t ON m.se_id = t.se_id
-            ORDER BY m.social_enterprise, m.month;
+            SELECT 
+                q.se_id, 
+                q.social_enterprise, 
+                q.quarter, 
+                q.avg_rating
+            FROM QuarterlyRatings q
+            JOIN TopSEs t ON q.se_id = t.se_id
+            ORDER BY q.social_enterprise, q.quarter;
         `;
 
         const result = await pgDatabase.query(query);
@@ -136,41 +144,41 @@ exports.getTopSEPerformanceByMentorships = async (mentor_id) => {
     try {
 
         const query = `
-            WITH MonthlyRatings AS (
+            WITH QuarterlyRatings AS (
                 SELECT 
                     e.se_id,
                     s.abbr AS social_enterprise, -- Use abbreviation instead of full name
-                    DATE_TRUNC('month', e.created_at) AS month,
+                    DATE_TRUNC('quarter', e.created_at) AS quarter,
                     ROUND(AVG(ec.rating), 2) AS avg_rating,
-                    COUNT(*) AS eval_count -- Count number of evaluations per SE per month
+                    COUNT(*) AS eval_count -- Count number of evaluations per SE per quarter
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                 JOIN socialenterprises s ON e.se_id = s.se_id
                 JOIN mentorships m ON e.se_id = m.se_id -- Join with mentorships table
                 WHERE 
-                    e.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '3 months') 
+                    e.created_at >= DATE_TRUNC('quarter', CURRENT_DATE - INTERVAL '9 months') 
                     AND e.evaluation_type = 'Social Enterprise'
                     AND m.mentor_id = $1 -- Filter by the specific mentor's ID
-                GROUP BY e.se_id, s.abbr, month
+                GROUP BY e.se_id, s.abbr, quarter
             ),
             TopSEs AS (
                 SELECT 
                     se_id, 
                     social_enterprise, 
                     SUM(avg_rating * eval_count) / SUM(eval_count) AS weighted_avg_rating
-                FROM MonthlyRatings
+                FROM QuarterlyRatings
                 GROUP BY se_id, social_enterprise
                 ORDER BY weighted_avg_rating DESC
                 LIMIT 3 -- Get the top 3 SEs
             )
             SELECT 
-                m.se_id, 
-                m.social_enterprise, 
-                m.month, 
-                m.avg_rating
-            FROM MonthlyRatings m
-            JOIN TopSEs t ON m.se_id = t.se_id
-            ORDER BY m.social_enterprise, m.month;
+                q.se_id, 
+                q.social_enterprise, 
+                q.quarter, 
+                q.avg_rating
+            FROM QuarterlyRatings q
+            JOIN TopSEs t ON q.se_id = t.se_id
+            ORDER BY q.social_enterprise, q.quarter;
         `;
         const values = [mentor_id];
 
@@ -185,22 +193,23 @@ exports.getTopSEPerformanceByMentorships = async (mentor_id) => {
 exports.getPerformanceTrendBySEID = async (se_id) => {
     try {
         const query = `
-            WITH MonthlyRatings AS (
+            WITH QuarterlyRatings AS (
                 SELECT 
                     e.se_id,
                     s.abbr AS social_enterprise, -- Use abbreviation instead of full name
-                    DATE_TRUNC('month', e.created_at) AS month,
+                    DATE_TRUNC('quarter', e.created_at) AS quarter, -- Group data by quarter
                     ROUND(AVG(ec.rating), 2) AS avg_rating
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                 JOIN socialenterprises s ON e.se_id = s.se_id
-                WHERE e.created_at >= (CURRENT_DATE - INTERVAL '3 months') AND e.evaluation_type = 'Social Enterprise'
-                AND e.se_id = $1  -- Filter by specific SE ID
-                GROUP BY e.se_id, s.abbr, month
+                WHERE e.created_at >= (CURRENT_DATE - INTERVAL '9 months') 
+                    AND e.evaluation_type = 'Social Enterprise'
+                    AND e.se_id = $1  -- Filter by specific SE ID
+                GROUP BY e.se_id, s.abbr, quarter
             )
-            SELECT se_id, social_enterprise, month, avg_rating
-            FROM MonthlyRatings
-            ORDER BY month;
+            SELECT se_id, social_enterprise, quarter, avg_rating
+            FROM QuarterlyRatings
+            ORDER BY quarter;
         `;
         const values = [se_id];
 

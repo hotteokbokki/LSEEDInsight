@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Box, Typography } from "@mui/material";
-import LineChart from "./LineChart"; // Import the reusable chart component
-import { useTheme } from "@mui/material"; // ✅ Fix: Import useTheme from MUI
-import { tokens } from "../theme"; // ✅ Fix: Ensure tokens is imported from your theme file
+import LineChart from "./LineChart";
+import { useTheme } from "@mui/material";
+import { tokens } from "../theme";
 
 const SEPerformanceTrendChartByMentorship = () => {
     const theme = useTheme();
@@ -37,11 +37,11 @@ const SEPerformanceTrendChartByMentorship = () => {
                 }
 
                 const data = await response.json();
-                console.log("Fetched Data:", data); // ✅ Debugging step
+                console.log("Fetched Data:", data);
 
                 if (!Array.isArray(data) || data.length === 0) {
                     console.warn("Unexpected response:", data);
-                    setTopPerformers([]); // Always set an array
+                    setTopPerformers([]);
                     return;
                 }
 
@@ -55,7 +55,7 @@ const SEPerformanceTrendChartByMentorship = () => {
         if (userSession) {
             fetchTopPerformers();
         }
-    }, [userSession]); // ✅ Fetch only when `userSession` is available
+    }, [userSession]);
 
     useEffect(() => {
         if (topPerformers.length === 0) {
@@ -66,67 +66,52 @@ const SEPerformanceTrendChartByMentorship = () => {
         const formatChartData = (data) => {
             const groupedData = {};
             const colorList = [
-                colors.blueAccent[500],  // Primary Blue
-                colors.greenAccent[500], // Primary Green
-                colors.redAccent[500],   // Primary Red
-                colors.primary[500],     // Primary Theme Color
-                colors.grey[500],        // Neutral Grey
+                colors.blueAccent[500],
+                colors.greenAccent[500],
+                colors.redAccent[500],
+                colors.primary[500],
+                colors.grey[500],
             ];
 
             if (!data || data.length === 0) {
                 return "Insufficient data";
             }
 
-            const today = new Date();
-            const startDate = new Date();
-            startDate.setMonth(today.getMonth() - 1);
-            startDate.setDate(1);
-
-            const next60Days = new Date();
-            next60Days.setDate(today.getDate() + 60);
-
-            const dbMonths = new Set(data.map((se) => se.month.substring(0, 7)));
-
-            const allMonths = new Set([startDate.toISOString().substring(0, 7)]);
-            let current = new Date(startDate);
-            while (current <= next60Days) {
-                allMonths.add(current.toISOString().substring(0, 7));
-                current.setMonth(current.getMonth() + 2);
-            }
-
-            dbMonths.forEach((month) => allMonths.add(month));
-            let xAxisMonths = [...allMonths].sort();
-
-            const lastEvaluations = {};
+            const allQuarters = new Set();
             data.forEach((se) => {
-                if (!se || !se.social_enterprise || !se.month) return;
-
-                const seName = se.social_enterprise;
-                const evalMonth = se.month.substring(0, 7);
-
-                if (!lastEvaluations[seName] || evalMonth > lastEvaluations[seName]) {
-                    lastEvaluations[seName] = evalMonth;
+                if (se && se.quarter) {
+                    const date = new Date(se.quarter);
+                    const year = date.getFullYear();
+                    const quarter = Math.floor(date.getMonth() / 3) + 1;
+                    allQuarters.add(`${year}-Q${quarter}`);
                 }
             });
 
-            data.forEach((se) => {
-                if (!se || !se.social_enterprise || !se.month) return;
+            let xAxisQuarters = [...allQuarters].sort((a, b) => {
+                const [yearA, qtrA] = a.split("-Q").map(Number);
+                const [yearB, qtrB] = b.split("-Q").map(Number);
+                return yearA === yearB ? qtrA - qtrB : yearA - yearB;
+            });
 
+            data.forEach((se) => {
+                if (!se || !se.social_enterprise || !se.quarter) return;
+
+                const date = new Date(se.quarter);
+                const year = date.getFullYear();
+                const quarter = Math.floor(date.getMonth() / 3) + 1;
+                const formattedQuarter = `${year}-Q${quarter}`;
                 const seName = se.social_enterprise;
-                const lastMonth = lastEvaluations[seName] || "2025-01";
 
                 if (!groupedData[seName]) {
-                    groupedData[seName] = xAxisMonths
-                        .filter((month) => month <= lastMonth)
-                        .map((month) => ({
-                            x: month,
-                            y: new Date(month) < today ? 0 : null,
-                        }));
+                    groupedData[seName] = xAxisQuarters.map((qtr) => ({
+                        x: qtr,
+                        y: null,
+                    }));
                 }
 
                 groupedData[seName] = groupedData[seName].map((point) => ({
                     x: point.x,
-                    y: point.x === se.month.substring(0, 7) ? parseFloat(se.avg_rating) || 0 : point.y,
+                    y: point.x === formattedQuarter ? (se.avg_rating !== null ? parseFloat(se.avg_rating) : null) : point.y,
                 }));
             });
 
@@ -138,34 +123,7 @@ const SEPerformanceTrendChartByMentorship = () => {
         };
 
         setChartData(formatChartData(topPerformers));
-    }, [topPerformers]); // ✅ Format chart data only when `topPerformers` is updated
-
-    const getTopPerformer = (data) => {
-        const avgRatings = {};
-
-        data.forEach(({ social_enterprise, avg_rating }) => {
-            if (!avgRatings[social_enterprise]) {
-                avgRatings[social_enterprise] = { total: 0, count: 0 };
-            }
-            avgRatings[social_enterprise].total += parseFloat(avg_rating);
-            avgRatings[social_enterprise].count += 1;
-        });
-
-        let topPerformer = null;
-        let highestAvg = 0;
-
-        Object.keys(avgRatings).forEach((se) => {
-            const avg = avgRatings[se].total / avgRatings[se].count;
-            if (avg > highestAvg) {
-                highestAvg = avg;
-                topPerformer = se;
-            }
-        });
-
-        return topPerformer;
-    };
-
-    const topPerformerName = getTopPerformer(topPerformers);
+    }, [topPerformers]);
 
     return (
         <Box gridColumn="span 12" gridRow="span 2" backgroundColor={colors.primary[400]}>
@@ -175,14 +133,21 @@ const SEPerformanceTrendChartByMentorship = () => {
                         {chartData === "Insufficient data" ? "" : "Top Performer"}
                     </Typography>
                     <Typography variant="h5" fontWeight="600" color={colors.grey[100]}>
-                        {chartData === "Insufficient data" ? "No Available Data" : topPerformerName}
+                        {chartData === "Insufficient data" ? "No Available Data" : topPerformers[0]?.social_enterprise}
                     </Typography>
                 </Box>
             </Box>
-
             <Box height="250px" m="-20px 0 0 0">
                 {chartData === "Insufficient data" ? (
-                    <Typography variant="h6" color={colors.grey[300]} display="flex" justifyContent="center" alignItems="center" height="100%" textAlign="center">
+                    <Typography 
+                        variant="h6" 
+                        color={colors.grey[300]}
+                        display="flex"
+                        justifyContent="center"
+                        alignItems="center"
+                        height="100%"
+                        textAlign="center"
+                    >
                         No data available for plotting.
                     </Typography>
                 ) : (

@@ -36,7 +36,7 @@ const LeaderboardChart = ({ data }) => {
             const change = data.performance_change;
             if (change > 0) return theme.palette.mode === 'dark' ? colors.greenAccent[300] : colors.greenAccent[500];
             if (change < 0) return theme.palette.mode === 'dark' ? colors.redAccent[300] : colors.redAccent[500];
-            return colors.grey[500]; // Neutral color when no change
+            return colors.grey[400]; // Neutral color when no change
           }}
           axisLeft={{
             legend: 'Rating',
@@ -55,7 +55,7 @@ const LeaderboardChart = ({ data }) => {
               ? colors.greenAccent[500]
               : isDecrease
               ? colors.redAccent[500]
-              : colors.grey[500]; // Neutral color when no change
+              : colors.grey[400]; // Neutral color when no change
 
             return (
               <div
