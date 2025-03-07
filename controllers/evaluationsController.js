@@ -166,7 +166,7 @@ exports.getTopSEPerformance = async (period = "overall") => {
                     JOIN socialenterprises s ON e.se_id = s.se_id
                     CROSS JOIN LatestEvaluation le
                     WHERE 
-                        e.created_at >= (le.latest_eval_date - INTERVAL '12 months') -- Dynamic start date
+                        e.created_at >= (le.latest_eval_date - INTERVAL '11 months') -- Dynamic start date
                         AND e.created_at <= le.latest_eval_date -- Dynamic end date
                         AND e.evaluation_type = 'Social Enterprise'
                     GROUP BY e.se_id, s.abbr, month

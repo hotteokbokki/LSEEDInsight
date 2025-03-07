@@ -9,20 +9,47 @@ const SEPerformanceTrendChart = () => {
     const colors = tokens(theme.palette.mode);
     const [topPerformers, setTopPerformers] = useState([]);
     const [period, setPeriod] = useState("overall");
+    const [topPerformer, setTopPerformer] = useState(null);
 
     useEffect(() => {
         const fetchTopPerformers = async () => {
             try {
                 const response = await fetch(`http://localhost:4000/api/top-se-performance?period=${period}`);
                 const data = await response.json();
-                setTopPerformers(Array.isArray(data) ? data : []);
+                console.log("Fetched data:", data); // Debugging log
+                const formattedData = Array.isArray(data) ? data : [];
+
+                setTopPerformers(formattedData);
+                
+                // Determine top performer dynamically for selected period
+                if (formattedData.length > 0) {
+                    const averageRatings = formattedData.reduce((acc, { social_enterprise, avg_rating }) => {
+                        if (!acc[social_enterprise]) {
+                            acc[social_enterprise] = { total: 0, count: 0 };
+                        }
+                        acc[social_enterprise].total += parseFloat(avg_rating);
+                        acc[social_enterprise].count += 1;
+                        return acc;
+                    }, {});
+
+                    const topSE = Object.entries(averageRatings).reduce((top, [seName, { total, count }]) => {
+                        const avg = total / count;
+                        return !top || avg > top.avg ? { name: seName, avg } : top;
+                    }, null);
+
+                    console.log("Top performer for", period, ":", topSE?.name); // Debugging log
+                    setTopPerformer(topSE ? topSE.name : null);
+                } else {
+                    setTopPerformer(null);
+                }
             } catch (error) {
                 console.error("Error fetching top SE performance:", error);
                 setTopPerformers([]);
+                setTopPerformer(null);
             }
         };
         fetchTopPerformers();
-    }, [period]);
+    }, [period]); // Only depends on period
 
     const formatChartData = (data) => {
         if (!data.length) return [];
@@ -69,13 +96,19 @@ const SEPerformanceTrendChart = () => {
                 </Select>
             </Box>
 
-            <Box mt="25px" p="0 30px" display="flex" justifyContent="space-between" alignItems="center">
+            <Box mt="25px" p="0 30px" display="flex" flexDirection="column">
                 <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
                     {chartData.length === 0 ? "No Data" : "SE Performance Trend"}
                 </Typography>
+
+                {topPerformer && (
+                    <Typography variant="h5" fontWeight="bold" color={colors.blueAccent[500]} mt={1}>
+                        Top Performer ({period}): {topPerformer}
+                    </Typography>
+                )}
             </Box>
 
-            <Box height="250px" m="-20px 0 0 0">
+            <Box height="250px" m="-20px 0 0 0" display="flex" justifyContent="center" alignItems="center">
                 {chartData.length === 0 ? (
                     <Typography variant="h6" color={colors.grey[300]} textAlign="center">
                         No data available for plotting.
