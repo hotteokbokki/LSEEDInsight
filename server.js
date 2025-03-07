@@ -959,12 +959,18 @@ app.get("/getEvaluationDetails", async (req, res) => {
 
 app.get("/api/top-se-performance", async (req, res) => {
   try {
-    const result = await getTopSEPerformance();
+    // Capture the period from query params (default is "trimester")
+    const period = req.query.period || "trimester"; 
 
-    if (result.length === 0) {  // ✅ result is already an array
-      return res.json({ message: "No performance data available" });
+    // Fetch the top SE performance based on the period
+    const result = await getTopSEPerformance(period);
+
+    // If no data is found
+    if (result.length === 0) {
+      return res.status(404).json({ message: "No performance data available" });
     }
-    
+
+    // Return the fetched data
     res.json(result);
   } catch (error) {
     console.error("Error fetching top SE performance:", error);

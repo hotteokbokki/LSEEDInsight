@@ -94,43 +94,156 @@ exports.getEvaluationDetails = async (evaluation_id) => {
     }
 };
 
-exports.getTopSEPerformance = async () => {
+exports.getTopSEPerformance = async (period = "overall") => {
     try {
-        const query = `
-            WITH QuarterlyRatings AS (
+        let query;
+
+        // Select query based on the period
+        if (period === "quarterly") {
+            query = `
+                WITH LatestEvaluation AS (
+                    -- Step 1: Determine the latest evaluation date (truncated to the start of the month)
+                    SELECT DATE_TRUNC('month', MAX(created_at)) AS latest_eval_date
+                    FROM evaluations
+                    WHERE evaluation_type = 'Social Enterprise'
+                ),
+                MonthlyRatings AS (
+                    -- Step 2: Calculate monthly ratings for the latest 3 months
+                    SELECT 
+                        e.se_id,
+                        s.abbr AS social_enterprise, 
+                        DATE_TRUNC('month', e.created_at) AS month, -- Group by month
+                        ROUND(AVG(ec.rating), 2) AS avg_rating,
+                        COUNT(*) AS eval_count
+                    FROM evaluations e
+                    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+                    JOIN socialenterprises s ON e.se_id = s.se_id
+                    CROSS JOIN LatestEvaluation le
+                    WHERE 
+                        DATE_TRUNC('month', e.created_at) >= (le.latest_eval_date - INTERVAL '3 months') -- Start date (3 months before latest eval)
+                        AND DATE_TRUNC('month', e.created_at) <= le.latest_eval_date -- End date (latest eval)
+                        AND e.evaluation_type = 'Social Enterprise'
+                    GROUP BY e.se_id, s.abbr, month
+                ),
+                TopSEsTrimester AS (
+                    -- Step 3: Identify the top 3 social enterprises by weighted average rating
+                    SELECT 
+                        se_id, 
+                        social_enterprise, 
+                        SUM(avg_rating * eval_count) / SUM(eval_count) AS weighted_avg_rating
+                    FROM MonthlyRatings
+                    GROUP BY se_id, social_enterprise
+                    ORDER BY weighted_avg_rating DESC
+                    LIMIT 3
+                )
+                -- Step 4: Retrieve the final results
                 SELECT 
-                    e.se_id,
-                    s.abbr AS social_enterprise, -- Use abbreviation instead of full name
-                    DATE_TRUNC('quarter', e.created_at) AS quarter, -- Aggregate by quarter
-                    ROUND(AVG(ec.rating), 2) AS avg_rating,
-                    COUNT(*) AS eval_count -- Count number of evaluations per SE per quarter
-                FROM evaluations e
-                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                JOIN socialenterprises s ON e.se_id = s.se_id
-                WHERE 
-                    e.created_at >= DATE_TRUNC('quarter', CURRENT_DATE - INTERVAL '6 months') -- Consider last 6 months
-                    AND e.evaluation_type = 'Social Enterprise'
-                GROUP BY e.se_id, s.abbr, quarter
-            ),
-            TopSEs AS (
+                    m.se_id, 
+                    m.social_enterprise, 
+                    m.month, 
+                    m.avg_rating,
+                    'trimester' AS period
+                FROM MonthlyRatings m
+                JOIN TopSEsTrimester t ON m.se_id = t.se_id
+                ORDER BY t.weighted_avg_rating DESC, m.social_enterprise, m.month;
+            `;
+        } else if (period === "yearly") {
+            query = `
+                WITH LatestEvaluation AS (
+                    SELECT DATE_TRUNC('month', MAX(created_at)) AS latest_eval_date
+                    FROM evaluations
+                    WHERE evaluation_type = 'Social Enterprise'
+                ),
+                YearlyRatings AS (
+                    SELECT 
+                        e.se_id,
+                        s.abbr AS social_enterprise, 
+                        DATE_TRUNC('month', e.created_at) AS month, -- Group by month
+                        ROUND(AVG(ec.rating), 2) AS avg_rating,
+                        COUNT(*) AS eval_count
+                    FROM evaluations e
+                    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+                    JOIN socialenterprises s ON e.se_id = s.se_id
+                    CROSS JOIN LatestEvaluation le
+                    WHERE 
+                        e.created_at >= (le.latest_eval_date - INTERVAL '12 months') -- Dynamic start date
+                        AND e.created_at <= le.latest_eval_date -- Dynamic end date
+                        AND e.evaluation_type = 'Social Enterprise'
+                    GROUP BY e.se_id, s.abbr, month
+                ),
+                TopSEsYearly AS (
+                    SELECT 
+                        se_id, 
+                        social_enterprise, 
+                        SUM(avg_rating * eval_count) / SUM(eval_count) AS weighted_avg_rating
+                    FROM YearlyRatings
+                    GROUP BY se_id, social_enterprise
+                    ORDER BY weighted_avg_rating DESC
+                    LIMIT 3
+                )
                 SELECT 
-                    se_id, 
-                    social_enterprise, 
-                    SUM(avg_rating * eval_count) / SUM(eval_count) AS weighted_avg_rating
-                FROM QuarterlyRatings
-                GROUP BY se_id, social_enterprise
-                ORDER BY weighted_avg_rating DESC
-                LIMIT 3 -- Get the top 3 SEs
-            )
-            SELECT 
-                q.se_id, 
-                q.social_enterprise, 
-                q.quarter, 
-                q.avg_rating
-            FROM QuarterlyRatings q
-            JOIN TopSEs t ON q.se_id = t.se_id
-            ORDER BY q.social_enterprise, q.quarter;
-        `;
+                    y.se_id, 
+                    y.social_enterprise, 
+                    y.month, 
+                    y.avg_rating,
+                    'yearly' AS period
+                FROM YearlyRatings y
+                JOIN TopSEsYearly t ON y.se_id = t.se_id
+                ORDER BY t.weighted_avg_rating DESC, y.social_enterprise, y.month;
+            `;
+        } else if (period === "overall") {
+            query = `
+                WITH EvaluationRange AS (
+                    -- Step 1: Determine the earliest and latest evaluation dates (truncated to the start of the month)
+                    SELECT 
+                        DATE_TRUNC('month', MIN(created_at)) AS earliest_eval_date,
+                        DATE_TRUNC('month', MAX(created_at)) AS latest_eval_date
+                    FROM evaluations
+                    WHERE evaluation_type = 'Social Enterprise'
+                ),
+                MonthlyRatings AS (
+                    -- Step 2: Calculate monthly ratings for the overall date range
+                    SELECT 
+                        e.se_id,
+                        s.abbr AS social_enterprise, 
+                        DATE_TRUNC('month', e.created_at) AS month, -- Group by month
+                        ROUND(AVG(ec.rating), 2) AS avg_rating,
+                        COUNT(*) AS eval_count
+                    FROM evaluations e
+                    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+                    JOIN socialenterprises s ON e.se_id = s.se_id
+                    CROSS JOIN EvaluationRange er
+                    WHERE 
+                        DATE_TRUNC('month', e.created_at) >= er.earliest_eval_date -- Start date (earliest eval)
+                        AND DATE_TRUNC('month', e.created_at) <= er.latest_eval_date -- End date (latest eval)
+                        AND e.evaluation_type = 'Social Enterprise'
+                    GROUP BY e.se_id, s.abbr, month
+                ),
+                TopSEsOverall AS (
+                    -- Step 3: Identify the top 3 social enterprises by weighted average rating
+                    SELECT 
+                        se_id, 
+                        social_enterprise, 
+                        SUM(avg_rating * eval_count) / SUM(eval_count) AS weighted_avg_rating
+                    FROM MonthlyRatings
+                    GROUP BY se_id, social_enterprise
+                    ORDER BY weighted_avg_rating DESC
+                    LIMIT 3
+                )
+                -- Step 4: Retrieve the final results
+                SELECT 
+                    m.se_id, 
+                    m.social_enterprise, 
+                    m.month, 
+                    m.avg_rating,
+                    'overall' AS period
+                FROM MonthlyRatings m
+                JOIN TopSEsOverall t ON m.se_id = t.se_id
+                ORDER BY t.weighted_avg_rating DESC, m.social_enterprise, m.month;
+            `;
+        } else {
+            throw new Error("Invalid period specified. Use 'trimester' or 'yearly'.");
+        }
 
         const result = await pgDatabase.query(query);
         return result.rows;
