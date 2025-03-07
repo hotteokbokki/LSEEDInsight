@@ -1978,11 +1978,18 @@ app.get("/getMentorshipDates", async (req, res) => {
 
   try {
     const result = await pgDatabase.query(
-      `SELECT m.se_id, m.mentorship_date, se.team_name, p.name
-       FROM mentorships m
-       JOIN socialenterprises se ON m.se_id = se.se_id
-       JOIN programs p ON se.program_id = p.program_id
-       WHERE m.mentor_id = $1`,
+      `SELECT 
+          m.mentorship_id, 
+          m.mentorship_date, 
+          se.team_name, 
+          p.name AS program_name,
+          COALESCE(array_agg(a.mentorship_date), '{}') AS accepted_dates
+      FROM public.mentorships m
+      LEFT JOIN public.accepted_schedule a ON m.mentorship_id = a.mentorship_id
+      LEFT JOIN public.socialenterprises se ON m.se_id = se.se_id
+      LEFT JOIN public.programs p ON se.program_id = p.program_id
+      WHERE m.mentor_id = $1
+      GROUP BY m.mentorship_id, se.team_name, p.name`,
       [mentor_id]
     );
     // console.log("server/getMentorshipDate: results: ", result.rows);
