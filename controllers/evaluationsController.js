@@ -224,51 +224,52 @@ exports.getPerformanceTrendBySEID = async (se_id) => {
 exports.getCommonChallengesBySEID = async (se_id) => {
     try {
         const query = `
-WITH low_rated_categories AS (
-    SELECT 
-        ec.category_name AS category,
-        ec.rating,
-        COUNT(ec.evaluation_category_id) AS count
-    FROM evaluations e
-    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-    WHERE e.se_id = $1  -- ✅ Using parameterized input
-    AND e.evaluation_type = 'Social Enterprise'
-    AND ec.rating <= 2  
-    GROUP BY ec.category_name, ec.rating
-),
-ranked_low_ratings AS (
-    SELECT 
-        category, 
-        rating, 
-        count,
-        RANK() OVER (PARTITION BY category ORDER BY count DESC, rating ASC) AS rank
-    FROM low_rated_categories
-),
-top_low_rated AS (
-    SELECT 
-        category,
-        rating,
-        count
-    FROM ranked_low_ratings
-    WHERE rank = 1  -- ✅ Select only the most common low rating per category
-),
-total_top AS (
-    SELECT SUM(count) AS top_total FROM top_low_rated
-),
-final_result AS (
-    SELECT 
-        tlr.category, 
-        tlr.rating,
-        esc.comment,  -- ✅ Fetch associated comment
-        tlr.count,
-        ROUND(tlr.count * 100.0 / tt.top_total, 0) AS percentage
-    FROM top_low_rated tlr
-    CROSS JOIN total_top tt
-    LEFT JOIN evaluation_categories ec ON tlr.category = ec.category_name AND tlr.rating = ec.rating
-    LEFT JOIN evaluation_selected_comments esc ON ec.evaluation_category_id = esc.evaluation_category_id
-)
-SELECT DISTINCT * FROM final_result
-ORDER BY count DESC;
+            WITH low_rated_categories AS (
+                SELECT 
+                    ec.category_name AS category,
+                    ec.rating,
+                    COUNT(ec.evaluation_category_id) AS count
+                FROM evaluations e
+                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+                WHERE e.se_id = $1 -- ✅ Filter by the specific SE
+                AND e.evaluation_type = 'Social Enterprise'
+                AND ec.rating <= 2  
+                GROUP BY ec.category_name, ec.rating
+            ),
+            ranked_low_ratings AS (
+                SELECT 
+                    category, 
+                    rating, 
+                    count,
+                    RANK() OVER (PARTITION BY category ORDER BY count DESC, rating ASC) AS rank
+                FROM low_rated_categories
+            ),
+            top_low_rated AS (
+                SELECT 
+                    category,
+                    rating,
+                    count
+                FROM ranked_low_ratings
+                WHERE rank = 1  -- ✅ Select only the most common low rating per category
+            ),
+            total_top AS (
+                SELECT SUM(count) AS top_total FROM top_low_rated
+            ),
+            final_result AS (
+                SELECT 
+                    tlr.category, 
+                    tlr.rating,
+                    MIN(esc.comment) AS comment,  -- ✅ Select only one distinct comment (avoiding repetition)
+                    tlr.count,
+                    ROUND(tlr.count * 100.0 / COALESCE(tt.top_total, 1), 0) AS percentage
+                FROM top_low_rated tlr
+                CROSS JOIN total_top tt
+                LEFT JOIN evaluation_categories ec ON tlr.category = ec.category_name AND tlr.rating = ec.rating
+                LEFT JOIN evaluation_selected_comments esc ON ec.evaluation_category_id = esc.evaluation_category_id
+                GROUP BY tlr.category, tlr.rating, tlr.count, tt.top_total
+            )
+            SELECT DISTINCT * FROM final_result
+            ORDER BY count DESC;
         `;
         const values = [se_id];
 
