@@ -357,27 +357,54 @@ const mentorship = mentorshipResult.rows[0];
 
     const seName = seResult.rows[0].team_name;
 
-    // Format Dates
-    const formattedDates = mentorship.mentorship_date.map((date, idx) => {
-            const formattedDate = new Date(date).toLocaleDateString("en-US", {
-                month: "long",
-                day: "2-digit",
-                year: "numeric",
-            });
+    // Find the latest scheduled date
+    const latestIndex = mentorship.mentorship_date.reduce((latestIdx, date, idx) => {
+      return new Date(date) > new Date(mentorship.mentorship_date[latestIdx]) ? idx : latestIdx;
+    }, 0);
 
-            let rawTime = "N/A";
-            if (Array.isArray(mentorship.mentorship_time) && mentorship.mentorship_time.length > idx) {
-                rawTime = mentorship.mentorship_time[idx]; // ✅ Use raw PostgreSQL time
-            }
+    // Format the latest date
+    const formattedDate = new Date(mentorship.mentorship_date[latestIndex]).toLocaleDateString("en-US", {
+      month: "long",
+      day: "2-digit",
+      year: "numeric",
+    });
 
-            return `${formattedDate} - ${rawTime}`;
-        }).join("\n🔹 ");
+    // Get the latest time
+    let formattedTime = "N/A";
+    if (Array.isArray(mentorship.mentorship_time) && mentorship.mentorship_time.length > latestIndex) {
+      const timeStr = mentorship.mentorship_time[latestIndex]; // ✅ Use latestIndex
+      formattedTime = new Date(`1970-01-01T${timeStr}`).toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true, // ✅ Converts to 12-hour format with AM/PM
+      });
+    }
 
+    // Construct the final message
+    const message = `📅 *New Mentorship Meeting Request*\n\n`
+      + `🔹 *Mentor:* ${mentorName}\n`
+      + `🔹 *Social Enterprise:* ${seName}\n`
+      + `🔹 *Schedule:* ${formattedDate} - ${formattedTime}\n`;
 
-  const message = `📅 *New Mentorship Meeting Request*\n\n`
-            + `🔹 *Mentor:* ${mentorName}\n`
-            + `🔹 *Social Enterprise:* ${seName}\n`
-            + `🔹 *Schedule:* ${formattedDates}\n`;
+    // ✅ Validate that chat_id and message_id exist before deletion
+    if (mentorship.chat_id && mentorship.message_id) {
+      console.log(`📌 Attempting to delete message ${mentorship.message_id} in chat ${mentorship.chat_id}`);
+
+      try {
+          const response = await axios.post(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`,
+              {
+                  chat_id: mentorship.chat_id,
+                  message_id: mentorship.message_id,
+              }
+          );
+          console.log("✅ Message deleted successfully:", response.data);
+      } catch (error) {
+          console.error("❌ Failed to delete message:", error.response?.data || error.message);
+      }
+    } else {
+      console.log("⚠️ Skipping message deletion: No valid chat_id or message_id found.");
+    }
 
     // Generate inline keyboard dynamically for multiple dates
     const inline_keyboard = mentorship_date.map(dateObj => {
@@ -1586,7 +1613,7 @@ app.post("/webhook", async (req, res) => {
             }
         
             // ✅ Send the confirmation message
-            const confirmationMessage = `📅 *Confirmed Mentor Schedule*\n\n🔹 *Date:* ${accepted_date}\n🔹 *Mentor:* ${mentorName}`;
+            const confirmationMessage = `📅 *Confirmed Mentor Schedule*\n\n🔹 *Schedule:* ${formattedDates}\n🔹 *Mentor:* ${mentorName}`;
             await sendMessage(chatId, confirmationMessage);
         
             return res.sendStatus(200);

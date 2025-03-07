@@ -110,7 +110,7 @@ const Scheduling = ({ userRole }) => {
         mentor_id: se.mentor_id,
         se_id: se.se_id,
         team_name: se.se || "Unknown Team",
-        program_name: se.program_name || "Unknown Program",
+        program_name: se.program || "Unknown Program",
         sdg_name: se.sdgs || "No SDG Name",
       }));
 
@@ -127,7 +127,7 @@ const Scheduling = ({ userRole }) => {
 
     try {
       setIsLoading(true);
-      const formattedTime = selectedTime ? selectedTime.format("HH:mm:ss") : null;
+      const formattedTime = selectedTime ? selectedTime.format("HH:mm") : null;
       const response = await fetch(
         "http://localhost:4000/updateMentorshipDate",
         {
@@ -317,8 +317,11 @@ const Scheduling = ({ userRole }) => {
                         const formattedTime =
                           Array.isArray(mentorship.mentorship_time) &&
                           mentorship.mentorship_time.length > idx && mentorship.mentorship_time[idx]
-                            ? mentorship.mentorship_time[idx] // ✅ Use raw time string (HH:mm)
-                            : "N/A"; // ✅ Handle missing time
+                            ? new Date(`1970-01-01T${mentorship.mentorship_time[idx]}`).toLocaleTimeString("en-US", {
+                              hour: "numeric",
+                              minute: "2-digit",
+                              hour12: true, // ✅ Convert to 12-hour format with AM/PM
+                            }): "N/A"
                 
                         return formattedTime !== "N/A" ? `${formattedDate} - ${formattedTime}` : formattedDate;
                       })
@@ -339,8 +342,11 @@ const Scheduling = ({ userRole }) => {
                         const formattedTime =
                           Array.isArray(mentorship.mentorship_time) &&
                           mentorship.mentorship_time.length > idx && mentorship.mentorship_time[idx]
-                            ? mentorship.mentorship_time[idx] // ✅ Use raw time string (HH:mm)
-                            : "N/A"; // ✅ Handle missing time
+                            ? new Date(`1970-01-01T${mentorship.mentorship_time[idx]}`).toLocaleTimeString("en-US", {
+                              hour: "numeric",
+                              minute: "2-digit",
+                              hour12: true, // ✅ Convert to 12-hour format with AM/PM
+                            }): "N/A"
                 
                         return formattedTime !== "N/A" ? `${formattedDate} - ${formattedTime}` : formattedDate;
                       })
