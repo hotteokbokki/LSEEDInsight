@@ -6,8 +6,6 @@ const LikertChart = ({ data }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
-  console.log("This is the data: ", data)
-
   const transformLikertData = (data) => {
     const categoryMap = {};
   

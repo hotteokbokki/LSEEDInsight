@@ -18,7 +18,7 @@ const { getAllSDG } = require("./controllers/sdgController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getMentorshipsByMentorId, getMentorBySEID, getSEWithMentors, getPreviousSEWithMentors, getMentorshipCount } = require("./controllers/mentorshipsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
-const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID, getAverageScoreForAllSEPerCategory, getImprovementScorePerMonthAnnually, getImprovementScoreOverallAnnually, getGrowthScoreOverallAnually, getMonthlyGrowthDetails, getSELeaderboards, updateAcknowledgeEvaluation, getTopSEPerformanceByMentorships, getEvaluationsBySEID, getStatsForHeatmap } = require("./controllers/evaluationsController.js");
+const { getEvaluationsByMentorID, getEvaluationDetails, getTopSEPerformance, getSingleSEPerformanceTrend, getPerformanceTrendBySEID, getCommonChallengesBySEID, getPermanceScoreBySEID, getAverageScoreForAllSEPerCategory, getImprovementScorePerMonthAnnually, getGrowthScoreOverallAnually, getMonthlyGrowthDetails, getSELeaderboards, updateAcknowledgeEvaluation, getTopSEPerformanceByMentorships, getEvaluationsBySEID, getStatsForHeatmap } = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
@@ -475,6 +475,8 @@ app.get("/api/analytics-stats", async (req, res) => {
     const improvementScore = await getImprovementScorePerMonthAnnually();
     const evaluationScoreDistribution = await getEvaluationScoreDistribution();
     const leaderboardData = await getSELeaderboards();
+
+    console.log("Improvement Score Data:", improvementScore);
 
     // ✅ Return Response
     res.json({
@@ -1100,10 +1102,21 @@ app.post("/api/social-enterprises", async (req, res) => {
   }
 });
 
-//For Testing only
 app.get("/heatmap-stats", async (req, res) => {
   try {
     const result = await getStatsForHeatmap()
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error in testing:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+//For Testing only
+app.get("/api-test", async (req, res) => {
+  try {
+    const result = await getImprovementScorePerMonthAnnually()
 
     res.json(result);
   } catch (error) {
@@ -1463,10 +1476,9 @@ app.post("/webhook", async (req, res) => {
         }
         if (data.startsWith("ack_")) {
           const evaluationId = data.replace("ack_", "");
+          await deletePreviousMessages(chatId, ["sendAcknowledgeButtonId"]);
       
           try {
-              await deletePreviousMessages(chatId, ["sendAcknowledgeButtonId"]);
-      
               // Mark evaluation as acknowledged in the database
               await updateAcknowledgeEvaluation(evaluationId);
       
@@ -1649,8 +1661,8 @@ app.post("/webhook", async (req, res) => {
         }
         
         if (data.startsWith("mentoreval_")) {
+          await deletePreviousMessages(chatId, ["startEvaluationMessageId"]);
           try {
-            await deletePreviousMessages(chatId, ["startEvaluationMessageId"]);
             const mentorEvalID = data.replace("mentoreval_", "");
         
             // Retrieve mentorId and seId from stored state

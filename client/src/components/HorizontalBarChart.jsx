@@ -6,8 +6,6 @@ const HorizontalBarChart = ({ data, type }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
-  console.log("This is the data: ", data);
-
   const transformData = (data = [], type) => {
     if (!data || data.length === 0) {
       console.warn("No data available for", type);

@@ -357,71 +357,36 @@ exports.getAverageScoreForAllSEPerCategory = async () => {
 exports.getImprovementScorePerMonthAnnually= async () => {
     try {
         const query = `
-            WITH MonthlyRatings AS (
-                SELECT 
-                    e.se_id,
-                    s.abbr AS social_enterprise, 
-                    DATE_TRUNC('month', e.created_at) AS month,
-                    ROUND(AVG(ec.rating), 2) AS avg_rating
-                FROM evaluations e
-                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                JOIN socialenterprises s ON e.se_id = s.se_id
-                WHERE DATE_PART('year', e.created_at) = DATE_PART('year', CURRENT_DATE) AND e.evaluation_type = 'Social Enterprise'
-                GROUP BY e.se_id, s.abbr, month
-            ),
-            RankedRatings AS (
-                SELECT 
-                    se_id, 
-                    social_enterprise, 
-                    month, 
-                    avg_rating,
-                    LAG(avg_rating) OVER (PARTITION BY se_id ORDER BY month) AS prev_avg_rating
-                FROM MonthlyRatings
-            )
-            SELECT 
-                month,
-                ROUND(AVG(avg_rating - prev_avg_rating), 2) AS overall_avg_improvement
-            FROM RankedRatings
-            WHERE prev_avg_rating IS NOT NULL -- Exclude the first month of evaluations
-            GROUP BY month
-            ORDER BY month;
-        `;
-        const result = await pgDatabase.query(query);
-        return result.rows;
-    } catch (error) {
-        console.error("❌ Error fetching top SE performance:", error);
-        return [];
-    }
-};
-//Stat box
-exports.getImprovementScoreOverallAnnually= async () => {
-    try {
-        const query = `
-            WITH MonthlyRatings AS (
-                SELECT 
-                    e.se_id,
-                    s.abbr AS social_enterprise, 
-                    DATE_TRUNC('month', e.created_at) AS month,
-                    ROUND(AVG(ec.rating), 2) AS avg_rating
-                FROM evaluations e
-                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                JOIN socialenterprises s ON e.se_id = s.se_id
-                WHERE DATE_PART('year', e.created_at) = DATE_PART('year', CURRENT_DATE) AND e.evaluation_type = 'Social Enterprise'
-                GROUP BY e.se_id, s.abbr, month
-            ),
-            RankedRatings AS (
-                SELECT 
-                    se_id, 
-                    social_enterprise, 
-                    month, 
-                    avg_rating,
-                    LAG(avg_rating) OVER (PARTITION BY se_id ORDER BY month) AS prev_avg_rating
-                FROM MonthlyRatings
-            )
-            SELECT 
-                ROUND(AVG(avg_rating - prev_avg_rating), 2) AS overall_avg_improvement
-            FROM RankedRatings
-            WHERE prev_avg_rating IS NOT NULL; -- Exclude the first month
+WITH MonthlyRatings AS (
+    SELECT 
+        e.se_id,
+        s.abbr AS social_enterprise, 
+        DATE_TRUNC('month', e.created_at) AS month,
+        ROUND(AVG(ec.rating), 3) AS avg_rating
+    FROM evaluations e
+    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+    JOIN socialenterprises s ON e.se_id = s.se_id
+    WHERE DATE_PART('year', e.created_at) = DATE_PART('year', CURRENT_DATE) 
+        AND e.evaluation_type = 'Social Enterprise'
+    GROUP BY e.se_id, s.abbr, month
+),
+RankedRatings AS (
+    SELECT 
+        se_id, 
+        social_enterprise, 
+        month, 
+        avg_rating,
+        LAG(avg_rating) OVER (PARTITION BY se_id ORDER BY month) AS prev_avg_rating
+    FROM MonthlyRatings
+)
+SELECT 
+    month,
+    ROUND(AVG(avg_rating - prev_avg_rating), 3) AS overall_avg_improvement, -- Increased precision
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY avg_rating - prev_avg_rating) AS median_improvement
+FROM RankedRatings
+WHERE prev_avg_rating IS NOT NULL
+GROUP BY month
+ORDER BY month;
         `;
         const result = await pgDatabase.query(query);
         return result.rows;
@@ -554,40 +519,59 @@ exports.getMonthlyGrowthDetails= async () => {
 exports.getSELeaderboards= async () => {
     try {
         const query = `
-            WITH MonthlyRatings AS (
-                SELECT 
-                    e.se_id,
-                    s.abbr AS social_enterprise, -- Use abbreviation instead of full name
-                    DATE_TRUNC('month', e.created_at) AS month,
-                    ROUND(AVG(ec.rating), 2) AS avg_rating,
-                    COUNT(*) AS eval_count -- Count number of evaluations per SE per month
-                FROM evaluations e
-                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                JOIN socialenterprises s ON e.se_id = s.se_id
-                WHERE e.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '3 months') AND e.evaluation_type = 'Social Enterprise'
-                GROUP BY e.se_id, s.abbr, month
-            ),
-            LatestRatings AS (
-                SELECT se_id, MAX(month) AS latest_month
-                FROM MonthlyRatings
-                GROUP BY se_id
-            ),
-            TopSEs AS (
-                SELECT 
-                    mr.se_id, 
-                    mr.social_enterprise, 
-                    mr.avg_rating, 
-                    SUM(mr.avg_rating * mr.eval_count) / SUM(mr.eval_count) AS weighted_avg_rating
-                FROM MonthlyRatings mr
-                JOIN LatestRatings lr ON mr.se_id = lr.se_id AND mr.month = lr.latest_month
-                GROUP BY mr.se_id, mr.social_enterprise, mr.avg_rating
-                ORDER BY weighted_avg_rating DESC
-                LIMIT 10 -- Get the top 10 performing SEs based on most recent rating
-            )
-            SELECT t.se_id, t.social_enterprise, t.avg_rating AS most_recent_avg_rating
-            FROM TopSEs t
-            ORDER BY t.weighted_avg_rating DESC;
-
+WITH MonthlyRatings AS (
+    SELECT 
+        e.se_id,
+        s.abbr AS social_enterprise, 
+        s.team_name AS full_name,  -- Fetch full name for tooltip
+        DATE_TRUNC('month', e.created_at) AS month,
+        ROUND(AVG(ec.rating), 2) AS avg_rating,
+        COUNT(*) AS eval_count -- Count number of evaluations per SE per month
+    FROM evaluations e
+    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+    JOIN socialenterprises s ON e.se_id = s.se_id
+    WHERE e.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '12 months') -- Allow flexibility for time frame
+        AND e.evaluation_type = 'Social Enterprise'
+    GROUP BY e.se_id, s.abbr, s.team_name, month
+),
+WeightedRatings AS (
+    SELECT 
+        mr.se_id, 
+        mr.social_enterprise,
+        mr.full_name, -- Include full name
+        mr.month,
+        mr.avg_rating,
+        mr.eval_count,
+        CASE
+            WHEN mr.month = DATE_TRUNC('month', CURRENT_DATE) THEN 1.0
+            WHEN mr.month = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') THEN 0.75
+            WHEN mr.month = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '2 months') THEN 0.5
+            ELSE 0.25 -- Past months get decreasing weights
+        END AS weight
+    FROM MonthlyRatings mr
+),
+TopSEs AS (
+    SELECT 
+        wr.se_id,
+        wr.social_enterprise,
+        wr.full_name,
+        SUM(wr.avg_rating * wr.eval_count * wr.weight) / SUM(wr.eval_count * wr.weight) AS weighted_avg_rating,
+        AVG(wr.avg_rating) AS simple_avg_rating
+    FROM WeightedRatings wr
+    GROUP BY wr.se_id, wr.social_enterprise, wr.full_name
+    HAVING COUNT(wr.se_id) >= 3  -- Ensure sufficient evaluations per SE
+    ORDER BY weighted_avg_rating DESC, simple_avg_rating DESC
+    LIMIT 10
+)
+SELECT 
+    t.se_id, 
+    t.social_enterprise,  -- Abbreviated name for axis
+    t.full_name,          -- Full name for tooltip
+    ROUND(t.simple_avg_rating, 2) AS most_recent_avg_rating,
+    ROUND(t.weighted_avg_rating, 2) AS overall_weighted_avg_rating,
+    ROUND(t.simple_avg_rating - t.weighted_avg_rating, 2) AS performance_change -- Ensure 2 decimal places
+FROM TopSEs t
+ORDER BY t.weighted_avg_rating DESC;
         `;
         const result = await pgDatabase.query(query);
         return result.rows;

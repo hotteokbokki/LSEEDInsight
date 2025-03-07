@@ -15,8 +15,6 @@ const SEPerformanceTrendChart = () => {
             const response = await fetch("http://localhost:4000/api/top-se-performance");
             const data = await response.json();
 
-            console.log("Fetched Data:", data); // ✅ Debugging step
-
             if (!Array.isArray(data) || !data.length) {
                 console.warn("Unexpected response:", data);
                 setTopPerformers([]); // Always set an array

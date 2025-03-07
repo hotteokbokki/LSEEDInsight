@@ -132,139 +132,125 @@ const Analytics = () => {
 
       </Box>
 
-      {/* Row 3 - Social Enterprise Performance Heatmap
-      <Box display="flex" flexWrap="wrap" gap="20px" justifyContent="space-between" mt="20px">
+      {/* Main container to ensure sections don't overlap */}
+      <Box display="flex" flexDirection="column" gap="20px" mt="20px">
 
-        <Box flex="1 1 100%" minHeight="400px" backgroundColor={colors.primary[400]} p="20px">
-          <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
-            {stats?.heatmapStats?.length > 0 ? "Social Enterprise Performance Heatmap" : ""}
+        {/* Row 3 - Social Enterprise Performance Heatmap */}
+        <Box width="100%" minHeight="400px" minWidth="300px" p={2} backgroundColor={colors.primary[400]}>
+          <Typography variant="h4" fontWeight="bold" color={colors.greenAccent[500]}>
+              Heat Map
           </Typography>
-          <Box flex="1" display="flex" justifyContent="center" alignItems="center">
-            {stats?.heatmapStats?.length > 0 ? (
-              <Box width="100%" height="100%">
-                <HeatmapChart heatmapData={Array.isArray(stats?.heatmapStats) ? stats.heatmapStats : []} />
-              </Box>
+          <HeatmapWrapper />
+      </Box>
+
+      {/* Row 4 - Leaderboard */}
+      <Box display="flex" flexDirection="column" gap="20px">
+        <Box width="100%" height="300px" backgroundColor={colors.primary[400]} p="20px">
+          <Typography variant="h4" fontWeight="bold" color={colors.greenAccent[500]}>
+            {stats?.leaderboardData?.length > 0 ? "Leaderboard - Ratings" : ""}
+          </Typography>
+          <Box height="100%">
+            {stats?.leaderboardData ? (
+              stats.leaderboardData.length > 0 ? (
+                <LeaderboardChart data={stats.leaderboardData} />
+              ) : (
+                <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                  Leaderboards Unavailable
+                </Typography>
+              )
             ) : (
-              <Typography variant="h6" color={colors.grey[300]} textAlign="center">
-                No Available Data
+              <Typography variant="h6" color="red" textAlign="center">
+                Error loading data
               </Typography>
             )}
           </Box>
         </Box>
-
-      </Box> */}
-
-{/* Main container to ensure sections don't overlap */}
-<Box display="flex" flexDirection="column" gap="20px" mt="20px">
-
-  {/* Row 3 - Social Enterprise Performance Heatmap */}
-  <Box width="100%" minHeight="400px" minWidth="300px" p={2} backgroundColor={colors.primary[400]}>
-    <Typography variant="h4" fontWeight="bold" color={colors.greenAccent[500]}>
-        Heat Map
-    </Typography>
-    <HeatmapWrapper />
-  </Box>
-
-  {/* Row 4 - Leaderboard */}
-  <Box display="flex" flexDirection="column" gap="20px">
-    <Box width="100%" height="300px" backgroundColor={colors.primary[400]} p="20px">
-      <Typography variant="h4" fontWeight="bold" color={colors.greenAccent[500]}>
-        {stats?.leaderboardData?.length > 0 ? "Leaderboard - Ratings" : ""}
-      </Typography>
-      <Box height="100%">
-        {stats?.leaderboardData ? (
-          stats.leaderboardData.length > 0 ? (
-            <LeaderboardChart data={stats.leaderboardData} />
-          ) : (
-            <Typography variant="h6" color={colors.grey[300]} textAlign="center">
-              Leaderboards Unavailable
-            </Typography>
-          )
-        ) : (
-          <Typography variant="h6" color="red" textAlign="center">
-            Error loading data
-          </Typography>
-        )}
       </Box>
+
     </Box>
-  </Box>
+    {/* Row 4 - Line & Scatter Charts */}
+    <Box display="flex" flexWrap="wrap" gap="20px" justifyContent="space-between" mt="20px">
 
-</Box>
-
-      {/* Row 4 - Line & Scatter Charts */}
-      <Box display="flex" flexWrap="wrap" gap="20px" justifyContent="space-between" mt="20px">
-
-        {/* Improvement Score Over Time */}
-        <Box flex="1 1 48%" height="300px" backgroundColor={colors.primary[400]} p="20px">
-          <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
-            {stats?.improvementScore?.length > 0 ? "Average Improvement Score Over Time" : ""}
-            {/* ✅ Show title only if data exists */}
-          </Typography>
-          <Box height="100%" display="flex" justifyContent="center" alignItems="center">
-            {(() => {
-              try {
-                if (!stats?.improvementScore) throw new Error("Data not found");
-                if (stats.improvementScore.length === 0) {
-                  return (
-                    <Typography variant="h6" color={colors.grey[300]} textAlign="center">
-                      No Available Data
-                    </Typography>
-                  );
-                }
+      {/* Improvement Score Over Time */}
+      <Box flex="1 1 48%" height="300px" backgroundColor={colors.primary[400]} p="20px">
+        <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
+          {stats?.improvementScore?.length > 0 ? "Average Improvement Score Over Time" : ""}
+          {/* ✅ Show title only if data exists */}
+        </Typography>
+        <Box height="100%" display="flex" justifyContent="center" alignItems="center">
+          {(() => {
+            try {
+              if (!stats?.improvementScore) throw new Error("Data not found");
+              if (stats.improvementScore.length === 0) {
                 return (
-                  <DualAxisLineChart 
-                    data={[{
-                      id: "Improvement Score",
+                  <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                    No Available Data
+                  </Typography>
+                );
+              }
+              return (
+                <DualAxisLineChart 
+                  data={[
+                    {
+                      id: "Overall Avg Improvement",
+                      color: colors.greenAccent[500],
                       data: stats.improvementScore.map(point => ({ 
                         x: point.month?.substring(0, 7) || "Unknown", 
                         y: parseFloat(point.overall_avg_improvement) || 0 
                       }))
-                    }]} 
-                  />
-                );
-              } catch (error) {
-                return (
-                  <Typography variant="h6" color="red" textAlign="center">
-                    Error loading data
-                  </Typography>
-                );
-              }
-            })()}
-          </Box>
+                    },
+                    {
+                      id: "Median Improvement",
+                      color: colors.blueAccent[500],
+                      data: stats.improvementScore.map(point => ({ 
+                        x: point.month?.substring(0, 7) || "Unknown", 
+                        y: parseFloat(point.median_improvement) || 0 
+                      }))
+                    }
+                  ]} 
+                />
+              );
+            } catch (error) {
+              return (
+                <Typography variant="h6" color="red" textAlign="center">
+                  Error loading data
+                </Typography>
+              );
+            }
+          })()}
         </Box>
-
-        {/* Evaluation Score Distribution */}
-        <Box flex="1 1 48%" height="300px" backgroundColor={colors.primary[400]} p="20px">
-          <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
-            {stats?.evaluationScoreDistribution?.length > 0 ? "Evaluation Score Distribution" : ""}
-            {/* ✅ Show title only if data exists */}
-          </Typography>
-          <Box height="100%" display="flex" justifyContent="center" alignItems="center">
-            {(() => {
-              try {
-                if (!stats?.evaluationScoreDistribution) throw new Error("Data not found");
-                if (stats.evaluationScoreDistribution.length === 0) {
-                  return (
-                    <Typography variant="h6" color={colors.grey[300]} textAlign="center">
-                      No Available Data
-                    </Typography>
-                  );
-                }
-                return <ScatterPlot data={stats.evaluationScoreDistribution} />;
-              } catch (error) {
-                return (
-                  <Typography variant="h6" color="red" textAlign="center">
-                    Error loading data
-                  </Typography>
-                );
-              }
-            })()}
-          </Box>
-        </Box>
-
       </Box>
 
+      {/* Evaluation Score Distribution */}
+      <Box flex="1 1 48%" height="300px" backgroundColor={colors.primary[400]} p="20px">
+        <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
+          {stats?.evaluationScoreDistribution?.length > 0 ? "Evaluation Score Distribution" : ""}
+          {/* ✅ Show title only if data exists */}
+        </Typography>
+        <Box height="100%" display="flex" justifyContent="center" alignItems="center">
+          {(() => {
+            try {
+              if (!stats?.evaluationScoreDistribution) throw new Error("Data not found");
+              if (stats.evaluationScoreDistribution.length === 0) {
+                return (
+                  <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                    No Available Data
+                  </Typography>
+                );
+              }
+              return <ScatterPlot data={stats.evaluationScoreDistribution} />;
+            } catch (error) {
+              return (
+                <Typography variant="h6" color="red" textAlign="center">
+                  Error loading data
+                </Typography>
+              );
+            }
+          })()}
+        </Box>
+      </Box>   
     </Box>
+  </Box>
   );
 };
 
