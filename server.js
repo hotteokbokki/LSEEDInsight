@@ -311,12 +311,9 @@ async function sendMessageWithOptions(chatId, message, options) {
 // ==========================
 async function sendMentorshipMessage(chatId, mentorship_id, mentorship_date, mentorship_time) {
   console.log(`📩 Sending Mentorship Schedule Message to Chat ID: ${chatId}`);
-
-  // Ensure mentorship_date is an array
   if (!Array.isArray(mentorship_date)) {
     mentorship_date = [mentorship_date]; // Convert to array if it's a single value
   }
-
   try {
     const mentorshipQuery = `
     SELECT mentorship_date, mentorship_time
@@ -329,10 +326,7 @@ if (mentorshipResult.rows.length === 0) {
     console.error(`❌ No mentorship found for ID ${mentorship_id}`);
     return;
 }
-
-const mentorship = mentorshipResult.rows[0]; // ✅ Now, mentorship is defined
-
-
+const mentorship = mentorshipResult.rows[0];
 
     // Fetch Mentor Name
     const mentorResult = await pgDatabase.query(
