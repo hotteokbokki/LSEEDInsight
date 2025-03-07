@@ -1116,11 +1116,12 @@ app.post("/api/social-enterprises", async (req, res) => {
 
 app.get("/heatmap-stats", async (req, res) => {
   try {
-    const result = await getStatsForHeatmap()
+    const { period } = req.query; // Get period from query params
+    const result = await getStatsForHeatmap(period);
 
     res.json(result);
   } catch (error) {
-    console.error("Error in testing:", error);
+    console.error("Error fetching heatmap data:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });

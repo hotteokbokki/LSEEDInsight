@@ -281,8 +281,19 @@ exports.getCommonChallengesBySEID = async (se_id) => {
     }
 };
 
-exports.getStatsForHeatmap = async () => {
+exports.getStatsForHeatmap = async (period = "quarterly") => {
     try {
+        let dateCondition = "";
+        
+        if (period === "quarterly") {
+            dateCondition = `
+                e.created_at >= DATE_TRUNC('quarter', CURRENT_DATE)
+                AND e.created_at < DATE_TRUNC('quarter', CURRENT_DATE) + INTERVAL '3 months'
+            `;
+        } else if (period === "yearly") {
+            dateCondition = "1 = 1"; // No date filter for overall stats
+        }
+
         const query = `
             WITH recent_evaluations AS (
                 SELECT 
@@ -292,16 +303,16 @@ exports.getStatsForHeatmap = async () => {
                 FROM public.evaluation_categories ec
                 JOIN public.evaluations e ON ec.evaluation_id = e.evaluation_id
                 WHERE 
-                    e.created_at >= CURRENT_DATE - INTERVAL '3 months' 
+                    ${dateCondition}
                     AND e.evaluation_type = 'Social Enterprise'
                 GROUP BY e.se_id, ec.category_name
             )
             SELECT 
-                ROW_NUMBER() OVER () AS row_id,  -- ✅ Unique row ID
+                ROW_NUMBER() OVER () AS row_id,  
                 se.se_id,
                 se.team_name,
-                se.abbr,  -- ✅ Use the existing abbreviation from the database
-                jsonb_object_agg(re.category_name, re.avg_rating) AS category_ratings  -- ✅ Pivot into JSON
+                se.abbr,  
+                jsonb_object_agg(re.category_name, re.avg_rating) AS category_ratings  
             FROM recent_evaluations re
             JOIN public.socialenterprises se ON re.se_id = se.se_id
             GROUP BY se.se_id, se.team_name, se.abbr
@@ -311,8 +322,8 @@ exports.getStatsForHeatmap = async () => {
 
         return result.rows.map(row => ({
             team_name: row.team_name.trim(),
-            abbr: row.abbr ? row.abbr.trim() : row.team_name.trim(), // ✅ Include abbreviation
-            ...row.category_ratings // Expand JSON into object properties
+            abbr: row.abbr ? row.abbr.trim() : row.team_name.trim(),
+            ...row.category_ratings
         }));
     } catch (error) {
         console.error("❌ Error fetching heatmap data:", error);
