@@ -110,7 +110,7 @@ const Scheduling = ({ userRole }) => {
         mentor_id: se.mentor_id,
         se_id: se.se_id,
         team_name: se.se || "Unknown Team",
-        program_name: se.program || "Unknown Program",
+        program_name: se.program_name || "Unknown Program",
         sdg_name: se.sdgs || "No SDG Name",
       }));
 

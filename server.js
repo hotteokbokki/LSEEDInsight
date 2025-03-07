@@ -2010,7 +2010,7 @@ app.get("/getMentorshipDates", async (req, res) => {
           m.mentorship_date, 
           m.mentorship_time, 
           se.team_name, 
-          p.name AS program_name,
+          p.name,
           COALESCE(array_agg(a.mentorship_date), '{}') AS accepted_dates  
       FROM public.mentorships m
       LEFT JOIN public.accepted_schedule a ON m.mentorship_id = a.mentorship_id
