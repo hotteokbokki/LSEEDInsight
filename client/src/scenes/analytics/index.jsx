@@ -101,8 +101,7 @@ const Analytics = () => {
         paddingTop="5px"
         marginTop="10px"
       >
-        <SEPerformanceTrendChart />{" "}
-        {/* ✅ Embed the SEPerformanceChart component here */}
+        <SEPerformanceTrendChart />
       </Box>
 
       {/* Row 2 - Horizontal Bar Charts */}

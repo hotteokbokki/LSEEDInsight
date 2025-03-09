@@ -16,7 +16,6 @@ const SEPerformanceTrendChart = () => {
             try {
                 const response = await fetch(`http://localhost:4000/api/top-se-performance?period=${period}`);
                 const data = await response.json();
-                console.log("Fetched data:", data); // Debugging log
                 const formattedData = Array.isArray(data) ? data : [];
 
                 setTopPerformers(formattedData);
@@ -90,9 +89,9 @@ const SEPerformanceTrendChart = () => {
                     onChange={(e) => setPeriod(e.target.value)}
                     sx={{ minWidth: 120, backgroundColor: colors.primary[300], color: colors.grey[100] }}
                 >
+                    <MenuItem value="overall">Overall</MenuItem>
                     <MenuItem value="quarterly">Quarterly</MenuItem>
                     <MenuItem value="yearly">Yearly</MenuItem>
-                    <MenuItem value="overall">Overall</MenuItem>
                 </Select>
             </Box>
 

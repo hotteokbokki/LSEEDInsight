@@ -29,7 +29,6 @@ const SEAnalytics = () => {
   const [selectedSEId, setSelectedSEId] = useState(id); // State to manage selected SE
   const [socialEnterprises, setSocialEnterprises] = useState([]); // List of all social enterprises
   const [selectedSE, setSelectedSE] = useState(null); // Selected social enterprise
-  const [lineData, setLineData] = useState([]); // Real performance trend data
   const [pieData, setPieData] = useState([]); // Real common challenges data
   const [likertData, setLikertData] = useState([]); // Real Likert scale data
   const [radarData, setRadarData] = useState([]); // Real radar chart data
@@ -75,7 +74,6 @@ const SEAnalytics = () => {
   useEffect(() => {
     const fetchAnalyticsData = async () => {
       // Reset all chart data before fetching new data
-      setLineData([]);
       setPieData([]);
       setLikertData([]);
       setRadarData([]);
@@ -83,13 +81,6 @@ const SEAnalytics = () => {
       if (!selectedSEId) return;
 
       try {
-        // Fetch performance trend data
-        const lineResponse = await fetch(
-          `http://localhost:4000/api/single-se-performance/${selectedSEId}`
-        );
-        const lineData = await lineResponse.json();
-        setLineData(lineData);
-
         // Fetch common challenges data
         const pieResponse = await fetch(
           `http://localhost:4000/api/common-challenges/${selectedSEId}`
@@ -342,53 +333,47 @@ const SEAnalytics = () => {
         </Typography>
       </Box>
 
-      {/* Performance Trend */}
-      <Box
-        mt="20px"
-        sx={{
-          backgroundColor: colors.primary[400],
-          padding: "20px",
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-        }}
-      >
-        <Typography variant="h5" fontWeight="bold" color={colors.grey[100]}>
-          Performance Trend
-        </Typography>
-        <Box height="250px">
-          <SSEPerformanceTrendChart lineData={lineData} />
-        </Box>
-      </Box>
 
-      {/* Evaluations Table */}
-      <Box
-        flexGrow={1}
-        height="auto"
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          "& .MuiDataGrid-root": { border: "none" },
-          "& .MuiDataGrid-cell": { borderBottom: "none" },
-          "& .name-column--cell": { color: colors.greenAccent[300] },
-          "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-              backgroundColor: colors.blueAccent[700] + " !important",
-          },
-          "& .MuiDataGrid-virtualScroller": {
-            backgroundColor: colors.primary[400],
-          },
-          "& .MuiDataGrid-footerContainer": {
-            borderTop: "none",
-            backgroundColor: colors.blueAccent[700],
-          },
-        }}
-      >
-        <DataGrid
-          autoHeight
-          rows={evaluationsData}
-          columns={columns}
-          getRowId={(row) => row.id}
-        />
-      </Box>
+    <Box display="flex" flexDirection="column" gap={3}>
+      <SSEPerformanceTrendChart selectedSEId={selectedSEId}/>
+    </Box>
+  
+
+  {/* Evaluations Table */}
+  <Box
+    sx={{
+      backgroundColor: colors.primary[400],
+      padding: "20px",
+      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+      minHeight: "400px", // Ensures DataGrid has enough space
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+      "& .MuiDataGrid-root": { border: "none" },
+      "& .MuiDataGrid-cell": { borderBottom: "none" },
+      "& .name-column--cell": { color: colors.greenAccent[300] },
+      "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+        backgroundColor: colors.blueAccent[700] + " !important",
+      },
+      "& .MuiDataGrid-virtualScroller": {
+        backgroundColor: colors.primary[400],
+      },
+      "& .MuiDataGrid-footerContainer": {
+        borderTop: "none",
+        backgroundColor: colors.blueAccent[700],
+      },
+    }}
+  >
+    <Typography variant="h5" fontWeight="bold" color={colors.grey[100]} mb={2}>
+      Evaluations
+    </Typography>
+    <DataGrid
+      autoHeight
+      rows={evaluationsData}
+      columns={columns}
+      getRowId={(row) => row.id}
+    />
+  </Box>
 
       {/* Evaluation Details Dialog - Read-Only */}
       <Dialog

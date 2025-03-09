@@ -959,8 +959,8 @@ app.get("/getEvaluationDetails", async (req, res) => {
 
 app.get("/api/top-se-performance", async (req, res) => {
   try {
-    // Capture the period from query params (default is "trimester")
-    const period = req.query.period || "trimester"; 
+    // Capture the period from query params
+    const period = req.query.period; 
 
     // Fetch the top SE performance based on the period
     const result = await getTopSEPerformance(period);
@@ -982,7 +982,10 @@ app.get("/api/top-se-performance-with-mentorships", async (req, res) => {
   try {
     const { mentor_id } = req.query; // Extract mentor_id from query parameters
 
-    const result = await getTopSEPerformanceByMentorships(mentor_id);
+    // Capture the period from query params
+    const period = req.query.period; 
+
+    const result = await getTopSEPerformanceByMentorships(mentor_id, period);
 
     if (result.length === 0) {  // ✅ result is already an array
       return res.json({ message: "No performance data available" });
@@ -996,9 +999,10 @@ app.get("/api/top-se-performance-with-mentorships", async (req, res) => {
 });
 
 app.get("/api/single-se-performance/:se_id", async (req, res) => {
-  const { se_id } = req.params;
   try {
-    const result = await getPerformanceTrendBySEID(se_id);
+    const { se_id } = req.params;
+    const period = req.query.period
+    const result = await getPerformanceTrendBySEID(se_id, period);
     
     if (!result || result.length === 0) {
       return res.json({ message: "No performance trend data available" });
