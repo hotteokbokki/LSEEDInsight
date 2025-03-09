@@ -21,6 +21,7 @@ import Unauthorized from "./scenes/unauthorized";
 import { ColorModeContext, useMode } from "./theme";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import MentorshipAnalytics from "./scenes/analytics-mentorship";
 
 const App = () => {
   const [theme, colorMode] = useMode();
@@ -90,6 +91,7 @@ const MainContent = () => {
           <Route path="/se-analytics/:id" element={<SEAnalytics />} />
           <Route path="/mentor-analytics/:id" element={<MentorAnalytics />} />
           <Route path="/mentorships" element={<Mentorships />} />
+          <Route path="/analytics-mentorship" element={<MentorshipAnalytics />} />
           <Route path="/admin" element={user ? <Admin /> : <Navigate to="/" />} />
 
           {/* Protected Routes */}

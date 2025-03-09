@@ -39,7 +39,7 @@ const Item = ({ title, to, icon, selected, setSelected }) => {
 const Sidebar = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,6 +56,7 @@ const Sidebar = () => {
       "/scheduling": "Scheduling Matrix",
       "/admin": "Admin Page",
       "/mentorships": "Manage Mentorships",
+      "/analytics-mentorship": "Show Analytics",
     };
     return routeMap[location.pathname] || "Dashboard";
   };
@@ -157,37 +158,41 @@ const Sidebar = () => {
               setSelected={setSelected}
             />
 
-            {(user?.role === "Mentor" || user?.role === "Administrator") && (
-              <Item
-                title="Assess SE"
-                to="/assess"
-                icon={<AssignmentTurnedInOutlinedIcon />}
-                selected={selected}
-                setSelected={setSelected}
-              />
-            )}
-
-            {(user?.role === "Mentor" || user?.role === "Administrator") && (
-              <Item
-                title="Manage Mentorships"
-                to="/mentorships"
-                icon={<SupervisorAccountOutlinedIcon />}
-                selected={selected}
-                setSelected={setSelected}
-              />
-            )}
-
-            {(user?.role === "Mentor" || user?.role === "Administrator") && (
-              <Item
+            {(user?.role === "Mentor") && (
+              <>
+                <Item
+                  title="Show Analytics"
+                  to="/analytics-mentorship"
+                  icon={<AnalyticsOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Assess SE"
+                  to={user?.role === "Mentor" ? "/assess" : "/analytics"}
+                  icon={<AssignmentTurnedInOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Manage Mentorships"
+                  to="/mentorships"
+                  icon={<SupervisorAccountOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
                 title="Scheduling Matrix"
                 to="/scheduling"
                 icon={<CalendarMonthOutlinedIcon />}
                 selected={selected}
                 setSelected={setSelected}
-              />
+                />
+              </>
             )}
 
-            {(user?.role === "LSEED" || user?.role === "Administrator") && (
+
+            {(user?.role === "LSEED") && (
               <>
                 <Item
                   title="Manage SE"
@@ -210,13 +215,13 @@ const Sidebar = () => {
                   selected={selected}
                   setSelected={setSelected}
                 />
-                <Item
+                {/* <Item
                   title="Show Reports"
                   to="/reports"
                   icon={<GradingOutlinedIcon />}
                   selected={selected}
                   setSelected={setSelected}
-                />
+                /> */}
                 <Item
                   title="Scheduling Matrix"
                   to="/scheduling"
@@ -224,17 +229,14 @@ const Sidebar = () => {
                   selected={selected}
                   setSelected={setSelected}
                 />
-              </>
-            )}
-
-            {user?.role === "Administrator" && (
-              <Item
-                title="Admin Page"
+                <Item
+                title="Manage Users"
                 to="/admin"
                 icon={<AdminPanelSettingsOutlinedIcon />}
                 selected={selected}
                 setSelected={setSelected}
-              />
+                />
+              </>
             )}
           </Box>
         </Menu>

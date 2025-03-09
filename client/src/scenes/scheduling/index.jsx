@@ -192,7 +192,7 @@ const Scheduling = ({ userRole }) => {
         title="Scheduling Matrix"
         subtitle={
           user.role === "LSEED"
-            ? "See the schedule of the mentors"
+            ? "View and Manage the schedule of the mentors"
             : "Find the Appropriate Schedule"
         }
       />
