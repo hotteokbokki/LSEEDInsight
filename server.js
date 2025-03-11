@@ -623,11 +623,10 @@ app.put("/api/mentors/:id", async (req, res) => {
 async function updateMentor(id, updatedMentor) {
   const { mentor_firstName, mentor_lastName, email, contactnum, isactive } = updatedMentor; // Modify based on your schema
   // console.log(" [updateMentor] Processing:", id, "\n");
-  
   const query = `
-    UPDATE users
-    SET first_name = $1, last_name = $2, email = $3, contactnum = $4, isactive = $5
-    WHERE user_id = $6
+    UPDATE mentors
+    SET mentor_firstname = $1, mentor_lastname = $2, email = $3, contactnum = $4, isactive = $5
+    WHERE mentor_id = $6
     RETURNING *;
   `;
 
@@ -1601,98 +1600,97 @@ app.post("/webhook", async (req, res) => {
           }
         }
 
-        if (data.startsWith("acceptschedule_")) {
-    const parts = data.split("_");
+          if (data.startsWith("acceptschedule_")) {
+          const parts = data.split("_");
 
-    if (parts.length < 3) {
-        console.error("❌ Invalid accept callback format:", data);
-        return res.sendStatus(400);
-    }
+          if (parts.length < 3) {
+              console.error("❌ Invalid accept callback format:", data);
+              return res.sendStatus(400);
+          }
 
-    const mentorship_id = parts[1];
-    const accepted_date = `${parts[2].slice(0, 4)}-${parts[2].slice(4, 6)}-${parts[2].slice(6, 8)}`;
-    const messageId = callbackQuery.message.message_id; // Store message ID to delete
+          const mentorship_id = parts[1];
+          const accepted_date = `${parts[2].slice(0, 4)}-${parts[2].slice(4, 6)}-${parts[2].slice(6, 8)}`;
+          const messageId = callbackQuery.message.message_id; // Store message ID to delete
 
-    console.log(`🔹 Accepting mentorship ${mentorship_id} on ${accepted_date}`);
-    console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
+          console.log(`🔹 Accepting mentorship ${mentorship_id} on ${accepted_date}`);
+          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
 
-    try {
-        // ✅ Step 1: Validate UUID format
-        if (!/^[0-9a-fA-F-]{36}$/.test(mentorship_id)) {
-            console.error(`❌ Invalid mentorship_id format: ${mentorship_id}`);
-            return res.sendStatus(400);
-        }
+          try {
+              // ✅ Step 1: Validate UUID format
+              if (!/^[0-9a-fA-F-]{36}$/.test(mentorship_id)) {
+                  console.error(`❌ Invalid mentorship_id format: ${mentorship_id}`);
+                  return res.sendStatus(400);
+              }
 
-        // ✅ Step 2: Fetch mentorship details
-        const result = await pgDatabase.query(
-            `SELECT mentorship_id, mentorship_date, se_id, mentor_id 
-             FROM mentorships 
-             WHERE mentorship_id = $1`,
-            [mentorship_id]
-        );
+              // ✅ Step 2: Fetch mentorship details
+              const result = await pgDatabase.query(
+                  `SELECT mentorship_id, mentorship_date, se_id, mentor_id 
+                  FROM mentorships 
+                  WHERE mentorship_id = $1`,
+                  [mentorship_id]
+              );
 
-        if (result.rows.length === 0) {
-            console.warn(`⚠️ No mentorship found for ID ${mentorship_id}`);
-            return res.sendStatus(404);
-        }
+              if (result.rows.length === 0) {
+                  console.warn(`⚠️ No mentorship found for ID ${mentorship_id}`);
+                  return res.sendStatus(404);
+              }
 
-        const { mentorship_date, se_id, mentor_id } = result.rows[0];
+              const { mentorship_date, se_id, mentor_id } = result.rows[0];
 
-        console.log(`🔍 Found Mentorship - SE ID: ${se_id}, Mentor ID: ${mentor_id}`);
+              console.log(`🔍 Found Mentorship - SE ID: ${se_id}, Mentor ID: ${mentor_id}`);
 
-        // ✅ Step 3: Fetch mentor details
-        const mentorResult = await pgDatabase.query(
-            `SELECT mentor_firstname, mentor_lastname FROM mentors WHERE mentor_id = $1`,
-            [mentor_id]
-        );
+              // ✅ Step 3: Fetch mentor details
+              const mentorResult = await pgDatabase.query(
+                  `SELECT mentor_firstname, mentor_lastname FROM mentors WHERE mentor_id = $1`,
+                  [mentor_id]
+              );
 
-        if (mentorResult.rows.length === 0) {
-            console.error(`❌ Mentor not found for ID ${mentor_id}`);
-            return res.sendStatus(404);
-        }
+              if (mentorResult.rows.length === 0) {
+                  console.error(`❌ Mentor not found for ID ${mentor_id}`);
+                  return res.sendStatus(404);
+              }
 
-        const mentorName = `${mentorResult.rows[0].mentor_firstname} ${mentorResult.rows[0].mentor_lastname}`;
-        console.log(`👤 Mentor Name: ${mentorName}`);
+              const mentorName = `${mentorResult.rows[0].mentor_firstname} ${mentorResult.rows[0].mentor_lastname}`;
+              console.log(`👤 Mentor Name: ${mentorName}`);
 
-        // ✅ Step 4: Delete the Telegram message
-        console.log(`🗑️ Attempting to delete message ID: ${messageId}`);
-        await deleteMessage(chatId, messageId);
-        console.log(`✅ Message ${messageId} deleted successfully.`);
+              // ✅ Step 4: Delete the Telegram message
+              console.log(`🗑️ Attempting to delete message ID: ${messageId}`);
+              await deleteMessage(chatId, messageId);
+              console.log(`✅ Message ${messageId} deleted successfully.`);
 
-        // ✅ Step 5: Handle database updates
-        if (mentorship_date.length === 1) {
-            await pgDatabase.query(
-                `UPDATE mentorships SET telegramstatus = 'Acknowledged' WHERE mentorship_id = $1`,
-                [mentorship_id]
-            );
-        } else {
-            await pgDatabase.query(
-                `INSERT INTO accepted_schedule (mentorship_id, se_id, mentorship_date, mentor_id)
-                 VALUES ($1, $2, $3, $4)`,
-                [mentorship_id, se_id, accepted_date, mentor_id]
-            );
+              // ✅ Step 5: Handle database updates
+              if (mentorship_date.length === 1) {
+                  await pgDatabase.query(
+                      `UPDATE mentorships SET telegramstatus = 'Acknowledged' WHERE mentorship_id = $1`,
+                      [mentorship_id]
+                  );
+              } else {
+                  await pgDatabase.query(
+                      `INSERT INTO accepted_schedule (mentorship_id, se_id, mentorship_date, mentor_id)
+                      VALUES ($1, $2, $3, $4)`,
+                      [mentorship_id, se_id, accepted_date, mentor_id]
+                  );
 
-            await pgDatabase.query(
-                `UPDATE mentorships SET mentorship_date = array_remove(mentorship_date, $1)
-                 WHERE mentorship_id = $2`,
-                [accepted_date, mentorship_id]
-            );
-        }
+                  await pgDatabase.query(
+                      `UPDATE mentorships SET mentorship_date = array_remove(mentorship_date, $1)
+                      WHERE mentorship_id = $2`,
+                      [accepted_date, mentorship_id]
+                  );
+              }
 
-        // ✅ Step 6: Send confirmation message
-        const confirmationMessage = `📅 *Confirmed Mentor Schedule*\n\n🔹 *Schedule:* ${accepted_date}\n🔹 *Mentor:* ${mentorName}`;
-        await sendMessage(chatId, confirmationMessage);
-        console.log("✅ Acceptance process completed successfully.");
-        
-        return res.sendStatus(200);
-    } catch (error) {
-        console.error("❌ Error handling acceptance:", error);
-        await sendMessage(chatId, "❌ Failed to process acceptance.");
-        return res.sendStatus(500);
-    }
-}
-
-        
+              // ✅ Step 6: Send confirmation message
+              const confirmationMessage = `📅 *Confirmed Mentor Schedule*\n\n🔹 *Schedule:* ${accepted_date}\n🔹 *Mentor:* ${mentorName}`;
+              await sendMessage(chatId, confirmationMessage);
+              console.log("✅ Acceptance process completed successfully.");
+              
+              return res.sendStatus(200);
+          } catch (error) {
+              console.error("❌ Error handling acceptance:", error);
+              console.log("🛑 Error Stack:", error.stack);
+              await sendMessage(chatId, "❌ Failed to process acceptance.");
+              return res.sendStatus(500);
+          }
+      }
         
         if (data.startsWith("declineschedule_")) {
           const parts = data.split("_");
@@ -1758,7 +1756,7 @@ app.post("/webhook", async (req, res) => {
                 [declined_date, mentorship_id]
               );
         
-              await sendMessage(chatId, `❌ The mentorship date *${declined_date}* has been declined and moved to declined schedules.`);
+              await sendMessage(chatId, `❌ The mentorship date *${declined_date}* has been declined.`);
             }
         
             return res.sendStatus(200);
@@ -2124,7 +2122,33 @@ app.get("/getMentorshipDates", async (req, res) => {
   }
 });
 
+app.post("/updateMentorshipZoomLink", async (req, res) => {
+  try {
+    const { mentorship_id, zoom_link } = req.body;
 
+    if (!mentorship_id || !zoom_link) {
+      return res.status(400).json({ message: "Mentorship ID and Zoom link are required" });
+    }
+
+    const query = `
+      UPDATE public.mentorships
+      SET zoom_link = $1
+      WHERE mentorship_id = $2
+      RETURNING *;
+    `;
+
+    const result = await pgDatabase.query(query, [zoom_link, mentorship_id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Mentorship not found" });
+    }
+
+    res.status(200).json({ message: "Zoom link updated successfully", mentorship: result.rows[0] });
+  } catch (error) {
+    console.error("❌ Error updating Zoom link:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 async function updateUser(id, updatedUser) {
   const { first_name, last_name, roles, isactive, email } = updatedUser; // Modify based on your schema

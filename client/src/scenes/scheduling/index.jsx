@@ -58,6 +58,7 @@ const Scheduling = ({ userRole }) => {
   const colors = tokens(theme.palette.mode);
   const [selectedTime, setSelectedTime] = useState(dayjs().startOf("hour"));
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [zoomLink, setZoomLink] = useState("");
 
   // Function to handle Snackbar close
   const handleSnackbarClose = () => { 
@@ -125,6 +126,11 @@ const Scheduling = ({ userRole }) => {
   const handleConfirmDate = async () => { 
     if (!selectedSE || !selectedDate) return;
 
+    else if (!zoomLink){
+      alert("Please enter a valid Zoom link.");  
+      return;
+    }
+
     try {
       setIsLoading(true);
       const formattedTime = selectedTime ? selectedTime.format("HH:mm") : null;
@@ -137,6 +143,7 @@ const Scheduling = ({ userRole }) => {
             mentorship_id: selectedSE.id,
             mentorship_date: selectedDate.format("YYYY-MM-DD"),
             mentorship_time: formattedTime,
+            zoom_link: zoomLink,
           }),
         }
       );
@@ -554,7 +561,7 @@ const Scheduling = ({ userRole }) => {
           )}
         </DialogContent>
 
-        {/* Date Selection Section */}
+        {/* Time Selection Section */}
         {selectedSE && (
             <>
               <Typography
@@ -609,6 +616,51 @@ const Scheduling = ({ userRole }) => {
               </LocalizationProvider>
             </>
           )}
+
+          {/* Zoom Link Section */}
+{selectedSE && (
+  <>
+    <Typography
+      variant="h6"
+      sx={{
+        marginTop: "20px",
+        marginBottom: "10px",
+        fontWeight: "bold",
+      }}
+    >
+      Enter Zoom Link for Mentoring
+    </Typography>
+    <TextField
+      label="Zoom Link"
+      value={zoomLink}
+      onChange={(e) => setZoomLink(e.target.value)}
+      fullWidth
+      sx={{
+        "& .MuiOutlinedInput-root": {
+          "& fieldset": {
+            borderColor: "#000", // Black border
+          },
+          "&:hover fieldset": {
+            borderColor: "#000", // Black border on hover
+          },
+          "&.Mui-focused fieldset": {
+            borderColor: "#000", // Black border when focused
+          },
+        },
+        "& .MuiInputBase-input": {
+          color: "#000", // Black text
+        },
+        "& .MuiInputLabel-root": {
+          color: "#000", // Black label text
+        },
+        "& .MuiInputLabel-root.Mui-focused": {
+          color: "#000", // Black label text when focused
+        },
+      }}
+    />
+  </>
+)}
+
 
         {/* Dialog Actions */}
         <DialogActions
