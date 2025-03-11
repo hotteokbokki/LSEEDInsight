@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 
-//Retrieve Database credentials from environment variables (DLSU)
+// //Retrieve Database credentials from environment variables (DLSU)
 const pool = new Pool({
     host: process.env.DATABASE_HOSTNAME,
     user: process.env.DATABASE_USER,
