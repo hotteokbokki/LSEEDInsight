@@ -1,14 +1,15 @@
 import {
+  Autocomplete,
   Box,
   Button,
   Dialog,
+  DialogTitle,
   DialogActions,
   DialogContent,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  DialogTitle,
   TextField,
   useTheme,
   Typography,
@@ -42,34 +43,62 @@ const Mentors = () => {
   const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
   const [stats, setStats] = useState(null);
   const [selectedRowId, setSelectedRowId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedMentor, setSelectedMentor] = useState(null);
+  const [mentorSearch, setMentorSearch] = useState(""); // For autocomplete input
+  const [selectedSE, setSelectedSE] = useState("");
   
   // Fetch mentors from the database
+  const fetchMentors = async () => {
+    try {
+      const response = await axios.get("http://localhost:4000/api/mentors"); // ✅ Fixed URL
+      console.log("📥 API Response:", response.data); // ✅ Debugging Log
+
+      const formattedData = response.data.map((mentor) => ({
+        id: mentor.mentor_id, // ✅ Use actual UUID as ID
+        mentor_firstName: mentor.mentor_firstName,
+        mentor_lastName: mentor.mentor_lastName,
+        mentorName: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
+        email: mentor.email,
+        contactnum: mentor.contactNum || "N/A", // ✅ Handle null values
+        numberOfSEsAssigned: mentor.number_SE_assigned || 0, // ✅ Ensure it's a number
+        status: "Active", // Assuming active by default
+      }));
+
+      console.log("✅ Formatted Data:", formattedData);
+      setRows(formattedData); // ✅ Correctly setting state
+    } catch (error) {
+      console.error("❌ Error fetching mentors:", error);
+    }
+  };
+  
   useEffect(() => {
-    const fetchMentors = async () => {
-      try {
-        const response = await axios.get("http://localhost:4000/api/mentors"); // ✅ Fixed URL
-        console.log("📥 API Response:", response.data); // ✅ Debugging Log
-
-        const formattedData = response.data.map((mentor) => ({
-          id: mentor.mentor_id, // ✅ Use actual UUID as ID
-          mentor_firstName: mentor.mentor_firstName,
-          mentor_lastName: mentor.mentor_lastName,
-          mentorName: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
-          email: mentor.email,
-          contactnum: mentor.contactNum || "N/A", // ✅ Handle null values
-          numberOfSEsAssigned: mentor.number_SE_assigned || 0, // ✅ Ensure it's a number
-          status: "Active", // Assuming active by default
-        }));
-
-        console.log("✅ Formatted Data:", formattedData);
-        setRows(formattedData); // ✅ Correctly setting state
-      } catch (error) {
-        console.error("❌ Error fetching mentors:", error);
-      }
-    };
-
     fetchMentors();
   }, []);
+
+  useEffect(() => {
+    if (selectedMentor) {
+      fetchSocialEnterprises(selectedMentor.mentor_id);
+    }
+  }, [selectedMentor]);
+
+  // Function to fetch assigned social enterprises
+  const fetchSocialEnterprises = async (mentorId) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/mentors/${mentorId}/social-enterprises`);
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+  
+      const data = await response.json(); // ✅ Ensure response is parsed as JSON
+      setSocialEnterprises(data);
+      console.log("📥 Social Enterprises Data:", data);
+      return data;
+    } catch (error) {
+      console.error("Error fetching social enterprises:", error);
+    }
+  };
 
   // Handle row updates
   const handleMentorRowUpdate = async (params) => {
@@ -127,7 +156,7 @@ const Mentors = () => {
       try {
         // Fetch active mentors
         const mentorsResponse = await fetch(
-          "http://localhost:4000/api/active-mentors"
+          "http://localhost:4000/api/mentors"
         );
         const mentorsData = await mentorsResponse.json();
         setMentors(mentorsData);
@@ -173,6 +202,34 @@ const Mentors = () => {
   const handleInputChange = (e) => {
     setMentorData({ ...mentorData, [e.target.name]: e.target.value });
   };
+
+  const handleRemoveMentorship = async () => {
+    if (!selectedMentor || !selectedSE) {
+      alert("Please select a mentor and a social enterprise.");
+      return;
+    }
+    console.log("mentorId: ", selectedMentor.mentor_id, " seId: ", selectedSE);
+    try {
+      const response = await fetch(`http://localhost:4000/api/remove-mentorship`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mentorId: selectedMentor.mentor_id, seId: selectedSE }),
+      });
+
+      if (response.ok) {
+        alert("Mentorship removed successfully!");
+        setIsModalOpen(false);
+        setSelectedMentor(null);
+        setSelectedSE("");
+        fetchMentors(); // Refresh mentor list
+      } else {
+        alert("Failed to remove mentorship.");
+      }
+    } catch (error) {
+      console.error("Error removing mentorship:", error);
+    }
+  };
+  
 
   // Submit new mentor data
   const handleSubmit = async () => {
@@ -457,6 +514,66 @@ const Mentors = () => {
         </Button>
 
         <Box display="flex" alignItems="center" gap={2}>
+          {/* Remove Mentorship Button */}
+          <Button
+            variant="contained"
+            sx={{
+              backgroundColor: colors.redAccent[500],
+              color: "black",
+              "&:hover": { backgroundColor: colors.redAccent[600] },
+            }}
+            onClick={() => setIsModalOpen(true)}
+          >
+            Remove Mentorship
+          </Button>
+          
+          {/* Remove Mentorship Modal */}
+          <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} fullWidth maxWidth="sm">
+            <DialogTitle>Remove Mentorship</DialogTitle>
+            <DialogContent>
+              {/* Mentor Selection (Autocomplete) */}
+              <Autocomplete
+                options={mentors}
+                getOptionLabel={(mentor) => `${mentor.mentor_firstName} ${mentor.mentor_lastName}`}
+                value={selectedMentor}
+                onChange={(event, newValue) => setSelectedMentor(newValue)}
+                inputValue={mentorSearch}
+                onInputChange={(event, newInputValue) => setMentorSearch(newInputValue)}
+                renderInput={(params) => <TextField {...params} label="Select Mentor" fullWidth />}
+              />
+
+              {/* Social Enterprise Selection */}
+              <TextField
+                select
+                label="Select Social Enterprise"
+                fullWidth
+                value={selectedSE}
+                onChange={(event) => setSelectedSE(event.target.value)}
+                sx={{ mt: 2 }}
+                disabled={!selectedMentor || socialEnterprises.length === 0}
+              >
+                {socialEnterprises.length > 0 ? (
+                  socialEnterprises.map((se) => (
+                    <MenuItem key={se.se_id} value={se.se_id}>
+                      {se.team_name}
+                    </MenuItem>
+                  ))
+                ) : (
+                  <MenuItem disabled>No SEs assigned</MenuItem>
+                )}
+              </TextField>
+            </DialogContent>
+
+            <DialogActions>
+              <Button onClick={() => setIsModalOpen(false)} color="error">
+                Cancel
+              </Button>
+              <Button onClick={handleRemoveMentorship} variant="contained" color="primary">
+                Confirm
+              </Button>
+            </DialogActions>
+          </Dialog>
+          
           {!showEditButtons && (
             <Button
               variant="contained"

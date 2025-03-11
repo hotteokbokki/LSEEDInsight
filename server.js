@@ -620,6 +620,25 @@ app.put("/api/mentors/:id", async (req, res) => {
   }
 });
 
+app.get("/api/mentors/:mentorId/social-enterprises", async (req, res) => {
+  const { mentorId } = req.params;
+
+  try {
+    const query = `
+      SELECT se.se_id, se.team_name
+      FROM socialenterprises se
+      JOIN mentorships m ON se.se_id = m.se_id
+      WHERE m.mentor_id = $1
+    `;
+    const result = await pgDatabase.query(query, [mentorId]);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching social enterprises:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 async function updateMentor(id, updatedMentor) {
   const { mentor_firstName, mentor_lastName, email, contactnum, isactive } = updatedMentor; // Modify based on your schema
   // console.log(" [updateMentor] Processing:", id, "\n");
@@ -1061,6 +1080,32 @@ app.get("/api/radar-data/:se_id", async (req, res) => {
   } catch (error) {
     console.error("Error fetching performance overview:", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.post("/api/remove-mentorship", async (req, res) => {
+  const { mentorId, seId } = req.body;
+
+  if (!mentorId || !seId) {
+    return res.status(400).json({ error: "Mentor ID and Social Enterprise ID are required." });
+  }
+
+  try {
+    // Delete mentorship record
+    const deleteQuery = `
+      DELETE FROM mentorships 
+      WHERE mentor_id = $1 AND se_id = $2
+    `;
+    const result = await pgDatabase.query(deleteQuery, [mentorId, seId]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "No mentorship record found." });
+    }
+
+    res.json({ success: true, message: "Mentorship removed successfully!" });
+  } catch (error) {
+    console.error("❌ Error removing mentorship:", error.message);
+    res.status(500).json({ error: "Internal Server Error", details: error.message });
   }
 });
 
