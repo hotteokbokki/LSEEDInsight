@@ -643,9 +643,9 @@ async function updateMentor(id, updatedMentor) {
   const { mentor_firstName, mentor_lastName, email, contactnum, isactive } = updatedMentor; // Modify based on your schema
   // console.log(" [updateMentor] Processing:", id, "\n");
   const query = `
-    UPDATE mentors
-    SET mentor_firstname = $1, mentor_lastname = $2, email = $3, contactnum = $4, isactive = $5
-    WHERE mentor_id = $6
+    UPDATE users
+    SET first_name = $1, last_name = $2, email = $3, contactnum = $4, isactive = $5
+    WHERE user_id = $6
     RETURNING *;
   `;
 
