@@ -90,3 +90,32 @@ exports.getMentorshipCount = async () => {
         return []; // Return an empty array in case of an error
     }
 };
+
+exports.getMentorSchedules = async () => {
+    try {
+      const query = `
+        SELECT 
+          m.mentor_id,
+          m.mentor_firstname || ' ' || m.mentor_lastname AS mentor_name,
+          se.team_name AS social_enterprise,
+          ARRAY(SELECT unnest(mentorship_date)) AS mentorship_dates, 
+          ARRAY(SELECT unnest(mentorship_time)) AS mentorship_times
+        FROM mentorships ms
+        JOIN mentors m ON ms.mentor_id = m.mentor_id
+        JOIN social_enterprises se ON ms.se_id = se.se_id
+        WHERE ms.status = 'Active';
+      `;
+  
+      const result = await pgDatabase.query(query);
+      if (!result.rows.length) {
+        console.log("⚠️ No active mentorships found.");
+        return [];
+      }
+  
+      return result.rows;
+    } catch (error) {
+      console.error("❌ Error fetching mentor schedules:", error);
+      return [];
+    }
+  };
+  

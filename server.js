@@ -38,7 +38,8 @@ const { getMentorshipsByMentorId,
         getMentorBySEID, 
         getSEWithMentors, 
         getPreviousSEWithMentors, 
-        getMentorshipCount } = require("./controllers/mentorshipsController.js");
+        getMentorshipCount,
+       } = require("./controllers/mentorshipsController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getEvaluationsByMentorID, 
         getEvaluationDetails, 
@@ -826,6 +827,18 @@ app.post("/evaluate-mentor", async (req, res) => {
 app.get("/protected", requireAuth, (req, res) => {
   res.json({ message: "Access granted to protected route" });
 });
+
+// Route to get all mentorship schedules
+app.get("/api/mentorSchedules", async (req, res) => {
+  try {
+    const schedules = await mentorshipController.getMentorSchedules();
+    res.json(schedules);
+  } catch (error) {
+    console.error("❌ Error fetching mentor schedules:", error);
+    res.status(500).json({ error: "Failed to fetch mentor schedules" });
+  }
+});
+
 
 app.get("/api/admin/users", async (req, res) => {
   try {

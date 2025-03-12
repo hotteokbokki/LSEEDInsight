@@ -5,6 +5,7 @@ import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { TimePicker } from "@mui/x-date-pickers";
+import Calendar from "../../components/calendar";
 import {
   Box,
   Button,
@@ -191,6 +192,33 @@ const Scheduling = ({ userRole }) => {
       );
   }, []);
 
+  const [mentorSchedules, setMentorSchedules] = useState([]);
+
+  useEffect(() => {
+    const fetchMentorSchedules = async () => {
+      try {
+        const response = await fetch("/api/mentorSchedules");
+        const data = await response.json();
+
+        console.log("📅 Mentor Schedules Data:", data); // ✅ Debugging log
+
+        if (Array.isArray(data)) {
+          setMentorSchedules(data);
+        } else {
+          console.error("❌ Invalid mentor schedule format:", data);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching mentor schedules:", error);
+        setMentorSchedules([]);
+      }
+    };
+
+    if (user.role === "LSEED") {
+      console.log("✅ Fetching Mentor Schedules for LSEED User");
+      fetchMentorSchedules();
+    }
+  }, [user.role]);
+
   return (
     <Box m="20px">
       {/* Header */}
@@ -271,6 +299,98 @@ const Scheduling = ({ userRole }) => {
               </ListItem>
             ))}
           </List>
+        </Box>
+      )}
+
+      <Box mt={4}>
+        <Typography variant="h6" gutterBottom>
+          Mentor Scheduling Calendar
+        </Typography>
+
+        {/* ✅ Add Calendar Component Here */}
+        <Calendar isDashboard={true} />
+      </Box>
+
+      {user.role === "LSEED" && (
+        <Box mt={4}>
+          <Typography variant="h6" gutterBottom>
+            All Mentor Schedules
+          </Typography>
+          <Box
+            sx={{
+              height: 400,
+              width: "100%",
+              overflowX: "auto",
+              "& .MuiDataGrid-root": { border: "none" },
+              "& .MuiDataGrid-cell": { borderBottom: "none" },
+              "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                backgroundColor: colors.blueAccent[700] + " !important",
+              },
+              "& .MuiDataGrid-virtualScroller": {
+                backgroundColor: colors.primary[400],
+              },
+              "& .MuiDataGrid-footerContainer": {
+                borderTop: "none",
+                backgroundColor: colors.blueAccent[700],
+                color: colors.grey[100],
+              },
+            }}
+          >
+            <DataGrid
+              rows={[
+                {
+                  id: "1",
+                  mentor_name: "John Doe",
+                  social_enterprise: "Green Solutions",
+                  scheduled_date: "May 5, 2025",
+                  scheduled_time: "6:00 PM",
+                },
+                {
+                  id: "2",
+                  mentor_name: "Jane Smith",
+                  social_enterprise: "Eco Warriors",
+                  scheduled_date: "May 5, 2025",
+                  scheduled_time: "7:00 PM",
+                },
+                {
+                  id: "3",
+                  mentor_name: "Alex Johnson",
+                  social_enterprise: "Renewable Future",
+                  scheduled_date: "May 6, 2025",
+                  scheduled_time: "10:00 AM",
+                },
+              ]}
+              columns={[
+                {
+                  field: "mentor_name",
+                  headerName: "Mentor Name",
+                  flex: 1, // Equal width
+                  minWidth: 200,
+                },
+                {
+                  field: "social_enterprise",
+                  headerName: "Social Enterprise",
+                  flex: 1, // Equal width
+                  minWidth: 200,
+                },
+                {
+                  field: "scheduled_date",
+                  headerName: "Scheduled Date",
+                  flex: 1, // Equal width
+                  minWidth: 200,
+                },
+                {
+                  field: "scheduled_time",
+                  headerName: "Scheduled Time",
+                  flex: 1, // Equal width
+                  minWidth: 200,
+                },
+              ]}
+              pageSize={5}
+              rowsPerPageOptions={[5, 10]}
+              autoHeight
+            />
+          </Box>
         </Box>
       )}
 
