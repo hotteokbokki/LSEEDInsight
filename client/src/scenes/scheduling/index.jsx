@@ -61,21 +61,47 @@ const Scheduling = ({ userRole }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [zoomLink, setZoomLink] = useState("");
 
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedRowId, setSelectedRowId] = useState(null);
+
+  const handleManageClick = (id) => {
+    setSelectedRowId(id);
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedRowId(null);
+  };
+
+  const handleAccept = () => {
+    console.log(`Accepted mentor schedule with ID: ${selectedRowId}`);
+    handleCloseDialog();
+  };
+
+  const handleDecline = () => {
+    console.log(`Declined mentor schedule with ID: ${selectedRowId}`);
+    handleCloseDialog();
+  };
+
   const [mentorHistory, setMentorHistory] = useState([
     {
       mentor_name: "John Doe",
       social_enterprise: "GreenTech Solutions",
       mentorship_dates: ["2025-02-27", "2025-03-10", "2025-04-05"],
+      status: ["accepted", "declined", "accepted"], // Add status for each date
     },
     {
       mentor_name: "Jane Smith",
       social_enterprise: "EcoInnovate Hub",
       mentorship_dates: ["2025-03-15", "2025-04-20"],
+      status: ["accepted", "declined"], // Add status for each date
     },
     {
       mentor_name: "Michael Johnson",
       social_enterprise: "Solar Future Foundation",
       mentorship_dates: ["2025-01-05", "2025-02-15", "2025-03-30"],
+      status: ["accepted", "accepted", "declined"], // Add status for each date
     },
   ]);
 
@@ -405,6 +431,21 @@ const Scheduling = ({ userRole }) => {
                     flex: 1,
                     minWidth: 200,
                   },
+                  {
+                    field: "action",
+                    headerName: "Action",
+                    flex: 1,
+                    minWidth: 150,
+                    renderCell: (params) => (
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleManageClick(params.row.id)}
+                      >
+                        Manage
+                      </Button>
+                    ),
+                  },
                 ]}
                 pageSize={5}
                 rowsPerPageOptions={[5, 10]}
@@ -453,6 +494,7 @@ const Scheduling = ({ userRole }) => {
                           year: "numeric",
                         }
                       ),
+                      status: history.status[i], // Add status for each mentorship date
                     }))
                   )}
                   columns={[
@@ -474,6 +516,25 @@ const Scheduling = ({ userRole }) => {
                       flex: 1,
                       minWidth: 200,
                     },
+
+                    {
+                      field: "status",
+                      headerName: "Status",
+                      flex: 1,
+                      minWidth: 150,
+                      renderCell: (params) => (
+                        <Typography
+                          color={
+                            params.value === "accepted"
+                              ? colors.greenAccent[500]
+                              : colors.redAccent[500]
+                          }
+                        >
+                          {params.value.charAt(0).toUpperCase() +
+                            params.value.slice(1)}
+                        </Typography>
+                      ),
+                    },
                   ]}
                   pageSize={5}
                   rowsPerPageOptions={[5, 10]}
@@ -486,6 +547,23 @@ const Scheduling = ({ userRole }) => {
           </Box>
         </Box>
       )}
+
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>Manage Mentor Schedule</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Do you want to accept or decline this mentor schedule?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAccept} color="success">
+            Accept
+          </Button>
+          <Button onClick={handleDecline} color="error">
+            Decline
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {userRole === "Mentor" && (
         <Box mt={4}>
