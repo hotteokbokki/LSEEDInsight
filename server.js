@@ -2087,7 +2087,7 @@ app.post("/api/mentorships", async (req, res) => {
     res.status(201).json({ message: "Mentorship added successfully" });
   } catch (error) {
     console.error("Error adding mentorship:", error);
-    res.status(500).json({ message: "Internal Server Error" });ZZ
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 

@@ -730,7 +730,7 @@ const Mentors = () => {
               <Select
                 labelId="mentor-label"
                 name="selectedMentor"
-                value={mentorshipData.selectedMentor}
+                value={mentorshipData.selectedMentor || ""}
                 onChange={(e) =>
                   setMentorshipData({
                     ...mentorshipData,
@@ -754,7 +754,7 @@ const Mentors = () => {
                 }}
               >
                 {mentors.map((mentor) => (
-                  <MenuItem key={mentor.id} value={mentor.id}>
+                  <MenuItem key={mentor.mentor_id} value={mentor.mentor_id}>
                     {mentor.mentor_firstName} {mentor.mentor_lastName} 
                   </MenuItem>
                 ))}
