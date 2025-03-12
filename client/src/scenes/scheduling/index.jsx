@@ -302,7 +302,6 @@ const Scheduling = ({ userRole }) => {
         </Box>
       )}
 
-<<<<<<< HEAD
       <Box mt={4}>
         <Typography variant="h6" gutterBottom>
           Mentor Scheduling Calendar
@@ -395,10 +394,7 @@ const Scheduling = ({ userRole }) => {
         </Box>
       )}
 
-      {user.role === "Mentor" && (
-=======
-      {userRole=== "Mentor" && (
->>>>>>> 9c8ccf804b2c75bfe103aa30ed8191e8a5183def
+      {userRole === "Mentor" && (
         <Box mt={4}>
           <Typography variant="h6" gutterBottom>
             Your Scheduled Mentorship Dates
