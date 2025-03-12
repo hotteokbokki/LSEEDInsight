@@ -653,6 +653,9 @@ const AssessSEPage = () => {
           width="80%"
           height="250px"
           sx={{
+            "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":{
+              backgroundColor: colors.blueAccent[700] + " !important",
+            },
             "& .MuiDataGrid-root": { border: "none" },
             "& .MuiDataGrid-cell": { borderBottom: "none" },
             "& .name-column--cell": { color: colors.greenAccent[300] },
