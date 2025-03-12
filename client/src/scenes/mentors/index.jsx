@@ -755,7 +755,7 @@ const Mentors = () => {
               >
                 {mentors.map((mentor) => (
                   <MenuItem key={mentor.id} value={mentor.id}>
-                    {mentor.name}
+                    {mentor.mentor_firstName} {mentor.mentor_lastName} 
                   </MenuItem>
                 ))}
               </Select>

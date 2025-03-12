@@ -143,3 +143,4 @@ Dockerfile
 .dockerignore
 
 database.js
+.qodo
