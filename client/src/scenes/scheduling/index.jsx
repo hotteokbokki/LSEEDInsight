@@ -61,6 +61,24 @@ const Scheduling = ({ userRole }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [zoomLink, setZoomLink] = useState("");
 
+  const [mentorHistory, setMentorHistory] = useState([
+    {
+      mentor_name: "John Doe",
+      social_enterprise: "GreenTech Solutions",
+      mentorship_dates: ["2025-02-27", "2025-03-10", "2025-04-05"],
+    },
+    {
+      mentor_name: "Jane Smith",
+      social_enterprise: "EcoInnovate Hub",
+      mentorship_dates: ["2025-03-15", "2025-04-20"],
+    },
+    {
+      mentor_name: "Michael Johnson",
+      social_enterprise: "Solar Future Foundation",
+      mentorship_dates: ["2025-01-05", "2025-02-15", "2025-03-30"],
+    },
+  ]);
+
   // Function to handle Snackbar close
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
@@ -312,84 +330,159 @@ const Scheduling = ({ userRole }) => {
       </Box>
 
       {user.role === "LSEED" && (
-        <Box mt={4}>
-          <Typography variant="h6" gutterBottom>
-            All Mentor Schedules
-          </Typography>
-          <Box
-            sx={{
-              height: 400,
-              width: "100%",
-              overflowX: "auto",
-              "& .MuiDataGrid-root": { border: "none" },
-              "& .MuiDataGrid-cell": { borderBottom: "none" },
-              "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-                backgroundColor: colors.blueAccent[700] + " !important",
-              },
-              "& .MuiDataGrid-virtualScroller": {
-                backgroundColor: colors.primary[400],
-              },
-              "& .MuiDataGrid-footerContainer": {
-                borderTop: "none",
-                backgroundColor: colors.blueAccent[700],
-                color: colors.grey[100],
-              },
-            }}
-          >
-            <DataGrid
-              rows={[
-                {
-                  id: "1",
-                  mentor_name: "John Doe",
-                  social_enterprise: "Green Solutions",
-                  scheduled_date: "May 5, 2025",
-                  scheduled_time: "6:00 PM",
+        <Box mt={4} display="flex" flexDirection="column" gap={2}>
+          {/* Mentor Schedules */}
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              All Mentor Schedules
+            </Typography>
+            <Box
+              sx={{
+                height: 400,
+                width: "100%",
+                overflowX: "auto",
+                "& .MuiDataGrid-root": { border: "none" },
+                "& .MuiDataGrid-cell": { borderBottom: "none" },
+                "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                  backgroundColor: colors.blueAccent[700] + " !important",
                 },
-                {
-                  id: "2",
-                  mentor_name: "Jane Smith",
-                  social_enterprise: "Eco Warriors",
-                  scheduled_date: "May 5, 2025",
-                  scheduled_time: "7:00 PM",
+                "& .MuiDataGrid-virtualScroller": {
+                  backgroundColor: colors.primary[400],
                 },
-                {
-                  id: "3",
-                  mentor_name: "Alex Johnson",
-                  social_enterprise: "Renewable Future",
-                  scheduled_date: "May 6, 2025",
-                  scheduled_time: "10:00 AM",
+                "& .MuiDataGrid-footerContainer": {
+                  borderTop: "none",
+                  backgroundColor: colors.blueAccent[700],
+                  color: colors.grey[100],
                 },
-              ]}
-              columns={[
-                {
-                  field: "mentor_name",
-                  headerName: "Mentor Name",
-                  flex: 1, // Equal width
-                  minWidth: 200,
-                },
-                {
-                  field: "social_enterprise",
-                  headerName: "Social Enterprise",
-                  flex: 1, // Equal width
-                  minWidth: 200,
-                },
-                {
-                  field: "scheduled_date",
-                  headerName: "Scheduled Date",
-                  flex: 1, // Equal width
-                  minWidth: 200,
-                },
-                {
-                  field: "scheduled_time",
-                  headerName: "Scheduled Time",
-                  flex: 1, // Equal width
-                  minWidth: 200,
-                },
-              ]}
-              pageSize={5}
-              rowsPerPageOptions={[5, 10]}
-              autoHeight
-            />
+              }}
+            >
+              <DataGrid
+                rows={[
+                  {
+                    id: "1",
+                    mentor_name: "John Doe",
+                    social_enterprise: "Green Solutions",
+                    scheduled_date: "May 5, 2025",
+                    scheduled_time: "6:00 PM",
+                  },
+                  {
+                    id: "2",
+                    mentor_name: "Jane Smith",
+                    social_enterprise: "Eco Warriors",
+                    scheduled_date: "May 5, 2025",
+                    scheduled_time: "7:00 PM",
+                  },
+                  {
+                    id: "3",
+                    mentor_name: "Alex Johnson",
+                    social_enterprise: "Renewable Future",
+                    scheduled_date: "May 6, 2025",
+                    scheduled_time: "10:00 AM",
+                  },
+                ]}
+                columns={[
+                  {
+                    field: "mentor_name",
+                    headerName: "Mentor Name",
+                    flex: 1,
+                    minWidth: 200,
+                  },
+                  {
+                    field: "social_enterprise",
+                    headerName: "Social Enterprise",
+                    flex: 1,
+                    minWidth: 200,
+                  },
+                  {
+                    field: "scheduled_date",
+                    headerName: "Scheduled Date",
+                    flex: 1,
+                    minWidth: 200,
+                  },
+                  {
+                    field: "scheduled_time",
+                    headerName: "Scheduled Time",
+                    flex: 1,
+                    minWidth: 200,
+                  },
+                ]}
+                pageSize={5}
+                rowsPerPageOptions={[5, 10]}
+                autoHeight
+              />
+            </Box>
+          </Box>
+
+          {/* Mentorship History */}
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Mentorship History
+            </Typography>
+            {mentorHistory.length > 0 ? (
+              <Box
+                sx={{
+                  height: 400,
+                  width: "100%",
+                  overflowX: "auto",
+                  "& .MuiDataGrid-root": { border: "none" },
+                  "& .MuiDataGrid-cell": { borderBottom: "none" },
+                  "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                    backgroundColor: colors.blueAccent[700] + " !important",
+                  },
+                  "& .MuiDataGrid-virtualScroller": {
+                    backgroundColor: colors.primary[400],
+                  },
+                  "& .MuiDataGrid-footerContainer": {
+                    borderTop: "none",
+                    backgroundColor: colors.blueAccent[700],
+                    color: colors.grey[100],
+                  },
+                }}
+              >
+                <DataGrid
+                  rows={mentorHistory.flatMap((history, index) =>
+                    history.mentorship_dates.map((date, i) => ({
+                      id: `${index}-${i}`,
+                      mentor_name: history.mentor_name,
+                      social_enterprise: history.social_enterprise,
+                      mentorship_date: new Date(date).toLocaleDateString(
+                        "en-US",
+                        {
+                          month: "long",
+                          day: "2-digit",
+                          year: "numeric",
+                        }
+                      ),
+                    }))
+                  )}
+                  columns={[
+                    {
+                      field: "mentor_name",
+                      headerName: "Mentor Name",
+                      flex: 1,
+                      minWidth: 200,
+                    },
+                    {
+                      field: "social_enterprise",
+                      headerName: "Social Enterprise",
+                      flex: 1,
+                      minWidth: 200,
+                    },
+                    {
+                      field: "mentorship_date",
+                      headerName: "Mentorship Date",
+                      flex: 1,
+                      minWidth: 200,
+                    },
+                  ]}
+                  pageSize={5}
+                  rowsPerPageOptions={[5, 10]}
+                  autoHeight
+                />
+              </Box>
+            ) : (
+              <Typography>No mentorship history available.</Typography>
+            )}
           </Box>
         </Box>
       )}
@@ -801,7 +894,12 @@ const Scheduling = ({ userRole }) => {
           }}
         >
           <Button
-            onClick={handleCloseSEModal}
+            onClick={() => {
+              handleCloseSEModal(); // Close the modal
+              setTimeout(() => {
+                window.location.reload(); // Reload after 500ms
+              }, 500);
+            }}
             sx={{
               color: "#000",
               border: "1px solid #000",
@@ -812,6 +910,7 @@ const Scheduling = ({ userRole }) => {
           >
             Cancel
           </Button>
+
           <Button
             onClick={handleConfirmDate}
             disabled={!selectedSE || isLoading}
