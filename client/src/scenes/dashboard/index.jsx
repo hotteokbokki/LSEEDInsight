@@ -258,8 +258,9 @@ const Dashboard = () => {
         {/* SE Performance Trend*/}
         <Box
           gridColumn="span 12"
-          gridRow="span 2"
+          gridRow="span 3"
           backgroundColor={colors.primary[400]}
+          marginBottom="10px"
         >
           <SEPerformanceTrendChart />{" "}
           {/* ✅ Embed the SEPerformanceChart component here */}
@@ -268,12 +269,13 @@ const Dashboard = () => {
         {/* ROW 3 */}
         <Box
           gridColumn="span 12"
-          gridRow="span 2"
+          gridRow="span 3"
           display="grid"
           gridTemplateColumns="repeat(12, 1fr)"
           gap="20px"
+          margintop="10px"
         >
-          {/* Left: Data Grid */}
+          {/* Data Grid */}
           <Box
             gridColumn="span 12"
             height="100%" // Match height to the parent's gridRow span
