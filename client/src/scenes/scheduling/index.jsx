@@ -197,13 +197,13 @@ const Scheduling = ({ userRole }) => {
       <Header
         title="Scheduling Matrix"
         subtitle={
-          user.role === "LSEED"
+          userRole === "LSEED"
             ? "View and Manage the schedule of the mentors"
             : "Find the Appropriate Schedule"
         }
       />
 
-      {user.role === "Mentor" ? (
+      {userRole === "Mentor" ? (
         <Box
           display="flex"
           flexDirection="column"
@@ -274,7 +274,7 @@ const Scheduling = ({ userRole }) => {
         </Box>
       )}
 
-      {user.role === "Mentor" && (
+      {userRole=== "Mentor" && (
         <Box mt={4}>
           <Typography variant="h6" gutterBottom>
             Your Scheduled Mentorship Dates

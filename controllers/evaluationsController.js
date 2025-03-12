@@ -1,5 +1,32 @@
 const pgDatabase = require('../database.js'); // Import PostgreSQL client
 
+exports.getEvaluations = async () => {
+    try {
+        const query = `
+            SELECT 
+                e.evaluation_id,
+                m.mentor_firstname || ' ' || m.mentor_lastname AS evaluator_name,
+                se.team_name AS social_enterprise,
+                e.created_at AS evaluation_date,
+                e."isAcknowledge" AS acknowledged,
+				e.evaluation_type
+            FROM 
+                evaluations AS e
+            JOIN 
+                mentors AS m ON e.mentor_id = m.mentor_id
+            JOIN 
+                socialenterprises AS se ON e.se_id = se.se_id
+        `;
+
+        const result = await pgDatabase.query(query);
+
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching evaluations:", error);
+        return [];
+    }
+};
+
 exports.getEvaluationsByMentorID = async (mentor_id) => {
     try {
         const query = `

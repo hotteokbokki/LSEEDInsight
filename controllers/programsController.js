@@ -2,22 +2,37 @@ const pgDatabase = require('../database.js'); // Import PostgreSQL client
 
 exports.getPrograms = async () => {
   try {
-    // Query to get all programs
-    const query = ` SELECT DISTINCT p.program_id, p.name
-                    FROM programs p
-                    INNER JOIN socialenterprises se ON p.program_id = se.program_id
-                    INNER JOIN mentorships m ON se.se_id = m.se_id`
+    const query = ` 
+      SELECT DISTINCT 
+          p.program_id, 
+          p.name AS program_name,
+          ARRAY_AGG(DISTINCT mtr.mentor_id) AS mentor_ids,
+          ARRAY_AGG(DISTINCT mtr.mentor_firstname || ' ' || mtr.mentor_lastname) AS mentor_names
+      FROM 
+          programs p
+      INNER JOIN 
+          socialenterprises se ON p.program_id = se.program_id
+      INNER JOIN 
+          mentorships m ON se.se_id = m.se_id
+      INNER JOIN 
+          mentors mtr ON m.mentor_id = mtr.mentor_id
+      GROUP BY 
+          p.program_id, p.name;
+    `;
+
     const result = await pgDatabase.query(query);
 
-    // If there's no data, return an empty array
     if (!result.rows.length) {
       return [];
     }
 
-    // Map the results to the desired format
     return result.rows.map(program => ({
-      id: program.program_id, // Use 'id' for consistency with frontend
-      name: program.name,
+      id: program.program_id, // Program ID
+      name: program.program_name, // Program Name
+      mentors: program.mentor_names.map((mentorName, index) => ({
+        id: program.mentor_ids[index], // Mentor ID
+        name: mentorName, // Mentor Name
+      }))
     }));
   } catch (error) {
     console.error("Error fetching programs:", error);

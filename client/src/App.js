@@ -11,7 +11,7 @@ import Admin from "./scenes/admin";
 import Analytics from "./scenes/analytics";
 import Reports from "./scenes/reports";
 import Scheduling from "./scenes/scheduling";
-import AssessSEPage from "./scenes/assess";
+import EvaluatePage from "./scenes/assess";
 import SEAnalytics from "./scenes/seanalytics";
 import MentorAnalytics from "./scenes/mentoranalytics";
 import Mentorships from "./scenes/mentorships";
@@ -86,8 +86,8 @@ const MainContent = () => {
           <Route path="/mentors" element={user ? <Mentors /> : <Navigate to="/" />} />
           <Route path="/analytics" element={user ? <Analytics /> : <Navigate to="/" />} />
           <Route path="/reports" element={user ? <Reports /> : <Navigate to="/" />} />
-          <Route path="/scheduling" element={user ? <Scheduling /> : <Navigate to="/" />} />
-          <Route path="/assess" element={user ? <AssessSEPage /> : <Navigate to="/" />} />
+          <Route path="/scheduling" element={user ? <Scheduling userRole={user?.role}/> : <Navigate to="/" />} />
+          <Route path="/assess" element={user ? <EvaluatePage userRole={user?.role}/> : <Navigate to="/" />} />
           <Route path="/se-analytics/:id" element={<SEAnalytics />} />
           <Route path="/mentor-analytics/:id" element={<MentorAnalytics />} />
           <Route path="/mentorships" element={<Mentorships />} />
@@ -115,7 +115,7 @@ const MainContent = () => {
 
           <Route element={<ProtectedRoute allowedRoles={["LSEED", "Mentor"]} />}>
             <Route path="/scheduling" element={<Scheduling />} />
-            <Route path="/assess" element={<AssessSEPage />} />
+            <Route path="/assess" element={<EvaluatePage />} />
           </Route>
 
           {/* Catch-all: Redirect unauthorized access */}
