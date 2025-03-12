@@ -157,20 +157,19 @@ const Sidebar = () => {
               selected={selected}
               setSelected={setSelected}
             />
-
+            <Item
+              title="Evaluate"
+              to="/assess"
+              icon={<AssignmentTurnedInOutlinedIcon />}
+              selected={selected}
+              setSelected={setSelected}
+            />
             {(user?.role === "Mentor") && (
               <>
                 <Item
                   title="Show Analytics"
                   to="/analytics-mentorship"
                   icon={<AnalyticsOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-                <Item
-                  title="Assess SE"
-                  to={user?.role === "Mentor" ? "/assess" : "/analytics"}
-                  icon={<AssignmentTurnedInOutlinedIcon />}
                   selected={selected}
                   setSelected={setSelected}
                 />

@@ -56,7 +56,8 @@ const { getEvaluationsByMentorID,
         updateAcknowledgeEvaluation, 
         getTopSEPerformanceByMentorships, 
         getEvaluationsBySEID, 
-        getStatsForHeatmap } = require("./controllers/evaluationsController.js");
+        getStatsForHeatmap, 
+        getEvaluations} = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
@@ -1192,6 +1193,17 @@ app.get("/api/active-mentors", async (req, res) => {
   try {
     const activeMentors = await getActiveMentors();
     res.json(activeMentors);
+  } catch (error) {
+    console.error("Error fetching active mentors:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+// Fetch active mentors
+app.get("/getAllEvaluations", async (req, res) => {
+  try {
+    const result = await getEvaluations();
+    res.json(result);
   } catch (error) {
     console.error("Error fetching active mentors:", error);
     res.status(500).json({ message: "Internal Server Error" });
