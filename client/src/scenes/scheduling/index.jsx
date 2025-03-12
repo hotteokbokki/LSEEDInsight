@@ -61,7 +61,7 @@ const Scheduling = ({ userRole }) => {
   const [zoomLink, setZoomLink] = useState("");
 
   // Function to handle Snackbar close
-  const handleSnackbarClose = () => { 
+  const handleSnackbarClose = () => {
     setSnackbarOpen(false);
   };
 
@@ -123,11 +123,10 @@ const Scheduling = ({ userRole }) => {
     }
   };
 
-  const handleConfirmDate = async () => { 
+  const handleConfirmDate = async () => {
     if (!selectedSE || !selectedDate) return;
-
-    else if (!zoomLink){
-      alert("Please enter a valid Zoom link.");  
+    else if (!zoomLink) {
+      alert("Please enter a valid Zoom link.");
       return;
     }
 
@@ -310,55 +309,75 @@ const Scheduling = ({ userRole }) => {
                   id: index,
                   team_name: mentorship.team_name || "N/A",
                   program_name: mentorship.name || "N/A",
-                  mentorship_date: Array.isArray(mentorship.mentorship_date) && Array.isArray(mentorship.mentorship_time)
-                    ? mentorship.mentorship_date.map((date, idx) => {
-                        if (!date) return "N/A"; // ✅ Handle missing dates
-                
-                        const formattedDate = new Date(date).toLocaleDateString("en-US", {
-                          month: "long",
-                          day: "2-digit",
-                          year: "numeric",
-                        });
-                
-                        // ✅ Fix: Use raw PostgreSQL time instead of `new Date()`
-                        const formattedTime =
-                          Array.isArray(mentorship.mentorship_time) &&
-                          mentorship.mentorship_time.length > idx && mentorship.mentorship_time[idx]
-                            ? new Date(`1970-01-01T${mentorship.mentorship_time[idx]}`).toLocaleTimeString("en-US", {
-                              hour: "numeric",
-                              minute: "2-digit",
-                              hour12: true, // ✅ Convert to 12-hour format with AM/PM
-                            }): "N/A"
-                
-                        return formattedTime !== "N/A" ? `${formattedDate} - ${formattedTime}` : formattedDate;
-                      })
-                    : ["N/A"],
-                
+                  mentorship_date:
+                    Array.isArray(mentorship.mentorship_date) &&
+                    Array.isArray(mentorship.mentorship_time)
+                      ? mentorship.mentorship_date.map((date, idx) => {
+                          if (!date) return "N/A"; // ✅ Handle missing dates
+
+                          const formattedDate = new Date(
+                            date
+                          ).toLocaleDateString("en-US", {
+                            month: "long",
+                            day: "2-digit",
+                            year: "numeric",
+                          });
+
+                          // ✅ Fix: Use raw PostgreSQL time instead of `new Date()`
+                          const formattedTime =
+                            Array.isArray(mentorship.mentorship_time) &&
+                            mentorship.mentorship_time.length > idx &&
+                            mentorship.mentorship_time[idx]
+                              ? new Date(
+                                  `1970-01-01T${mentorship.mentorship_time[idx]}`
+                                ).toLocaleTimeString("en-US", {
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                  hour12: true, // ✅ Convert to 12-hour format with AM/PM
+                                })
+                              : "N/A";
+
+                          return formattedTime !== "N/A"
+                            ? `${formattedDate} - ${formattedTime}`
+                            : formattedDate;
+                        })
+                      : ["N/A"],
+
                   // ✅ Fix Approved Dates: Same logic as Pending Dates
-                  accepted_dates: Array.isArray(mentorship.accepted_dates) && Array.isArray(mentorship.mentorship_time)
-                    ? mentorship.accepted_dates.map((date, idx) => {
-                        if (!date) return "N/A"; // ✅ Handle missing dates
-                
-                        const formattedDate = new Date(date).toLocaleDateString("en-US", {
-                          month: "long",
-                          day: "2-digit",
-                          year: "numeric",
-                        });
-                
-                        // ✅ Fix: Use raw PostgreSQL time instead of `new Date()`
-                        const formattedTime =
-                          Array.isArray(mentorship.mentorship_time) &&
-                          mentorship.mentorship_time.length > idx && mentorship.mentorship_time[idx]
-                            ? new Date(`1970-01-01T${mentorship.mentorship_time[idx]}`).toLocaleTimeString("en-US", {
-                              hour: "numeric",
-                              minute: "2-digit",
-                              hour12: true, // ✅ Convert to 12-hour format with AM/PM
-                            }): "N/A"
-                
-                        return formattedTime !== "N/A" ? `${formattedDate} - ${formattedTime}` : formattedDate;
-                      })
-                    : ["N/A"],
-                }))}                
+                  accepted_dates:
+                    Array.isArray(mentorship.accepted_dates) &&
+                    Array.isArray(mentorship.mentorship_time)
+                      ? mentorship.accepted_dates.map((date, idx) => {
+                          if (!date) return "N/A"; // ✅ Handle missing dates
+
+                          const formattedDate = new Date(
+                            date
+                          ).toLocaleDateString("en-US", {
+                            month: "long",
+                            day: "2-digit",
+                            year: "numeric",
+                          });
+
+                          // ✅ Fix: Use raw PostgreSQL time instead of `new Date()`
+                          const formattedTime =
+                            Array.isArray(mentorship.mentorship_time) &&
+                            mentorship.mentorship_time.length > idx &&
+                            mentorship.mentorship_time[idx]
+                              ? new Date(
+                                  `1970-01-01T${mentorship.mentorship_time[idx]}`
+                                ).toLocaleTimeString("en-US", {
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                  hour12: true, // ✅ Convert to 12-hour format with AM/PM
+                                })
+                              : "N/A";
+
+                          return formattedTime !== "N/A"
+                            ? `${formattedDate} - ${formattedTime}`
+                            : formattedDate;
+                        })
+                      : ["N/A"],
+                }))}
                 columns={[
                   {
                     field: "team_name",
@@ -387,7 +406,11 @@ const Scheduling = ({ userRole }) => {
                       >
                         {Array.isArray(params.value) && params.value.length > 0
                           ? params.value.map((entry, idx) => (
-                              <Chip key={idx} label={entry} sx={{ marginRight: "4px" }} />
+                              <Chip
+                                key={idx}
+                                label={entry}
+                                sx={{ marginRight: "4px" }}
+                              />
                             ))
                           : "N/A"}
                       </Box>
@@ -504,7 +527,109 @@ const Scheduling = ({ userRole }) => {
             </List>
           )}
 
-          {/* Date Selection Section */}
+          {/* Date & Time Selection Section */}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {/* Date Selection */}
+            {/* Date Selection Section */}
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DatePicker
+                label="Select Date"
+                value={selectedDate}
+                onChange={(newDate) => setSelectedDate(newDate)}
+                slotProps={{
+                  textField: {
+                    sx: {
+                      "& .MuiOutlinedInput-root": {
+                        "& fieldset": { borderColor: "#000" },
+                        "&:hover fieldset": { borderColor: "#000" },
+                        "&.Mui-focused fieldset": { borderColor: "#000" },
+                      },
+                      "& .MuiInputBase-input": { color: "#000" },
+                      "& .MuiInputLabel-root": { color: "#000" },
+                      "& .MuiInputLabel-root.Mui-focused": { color: "#000" },
+                    },
+                    InputProps: {
+                      sx: {
+                        "& .MuiSvgIcon-root": { color: "#000" },
+                      },
+                    },
+                  },
+                  popper: {
+                    sx: {
+                      "& .MuiPaper-root": {
+                        backgroundColor: "#1E4D2B", // Green background
+                        color: "#fff",
+                      },
+                      "& .MuiPickersDay-root": { color: "#fff" },
+                      "& .MuiPickersDay-root.Mui-selected": {
+                        backgroundColor: "#fff !important",
+                        color: "#1E4D2B",
+                      },
+                      "& .MuiIconButton-root": { color: "#fff" },
+                      "& .MuiTypography-root": { color: "#fff" },
+                      "& .MuiOutlinedInput-root": { borderColor: "#fff" },
+                    },
+                  },
+                }}
+              />
+            </LocalizationProvider>
+
+            {/* Time Selection */}
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <TimePicker
+                label="Select Time"
+                value={selectedTime}
+                onChange={(newTime) => setSelectedTime(newTime)}
+                slotProps={{
+                  textField: {
+                    sx: {
+                      "& .MuiOutlinedInput-root": {
+                        "& fieldset": { borderColor: "#000" },
+                        "&:hover fieldset": { borderColor: "#000" },
+                        "&.Mui-focused fieldset": { borderColor: "#000" },
+                      },
+                      "& .MuiInputBase-input": { color: "#000" },
+                      "& .MuiInputLabel-root": { color: "#000" },
+                      "& .MuiInputLabel-root.Mui-focused": { color: "#000" },
+                    },
+                    InputProps: {
+                      sx: {
+                        "& .MuiSvgIcon-root": { color: "#000" },
+                      },
+                    },
+                  },
+                  popper: {
+                    sx: {
+                      "& .MuiPaper-root": {
+                        backgroundColor: "#1E4D2B",
+                        color: "#fff",
+                      },
+                      "& .MuiClock-root": { backgroundColor: "#1E4D2B" },
+                      "& .MuiClockNumber-root": { color: "#fff" },
+                      "& .MuiClockPointer-root": { backgroundColor: "#fff" },
+                      "& .MuiClockPointer-thumb": { backgroundColor: "#fff" },
+                      "& .MuiIconButton-root": { color: "#fff" },
+                      "& .MuiTypography-root": { color: "#fff" },
+                      "& .Mui-selected": {
+                        backgroundColor: "#fff !important", // White background for selected time
+                        color: "#1E4D2B !important", // Green text to match theme
+                      },
+                    },
+                  },
+                  actionBar: {
+                    actions: ["cancel", "accept"],
+                    sx: {
+                      "& .MuiButton-root": {
+                        color: "#fff", // White "OK" button
+                      },
+                    },
+                  },
+                }}
+              />
+            </LocalizationProvider>
+          </Box>
+
+          {/* Zoom Link Section */}
           {selectedSE && (
             <>
               <Typography
@@ -515,153 +640,39 @@ const Scheduling = ({ userRole }) => {
                   fontWeight: "bold",
                 }}
               >
-                Select a Date for Mentoring
+                Enter Zoom Link for Mentoring
               </Typography>
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  label="Select Date"
-                  value={selectedDate}
-                  onChange={(newDate) => setSelectedDate(newDate)}
-                  slotProps={{
-                    textField: {
-                      sx: {
-                        "& .MuiOutlinedInput-root": {
-                          "& fieldset": {
-                            borderColor: "#000", // Black border
-                          },
-                          "&:hover fieldset": {
-                            borderColor: "#000", // Black border on hover
-                          },
-                          "&.Mui-focused fieldset": {
-                            borderColor: "#000", // Black border when focused
-                          },
-                        },
-                        "& .MuiInputBase-input": {
-                          color: "#000", // Black text
-                        },
-                        "& .MuiInputLabel-root": {
-                          color: "#000", // Black label text
-                        },
-                        "& .MuiInputLabel-root.Mui-focused": {
-                          color: "#000", // Black label text when focused
-                        },
-                      },
-                      InputProps: {
-                        sx: {
-                          "& .MuiSvgIcon-root": {
-                            color: "#000", // Black icon
-                          },
-                        },
-                      },
+              <TextField
+                label="Zoom Link"
+                value={zoomLink}
+                onChange={(e) => setZoomLink(e.target.value)}
+                fullWidth
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": {
+                      borderColor: "#000", // Black border
                     },
-                  }}
-                />
-              </LocalizationProvider>
+                    "&:hover fieldset": {
+                      borderColor: "#000", // Black border on hover
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#000", // Black border when focused
+                    },
+                  },
+                  "& .MuiInputBase-input": {
+                    color: "#000", // Black text
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: "#000", // Black label text
+                  },
+                  "& .MuiInputLabel-root.Mui-focused": {
+                    color: "#000", // Black label text when focused
+                  },
+                }}
+              />
             </>
           )}
         </DialogContent>
-
-        {/* Time Selection Section */}
-        {selectedSE && (
-            <>
-              <Typography
-                variant="h6"
-                sx={{
-                  marginTop: "20px",
-                  marginBottom: "10px",
-                  fontWeight: "bold",
-                }}
-              >
-                Select Time for Mentoring
-              </Typography>
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <TimePicker
-                  label="Select Time"
-                  value={selectedTime}
-                  onChange={(newTime) => setSelectedTime(newTime)}
-                  slotProps={{
-                    textField: {
-                      sx: {
-                        "& .MuiOutlinedInput-root": {
-                          "& fieldset": {
-                            borderColor: "#000", // Black border
-                          },
-                          "&:hover fieldset": {
-                            borderColor: "#000", // Black border on hover
-                          },
-                          "&.Mui-focused fieldset": {
-                            borderColor: "#000", // Black border when focused
-                          },
-                        },
-                        "& .MuiInputBase-input": {
-                          color: "#000", // Black text
-                        },
-                        "& .MuiInputLabel-root": {
-                          color: "#000", // Black label text
-                        },
-                        "& .MuiInputLabel-root.Mui-focused": {
-                          color: "#000", // Black label text when focused
-                        },
-                      },
-                      InputProps: {
-                        sx: {
-                          "& .MuiSvgIcon-root": {
-                            color: "#000", // Black icon
-                          },
-                        },
-                      },
-                    },
-                  }}
-                />
-              </LocalizationProvider>
-            </>
-          )}
-
-          {/* Zoom Link Section */}
-{selectedSE && (
-  <>
-    <Typography
-      variant="h6"
-      sx={{
-        marginTop: "20px",
-        marginBottom: "10px",
-        fontWeight: "bold",
-      }}
-    >
-      Enter Zoom Link for Mentoring
-    </Typography>
-    <TextField
-      label="Zoom Link"
-      value={zoomLink}
-      onChange={(e) => setZoomLink(e.target.value)}
-      fullWidth
-      sx={{
-        "& .MuiOutlinedInput-root": {
-          "& fieldset": {
-            borderColor: "#000", // Black border
-          },
-          "&:hover fieldset": {
-            borderColor: "#000", // Black border on hover
-          },
-          "&.Mui-focused fieldset": {
-            borderColor: "#000", // Black border when focused
-          },
-        },
-        "& .MuiInputBase-input": {
-          color: "#000", // Black text
-        },
-        "& .MuiInputLabel-root": {
-          color: "#000", // Black label text
-        },
-        "& .MuiInputLabel-root.Mui-focused": {
-          color: "#000", // Black label text when focused
-        },
-      }}
-    />
-  </>
-)}
-
-
         {/* Dialog Actions */}
         <DialogActions
           sx={{
