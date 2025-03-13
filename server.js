@@ -59,7 +59,8 @@ const { getEvaluationsByMentorID,
         getTopSEPerformanceByMentorships, 
         getEvaluationsBySEID, 
         getStatsForHeatmap, 
-        getEvaluations} = require("./controllers/evaluationsController.js");
+        getEvaluations,
+        getAllEvaluationStats} = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
@@ -536,6 +537,17 @@ app.get("/api/mentor-stats", async (req, res) => {
 app.get("/api/pending-schedules", async (req, res) => {
   try {
     const result = await getPendingSchedules();
+
+    res.json(result);
+  } catch (error) {
+    console.error("❌ Error fetching pending schedules:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/evaluation-stats", async (req, res) => {
+  try {
+    const result = await getAllEvaluationStats();
 
     res.json(result);
   } catch (error) {

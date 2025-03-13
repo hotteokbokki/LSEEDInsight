@@ -856,6 +856,22 @@ exports.getImprovementScorePerMonthAnnually= async () => {
     }
 };
 
+exports.getAllEvaluationStats= async () => {
+    try {
+        const query = `
+            SELECT 
+                COUNT(*) AS totalEvaluations,
+                COUNT(CASE WHEN "isAcknowledge" = true THEN 1 END) AS acknowledgedEvaluations
+            FROM evaluations;
+        `;
+        const result = await pgDatabase.query(query);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+
 exports.getGrowthScoreOverallAnually= async () => {
     try {
         const query = `

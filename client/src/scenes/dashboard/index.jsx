@@ -5,6 +5,7 @@ import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import EmailIcon from "@mui/icons-material/Email";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import AcknowledgmentChart from "../../components/AcknowledgmentChart";
 import TrafficIcon from "@mui/icons-material/Traffic";
 import Header from "../../components/Header";
 import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
@@ -18,6 +19,8 @@ import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
 import { useState, useEffect } from "react";
 import { DataGrid } from "@mui/x-data-grid";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import PendingActionsIcon from "@mui/icons-material/PendingActions";
 
 const Dashboard = () => {
   const theme = useTheme();
@@ -28,6 +31,8 @@ const Dashboard = () => {
   const [topPerformers, setTopPerformers] = useState([]);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [evaluations, setEvaluations] = useState([]);
+  const [showChart, setShowChart] = useState(false);
   const [stats, setStats] = useState({
     mentorWithoutMentorshipCount: [{ count: "0" }], // Default structure to prevent undefined errors
     mentorWithMentorshipCount: [{ count: "0" }],
@@ -52,6 +57,35 @@ const Dashboard = () => {
       flex: 1,
     },
   ];
+
+  useEffect(() => {
+    const fetchEvaluationStats = async () => {
+      try {
+        const response = await fetch("http://localhost:4000/api/evaluation-stats");
+        const data = await response.json();
+        
+        console.log("Evaluation Stats Data:", data); // Log API response
+        setEvaluations({ 
+          total: data[0]?.totalevaluations ?? 0, 
+          acknowledged: data[0]?.acknowledgedevaluations ?? 0 
+        });
+  
+        console.log("Updated Evaluations State:", {
+          total: data.totalevaluations,
+          acknowledged: data.acknowledgedevaluations
+        }); // Log the updated state
+  
+      } catch (error) {
+        console.error("Error fetching evaluation stats:", error);
+      }
+    };
+    fetchEvaluationStats();
+  }, []);
+
+  const acknowledgedPercentage = 
+  evaluations.total > 0
+    ? ((evaluations.acknowledged / evaluations.total) * 100).toFixed(1) + "%"
+    : "0%";
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
@@ -159,159 +193,124 @@ const Dashboard = () => {
         gridAutoRows="140px"
         gap="20px"
       >
-        <Box
-          gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
+        {/* Unassigned Mentors */}
+        <Box gridColumn="span 3" display="flex" alignItems="center" justifyContent="center" bgcolor={colors.primary[400]}>
           <StatBox
-            title={stats?.mentorWithoutMentorshipCount[0]?.count} // Render dynamic value
+            title={stats?.mentorWithoutMentorshipCount[0]?.count}
             subtitle="Unassigned Mentors"
             progress={
               parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
               parseInt(stats?.mentorCountTotal[0]?.count)
-            } // Calculate percentage of unassigned mentors
+            }
             increase={`${(
               (parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
                 parseInt(stats?.mentorCountTotal[0]?.count)) *
               100
-            ).toFixed(2)}%`} // Calculate percentage of mentors with mentorship
-            icon={
-              <EmailIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
-              />
-            }
+            ).toFixed(2)}%`}
+            icon={<EmailIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
           />
         </Box>
 
-        <Box
-          gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
+        {/* Assigned Mentors */}
+        <Box gridColumn="span 3" display="flex" alignItems="center" justifyContent="center" bgcolor={colors.primary[400]}>
           <StatBox
             title={stats?.mentorWithMentorshipCount[0]?.count}
             subtitle="Assigned Mentors"
             progress={
               parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
               parseInt(stats?.mentorCountTotal[0]?.count)
-            } // Calculate percentage filled
+            }
             increase={`${(
               (parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
                 parseInt(stats?.mentorCountTotal[0]?.count)) *
               100
-            ).toFixed(2)}%`} // Calculate percentage of mentors with mentorship
-            icon={
-              <PointOfSaleIcon
-                sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
-              />
-            }
+            ).toFixed(2)}%`}
+            icon={<PointOfSaleIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
           />
         </Box>
 
         {/* Total Social Enterprises */}
-        <Box
-          gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
-          <StatBox
-            title={stats.totalSocialEnterprises}
-            subtitle="Total SEs"
-            progress={1}
-            increase="+0%" // Static for now
-            icon={
-              <PersonAddIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
-              />
-            }
-          />
+        <Box gridColumn="span 3" display="flex" alignItems="center" justifyContent="center" bgcolor={colors.primary[400]}>
+          <StatBox title={stats.totalSocialEnterprises} subtitle="Total SEs" progress={1} increase="+0%" icon={<PersonAddIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />} />
         </Box>
 
         {/* Total Programs */}
-        <Box
-          gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
-          <StatBox
-            title={stats.totalPrograms}
-            subtitle="No. of Programs"
-            progress={1}
-            increase="+0%" // Static for now
-            icon={
-              <TrafficIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
-              />
-            }
-          />
+        <Box gridColumn="span 3" display="flex" alignItems="center" justifyContent="center" bgcolor={colors.primary[400]}>
+          <StatBox title={stats.totalPrograms} subtitle="No. of Programs" progress={1} increase="+0%" icon={<TrafficIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />} />
         </Box>
 
-        {/* SE Performance Trend*/}
-        <Box
-          gridColumn="span 12"
-          gridRow="span 3"
-          backgroundColor={colors.primary[400]}
-          marginBottom="10px"
-        >
-          <SEPerformanceTrendChart />{" "}
-          {/* ✅ Embed the SEPerformanceChart component here */}
+        {/* SE Performance Trend Chart */}
+        <Box gridColumn="span 12" gridRow="span 3" bgcolor={colors.primary[400]} p={2}>
+          <SEPerformanceTrendChart />
         </Box>
 
-        {/* ROW 3 */}
-        <Box
-          gridColumn="span 12"
-          gridRow="span 3"
-          display="grid"
-          gridTemplateColumns="repeat(12, 1fr)"
-          gap="20px"
-          margintop="10px"
-        >
-          {/* Data Grid */}
-          <Box
-            gridColumn="span 12"
-            height="100%" // Match height to the parent's gridRow span
-            sx={{
-              "& .MuiDataGrid-root": {
-                border: "none",
-              },
-              "& .MuiDataGrid-cell": {
-                borderBottom: "none",
-              },
-              "& .name-column--cell": {
-                color: colors.greenAccent[300],
-              },
-              "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-                backgroundColor: colors.blueAccent[700] + " !important",
-              },
-              "& .MuiDataGrid-virtualScroller": {
-                backgroundColor: colors.primary[400],
-              },
-              "& .MuiDataGrid-footerContainer": {
-                borderTop: "none",
-                backgroundColor: colors.blueAccent[700], // Footer background color
-                color: colors.grey[100],
-              },
-            }}
+        {/* Left Section (Stat Boxes) */}
+        <Box gridColumn="span 4" gridRow="span 2" display="grid" gridTemplateRows="1fr 1fr" gap={2} bgcolor={colors.primary[400]}>
+          {/* Total Evaluations */}
+          <Box 
+            bgcolor={colors.primary[400]} 
+            display="flex" 
+            alignItems="center" 
+            justifyContent="center" 
+            p={2} 
+            borderRadius="8px"
           >
-            {loading ? (
-              <Typography>Loading...</Typography>
-            ) : (
-              <DataGrid rows={socialEnterprises} columns={columns} autoHeight />
-            )}
+            <StatBox 
+              title={evaluations.total} 
+              subtitle="Total Evaluations" 
+              icon={<PendingActionsIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />} 
+            />
+          </Box>
+
+          {/* Acknowledged Evaluations */}
+          <Box 
+            bgcolor={colors.primary[400]} 
+            display="flex" 
+            alignItems="center" 
+            justifyContent="center" 
+            p={2} 
+            borderRadius="8px"
+          >
+            <StatBox 
+              title={evaluations.acknowledged} 
+              subtitle="Acknowledged Evaluations" 
+              increase={acknowledgedPercentage} 
+              icon={<AssignmentTurnedInIcon sx={{ fontSize: "26px", color: colors.greenAccent[500] }} />} 
+            />
           </Box>
         </Box>
+
+        {/* Right Section (Chart) */}
+        <Box 
+          gridColumn="span 8" 
+          gridRow="span 2" 
+          bgcolor={colors.primary[400]} 
+          p={2} 
+          display="flex" 
+          alignItems="center" 
+          justifyContent="center" 
+        >
+          <AcknowledgmentChart style={{ width: "100%", height: "100%" }} />
+        </Box>
+
+        <Box gridColumn="span 12" gridRow="span 3" display="grid" gridTemplateColumns="repeat(12, 1fr)" gap="20px" marginTop="10px">
+          <Box gridColumn="span 12" sx={{
+            height: "auto",
+            "& .MuiDataGrid-root": { border: "none" },
+            "& .MuiDataGrid-cell": { borderBottom: "none" },
+            "& .name-column--cell": { color: colors.greenAccent[300] },
+            "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": { backgroundColor: colors.blueAccent[700] + " !important" },
+            "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
+            "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
+          }}>
+            {loading ? <Typography>Loading...</Typography> : <DataGrid rows={socialEnterprises} columns={columns} autoHeight />}
+          </Box>
+        </Box> 
+
       </Box>
     </Box>
   );
+  
 };
 
 export default Dashboard;
