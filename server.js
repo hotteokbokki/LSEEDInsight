@@ -15,7 +15,8 @@ const { getSocialEnterprisesByProgram,
         getPreviousTotalSECount, 
         getPreviousMonthSEWithOutMentors, 
         getAllSocialEnterpriseswithMentorID, 
-        updateSERowUpdate } = require("./controllers/socialenterprisesController");
+        updateSERowUpdate, 
+        getAllSocialEnterprisesForComparison} = require("./controllers/socialenterprisesController");
 require("dotenv").config();
 const { getUsers, getUserName } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
@@ -61,7 +62,7 @@ const { getEvaluationsByMentorID,
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
-const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution } = require("./controllers/evaluationcategoriesController.js");
+const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution, compareSocialEnterprisesPerformance } = require("./controllers/evaluationcategoriesController.js");
 const { getMentorQuestions } = require("./controllers/mentorEvaluationsQuestionsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
 const app = express();
@@ -552,7 +553,6 @@ app.get("/api/analytics-stats", async (req, res) => {
     const heatmapStats = await getStatsForHeatmap();
     const categoricalScoreForAllSE = await getAverageScoreForAllSEPerCategory();
     const improvementScore = await getImprovementScorePerMonthAnnually();
-    const evaluationScoreDistribution = await getEvaluationScoreDistribution();
     const leaderboardData = await getSELeaderboards();
 
     console.log("Improvement Score Data:", improvementScore);
@@ -568,7 +568,6 @@ app.get("/api/analytics-stats", async (req, res) => {
       improvementScore,
       growthScoreTotal: currentGrowthScoreValue.toFixed(2), 
       cumulativeGrowth: cumulativeGrowthValue.toFixed(2),  
-      evaluationScoreDistribution,
       leaderboardData,
       growthScore,
     });
@@ -893,6 +892,29 @@ app.get("/getAllSocialEnterprisesWithMentorship", async (req, res) => {
   }
 });
 
+app.get("/comparePerformanceScore/:se1/:se2", async (req, res) => {
+  try {
+    const { se1, se2 } = req.params; // Expecting SE IDs
+
+    if (!se1 || !se2) {
+      return res.status(400).json({ message: "Missing required SE IDs" });
+    }
+
+    console.log("Comparing SEs:", se1, se2);
+
+    const result = await compareSocialEnterprisesPerformance(se1, se2);
+
+    if (!result || result.length === 0) {
+      return res.status(404).json({ message: "No evaluation data found" });
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching social enterprises:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.get("/getAllSocialEnterpriseswithMentorID", async (req, res) => {
   try {
     const { mentor_id } = req.query; // Extract mentor_id from query parameters
@@ -921,6 +943,19 @@ app.get("/getAllSDG", async (req, res) => {
 app.get("/getAllSocialEnterprises", async (req, res) => {
   try {
     const result = await getAllSocialEnterprises(); // Fetch SEs from DB
+    if (!result || result.length === 0) {
+      return res.status(404).json({ message: "No social enterprises found" });
+    }
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching social enterprises:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/getAllSocialEnterprisesForComparison", async (req, res) => {
+  try {
+    const result = await getAllSocialEnterprisesForComparison(); // Fetch SEs from DB
     if (!result || result.length === 0) {
       return res.status(404).json({ message: "No social enterprises found" });
     }

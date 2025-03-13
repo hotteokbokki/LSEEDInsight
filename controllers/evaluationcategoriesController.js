@@ -22,23 +22,29 @@ exports.getPerformanceOverviewBySEID = async (se_id) => {
     }
 };
 
-exports.getEvaluationScoreDistribution = async () => {
+exports.compareSocialEnterprisesPerformance = async (se1, se2) => {
     try {
-        const query = `
+      const query = `
             SELECT 
-                ec.category_name, 
-                ec.rating, 
-                e.se_id, 
-                se.team_name -- Fetch SE name instead of just the ID
+                s.se_id,
+                s.team_name AS social_enterprise, -- Use full name instead of abbreviation
+                s.abbr,
+                ec.category_name,
+                ROUND(AVG(ec.rating), 2) AS avg_rating
             FROM evaluation_categories ec
             JOIN evaluations e ON ec.evaluation_id = e.evaluation_id
-            JOIN socialenterprises se ON e.se_id = se.se_id; -- Join with social enterprises table
-        `;
-        const result = await pgDatabase.query(query);
-
-        return result.rows;
+            JOIN socialenterprises s ON e.se_id = s.se_id
+            WHERE e.se_id IN ($1, $2)
+            AND e.evaluation_type = 'Social Enterprise'
+            GROUP BY s.se_id, ec.category_name, s.team_name
+            ORDER BY ec.category_name;
+      `;
+  
+      const result = await pgDatabase.query(query, [se1, se2]); // Pass SE IDs dynamically
+  
+      return result.rows;
     } catch (error) {
-        console.error("❌ Error fetching top SE performance:", error);
-        return [];
+      console.error("❌ Error fetching SE performance comparison:", error);
+      return [];
     }
 };

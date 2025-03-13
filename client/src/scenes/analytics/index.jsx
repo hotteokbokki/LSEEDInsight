@@ -1,16 +1,17 @@
-import { Box, useTheme, Typography } from "@mui/material";
+import { Box, useTheme, Typography, Tooltip, IconButton } from "@mui/material";
 import Header from "../../components/Header";
 import HorizontalBarChart from "../../components/HorizontalBarChart";
 import DualAxisLineChart from "../../components/DualAxisLineChart";
 import StatBox from "../../components/StatBox";
 import LeaderboardChart from "../../components/LeaderboardChart";
 import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
-import ScatterPlot from "../../components/BarChart";
+import BarChart from "../../components/BarChart";
 import EmailIcon from "@mui/icons-material/Email";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import TrafficIcon from "@mui/icons-material/Traffic";
 import HeatmapWrapper from "../../components/MyHeatMap";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { tokens } from "../../theme";
 import { useEffect, useState } from "react";
 
@@ -198,7 +199,7 @@ const Analytics = () => {
             color={colors.greenAccent[500]}
           >
             {stats.categoricalScoreForAllSE?.length > 0
-              ? "Overall SE Performance"
+              ? "Evaluation Score Distribution"
               : ""}
           </Typography>
           <Box
@@ -304,31 +305,63 @@ const Analytics = () => {
           </Box>
         </Box>
       </Box>
-      {/* Row 4 - Line & Scatter Charts */}
+      {/* Row 4 - Improvement Score Over Time */}
       <Box
         display="flex"
-        flexWrap="wrap"
+        flexDirection="column"
         gap="20px"
-        justifyContent="space-between"
         mt="20px"
       >
-        {/* Improvement Score Over Time */}
         <Box
-          flex="1 1 48%"
           height="300px"
           backgroundColor={colors.primary[400]}
           p="20px"
         >
-          <Typography
-            variant="h3"
-            fontWeight="bold"
-            color={colors.greenAccent[500]}
-          >
+          <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
             {stats?.improvementScore?.length > 0
-              ? "Average Improvement Score Over Time"
+              ? "Improvement Score Trends Over Time"
               : ""}
-            {/* ✅ Show title only if data exists */}
           </Typography>
+
+          {/* Tooltip for explanation */}
+          <Tooltip
+            title={
+              <Box sx={{ maxWidth: 300, p: 1 }}>
+                <Typography variant="body1" fontWeight="bold">
+                  Understanding the Improvement Score Trends 📊
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  This chart tracks the <strong>progress of Social Enterprises (SEs)</strong> over time using two key indicators:
+                </Typography>
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2">
+                    🔹 <strong style={{ color: colors.greenAccent[500] }}>Overall Avg Improvement</strong> → 
+                    Measures the <strong>average improvement score</strong> across all SEs.
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    🔹 <strong style={{ color: colors.blueAccent[500] }}>Median Improvement</strong> → 
+                    Represents the <strong>middle improvement score</strong> to reduce the impact of outliers.
+                  </Typography>
+                </Box>
+                <Typography variant="body1" fontWeight="bold" sx={{ mt: 2 }}>
+                  📌 How to Read the Chart:
+                </Typography>
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2">📈 <strong>Upward trends</strong> → SEs are improving over time.</Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>⏸️ <strong>Flat trends</strong> → Growth is slow but stable.</Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>📉 <strong>Declining trends</strong> → SEs are facing challenges.</Typography>
+                </Box>
+              </Box>
+            }
+            arrow
+            placement="top"
+          >
+            <IconButton sx={{ ml: 1, color: colors.grey[300] }}>
+              <HelpOutlineIcon />
+            </IconButton>
+          </Tooltip>
+
+          {/* Chart Container */}
           <Box
             height="100%"
             display="flex"
@@ -338,8 +371,14 @@ const Analytics = () => {
           >
             {(() => {
               try {
-                if (!stats?.improvementScore) throw new Error("Data not found");
+                console.log("Raw stats.improvementScore:", stats?.improvementScore);
+
+                if (!stats?.improvementScore) {
+                  console.error("Data not found");
+                  throw new Error("Data not found");
+                }
                 if (stats.improvementScore.length === 0) {
+                  console.warn("No Available Data");
                   return (
                     <Typography
                       variant="h6"
@@ -350,29 +389,59 @@ const Analytics = () => {
                     </Typography>
                   );
                 }
-                return (
-                  <DualAxisLineChart
-                    data={[
-                      {
-                        id: "Overall Avg Improvement",
-                        color: colors.greenAccent[500],
-                        data: stats.improvementScore.map((point) => ({
-                          x: point.month?.substring(0, 7) || "Unknown",
-                          y: parseFloat(point.overall_avg_improvement) || 0,
-                        })),
-                      },
-                      {
-                        id: "Median Improvement",
-                        color: colors.blueAccent[500],
-                        data: stats.improvementScore.map((point) => ({
-                          x: point.month?.substring(0, 7) || "Unknown",
-                          y: parseFloat(point.median_improvement) || 0,
-                        })),
-                      },
-                    ]}
-                  />
-                );
+
+                // Function to convert full date (YYYY-MM-DD) into "QX YYYY" format
+                const getQuarterLabel = (dateString) => {
+                  if (!dateString) return "Unknown";
+                  const date = new Date(dateString);
+                  if (isNaN(date.getTime())) return "Unknown"; // Handle invalid dates
+
+                  const year = date.getFullYear();
+                  const month = date.getMonth() + 1; // Months are 0-based
+                  const quarter = Math.ceil(month / 3);
+                  return `Q${quarter} ${year}`;
+                };
+
+                // Group data by quarters dynamically
+                const formattedData = stats.improvementScore.reduce((acc, point) => {
+                  const quarterLabel = getQuarterLabel(point.month);
+                  if (!acc[quarterLabel]) {
+                    acc[quarterLabel] = { overall_avg_improvement: 0, median_improvement: 0, count: 0 };
+                  }
+                  acc[quarterLabel].overall_avg_improvement += parseFloat(point.overall_avg_improvement) || 0;
+                  acc[quarterLabel].median_improvement += parseFloat(point.median_improvement) || 0;
+                  acc[quarterLabel].count += 1;
+                  return acc;
+                }, {});
+
+                console.log("Formatted data grouped by quarters:", formattedData);
+
+                // Convert grouped data into chart format
+                const sortedQuarters = Object.keys(formattedData).sort((a, b) => a.localeCompare(b));
+                console.log("Sorted quarters:", sortedQuarters);
+
+                const chartData = [
+                  {
+                    id: "Overall Avg Improvement",
+                    data: sortedQuarters.map((quarter) => ({
+                      x: quarter,
+                      y: formattedData[quarter].overall_avg_improvement / formattedData[quarter].count,
+                    })),
+                  },
+                  {
+                    id: "Median Improvement",
+                    data: sortedQuarters.map((quarter) => ({
+                      x: quarter,
+                      y: formattedData[quarter].median_improvement / formattedData[quarter].count,
+                    })),
+                  },
+                ];
+
+                console.log("Final chart data:", chartData);
+
+                return <DualAxisLineChart data={chartData} />;
               } catch (error) {
+                console.error("Error processing data:", error);
                 return (
                   <Typography variant="h6" color="red" textAlign="center">
                     Error loading data
@@ -383,10 +452,9 @@ const Analytics = () => {
           </Box>
         </Box>
 
-        {/* Evaluation Score Distribution */}
+        {/* Row 5 - Social Enterprise Performance Comparison */}
         <Box
-          flex="1 1 48%"
-          height="300px"
+          height="500px"
           backgroundColor={colors.primary[400]}
           p="20px"
         >
@@ -395,10 +463,7 @@ const Analytics = () => {
             fontWeight="bold"
             color={colors.greenAccent[500]}
           >
-            {stats?.evaluationScoreDistribution?.length > 0
-              ? "Evaluation Score Distribution"
-              : ""}
-            {/* ✅ Show title only if data exists */}
+            Social Enterprise Performance Comparison
           </Typography>
           <Box
             height="100%"
@@ -406,30 +471,7 @@ const Analytics = () => {
             justifyContent="center"
             alignItems="center"
           >
-            {(() => {
-              try {
-                if (!stats?.evaluationScoreDistribution)
-                  throw new Error("Data not found");
-                if (stats.evaluationScoreDistribution.length === 0) {
-                  return (
-                    <Typography
-                      variant="h6"
-                      color={colors.grey[300]}
-                      textAlign="center"
-                    >
-                      No Available Data
-                    </Typography>
-                  );
-                }
-                return <ScatterPlot data={stats.evaluationScoreDistribution} />;
-              } catch (error) {
-                return (
-                  <Typography variant="h6" color="red" textAlign="center">
-                    Error loading data
-                  </Typography>
-                );
-              }
-            })()}
+            <BarChart /> {/* No need for conditional rendering, BarChart fetches its own data */}
           </Box>
         </Box>
       </Box>

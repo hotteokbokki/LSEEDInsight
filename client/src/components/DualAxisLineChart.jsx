@@ -8,8 +8,14 @@ const DualAxisLineChart = ({ data, isDashboard = false }) => {
 
   // ✅ Ensure data is not undefined before flattening
   const allYValues = data?.flatMap((d) => d.data.map((point) => point.y)) || [];
-  const minY = allYValues.length ? Math.min(...allYValues, -5) : -5;
-  const maxY = allYValues.length ? Math.max(...allYValues, 5) : 5;
+  
+  const minDataY = allYValues.length ? Math.min(...allYValues) : 0;
+  const maxDataY = allYValues.length ? Math.max(...allYValues) : 1;
+
+  // ✅ Add a buffer around min/max values for better visibility
+  const yBuffer = (maxDataY - minDataY) * 0.1; // 10% buffer
+  const minY = minDataY - yBuffer;
+  const maxY = maxDataY + yBuffer;
 
   return (
     <ResponsiveLine
@@ -24,14 +30,21 @@ const DualAxisLineChart = ({ data, isDashboard = false }) => {
           },
         },
         legends: { text: { fill: colors.grey[100] } },
-        tooltip: { container: { color: colors.primary[500] } },
+        tooltip: {
+          container: {
+            background: colors.primary[400], // ✅ Dark background for better contrast
+            color: colors.grey[100],
+            padding: "10px",
+            borderRadius: "5px",
+          },
+        },
       }}
-      colors={isDashboard ? { datum: "color" } : { scheme: "nivo" }}
-      margin={{ top: 50, right: 210, bottom: 50, left: 60 }}
+      colors={[colors.greenAccent[500], colors.blueAccent[500]]} // Explicitly assign colors
+      margin={{ top: 50, right: 210, bottom: 60, left: 60 }}
       xScale={{ type: "point" }}
       yScale={{
         type: "linear",
-        min: minY, // ✅ Ensure zero baseline
+        min: minY, // ✅ Ensure a dynamic min/max range
         max: maxY,
         stacked: false,
         reverse: false,
@@ -43,20 +56,20 @@ const DualAxisLineChart = ({ data, isDashboard = false }) => {
       axisBottom={{
         orient: "bottom",
         tickSize: 0,
-        tickPadding: 5,
-        tickRotation: 0,
-        legend: isDashboard ? undefined : "Month",
-        legendOffset: 36,
+        tickPadding: 10,
+        tickRotation: data?.length > 6 ? -30 : 0, // ✅ Rotate if many quarters
+        legend: isDashboard ? undefined : "Quarter",
+        legendOffset: 50,
         legendPosition: "middle",
       }}
       axisLeft={{
         orient: "left",
-        tickValues: [-5, -3, -1, 0, 1, 3, 5], // ✅ Y-axis centered at zero
+        tickValues: 7, // ✅ Auto-generate ticks instead of hardcoding
         tickSize: 3,
         tickPadding: 5,
         tickRotation: 0,
         legend: isDashboard ? undefined : "Improvement Score",
-        legendOffset: -40,
+        legendOffset: -50,
         legendPosition: "middle",
       }}
       enableGridX={false}
@@ -69,11 +82,11 @@ const DualAxisLineChart = ({ data, isDashboard = false }) => {
       useMesh={true}
       legends={[
         {
-          anchor: "bottom-right", // ✅ Move legend to bottom-right
+          anchor: "top-right", // ✅ Move legend to top-right for better visibility
           direction: "column",
           justify: false,
-          translateX: 110, // ✅ Adjust position horizontally
-          translateY: -30, // ✅ Move down
+          translateX: 100,
+          translateY: 0,
           itemsSpacing: 4,
           itemDirection: "left-to-right",
           itemWidth: 80,

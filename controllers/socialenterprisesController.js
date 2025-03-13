@@ -33,8 +33,6 @@ exports.getSocialEnterprisesByProgram = async (programId) => {
 
 exports.getSocialEnterpriseByID = async (se_id) => {
   try {
-    console.log(`🔍 Fetching social enterprise with ID: ${se_id}`);
-
     // Query to get a social enterprise by se_id
     const query = 'SELECT * FROM "socialenterprises" WHERE "se_id" = $1';
     const values = [se_id];
@@ -57,6 +55,29 @@ exports.getSocialEnterpriseByID = async (se_id) => {
 exports.getAllSocialEnterprises = async () => {
   try {
     const res = await pgDatabase.query('SELECT * FROM socialenterprises');
+    
+    if (!res.rows || res.rows.length === 0) {
+      console.error("No SE found");
+      return null; // or return an empty array []
+    }
+
+    return res.rows; // return the list of users
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    return null; // or handle error more gracefully
+  }
+};
+
+exports.getAllSocialEnterprisesForComparison = async () => {
+  try {
+
+    // Query to get a social enterprise by se_id
+    const query = `
+        SELECT DISTINCT se.*
+        FROM socialenterprises se
+        JOIN evaluations e ON se.se_id = e.se_id;
+        `;
+    const res = await pgDatabase.query(query);
     
     if (!res.rows || res.rows.length === 0) {
       console.error("No SE found");

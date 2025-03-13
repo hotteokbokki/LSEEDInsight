@@ -8,7 +8,7 @@ const HeatmapWrapper = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [heatMapStats, setHeatMapStats] = useState([]);
-  const [period, setPeriod] = useState("quarterly"); // Default to quarterly
+  const [period, setPeriod] = useState("overall"); // Default to quarterly
 
   useEffect(() => {
     const fetchHeatMapStats = async () => {
@@ -63,6 +63,7 @@ const HeatmapWrapper = () => {
             color: colors.grey[100],
           }}
         >
+          <MenuItem value="overall">Overall</MenuItem>
           <MenuItem value="quarterly">Quarterly</MenuItem>
           <MenuItem value="yearly">Yearly</MenuItem>
         </Select>

@@ -60,9 +60,19 @@ const Scheduling = ({ userRole }) => {
   const [selectedTime, setSelectedTime] = useState(dayjs().startOf("hour"));
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [zoomLink, setZoomLink] = useState("");
-
+  const handleRedirect = () => window.open("https://calendar.google.com", "_blank");
+  const handleOpenModal = () => setOpenModal(true);
+  const handleCloseModal = () => setOpenModal(false);
+  const handleOpenSEModal = () => {
+    fetchSocialEnterprises();
+    setOpenSEModal(true);
+  };
+  const handleCloseSEModal = () => setOpenSEModal(false);
+  const handleSelectSE = (se) => setSelectedSE(se);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedRowId, setSelectedRowId] = useState(null);
+  const [mentorSchedules, setMentorSchedules] = useState([]);
+  const [mentorHistory, setMentorHistory] = useState([]);
 
   const handleManageClick = (id) => {
     setSelectedRowId(id);
@@ -83,27 +93,6 @@ const Scheduling = ({ userRole }) => {
     console.log(`Declined mentor schedule with ID: ${selectedRowId}`);
     handleCloseDialog();
   };
-
-  const [mentorHistory, setMentorHistory] = useState([
-    {
-      mentor_name: "John Doe",
-      social_enterprise: "GreenTech Solutions",
-      mentorship_dates: ["2025-02-27", "2025-03-10", "2025-04-05"],
-      status: ["accepted", "declined", "accepted"], // Add status for each date
-    },
-    {
-      mentor_name: "Jane Smith",
-      social_enterprise: "EcoInnovate Hub",
-      mentorship_dates: ["2025-03-15", "2025-04-20"],
-      status: ["accepted", "declined"], // Add status for each date
-    },
-    {
-      mentor_name: "Michael Johnson",
-      social_enterprise: "Solar Future Foundation",
-      mentorship_dates: ["2025-01-05", "2025-02-15", "2025-03-30"],
-      status: ["accepted", "accepted", "declined"], // Add status for each date
-    },
-  ]);
 
   // Function to handle Snackbar close
   const handleSnackbarClose = () => {
@@ -210,17 +199,6 @@ const Scheduling = ({ userRole }) => {
     }
   };
 
-  const handleRedirect = () =>
-    window.open("https://calendar.google.com", "_blank");
-  const handleOpenModal = () => setOpenModal(true);
-  const handleCloseModal = () => setOpenModal(false);
-  const handleOpenSEModal = () => {
-    fetchSocialEnterprises();
-    setOpenSEModal(true);
-  };
-  const handleCloseSEModal = () => setOpenSEModal(false);
-  const handleSelectSE = (se) => setSelectedSE(se);
-
   useEffect(() => {
     fetch("/auth/session-check", {
       method: "GET",
@@ -235,8 +213,6 @@ const Scheduling = ({ userRole }) => {
         console.error("[Frontend] Session Check Error:", error)
       );
   }, []);
-
-  const [mentorSchedules, setMentorSchedules] = useState([]);
 
   useEffect(() => {
     const fetchMentorSchedules = async () => {
@@ -360,7 +336,7 @@ const Scheduling = ({ userRole }) => {
           {/* Mentor Schedules */}
           <Box>
             <Typography variant="h6" gutterBottom>
-              All Mentor Schedules
+              Pending Schedules
             </Typography>
             <Box
               sx={{
@@ -457,7 +433,7 @@ const Scheduling = ({ userRole }) => {
           {/* Mentorship History */}
           <Box>
             <Typography variant="h6" gutterBottom>
-              Mentorship History
+              Mentoring Sessions History
             </Typography>
             {mentorHistory.length > 0 ? (
               <Box

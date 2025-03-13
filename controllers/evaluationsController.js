@@ -693,17 +693,22 @@ exports.getCommonChallengesBySEID = async (se_id) => {
     }
 };
 
-exports.getStatsForHeatmap = async (period = "quarterly") => {
+exports.getStatsForHeatmap = async (period = "overall") => {
     try {
         let dateCondition = "";
-        
+
         if (period === "quarterly") {
             dateCondition = `
-                e.created_at >= DATE_TRUNC('quarter', CURRENT_DATE)
-                AND e.created_at < DATE_TRUNC('quarter', CURRENT_DATE) + INTERVAL '3 months'
+                e.created_at >= (CURRENT_DATE - INTERVAL '3 months')
+                AND e.created_at < CURRENT_DATE
             `;
         } else if (period === "yearly") {
-            dateCondition = "1 = 1"; // No date filter for overall stats
+            dateCondition = `
+                e.created_at >= (CURRENT_DATE - INTERVAL '12 months')
+                AND e.created_at < CURRENT_DATE
+            `;
+        } else if (period === "overall") {
+            dateCondition = "1 = 1"; // No date filter, fetches all data
         }
 
         const query = `
@@ -722,19 +727,20 @@ exports.getStatsForHeatmap = async (period = "quarterly") => {
             SELECT 
                 ROW_NUMBER() OVER () AS row_id,  
                 se.se_id,
-                se.team_name,
-                se.abbr,  
+                TRIM(se.team_name) AS team_name,
+                TRIM(COALESCE(se.abbr, se.team_name)) AS abbr,  
                 jsonb_object_agg(re.category_name, re.avg_rating) AS category_ratings  
             FROM recent_evaluations re
-            JOIN public.socialenterprises se ON re.se_id = se.se_id
+            INNER JOIN public.socialenterprises se ON re.se_id = se.se_id  -- 🔥 INNER JOIN ensures only SEs with data
             GROUP BY se.se_id, se.team_name, se.abbr
             ORDER BY se.team_name;
         `;
+
         const result = await pgDatabase.query(query);
 
         return result.rows.map(row => ({
-            team_name: row.team_name.trim(),
-            abbr: row.abbr ? row.abbr.trim() : row.team_name.trim(),
+            team_name: row.team_name,
+            abbr: row.abbr,
             ...row.category_ratings
         }));
     } catch (error) {
@@ -786,40 +792,61 @@ exports.getAverageScoreForAllSEPerCategory = async () => {
         return [];
     }
 };
-//Line chart
+
 exports.getImprovementScorePerMonthAnnually= async () => {
     try {
         const query = `
-WITH MonthlyRatings AS (
-    SELECT 
-        e.se_id,
-        s.abbr AS social_enterprise, 
-        DATE_TRUNC('month', e.created_at) AS month,
-        ROUND(AVG(ec.rating), 3) AS avg_rating
-    FROM evaluations e
-    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-    JOIN socialenterprises s ON e.se_id = s.se_id
-    WHERE DATE_PART('year', e.created_at) = DATE_PART('year', CURRENT_DATE) 
-        AND e.evaluation_type = 'Social Enterprise'
-    GROUP BY e.se_id, s.abbr, month
-),
-RankedRatings AS (
-    SELECT 
-        se_id, 
-        social_enterprise, 
-        month, 
-        avg_rating,
-        LAG(avg_rating) OVER (PARTITION BY se_id ORDER BY month) AS prev_avg_rating
-    FROM MonthlyRatings
-)
-SELECT 
-    month,
-    ROUND(AVG(avg_rating - prev_avg_rating), 3) AS overall_avg_improvement, -- Increased precision
-    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY avg_rating - prev_avg_rating) AS median_improvement
-FROM RankedRatings
-WHERE prev_avg_rating IS NOT NULL
-GROUP BY month
-ORDER BY month;
+            WITH DateRange AS ( -- Dynamically finds the range of evaluations
+                SELECT 
+                    DATE_TRUNC('month', MIN(created_at))::DATE AS start_date,
+                    DATE_TRUNC('month', MAX(created_at))::DATE AS end_date
+                FROM evaluations
+                WHERE evaluation_type = 'Social Enterprise'
+            ),
+            Months AS ( -- Generates months dynamically based on the min/max date
+                SELECT generate_series(
+                    (SELECT start_date FROM DateRange), 
+                    (SELECT end_date FROM DateRange), 
+                    INTERVAL '3 months'
+                )::DATE AS month
+            ),
+            MonthlyRatings AS ( -- Calculates the average rating per month
+                SELECT 
+                    e.se_id,
+                    s.abbr AS social_enterprise, 
+                    DATE_TRUNC('month', e.created_at)::DATE AS month, 
+                    ROUND(AVG(ec.rating), 3) AS avg_rating
+                FROM evaluations e
+                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+                JOIN socialenterprises s ON e.se_id = s.se_id
+                WHERE e.evaluation_type = 'Social Enterprise'
+                GROUP BY e.se_id, s.abbr, month
+            ),
+            FilledMonths AS ( -- Ensures all months exist, even if no evaluations happened
+                SELECT 
+                    m.month, 
+                    mr.se_id, 
+                    mr.social_enterprise, 
+                    COALESCE(mr.avg_rating, 0) AS avg_rating
+                FROM Months m
+                LEFT JOIN MonthlyRatings mr ON m.month = mr.month
+            ),
+            RankedRatings AS ( -- Calculates improvement compared to previous months
+                SELECT 
+                    se_id, 
+                    social_enterprise, 
+                    month, 
+                    avg_rating,
+                    LAG(avg_rating) OVER (PARTITION BY se_id ORDER BY month) AS prev_avg_rating
+                FROM FilledMonths
+            )
+            SELECT 
+                month,
+                ROUND(AVG(avg_rating - COALESCE(prev_avg_rating, avg_rating)), 3) AS overall_avg_improvement,
+                PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY avg_rating - COALESCE(prev_avg_rating, avg_rating)) AS median_improvement
+            FROM RankedRatings
+            GROUP BY month
+            ORDER BY month;
         `;
         const result = await pgDatabase.query(query);
         return result.rows;
@@ -828,7 +855,7 @@ ORDER BY month;
         return [];
     }
 };
-/* TODO */
+
 exports.getGrowthScoreOverallAnually= async () => {
     try {
         const query = `
