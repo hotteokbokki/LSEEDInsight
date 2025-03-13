@@ -60,7 +60,8 @@ const Scheduling = ({ userRole }) => {
   const [selectedTime, setSelectedTime] = useState(dayjs().startOf("hour"));
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [zoomLink, setZoomLink] = useState("");
-  const handleRedirect = () => window.open("https://calendar.google.com", "_blank");
+  const handleRedirect = () =>
+    window.open("https://calendar.google.com", "_blank");
   const handleOpenModal = () => setOpenModal(true);
   const handleCloseModal = () => setOpenModal(false);
   const handleOpenSEModal = () => {
@@ -78,7 +79,7 @@ const Scheduling = ({ userRole }) => {
     // Handle the accept action here
     console.log("Accepted schedule with ID:", id);
   };
-  
+
   const handleDeclineClick = (id) => {
     // Handle the decline action here
     console.log("Declined schedule with ID:", id);
@@ -222,7 +223,9 @@ const Scheduling = ({ userRole }) => {
   useEffect(() => {
     const fetchMentorSchedules = async () => {
       try {
-        const response = await axios.get("http://localhost:4000/api/pending-schedules");
+        const response = await axios.get(
+          "http://localhost:4000/api/pending-schedules"
+        );
         const data = response.data; // no need for .json() when using axios
 
         console.log("📅 Mentor Schedules Data:", data); // ✅ Debugging log
@@ -363,105 +366,111 @@ const Scheduling = ({ userRole }) => {
                 },
               }}
             >
-            <DataGrid
-              rows={mentorSchedules.map((schedule, index) => {
-                const formattedDates = Array.from(new Set(
-                  schedule.mentorship_date.map((date) => {
-                    const formattedDate = new Date(date).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    });
+              <DataGrid
+                rows={mentorSchedules.map((schedule, index) => {
+                  const formattedDates = Array.from(
+                    new Set(
+                      schedule.mentorship_date.map((date) => {
+                        const formattedDate = new Date(date).toLocaleDateString(
+                          "en-US",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }
+                        );
 
-                    return formattedDate;
-                  })
-                ));
+                        return formattedDate;
+                      })
+                    )
+                  );
 
-                const startTime = schedule.mentorship_time[0] || 'No time available';
-                const endTime = schedule.mentorship_time[1] || startTime;
+                  const startTime =
+                    schedule.mentorship_time[0] || "No time available";
+                  const endTime = schedule.mentorship_time[1] || startTime;
 
-                return {
-                  id: schedule.mentorship_id,
-                  mentor_name: schedule.mentor_name,
-                  se_name: schedule.se_name,
-                  mentorship_date: formattedDates.join(", "),
-                  start_time: startTime,
-                  end_time: endTime,
-                  telegramstatus: schedule.telegramstatus,
-                };
-              })}
-              columns={[
-                {
-                  field: "mentor_name",
-                  headerName: "Mentor Name",
-                  flex: 1,
-                  minWidth: 200,
-                },
-                {
-                  field: "se_name",
-                  headerName: "Social Enterprise",
-                  flex: 1,
-                  minWidth: 200,
-                },
-                {
-                  field: "mentorship_date",
-                  headerName: "Mentorship Session Date",
-                  flex: 1,
-                  minWidth: 200,
-                },
-                {
-                  field: "start_time",
-                  headerName: "Start Time",
-                  flex: 1,
-                  minWidth: 25,
-                },
-                {
-                  field: "end_time",
-                  headerName: "End Time",
-                  flex: 1,
-                  minWidth: 25,
-                },
-                {
-                  field: "telegramstatus",
-                  headerName: "Status",
-                  flex: 1,
-                  minWidth: 50,
-                },
-                {
-                  field: "action",
-                  headerName: "Action",
-                  flex: 1,
-                  minWidth: 150,
-                  renderCell: (params) => (
-                    <div>
-                      <Button
-                        variant="contained"
-                        style={{
-                          backgroundColor: colors.greenAccent[500], // Custom green color for Accept
-                          marginRight: '8px',
-                        }}
-                        onClick={() => handleAcceptClick(params.row.id)}
-                      >
-                        Accept
-                      </Button>
-                      <Button
-                        variant="contained"
-                        style={{
-                          backgroundColor: colors.redAccent[500], // Custom red color for Decline
-                        }}
-                        onClick={() => handleDeclineClick(params.row.id)}
-                      >
-                        Decline
-                      </Button>
-                    </div>
-                  ),
-                },
-              ]}
-              pageSize={5}
-              rowsPerPageOptions={[5, 10]}
-            />
-        </Box>
-      </Box>
+                  return {
+                    id: schedule.mentorship_id,
+                    mentor_name: schedule.mentor_name,
+                    se_name: schedule.se_name,
+                    mentorship_date: formattedDates.join(", "),
+                    start_time: startTime,
+                    end_time: endTime,
+                    telegramstatus: schedule.telegramstatus,
+                  };
+                })}
+                columns={[
+                  {
+                    field: "mentor_name",
+                    headerName: "Mentor Name",
+                    flex: 1,
+                    minWidth: 200,
+                  },
+                  {
+                    field: "se_name",
+                    headerName: "Social Enterprise",
+                    flex: 1,
+                    minWidth: 200,
+                  },
+                  {
+                    field: "mentorship_date",
+                    headerName: "Mentorship Session Date",
+                    flex: 1,
+                    minWidth: 200,
+                  },
+                  {
+                    field: "start_time",
+                    headerName: "Start Time",
+                    flex: 1,
+                    minWidth: 25,
+                  },
+                  {
+                    field: "end_time",
+                    headerName: "End Time",
+                    flex: 1,
+                    minWidth: 25,
+                  },
+                  {
+                    field: "telegramstatus",
+                    headerName: "Status",
+                    flex: 1,
+                    minWidth: 50,
+                  },
+                  {
+                    field: "action",
+                    headerName: "Action",
+                    flex: 1,
+                    minWidth: 200,
+                    renderCell: (params) => (
+                      <div>
+                        <Button
+                          variant="contained"
+                          style={{
+                            backgroundColor: colors.greenAccent[500], // Custom green color for Accept
+                            marginRight: "8px",
+                          }}
+                          onClick={() => handleAcceptClick(params.row.id)}
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          variant="contained"
+                          style={{
+                            backgroundColor: colors.redAccent[500], // Custom red color for Decline
+                          }}
+                          onClick={() => handleDeclineClick(params.row.id)}
+                        >
+                          Decline
+                        </Button>
+                      </div>
+                    ),
+                  },
+                ]}
+                pageSize={5}
+                rowsPerPageOptions={[5, 10]}
+              />
+            </Box>
+          </Box>
 
           {/* Mentorship History */}
           <Box>
