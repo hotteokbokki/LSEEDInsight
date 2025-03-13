@@ -117,5 +117,34 @@ exports.getMentorSchedules = async () => {
       console.error("❌ Error fetching mentor schedules:", error);
       return [];
     }
-  };
+};
+
+exports.getPendingSchedules = async () => {
+    try {
+      const query = `
+        SELECT 
+            m.mentor_firstname || ' ' || m.mentor_lastname AS mentor_name,
+            se.team_name AS se_name,
+            ms.mentorship_id,
+            ms.mentorship_date,
+            ms.mentorship_time,
+            ms.telegramstatus
+        FROM public.mentorships ms
+        LEFT JOIN public.mentors m ON ms.mentor_id = m.mentor_id
+        LEFT JOIN public.socialenterprises se ON ms.se_id = se.se_id
+        WHERE ms.telegramstatus = 'Pending';
+      `;
+  
+      const result = await pgDatabase.query(query);
+      if (!result.rows.length) {
+        console.log("No Pending Schedules found.");
+        return [];
+      }
+  
+      return result.rows;
+    } catch (error) {
+      console.error("❌ Error fetching mentor schedules:", error);
+      return [];
+    }
+};
   

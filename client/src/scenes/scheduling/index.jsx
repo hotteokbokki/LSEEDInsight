@@ -74,9 +74,14 @@ const Scheduling = ({ userRole }) => {
   const [mentorSchedules, setMentorSchedules] = useState([]);
   const [mentorHistory, setMentorHistory] = useState([]);
 
-  const handleManageClick = (id) => {
-    setSelectedRowId(id);
-    setOpenDialog(true);
+  const handleAcceptClick = (id) => {
+    // Handle the accept action here
+    console.log("Accepted schedule with ID:", id);
+  };
+  
+  const handleDeclineClick = (id) => {
+    // Handle the decline action here
+    console.log("Declined schedule with ID:", id);
   };
 
   const handleCloseDialog = () => {
@@ -217,8 +222,8 @@ const Scheduling = ({ userRole }) => {
   useEffect(() => {
     const fetchMentorSchedules = async () => {
       try {
-        const response = await fetch("/api/mentorSchedules");
-        const data = await response.json();
+        const response = await axios.get("http://localhost:4000/api/pending-schedules");
+        const data = response.data; // no need for .json() when using axios
 
         console.log("📅 Mentor Schedules Data:", data); // ✅ Debugging log
 
@@ -358,77 +363,105 @@ const Scheduling = ({ userRole }) => {
                 },
               }}
             >
-              <DataGrid
-                rows={[
-                  {
-                    id: "1",
-                    mentor_name: "John Doe",
-                    social_enterprise: "Green Solutions",
-                    scheduled_date: "May 5, 2025",
-                    scheduled_time: "6:00 PM",
-                  },
-                  {
-                    id: "2",
-                    mentor_name: "Jane Smith",
-                    social_enterprise: "Eco Warriors",
-                    scheduled_date: "May 5, 2025",
-                    scheduled_time: "7:00 PM",
-                  },
-                  {
-                    id: "3",
-                    mentor_name: "Alex Johnson",
-                    social_enterprise: "Renewable Future",
-                    scheduled_date: "May 6, 2025",
-                    scheduled_time: "10:00 AM",
-                  },
-                ]}
-                columns={[
-                  {
-                    field: "mentor_name",
-                    headerName: "Mentor Name",
-                    flex: 1,
-                    minWidth: 200,
-                  },
-                  {
-                    field: "social_enterprise",
-                    headerName: "Social Enterprise",
-                    flex: 1,
-                    minWidth: 200,
-                  },
-                  {
-                    field: "scheduled_date",
-                    headerName: "Scheduled Date",
-                    flex: 1,
-                    minWidth: 200,
-                  },
-                  {
-                    field: "scheduled_time",
-                    headerName: "Scheduled Time",
-                    flex: 1,
-                    minWidth: 200,
-                  },
-                  {
-                    field: "action",
-                    headerName: "Action",
-                    flex: 1,
-                    minWidth: 150,
-                    renderCell: (params) => (
+            <DataGrid
+              rows={mentorSchedules.map((schedule, index) => {
+                const formattedDates = Array.from(new Set(
+                  schedule.mentorship_date.map((date) => {
+                    const formattedDate = new Date(date).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    });
+
+                    return formattedDate;
+                  })
+                ));
+
+                const startTime = schedule.mentorship_time[0] || 'No time available';
+                const endTime = schedule.mentorship_time[1] || startTime;
+
+                return {
+                  id: schedule.mentorship_id,
+                  mentor_name: schedule.mentor_name,
+                  se_name: schedule.se_name,
+                  mentorship_date: formattedDates.join(", "),
+                  start_time: startTime,
+                  end_time: endTime,
+                  telegramstatus: schedule.telegramstatus,
+                };
+              })}
+              columns={[
+                {
+                  field: "mentor_name",
+                  headerName: "Mentor Name",
+                  flex: 1,
+                  minWidth: 200,
+                },
+                {
+                  field: "se_name",
+                  headerName: "Social Enterprise",
+                  flex: 1,
+                  minWidth: 200,
+                },
+                {
+                  field: "mentorship_date",
+                  headerName: "Mentorship Session Date",
+                  flex: 1,
+                  minWidth: 200,
+                },
+                {
+                  field: "start_time",
+                  headerName: "Start Time",
+                  flex: 1,
+                  minWidth: 25,
+                },
+                {
+                  field: "end_time",
+                  headerName: "End Time",
+                  flex: 1,
+                  minWidth: 25,
+                },
+                {
+                  field: "telegramstatus",
+                  headerName: "Status",
+                  flex: 1,
+                  minWidth: 50,
+                },
+                {
+                  field: "action",
+                  headerName: "Action",
+                  flex: 1,
+                  minWidth: 150,
+                  renderCell: (params) => (
+                    <div>
                       <Button
                         variant="contained"
-                        color="primary"
-                        onClick={() => handleManageClick(params.row.id)}
+                        style={{
+                          backgroundColor: colors.greenAccent[500], // Custom green color for Accept
+                          marginRight: '8px',
+                        }}
+                        onClick={() => handleAcceptClick(params.row.id)}
                       >
-                        Manage
+                        Accept
                       </Button>
-                    ),
-                  },
-                ]}
-                pageSize={5}
-                rowsPerPageOptions={[5, 10]}
-                autoHeight
-              />
-            </Box>
-          </Box>
+                      <Button
+                        variant="contained"
+                        style={{
+                          backgroundColor: colors.redAccent[500], // Custom red color for Decline
+                        }}
+                        onClick={() => handleDeclineClick(params.row.id)}
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  ),
+                },
+              ]}
+              pageSize={5}
+              rowsPerPageOptions={[5, 10]}
+            />
+        </Box>
+      </Box>
 
           {/* Mentorship History */}
           <Box>

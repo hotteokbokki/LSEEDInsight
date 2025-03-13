@@ -40,6 +40,7 @@ const { getMentorshipsByMentorId,
         getSEWithMentors, 
         getPreviousSEWithMentors, 
         getMentorshipCount,
+        getPendingSchedules,
        } = require("./controllers/mentorshipsController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getEvaluationsByMentorID, 
@@ -528,6 +529,17 @@ app.get("/api/mentor-stats", async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error fetching mentor stats:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/pending-schedules", async (req, res) => {
+  try {
+    const result = await getPendingSchedules();
+
+    res.json(result);
+  } catch (error) {
+    console.error("❌ Error fetching pending schedules:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
