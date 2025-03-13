@@ -306,72 +306,96 @@ const Analytics = () => {
         </Box>
       </Box>
       {/* Row 4 - Improvement Score Over Time */}
-      <Box
-        display="flex"
-        flexDirection="column"
-        gap="20px"
-        mt="20px"
-      >
-        <Box
-          height="300px"
-          backgroundColor={colors.primary[400]}
-          p="20px"
-        >
-          <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
-            {stats?.improvementScore?.length > 0
-              ? "Improvement Score Trends Over Time"
-              : ""}
-          </Typography>
-
-          {/* Tooltip for explanation */}
-          <Tooltip
-            title={
-              <Box sx={{ maxWidth: 300, p: 1 }}>
-                <Typography variant="body1" fontWeight="bold">
-                  Understanding the Improvement Score Trends 📊
-                </Typography>
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  This chart tracks the <strong>progress of Social Enterprises (SEs)</strong> over time using two key indicators:
-                </Typography>
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="body2">
-                    🔹 <strong style={{ color: colors.greenAccent[500] }}>Overall Avg Improvement</strong> → 
-                    Measures the <strong>average improvement score</strong> across all SEs.
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 0.5 }}>
-                    🔹 <strong style={{ color: colors.blueAccent[500] }}>Median Improvement</strong> → 
-                    Represents the <strong>middle improvement score</strong> to reduce the impact of outliers.
-                  </Typography>
-                </Box>
-                <Typography variant="body1" fontWeight="bold" sx={{ mt: 2 }}>
-                  📌 How to Read the Chart:
-                </Typography>
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="body2">📈 <strong>Upward trends</strong> → SEs are improving over time.</Typography>
-                  <Typography variant="body2" sx={{ mt: 0.5 }}>⏸️ <strong>Flat trends</strong> → Growth is slow but stable.</Typography>
-                  <Typography variant="body2" sx={{ mt: 0.5 }}>📉 <strong>Declining trends</strong> → SEs are facing challenges.</Typography>
-                </Box>
-              </Box>
-            }
-            arrow
-            placement="top"
+      <Box display="flex" flexDirection="column" gap="20px" mt="20px">
+        <Box height="300px" backgroundColor={colors.primary[400]} p="20px">
+          {/* Title and Tooltip Container */}
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
           >
-            <IconButton sx={{ ml: 1, color: colors.grey[300] }}>
-              <HelpOutlineIcon />
-            </IconButton>
-          </Tooltip>
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+            >
+              {stats?.improvementScore?.length > 0
+                ? "Improvement Score Trends Over Time"
+                : ""}
+            </Typography>
 
-          {/* Chart Container */}
+            {/* Tooltip for explanation */}
+            <Tooltip
+              title={
+                <Box sx={{ maxWidth: 300, p: 1 }}>
+                  <Typography variant="body1" fontWeight="bold">
+                    Understanding the Improvement Score Trends 📊
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    This chart tracks the{" "}
+                    <strong>progress of Social Enterprises (SEs)</strong> over
+                    time using two key indicators:
+                  </Typography>
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="body2">
+                      🔹{" "}
+                      <strong style={{ color: colors.greenAccent[500] }}>
+                        Overall Avg Improvement
+                      </strong>{" "}
+                      → Measures the <strong>average improvement score</strong>{" "}
+                      across all SEs.
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      🔹{" "}
+                      <strong style={{ color: colors.blueAccent[500] }}>
+                        Median Improvement
+                      </strong>{" "}
+                      → Represents the <strong>middle improvement score</strong>{" "}
+                      to reduce the impact of outliers.
+                    </Typography>
+                  </Box>
+                  <Typography variant="body1" fontWeight="bold" sx={{ mt: 2 }}>
+                    📌 How to Read the Chart:
+                  </Typography>
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="body2">
+                      📈 <strong>Upward trends</strong> → SEs are improving over
+                      time.
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      ⏸️ <strong>Flat trends</strong> → Growth is slow but
+                      stable.
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      📉 <strong>Declining trends</strong> → SEs are facing
+                      challenges.
+                    </Typography>
+                  </Box>
+                </Box>
+              }
+              arrow
+              placement="top"
+            >
+              <IconButton sx={{ color: colors.grey[300] }}>
+                <HelpOutlineIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          {/* Chart Container - Properly Centered */}
           <Box
             height="100%"
             display="flex"
             justifyContent="center"
             alignItems="center"
-            paddingBottom={2}
+            padding="20px"
           >
             {(() => {
               try {
-                console.log("Raw stats.improvementScore:", stats?.improvementScore);
+                console.log(
+                  "Raw stats.improvementScore:",
+                  stats?.improvementScore
+                );
 
                 if (!stats?.improvementScore) {
                   console.error("Data not found");
@@ -403,21 +427,35 @@ const Analytics = () => {
                 };
 
                 // Group data by quarters dynamically
-                const formattedData = stats.improvementScore.reduce((acc, point) => {
-                  const quarterLabel = getQuarterLabel(point.month);
-                  if (!acc[quarterLabel]) {
-                    acc[quarterLabel] = { overall_avg_improvement: 0, median_improvement: 0, count: 0 };
-                  }
-                  acc[quarterLabel].overall_avg_improvement += parseFloat(point.overall_avg_improvement) || 0;
-                  acc[quarterLabel].median_improvement += parseFloat(point.median_improvement) || 0;
-                  acc[quarterLabel].count += 1;
-                  return acc;
-                }, {});
+                const formattedData = stats.improvementScore.reduce(
+                  (acc, point) => {
+                    const quarterLabel = getQuarterLabel(point.month);
+                    if (!acc[quarterLabel]) {
+                      acc[quarterLabel] = {
+                        overall_avg_improvement: 0,
+                        median_improvement: 0,
+                        count: 0,
+                      };
+                    }
+                    acc[quarterLabel].overall_avg_improvement +=
+                      parseFloat(point.overall_avg_improvement) || 0;
+                    acc[quarterLabel].median_improvement +=
+                      parseFloat(point.median_improvement) || 0;
+                    acc[quarterLabel].count += 1;
+                    return acc;
+                  },
+                  {}
+                );
 
-                console.log("Formatted data grouped by quarters:", formattedData);
+                console.log(
+                  "Formatted data grouped by quarters:",
+                  formattedData
+                );
 
                 // Convert grouped data into chart format
-                const sortedQuarters = Object.keys(formattedData).sort((a, b) => a.localeCompare(b));
+                const sortedQuarters = Object.keys(formattedData).sort((a, b) =>
+                  a.localeCompare(b)
+                );
                 console.log("Sorted quarters:", sortedQuarters);
 
                 const chartData = [
@@ -425,14 +463,18 @@ const Analytics = () => {
                     id: "Overall Avg Improvement",
                     data: sortedQuarters.map((quarter) => ({
                       x: quarter,
-                      y: formattedData[quarter].overall_avg_improvement / formattedData[quarter].count,
+                      y:
+                        formattedData[quarter].overall_avg_improvement /
+                        formattedData[quarter].count,
                     })),
                   },
                   {
                     id: "Median Improvement",
                     data: sortedQuarters.map((quarter) => ({
                       x: quarter,
-                      y: formattedData[quarter].median_improvement / formattedData[quarter].count,
+                      y:
+                        formattedData[quarter].median_improvement /
+                        formattedData[quarter].count,
                     })),
                   },
                 ];
@@ -453,11 +495,7 @@ const Analytics = () => {
         </Box>
 
         {/* Row 5 - Social Enterprise Performance Comparison */}
-        <Box
-          height="500px"
-          backgroundColor={colors.primary[400]}
-          p="20px"
-        >
+        <Box height="500px" backgroundColor={colors.primary[400]} p="20px">
           <Typography
             variant="h3"
             fontWeight="bold"
@@ -471,7 +509,8 @@ const Analytics = () => {
             justifyContent="center"
             alignItems="center"
           >
-            <BarChart /> {/* No need for conditional rendering, BarChart fetches its own data */}
+            <BarChart />{" "}
+            {/* No need for conditional rendering, BarChart fetches its own data */}
           </Box>
         </Box>
       </Box>
