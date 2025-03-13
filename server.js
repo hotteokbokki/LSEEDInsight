@@ -2116,7 +2116,7 @@ app.post("/api/mentorships", async (req, res) => {
 
 app.post("/updateMentorshipDate", async (req, res) => {
   console.log("🔹 Received request at /updateMentorshipDate");
-  const { mentorship_id, mentorship_date, mentorship_time } = req.body;
+  const { mentorship_id, mentorship_date, mentorship_time, zoom_link } = req.body;
 
   if (!mentorship_id || !mentorship_date || !mentorship_time) {
     return res.status(400).json({ error: "Mentorship ID and date are required" });
@@ -2126,18 +2126,19 @@ app.post("/updateMentorshipDate", async (req, res) => {
     const query = `
       UPDATE mentorships 
       SET mentorship_date = array_append(mentorship_date ,$1),
-      mentorship_time = array_append(mentorship_time, $2)
-      WHERE mentorship_id = $3
+          mentorship_time = array_append(mentorship_time, $2),
+          zoom_link = $3
+      WHERE mentorship_id = $4
       RETURNING *;
     `;
 
-    const { rows } = await pgDatabase.query(query, [mentorship_date, mentorship_time, mentorship_id]);
+    const { rows } = await pgDatabase.query(query, [mentorship_date, mentorship_time, zoom_link, mentorship_id]);
     if (rows.length === 0) {
       return res.status(404).json({ error: "Mentorship not found" });
     }
 
     console.log(`✅ Mentorship ${mentorship_id} updated to "Pending".`);
-    console.log(`Updating mentorship_id: ${mentorship_id} with date: ${mentorship_date} and time: ${mentorship_time}`);
+    console.log(`Updating mentorship_id: ${mentorship_id} with date: ${mentorship_date}, time: ${mentorship_time}, and Zoom link: ${zoom_link}`);
 
     // Retrieve chat ID for the mentorship
     const chatQuery = `SELECT t.chatid FROM telegrambot t JOIN mentorships m ON t."se_ID" = m.se_id WHERE m.mentorship_id = $1`;
@@ -2148,7 +2149,7 @@ app.post("/updateMentorshipDate", async (req, res) => {
       console.log(`📩 Sending Mentorship Message to Chat ID: ${chatId}`);
 
       // Send mentorship message
-      sendMentorshipMessage(chatId, mentorship_id, mentorship_date, mentorship_time);
+      sendMentorshipMessage(chatId, mentorship_id, mentorship_date, mentorship_time, zoom_link);
     } else {
       console.warn(`⚠️ No chat ID found for mentorship ${mentorship_id}`);
     }
