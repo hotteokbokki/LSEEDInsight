@@ -1831,7 +1831,9 @@ app.post("/webhook", async (req, res) => {
               await sendMessage(chatId, confirmationMessage);
               console.log("✅ Acceptance process completed successfully.");
               
-              return res.sendStatus(200);
+              res.sendStatus(200);
+
+              return;
           } catch (error) {
               console.error("❌ Error handling acceptance:", error);
               console.log("🛑 Error Stack:", error.stack);
@@ -2195,6 +2197,36 @@ app.post("/api/mentorships", async (req, res) => {
   }
 });
 
+app.post("/approveMentorship", async (req, res) => {
+  console.log("🔹 Received request at /approveMentorship");
+  const { mentorship_id } = req.body;
+
+  if (!mentorship_id) {
+    return res.status(400).json({ error: "Mentorship ID is required" });
+  }
+
+  try {
+    const query = `
+      UPDATE mentorships 
+      SET status = 'Pending SE Acknowledgement'
+      WHERE mentorship_id = $1
+      RETURNING *;
+    `;
+
+    const { rows } = await pgDatabase.query(query, [mentorship_id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Mentorship not found" });
+    }
+
+    console.log(`✅ Mentorship ${mentorship_id} approved by LSEED. Waiting for SE acknowledgment.`);
+    res.json({ message: "Mentorship approved", mentorship: rows[0] });
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 app.post("/updateMentorshipDate", async (req, res) => {
   console.log("🔹 Received request at /updateMentorshipDate");
   const { mentorship_id, mentorship_date, mentorship_time, zoom_link } = req.body;
@@ -2202,6 +2234,8 @@ app.post("/updateMentorshipDate", async (req, res) => {
   if (!mentorship_id || !mentorship_date || !mentorship_time) {
     return res.status(400).json({ error: "Mentorship ID and date are required" });
   }
+
+  console.log("Mentor ID: ", mentorship_id)
 
   try {
     const query = `
@@ -2219,29 +2253,12 @@ app.post("/updateMentorshipDate", async (req, res) => {
     }
 
     console.log(`✅ Mentorship ${mentorship_id} updated to "Pending".`);
-    console.log(`Updating mentorship_id: ${mentorship_id} with date: ${mentorship_date}, time: ${mentorship_time}, and Zoom link: ${zoom_link}`);
-
-    // Retrieve chat ID for the mentorship
-    const chatQuery = `SELECT t.chatid FROM telegrambot t JOIN mentorships m ON t."se_ID" = m.se_id WHERE m.mentorship_id = $1`;
-    const chatResult = await pgDatabase.query(chatQuery, [mentorship_id]);
-
-    if (chatResult.rows.length > 0) {
-      const chatId = chatResult.rows[0].chatid;
-      console.log(`📩 Sending Mentorship Message to Chat ID: ${chatId}`);
-
-      // Send mentorship message
-      sendMentorshipMessage(chatId, mentorship_id, mentorship_date, mentorship_time, zoom_link);
-    } else {
-      console.warn(`⚠️ No chat ID found for mentorship ${mentorship_id}`);
-    }
-
     res.json({ message: "Mentorship date updated", mentorship: rows[0] });
   } catch (error) {
     console.error("Database error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 app.get("/getMentorshipDates", async (req, res) => {
   const { mentor_id } = req.query;

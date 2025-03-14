@@ -75,9 +75,30 @@ const Scheduling = ({ userRole }) => {
   const [mentorSchedules, setMentorSchedules] = useState([]);
   const [mentorHistory, setMentorHistory] = useState([]);
 
-  const handleAcceptClick = (id) => {
-    // Handle the accept action here
-    console.log("Accepted schedule with ID:", id);
+  const handleAcceptClick = async (mentorshipId) => {
+    try {
+      const response = await fetch("http://localhost:4000/approveMentorship", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mentorship_id: mentorshipId }),
+      });
+  
+      if (!response.ok) throw new Error("Failed to approve mentorship");
+  
+      // Show success Snackbar
+      setSnackbarOpen(true);
+  
+      // Refresh the DataGrid
+      setMentorSchedules((prev) =>
+        prev.map((schedule) =>
+          schedule.mentorship_id === mentorshipId
+            ? { ...schedule, telegramstatus: "Pending SE Acknowledgement" }
+            : schedule
+        )
+      );
+    } catch (error) {
+      console.error("Error approving mentorship:", error);
+    }
   };
 
   const handleDeclineClick = (id) => {
@@ -182,7 +203,7 @@ const Scheduling = ({ userRole }) => {
             mentorship_id: selectedSE.id,
             mentorship_date: selectedDate.format("YYYY-MM-DD"),
             mentorship_time: formattedTime,
-            zoom_link: zoomLink,
+            zoom_link: zoomLink
           }),
         }
       );
@@ -366,109 +387,67 @@ const Scheduling = ({ userRole }) => {
                 },
               }}
             >
-              <DataGrid
-                rows={mentorSchedules.map((schedule, index) => {
-                  const formattedDates = Array.from(
-                    new Set(
-                      schedule.mentorship_date.map((date) => {
-                        const formattedDate = new Date(date).toLocaleDateString(
-                          "en-US",
-                          {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          }
-                        );
-
-                        return formattedDate;
-                      })
-                    )
-                  );
-
-                  const startTime =
-                    schedule.mentorship_time[0] || "No time available";
-                  const endTime = schedule.mentorship_time[1] || startTime;
-
-                  return {
-                    id: schedule.mentorship_id,
-                    mentor_name: schedule.mentor_name,
-                    se_name: schedule.se_name,
-                    mentorship_date: formattedDates.join(", "),
-                    start_time: startTime,
-                    end_time: endTime,
-                    telegramstatus: schedule.telegramstatus,
-                  };
-                })}
-                columns={[
-                  {
-                    field: "mentor_name",
-                    headerName: "Mentor Name",
-                    flex: 1,
-                    minWidth: 200,
-                  },
-                  {
-                    field: "se_name",
-                    headerName: "Social Enterprise",
-                    flex: 1,
-                    minWidth: 200,
-                  },
-                  {
-                    field: "mentorship_date",
-                    headerName: "Mentorship Session Date",
-                    flex: 1,
-                    minWidth: 200,
-                  },
-                  {
-                    field: "start_time",
-                    headerName: "Start Time",
-                    flex: 1,
-                    minWidth: 25,
-                  },
-                  {
-                    field: "end_time",
-                    headerName: "End Time",
-                    flex: 1,
-                    minWidth: 25,
-                  },
-                  {
-                    field: "telegramstatus",
-                    headerName: "Status",
-                    flex: 1,
-                    minWidth: 50,
-                  },
-                  {
-                    field: "action",
-                    headerName: "Action",
-                    flex: 1,
-                    minWidth: 200,
-                    renderCell: (params) => (
-                      <div>
-                        <Button
-                          variant="contained"
-                          style={{
-                            backgroundColor: colors.greenAccent[500], // Custom green color for Accept
-                            marginRight: "8px",
-                          }}
-                          onClick={() => handleAcceptClick(params.row.id)}
-                        >
-                          Accept
-                        </Button>
-                        <Button
-                          variant="contained"
-                          style={{
-                            backgroundColor: colors.redAccent[500], // Custom red color for Decline
-                          }}
-                          onClick={() => handleDeclineClick(params.row.id)}
-                        >
-                          Decline
-                        </Button>
-                      </div>
-                    ),
-                  },
-                ]}
-                pageSize={5}
-                rowsPerPageOptions={[5, 10]}
-              />
+              {mentorSchedules.length > 0 ? (
+                <DataGrid
+                  rows={mentorSchedules.map((schedule, index) => {
+                    const mentorshipDateTime = new Date(schedule.mentorship_time);
+                    const mentorshipDate = mentorshipDateTime.toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    });
+                    const mentorshipTime = mentorshipDateTime.toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    });
+                  
+                    return {
+                      id: `${schedule.mentorship_id}-${mentorshipDate}-${mentorshipTime}`, // Unique ID
+                      mentor_name: schedule.mentor_name || "Unknown Mentor",
+                      se_name: schedule.se_name || "Unknown SE",
+                      mentorship_date: mentorshipDate,
+                      mentorship_time: mentorshipTime,
+                      telegramstatus: schedule.status || "Pending",
+                    };
+                  })}
+                  columns={[
+                    { field: "mentor_name", headerName: "Mentor Name", flex: 1, minWidth: 200 },
+                    { field: "se_name", headerName: "Social Enterprise", flex: 1, minWidth: 200 },
+                    { field: "mentorship_date", headerName: "Mentorship Date", flex: 1, minWidth: 150 },
+                    { field: "mentorship_time", headerName: "Mentorship Time", flex: 1, minWidth: 150 },
+                    { field: "telegramstatus", headerName: "Status", flex: 1, minWidth: 100 },
+                    {
+                      field: "action",
+                      headerName: "Action",
+                      flex: 1,
+                      minWidth: 200,
+                      renderCell: (params) => (
+                        <div>
+                          <Button
+                            variant="contained"
+                            style={{ backgroundColor: colors.greenAccent[500], marginRight: "8px" }}
+                            onClick={() => handleAcceptClick(params.row)}
+                          >
+                            Accept
+                          </Button>
+                          <Button
+                            variant="contained"
+                            style={{ backgroundColor: colors.redAccent[500] }}
+                            onClick={() => handleDeclineClick(params.row)}
+                          >
+                            Decline
+                          </Button>
+                        </div>
+                      ),
+                    },
+                  ]}
+                  pageSize={5}
+                  rowsPerPageOptions={[5, 10]}
+                />
+              ) : (
+                <p>No schedules available.</p>
+              )}
             </Box>
           </Box>
 

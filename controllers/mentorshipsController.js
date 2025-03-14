@@ -122,17 +122,28 @@ exports.getMentorSchedules = async () => {
 exports.getPendingSchedules = async () => {
     try {
       const query = `
-        SELECT 
-            m.mentor_firstname || ' ' || m.mentor_lastname AS mentor_name,
-            se.team_name AS se_name,
-            ms.mentorship_id,
-            ms.mentorship_date,
-            ms.mentorship_time,
-            ms.telegramstatus
-        FROM public.mentorships ms
-        LEFT JOIN public.mentors m ON ms.mentor_id = m.mentor_id
-        LEFT JOIN public.socialenterprises se ON ms.se_id = se.se_id
-        WHERE ms.telegramstatus = 'Pending';
+SELECT 
+    NULL AS id,
+    ms.mentorship_id,
+    ms.se_id,
+    ms.mentor_id,
+    se.team_name AS se_name,
+    m.mentor_firstname || ' ' || m.mentor_lastname AS mentor_name,
+    md.mentorship_date,
+    (md.mentorship_date + mt.mentorship_time)::timestamp with time zone AS mentorship_time,
+    ms.zoom_link,
+    'Pending' AS status
+FROM public.mentorships ms
+LEFT JOIN public.mentors m ON ms.mentor_id = m.mentor_id
+LEFT JOIN public.socialenterprises se ON ms.se_id = se.se_id
+-- Unnest dates with ordinality to track index
+JOIN LATERAL unnest(ms.mentorship_date) WITH ORDINALITY AS md(mentorship_date, date_index) 
+    ON md.mentorship_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+-- Unnest times with ordinality and ensure they match the same index
+LEFT JOIN LATERAL unnest(ms.mentorship_time) WITH ORDINALITY AS mt(mentorship_time, time_index) 
+    ON mt.time_index = md.date_index  -- Ensures correct pairing
+WHERE ms.telegramstatus = 'Pending'
+ORDER BY mentorship_date, mentorship_time;
       `;
   
       const result = await pgDatabase.query(query);

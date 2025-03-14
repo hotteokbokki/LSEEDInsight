@@ -96,7 +96,7 @@ const SEAnalytics = () => {
           registeredUsers: Number(data.registeredUsers?.[0]?.total_users) || 0,
           totalEvaluations: data.totalEvaluations?.[0]?.total_evaluations || "0",
           pendingEvaluations: data.pendingEvaluations?.[0]?.pending_evaluations || "0",
-          acknowledgedEvaluations: data.pendingEvaluations?.[0]?.acknowledged_evaluations || "0",
+          acknowledgedEvaluations: data.acknowledgedEvaluations?.[0]?.acknowledged_evaluations || "0",
           avgRating: data.avgRating?.[0]?.avg_rating || "N/A", // If multiple SEs exist, adjust accordingly
         });
       } catch (error) {
@@ -364,7 +364,7 @@ const SEAnalytics = () => {
           p="20px"
         >
           <StatBox
-            title={stats.totalEvaluations}
+            title={stats.acknowledgedEvaluations}
             subtitle="Acknowledged Evaluations"
             progress={
               stats.acknowledgedEvaluations / (stats.totalEvaluations || 1)
