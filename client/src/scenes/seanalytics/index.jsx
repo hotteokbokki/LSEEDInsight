@@ -12,6 +12,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Chip
 } from "@mui/material";
 import { tokens } from "../../theme";
 import SSEPerformanceTrendChart from "../../components/SSEPerformanceTrendChart";
@@ -21,6 +22,11 @@ import RadarChart from "../../components/RadarChart";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
 import { DataGrid } from "@mui/x-data-grid";
+import StatBox from "../../components/StatBox";
+import PeopleIcon from "@mui/icons-material/People";
+import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import TrafficIcon from "@mui/icons-material/Traffic";
 
 const SEAnalytics = () => {
   const theme = useTheme();
@@ -37,6 +43,13 @@ const SEAnalytics = () => {
   const [selectedEvaluation, setSelectedEvaluation] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
   const navigate = useNavigate(); // Initialize useNavigate
+  const [stats, setStats] = useState({
+    registeredUsers: 0,
+    totalEvaluations: 0,
+    pendingEvaluations: 0,
+    avgRating: 0,
+    acknowledgedEvaluations: 0,
+  });
 
   useEffect(() => {
     const fetchSocialEnterprises = async () => {
@@ -69,6 +82,30 @@ const SEAnalytics = () => {
 
     fetchSocialEnterprises();
   }, [id]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:4000/api/se-analytics-stats/${selectedSEId}`
+        );
+        const data = await response.json();
+  
+        // Extract values correctly
+        setStats({
+          registeredUsers: Number(data.registeredUsers?.[0]?.total_users) || 0,
+          totalEvaluations: data.totalEvaluations?.[0]?.total_evaluations || "0",
+          pendingEvaluations: data.pendingEvaluations?.[0]?.pending_evaluations || "0",
+          acknowledgedEvaluations: data.pendingEvaluations?.[0]?.acknowledged_evaluations || "0",
+          avgRating: data.avgRating?.[0]?.avg_rating || "N/A", // If multiple SEs exist, adjust accordingly
+        });
+      } catch (error) {
+        console.error("Error fetching analytics stats:", error);
+      }
+    };
+  
+    fetchStats();
+  }, [selectedSEId]); // ✅ Include dependency to refetch when SE changes
 
   // Fetch analytics data for the selected social enterprise
   useEffect(() => {
@@ -278,63 +315,121 @@ const SEAnalytics = () => {
       <Box display="flex" justifyContent="space-between" alignItems="center">
         {/* Back Button and Dropdown Container */}
         <Box display="flex" alignItems="center" gap="10px">
-          {/* Social Enterprise Selection Dropdown */}
-          <FormControl variant="outlined" sx={{ minWidth: 120 }}>
-            <InputLabel>Select SE</InputLabel>
-            <Select
-              value={selectedSEId}
-              onChange={handleChangeSE}
-              label="Select SE"
-              sx={{
-                minWidth: 200, // Set a fixed minimum width
-                maxWidth: 250, // Optional: Set a maximum width to prevent overflow
-                height: 40, // Set a fixed height
-                "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "#fff", // White border color
-                  borderWidth: "1px", // Thin border
-                },
-                "&:hover .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "#fff", // White border on hover
-                  borderWidth: "1px", // Maintain thin border on hover
-                },
-                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "#fff", // White border when focused
-                  borderWidth: "1px", // Maintain thin border when focused
-                },
-                "& .MuiSelect-select": {
-                  padding: "8px", // Adjust padding for better alignment
-                  fontSize: "14px", // Optional: Adjust font size for cleaner look
-                  whiteSpace: "nowrap", // Prevent text wrapping
-                  overflow: "hidden", // Hide overflowed text
-                  textOverflow: "ellipsis", // Add ellipsis for long text
-                },
-              }}
-            >
-              {socialEnterprises.map((se) => (
-                <MenuItem key={se.id} value={se.id}>
-                  <Box
-                    sx={{
-                      whiteSpace: "nowrap", // Prevent text wrapping
-                      overflow: "hidden", // Hide overflowed text
-                      textOverflow: "ellipsis", // Add ellipsis for long text
-                      maxWidth: 200, // Match the dropdown's max width
-                    }}
-                  >
-                    {se.name}
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          {/* Page Title */}
+          <Typography variant="h4" fontWeight="bold" color={colors.grey[100]}>
+            {selectedSE ? `${selectedSE.name} Analytics` : "Loading..."}
+          </Typography>
         </Box>
-        {/* Page Title */}
-        <Typography variant="h4" fontWeight="bold" color={colors.grey[100]}>
-          {selectedSE ? `${selectedSE.name} Analytics` : "Loading..."}
-        </Typography>
       </Box>
 
+      {/* Row 1 - StatBoxes */}
+      <Box
+        display="flex"
+        flexWrap="wrap"
+        gap="20px"
+        justifyContent="space-between"
+        mt="20px"
+      >
+        <Box
+          flex="1 1 22%"
+          backgroundColor={colors.primary[400]}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          p="20px"
+        >
+          <Chip
+            label={`${stats.registeredUsers} ${stats.registeredUsers === 1 ? "User" : "Users"}`}
+            icon={
+              <PeopleIcon 
+                sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // Force icon color
+              />
+            }
+            sx={{
+              fontSize: "16px",
+              p: "10px",
+              backgroundColor: colors.primary[400], // Set background explicitly
+              color: "white", // Force text color to white
+              "& .MuiChip-icon": { color: colors.greenAccent[500] } // Ensure icon color is applied
+            }}
+          />
+        </Box>
 
-    <Box display="flex" flexDirection="column" gap={3}>
+        <Box
+          flex="1 1 22%"
+          backgroundColor={colors.primary[400]}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          p="20px"
+        >
+          <StatBox
+            title={stats.totalEvaluations}
+            subtitle="Acknowledged Evaluations"
+            progress={
+              stats.acknowledgedEvaluations / (stats.totalEvaluations || 1)
+            } // Shows percentage filled
+            increase={`${(
+              (stats.acknowledgedEvaluations / (stats.totalEvaluations || 1)) *
+              100
+            ).toFixed(2)}%`}
+            icon={
+              <PointOfSaleIcon
+                sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
+              />
+            }
+          />
+        </Box>
+
+        <Box
+          flex="1 1 22%"
+          backgroundColor={colors.primary[400]}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          p="20px"
+        >
+          <StatBox
+            title={stats.pendingEvaluations}
+            subtitle="Pending Evaluations"
+            progress={
+              stats.pendingEvaluations / (stats.totalEvaluations || 1)
+            } // Avoid division by zero
+            increase={`${(
+              (stats.pendingEvaluations / (stats.totalEvaluations || 1)) *
+              100
+            ).toFixed(2)}%`}
+            icon={
+              <PersonAddIcon
+                sx={{ fontSize: "26px", color: colors.redAccent[500] }}
+              />
+            }
+          />
+        </Box>
+
+        <Box
+          flex="1 1 22%"
+          backgroundColor={colors.primary[400]}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          p="20px"
+        >
+          <StatBox
+            title={stats.avgRating}
+            subtitle="Average rating"
+            // progress={Math.min(stats.cumulativeGrowth / 100, 1)} // ✅ Cap at 100%
+            // increase={`${stats.cumulativeGrowth}%`}
+            icon={
+              <TrafficIcon
+                sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
+              />
+            }
+          />
+        </Box>
+      </Box>
+
+    <Box display="flex" flexDirection="column" gap={3} mt="20px">
       <SSEPerformanceTrendChart selectedSEId={selectedSEId}/>
     </Box>
   

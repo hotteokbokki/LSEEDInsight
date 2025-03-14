@@ -26,13 +26,11 @@ const Dashboard = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [currentEvents, setCurrentEvents] = useState([]);
-  const [unassignedMentors, setUnassignedMentors] = useState(0);
-  const [totalMentors, setTotalMentors] = useState(1); // Avoid division by zero
-  const [topPerformers, setTopPerformers] = useState([]);
+  const [lowPerformingSEs, setLowPerformingSEs] = useState([]);
+  const [mentoringSchedules, setMentoringSchedules] = useState([]);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [evaluations, setEvaluations] = useState([]);
-  const [showChart, setShowChart] = useState(false);
   const [stats, setStats] = useState({
     mentorWithoutMentorshipCount: [{ count: "0" }], // Default structure to prevent undefined errors
     mentorWithMentorshipCount: [{ count: "0" }],
@@ -44,6 +42,56 @@ const Dashboard = () => {
     previousUnassignedMentors: 0,
   });
   const [percentageIncrease, setPercentageIncrease] = useState("0%");
+  const alertColumns = [
+    { field: "seName", headerName: "SE Name", flex: 2 },
+    { field: "averageScore", headerName: "Avg Score", flex: 1 },
+    { field: "lastEvaluated", headerName: "Last Evaluated", flex: 2 },
+    { 
+      field: "actions", 
+      headerName: "Actions", 
+      flex: 2,
+      renderCell: (params) => (
+        <Button variant="contained" color="error" onClick={() => handleAction(params.row.id)}>
+          Take Action
+        </Button>
+      )
+    }
+  ];
+
+  // const scheduleColumns = [
+  //   { field: "mentor", headerName: "Mentor", flex: 2 },
+  //   { field: "se", headerName: "SE Name", flex: 2 },
+  //   { field: "date", headerName: "Scheduled Date", flex: 2 },
+  //   { 
+  //     field: "status", 
+  //     headerName: "Status", 
+  //     flex: 1, 
+  //     renderCell: (params) => (
+  //       <Chip label={params.value} color={params.value === "Pending" ? "warning" : "success"} />
+  //     ) 
+  //   },
+  //   { 
+  //     field: "actions", 
+  //     headerName: "Actions", 
+  //     flex: 2,
+  //     renderCell: (params) => (
+  //       <>
+  //         <Button variant="contained" color="success" onClick={() => approveSchedule(params.row.id)}>
+  //           Approve
+  //         </Button>
+  //         <Button variant="contained" color="error" onClick={() => rejectSchedule(params.row.id)} style={{ marginLeft: "5px" }}>
+  //           Reject
+  //         </Button>
+  //       </>
+  //     )
+  //   }
+  // ];
+
+  const handleAction = (id) => {
+    console.log("Taking action on SE:", id);
+    // Implement logic (e.g., send support recommendation)
+  };
+
   const columns = [
     {
       field: "socialEnterprise",
@@ -293,7 +341,50 @@ const Dashboard = () => {
           <AcknowledgmentChart style={{ width: "100%", height: "100%" }} />
         </Box>
 
+
+{/* Alert & Schedule Sections */}
+<Box gridColumn="span 12" display="grid" gridTemplateColumns="repeat(12, 1fr)" gap="20px" marginTop="10px">
+  
+  {/* SEs Requiring Immediate Attention 🚨 */}
+  <Box gridColumn="span 6" bgcolor={colors.primary[400]} p={2} borderRadius="8px">
+    <Typography variant="h4" fontWeight="bold" color={colors.redAccent[500]}>
+      SEs Requiring Immediate Attention 🚨
+    </Typography>
+    <Box sx={{
+      height: "auto",
+      "& .MuiDataGrid-root": { border: "none" },
+      "& .MuiDataGrid-cell": { borderBottom: "none" },
+      "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.blueAccent[700] },
+      "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
+      "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
+    }}>
+      {loading ? <Typography>Loading...</Typography> : <DataGrid rows={lowPerformingSEs} columns={alertColumns} />}
+    </Box>
+  </Box>
+
+  {/* Upcoming Mentoring Schedules 📅
+  <Box gridColumn="span 6" bgcolor={colors.primary[400]} p={2} borderRadius="8px">
+    <Typography variant="h4" fontWeight="bold" color={colors.blueAccent[500]}>
+      Upcoming Mentoring Schedules 📅
+    </Typography>
+    <Box sx={{
+      height: "auto",
+      "& .MuiDataGrid-root": { border: "none" },
+      "& .MuiDataGrid-cell": { borderBottom: "none" },
+      "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.blueAccent[700] },
+      "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
+      "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
+    }}>
+      {loading ? <Typography>Loading...</Typography> : <DataGrid rows={mentoringSchedules} columns={scheduleColumns} />}
+    </Box>
+  </Box> */}
+
+</Box>
+
         <Box gridColumn="span 12" gridRow="span 3" display="grid" gridTemplateColumns="repeat(12, 1fr)" gap="20px" marginTop="10px">
+          <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
+            Mentorships
+          </Typography>
           <Box gridColumn="span 12" sx={{
             height: "auto",
             "& .MuiDataGrid-root": { border: "none" },

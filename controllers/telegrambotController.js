@@ -22,6 +22,24 @@ exports.getTelegramUsers = async (chatID) => {
   }
 };
 
+exports.countTelegramUsers = async (se_id) => {
+  try {
+    const query = `
+      SELECT COUNT(*) AS total_users
+      FROM telegrambot tu
+      WHERE tu."se_ID" = $1;
+    `;
+    const values = [se_id];
+
+    const result = await pgDatabase.query(query, values);
+
+    return result.rows; 
+  } catch (error) {
+    console.error("Error fetching count:", error);
+    return null;
+  }
+};
+
 exports.insertTelegramUser = async (chatid, username, firstname, userData, mentorID) => {
   try {
     // SQL query to insert data into telegrambot table

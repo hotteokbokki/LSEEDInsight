@@ -872,6 +872,62 @@ exports.getAllEvaluationStats= async () => {
     }
 };
 
+exports.getTotalEvaluationCount= async (se_id) => {
+    try {
+        const query = `
+            SELECT COUNT(*) AS total_evaluations
+            FROM evaluations
+            WHERE se_id = $1;
+        `;
+
+        const values = [se_id];
+
+        const result = await pgDatabase.query(query, values);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+
+exports.getPendingEvaluationCount= async (se_id) => {
+    try {
+        const query = `
+            SELECT COUNT(*) AS pending_evaluations
+            FROM evaluations AS e
+            WHERE e."se_id" = $1
+            AND e."isAcknowledge" = false;
+        `;
+
+        const values = [se_id];
+
+        const result = await pgDatabase.query(query, values);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+
+exports.getAcknowledgedEvaluationCount= async (se_id) => {
+    try {
+        const query = `
+            SELECT COUNT(*) AS acknowledged_evaluations
+            FROM evaluations AS e
+            WHERE e."se_id" = $1
+            AND e."isAcknowledge" = true;
+        `;
+
+        const values = [se_id];
+
+        const result = await pgDatabase.query(query, values);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+
 exports.getGrowthScoreOverallAnually= async () => {
     try {
         const query = `
@@ -1063,6 +1119,31 @@ exports.updateAcknowledgeEvaluation= async (evaluationId) => {
             UPDATE evaluations SET "isAcknowledge" = true WHERE evaluation_id = $1 RETURNING *
         `;
         const values = [evaluationId];
+        const result = await pgDatabase.query(query, values);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+
+exports.avgRatingPerSE= async (se_id) => {
+    try {
+        const query = `
+            SELECT 
+                e.se_id,
+                s.abbr AS social_enterprise, 
+                s.team_name AS full_name,
+                ROUND(AVG(ec.rating), 2) AS avg_rating
+            FROM evaluations e
+            JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+            JOIN socialenterprises s ON e.se_id = s.se_id
+            WHERE e.evaluation_type = 'Social Enterprise'
+            AND e.se_id = $1
+            GROUP BY e.se_id, s.abbr, s.team_name
+            ORDER BY avg_rating DESC;
+        `;
+        const values = [se_id];
         const result = await pgDatabase.query(query, values);
         return result.rows;
     } catch (error) {

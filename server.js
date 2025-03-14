@@ -5,7 +5,7 @@ const { router: authRoutes, requireAuth } = require("./routes/authRoutes");
 const axios = require("axios");
 const ngrok = require("ngrok"); // Exposes your local server to the internet
 const { getPrograms, getProgramNameByID, getProgramCount, getProgramsForTelegram } = require("./controllers/programsController");
-const { getTelegramUsers, insertTelegramUser, getSocialEnterprisesUsersByProgram } = require("./controllers/telegrambotController");
+const { getTelegramUsers, insertTelegramUser, getSocialEnterprisesUsersByProgram, countTelegramUsers } = require("./controllers/telegrambotController");
 const { getSocialEnterprisesByProgram, 
         getSocialEnterpriseByID, 
         getAllSocialEnterprises, 
@@ -60,7 +60,11 @@ const { getEvaluationsByMentorID,
         getEvaluationsBySEID, 
         getStatsForHeatmap, 
         getEvaluations,
-        getAllEvaluationStats} = require("./controllers/evaluationsController.js");
+        getAllEvaluationStats,
+        getTotalEvaluationCount,
+        getPendingEvaluationCount,
+        avgRatingPerSE,
+        getAcknowledgedEvaluationCount} = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
@@ -579,8 +583,6 @@ app.get("/api/analytics-stats", async (req, res) => {
     const improvementScore = await getImprovementScorePerMonthAnnually();
     const leaderboardData = await getSELeaderboards();
 
-    console.log("Improvement Score Data:", improvementScore);
-
     // ✅ Return Response
     res.json({
       totalSocialEnterprises: parseInt(totalSocialEnterprises[0].count),
@@ -1086,6 +1088,24 @@ app.get("/api/top-se-performance-with-mentorships", async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error("Error fetching top SE performance:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+//TODO
+app.get("/api/se-analytics-stats/:se_id", async (req, res) => {
+  try {
+    const { se_id } = req.params;
+    if (!se_id) return res.status(400).json({ message: "SE ID is required" });
+
+    const registeredUsers = await countTelegramUsers(se_id) || 0;
+    const totalEvaluations = await getTotalEvaluationCount(se_id) || 0;
+    const pendingEvaluations = await getPendingEvaluationCount(se_id) || 0;
+    const acknowledgedEvaluations = await getAcknowledgedEvaluationCount(se_id) || 0;
+    const avgRating = await avgRatingPerSE(se_id) || 0;
+
+    res.json({ registeredUsers, totalEvaluations, pendingEvaluations, avgRating, acknowledgedEvaluations });
+  } catch (error) {
+    console.error("Error fetching SE analytics stats:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
@@ -1785,6 +1805,8 @@ app.post("/webhook", async (req, res) => {
               console.log(`🗑️ Attempting to delete message ID: ${messageId}`);
               await deleteMessage(chatId, messageId);
               console.log(`✅ Message ${messageId} deleted successfully.`);
+
+              console.log("Length: ", mentorship_date.length)
       
               // ✅ Step 5: Handle database updates
               if (mentorship_date.length === 1) {
