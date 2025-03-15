@@ -386,7 +386,8 @@ async function sendMentorshipMessage(chatId, mentoring_session_id, mentorship_id
 
   const message = `📅 *New Mentorship Meeting Request*\n\n`
     + `🔹 *Mentor:* ${mentorName}\n`
-    + `🔹 *Schedule:* ${formattedDate} - ${mentorship_time}\n`
+    + `🔹 *Date:* ${formattedDate}\n`
+    + `🔹 *Time:* ${mentorship_time}\n`
     + `🔹 *Zoom Link:* ${zoom_link || "N/A"}\n\n`
     + `📌 Please confirm your availability:`;
 

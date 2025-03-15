@@ -1,4 +1,4 @@
-import { Box, Button, IconButton, Typography, useTheme } from "@mui/material";
+import { Box, Button, IconButton, Typography, useTheme, Chip, Snackbar, Alert } from "@mui/material";
 import { tokens } from "../../theme";
 import { mockTransactions } from "../../sampledata/mockData";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
@@ -21,16 +21,18 @@ import { useState, useEffect } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import PendingActionsIcon from "@mui/icons-material/PendingActions";
+import axios from "axios";
 
 const Dashboard = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [currentEvents, setCurrentEvents] = useState([]);
   const [lowPerformingSEs, setLowPerformingSEs] = useState([]);
-  const [mentoringSchedules, setMentoringSchedules] = useState([]);
+  const [mentorSchedules, setMentorSchedules] = useState([]);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [evaluations, setEvaluations] = useState([]);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [stats, setStats] = useState({
     mentorWithoutMentorshipCount: [{ count: "0" }], // Default structure to prevent undefined errors
     mentorWithMentorshipCount: [{ count: "0" }],
@@ -42,6 +44,7 @@ const Dashboard = () => {
     previousUnassignedMentors: 0,
   });
   const [percentageIncrease, setPercentageIncrease] = useState("0%");
+
   const alertColumns = [
     { field: "seName", headerName: "SE Name", flex: 2 },
     { field: "averageScore", headerName: "Avg Score", flex: 1 },
@@ -58,34 +61,136 @@ const Dashboard = () => {
     }
   ];
 
-  // const scheduleColumns = [
-  //   { field: "mentor", headerName: "Mentor", flex: 2 },
-  //   { field: "se", headerName: "SE Name", flex: 2 },
-  //   { field: "date", headerName: "Scheduled Date", flex: 2 },
-  //   { 
-  //     field: "status", 
-  //     headerName: "Status", 
-  //     flex: 1, 
-  //     renderCell: (params) => (
-  //       <Chip label={params.value} color={params.value === "Pending" ? "warning" : "success"} />
-  //     ) 
-  //   },
-  //   { 
-  //     field: "actions", 
-  //     headerName: "Actions", 
-  //     flex: 2,
-  //     renderCell: (params) => (
-  //       <>
-  //         <Button variant="contained" color="success" onClick={() => approveSchedule(params.row.id)}>
-  //           Approve
-  //         </Button>
-  //         <Button variant="contained" color="error" onClick={() => rejectSchedule(params.row.id)} style={{ marginLeft: "5px" }}>
-  //           Reject
-  //         </Button>
-  //       </>
-  //     )
-  //   }
-  // ];
+  const handleAcceptClick = async (schedule) => {
+    try {
+      const { 
+        id: mentoring_session_id, 
+        mentorship_id, 
+        date: mentorship_date, 
+        time: mentorship_time, 
+        zoom: zoom_link 
+      } = schedule; 
+  
+      console.log("Approving mentorship with details:", {
+        mentoring_session_id,
+        mentorship_id,
+        mentorship_date,
+        mentorship_time,
+        zoom_link
+      });
+  
+      const response = await fetch("http://localhost:4000/approveMentorship", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link }), 
+      });
+  
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        throw new Error(`Failed to approve mentorship: ${errorMessage}`);
+      }
+  
+      console.log("Mentorship approved successfully");
+  
+      // Show success message
+      setSnackbarOpen(true); 
+  
+    } catch (error) {
+      console.error("Error approving mentorship:", error);
+    }
+  };
+
+  const handleDeclineClick = async (schedule) => {
+    try {
+      const { id: mentoring_session_id } = schedule; // Extract ID
+  
+      console.log("Declining schedule with ID:", mentoring_session_id);
+  
+      const response = await fetch("http://localhost:4000/declineMentorship", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mentoring_session_id }),
+      });
+  
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        throw new Error(`Failed to decline mentorship: ${errorMessage}`);
+      }
+  
+      console.log("Mentorship declined successfully");
+  
+      // Show success message
+      setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
+  
+    } catch (error) {
+      console.error("Error declining mentorship:", error);
+    }
+  };
+
+  const pendingScheduleColumns = [
+    { field: "sessionDetails", headerName: "Mentoring Session Information", flex: 1, minWidth: 200 },
+    { field: "date", headerName: "Scheduled Date", flex: 1, minWidth: 200 },
+    { 
+      field: "status", 
+      headerName: "Status", 
+      flex: 1, 
+      minWidth: 150,
+      renderCell: (params) => (
+        <Chip 
+          label={params.value} 
+          color={params.value === "Pending" ? "warning" : "success"} 
+        />
+      ) 
+    },
+    { 
+      field: "actions", 
+      headerName: "Action", 
+      flex: 1, 
+      minWidth: 200,
+      renderCell: (params) => (
+        <div>
+          <Button
+            variant="contained"
+            style={{ backgroundColor: colors.greenAccent[500], marginRight: "8px" }}
+            onClick={() => handleAcceptClick(params.row)}
+          >
+            Accept
+          </Button>
+          <Button
+            variant="contained"
+            style={{ backgroundColor: colors.redAccent[500] }}
+            onClick={() => handleDeclineClick(params.row)}
+          >
+            Decline
+          </Button>
+        </div>
+      ),
+    }
+  ];
+
+  useEffect(() => {
+    const fetchMentorSchedules = async () => {
+      try {
+        const response = await axios.get(
+          "http://localhost:4000/api/pending-schedules"
+        );
+        const data = response.data; // No need for .json() with axios
+  
+        console.log("📅 Mentor Schedules Data:", data); // ✅ Debugging log
+  
+        if (Array.isArray(data)) {
+          setMentorSchedules(data);
+        } else {
+          console.error("❌ Invalid mentor schedule format:", data);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching mentor schedules:", error);
+        setMentorSchedules([]);
+      }
+    };
+  
+    fetchMentorSchedules();
+  }, []); 
 
   const handleAction = (id) => {
     console.log("Taking action on SE:", id);
@@ -340,49 +445,77 @@ const Dashboard = () => {
         >
           <AcknowledgmentChart style={{ width: "100%", height: "100%" }} />
         </Box>
+        
+        {/* Alert & Schedule Sections */}
+        <Box 
+          gridColumn="span 12" 
+          gridRow="span 4" // Increase row span to give it more space
+          display="grid" 
+          gridTemplateColumns="repeat(12, 1fr)" 
+          gap="20px" 
+          marginTop="20px" // Increase margin to avoid overlap
+        >
+          
+          {/* SEs Requiring Immediate Attention 🚨 */}
+          <Box gridColumn="span 6" bgcolor={colors.primary[400]} p={2} borderRadius="8px">
+            <Typography variant="h4" fontWeight="bold" color={colors.redAccent[500]}>
+              SEs Requiring Immediate Attention 🚨
+            </Typography>
+            <Box sx={{
+              height: "auto",
+              "& .MuiDataGrid-root": { border: "none" },
+              "& .MuiDataGrid-cell": { borderBottom: "none" },
+              "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.blueAccent[700] },
+              "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
+              "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
+            }}>
+              {loading ? <Typography>Loading...</Typography> : <DataGrid rows={lowPerformingSEs} columns={alertColumns} />}
+            </Box>
+          </Box>
 
+          {/* Pending Mentoring Schedules 🕒 */}
+          <Box gridColumn="span 6" bgcolor={colors.primary[400]} p={2} borderRadius="8px">
+            <Typography variant="h4" fontWeight="bold" color={colors.blueAccent[500]}>
+              Pending Mentoring Schedules 🕒
+            </Typography>
+            <Box
+              sx={{
+                height: "auto",
+                "& .MuiDataGrid-root": { border: "none" },
+                "& .MuiDataGrid-cell": { borderBottom: "none" },
+                "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.blueAccent[700] },
+                "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
+                "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
+              }}
+            >
+              {loading ? (
+                <Typography>Loading...</Typography>
+              ) : mentorSchedules.length > 0 ? (
+                  <DataGrid
+                    rows={mentorSchedules.map((schedule) => ({
+                      id: schedule.mentoring_session_id, // Unique ID
+                      sessionDetails: `Mentoring Session for ${schedule.team_name || "Unknown SE"} with Mentor ${schedule.mentor_name || "Unknown Mentor"}`,
+                      date: `${schedule.mentoring_session_date}, ${schedule.mentoring_session_time}`  || "N/A",
+                      time: schedule.mentoring_session_time || "N/A",
+                      zoom: schedule.zoom_link || "N/A",
+                      mentorship_id: schedule.mentorship_id,
+                      status: schedule.status || "Pending",
+                    }))}
+                    columns={pendingScheduleColumns}
+                    pageSize={5}
+                    rowsPerPageOptions={[5, 10]}
+                  />
+              ) : (
+                <Typography>No pending schedules available.</Typography>
+              )}
+            </Box>
+          </Box>
 
-{/* Alert & Schedule Sections */}
-<Box gridColumn="span 12" display="grid" gridTemplateColumns="repeat(12, 1fr)" gap="20px" marginTop="10px">
-  
-  {/* SEs Requiring Immediate Attention 🚨 */}
-  <Box gridColumn="span 6" bgcolor={colors.primary[400]} p={2} borderRadius="8px">
-    <Typography variant="h4" fontWeight="bold" color={colors.redAccent[500]}>
-      SEs Requiring Immediate Attention 🚨
-    </Typography>
-    <Box sx={{
-      height: "auto",
-      "& .MuiDataGrid-root": { border: "none" },
-      "& .MuiDataGrid-cell": { borderBottom: "none" },
-      "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.blueAccent[700] },
-      "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
-      "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
-    }}>
-      {loading ? <Typography>Loading...</Typography> : <DataGrid rows={lowPerformingSEs} columns={alertColumns} />}
-    </Box>
-  </Box>
+        </Box>
 
-  {/* Upcoming Mentoring Schedules 📅
-  <Box gridColumn="span 6" bgcolor={colors.primary[400]} p={2} borderRadius="8px">
-    <Typography variant="h4" fontWeight="bold" color={colors.blueAccent[500]}>
-      Upcoming Mentoring Schedules 📅
-    </Typography>
-    <Box sx={{
-      height: "auto",
-      "& .MuiDataGrid-root": { border: "none" },
-      "& .MuiDataGrid-cell": { borderBottom: "none" },
-      "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.blueAccent[700] },
-      "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
-      "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
-    }}>
-      {loading ? <Typography>Loading...</Typography> : <DataGrid rows={mentoringSchedules} columns={scheduleColumns} />}
-    </Box>
-  </Box> */}
-
-</Box>
-
-        <Box gridColumn="span 12" gridRow="span 3" display="grid" gridTemplateColumns="repeat(12, 1fr)" gap="20px" marginTop="10px">
-          <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]}>
+        {/* Mentorships Section */}
+        <Box gridColumn="span 12" gridRow="span 3" display="grid" gridTemplateColumns="repeat(12, 1fr)" gap="20px">
+          <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]} gridColumn="span 12">
             Mentorships
           </Typography>
           <Box gridColumn="span 12" sx={{
@@ -396,9 +529,23 @@ const Dashboard = () => {
           }}>
             {loading ? <Typography>Loading...</Typography> : <DataGrid rows={socialEnterprises} columns={columns} autoHeight />}
           </Box>
-        </Box> 
-
+        </Box>
       </Box>
+      {/* Snackbar for Success Alert */}
+      <Snackbar
+        open={snackbarOpen} // Controlled by state
+        autoHideDuration={3000} // Automatically close after 3 seconds
+        onClose={() => setSnackbarOpen(false)} // Close on click or timeout
+        anchorOrigin={{ vertical: "top", horizontal: "center" }} // Position of the popup
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity="success"
+          sx={{ width: "100%" }}
+        >
+          Acknowledged Schedule
+        </Alert>
+      </Snackbar>
     </Box>
   );
   
