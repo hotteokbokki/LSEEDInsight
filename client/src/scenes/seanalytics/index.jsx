@@ -12,7 +12,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Chip
+  Chip,
 } from "@mui/material";
 import { tokens } from "../../theme";
 import SSEPerformanceTrendChart from "../../components/SSEPerformanceTrendChart";
@@ -90,20 +90,23 @@ const SEAnalytics = () => {
           `http://localhost:4000/api/se-analytics-stats/${selectedSEId}`
         );
         const data = await response.json();
-  
+
         // Extract values correctly
         setStats({
           registeredUsers: Number(data.registeredUsers?.[0]?.total_users) || 0,
-          totalEvaluations: data.totalEvaluations?.[0]?.total_evaluations || "0",
-          pendingEvaluations: data.pendingEvaluations?.[0]?.pending_evaluations || "0",
-          acknowledgedEvaluations: data.acknowledgedEvaluations?.[0]?.acknowledged_evaluations || "0",
+          totalEvaluations:
+            data.totalEvaluations?.[0]?.total_evaluations || "0",
+          pendingEvaluations:
+            data.pendingEvaluations?.[0]?.pending_evaluations || "0",
+          acknowledgedEvaluations:
+            data.acknowledgedEvaluations?.[0]?.acknowledged_evaluations || "0",
           avgRating: data.avgRating?.[0]?.avg_rating || "N/A", // If multiple SEs exist, adjust accordingly
         });
       } catch (error) {
         console.error("Error fetching analytics stats:", error);
       }
     };
-  
+
     fetchStats();
   }, [selectedSEId]); // ✅ Include dependency to refetch when SE changes
 
@@ -136,7 +139,9 @@ const SEAnalytics = () => {
                     ? `${parseInt(item.percentage, 10)}%`
                     : "0%",
                 value:
-                  item.count && !isNaN(item.count) ? parseInt(item.count, 10) : 0,
+                  item.count && !isNaN(item.count)
+                    ? parseInt(item.count, 10)
+                    : 0,
                 comment: item.comment || "No comment available", // ✅ Keep comment for tooltip
               },
             ])
@@ -144,22 +149,26 @@ const SEAnalytics = () => {
         );
 
         console.log("Formatted Pie Data:", formattedPieData);
-       
+
         formattedPieData.forEach((item, index) => {
           if (isNaN(item.value)) {
             console.error(`NaN detected in value at index ${index}:`, item);
           }
         });
-        
+
         setPieData(formattedPieData);
 
         // Fetch Likert scale data
-        const likertResponse = await fetch(`http://localhost:4000/api/likert-data/${selectedSEId}`);
+        const likertResponse = await fetch(
+          `http://localhost:4000/api/likert-data/${selectedSEId}`
+        );
         const rawLikertData = await likertResponse.json();
         setLikertData(rawLikertData);
 
         // Fetch radar chart data
-        const radarResponse = await fetch(`http://localhost:4000/api/radar-data/${selectedSEId}`);
+        const radarResponse = await fetch(
+          `http://localhost:4000/api/radar-data/${selectedSEId}`
+        );
         const radarData = await radarResponse.json();
         if (Array.isArray(radarData)) {
           setRadarData(radarData);
@@ -178,14 +187,14 @@ const SEAnalytics = () => {
     const fetchEvaluations = async () => {
       try {
         setIsLoadingEvaluations(true);
-  
+
         const response = await axios.get(
           "http://localhost:4000/getMentorEvaluationsBySEID",
           {
             params: { se_id: id },
           }
         );
-  
+
         // Ensure evaluation_id is included and set as `id`
         const formattedData = response.data.map((evaluation) => ({
           id: evaluation.evaluation_id, // Use evaluation_id as the unique ID
@@ -197,7 +206,7 @@ const SEAnalytics = () => {
           ).toLocaleDateString(),
           acknowledged: evaluation.acknowledged ? "Yes" : "No",
         }));
-  
+
         console.log("✅ Formatted EvaluationsData:", formattedData); // Debugging
         setEvaluationsData(formattedData);
       } catch (error) {
@@ -206,7 +215,7 @@ const SEAnalytics = () => {
         setIsLoadingEvaluations(false);
       }
     };
-  
+
     if (id) {
       fetchEvaluations();
     }
@@ -339,9 +348,11 @@ const SEAnalytics = () => {
           p="20px"
         >
           <Chip
-            label={`${stats.registeredUsers} ${stats.registeredUsers === 1 ? "User" : "Users"}`}
+            label={`${stats.registeredUsers} ${
+              stats.registeredUsers === 1 ? "User" : "Users"
+            }`}
             icon={
-              <PeopleIcon 
+              <PeopleIcon
                 sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // Force icon color
               />
             }
@@ -350,7 +361,7 @@ const SEAnalytics = () => {
               p: "10px",
               backgroundColor: colors.primary[400], // Set background explicitly
               color: "white", // Force text color to white
-              "& .MuiChip-icon": { color: colors.greenAccent[500] } // Ensure icon color is applied
+              "& .MuiChip-icon": { color: colors.greenAccent[500] }, // Ensure icon color is applied
             }}
           />
         </Box>
@@ -392,9 +403,7 @@ const SEAnalytics = () => {
           <StatBox
             title={stats.pendingEvaluations}
             subtitle="Pending Evaluations"
-            progress={
-              stats.pendingEvaluations / (stats.totalEvaluations || 1)
-            } // Avoid division by zero
+            progress={stats.pendingEvaluations / (stats.totalEvaluations || 1)} // Avoid division by zero
             increase={`${(
               (stats.pendingEvaluations / (stats.totalEvaluations || 1)) *
               100
@@ -429,205 +438,215 @@ const SEAnalytics = () => {
         </Box>
       </Box>
 
-    <Box display="flex" flexDirection="column" gap={3} mt="20px">
-      <SSEPerformanceTrendChart selectedSEId={selectedSEId}/>
-    </Box>
-  
+      <Box
+        display="flex"
+        flexDirection="column"
+        gap={3}
+        marginBottom={2}
+        marginTop={2}
+      >
+        <SSEPerformanceTrendChart selectedSEId={selectedSEId} />
+      </Box>
 
-  {/* Evaluations Table */}
-  <Box
-    sx={{
-      backgroundColor: colors.primary[400],
-      padding: "20px",
-      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-      minHeight: "400px", // Ensures DataGrid has enough space
-      display: "flex",
-      flexDirection: "column",
-      overflow: "hidden",
-      "& .MuiDataGrid-root": { border: "none" },
-      "& .MuiDataGrid-cell": { borderBottom: "none" },
-      "& .name-column--cell": { color: colors.greenAccent[300] },
-      "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-        backgroundColor: colors.blueAccent[700] + " !important",
-      },
-      "& .MuiDataGrid-virtualScroller": {
-        backgroundColor: colors.primary[400],
-      },
-      "& .MuiDataGrid-footerContainer": {
-        borderTop: "none",
-        backgroundColor: colors.blueAccent[700],
-      },
-    }}
-  >
-    <Typography variant="h5" fontWeight="bold" color={colors.grey[100]} mb={2}>
-      Evaluations
-    </Typography>
-    <DataGrid
-      autoHeight
-      rows={evaluationsData}
-      columns={columns}
-      getRowId={(row) => row.id}
-    />
-  </Box>
+      {/* Evaluations Table */}
+      <Box
+        sx={{
+          backgroundColor: colors.primary[400],
+          padding: "20px",
+          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+          minHeight: "400px", // Ensures DataGrid has enough space
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          "& .MuiDataGrid-root": { border: "none" },
+          "& .MuiDataGrid-cell": { borderBottom: "none" },
+          "& .name-column--cell": { color: colors.greenAccent[300] },
+          "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+            backgroundColor: colors.blueAccent[700] + " !important",
+          },
+          "& .MuiDataGrid-virtualScroller": {
+            backgroundColor: colors.primary[400],
+          },
+          "& .MuiDataGrid-footerContainer": {
+            borderTop: "none",
+            backgroundColor: colors.blueAccent[700],
+          },
+        }}
+      >
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          color={colors.grey[100]}
+          mb={2}
+        >
+          Evaluations
+        </Typography>
+        <DataGrid
+          autoHeight
+          rows={evaluationsData}
+          columns={columns}
+          getRowId={(row) => row.id}
+        />
+      </Box>
 
       {/* Evaluation Details Dialog - Read-Only */}
       <Dialog
-          open={openDialog}
-          onClose={() => setOpenDialog(false)}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{
-            style: {
-              backgroundColor: "#fff", // White background
-              color: "#000", // Black text
-              border: "1px solid #000", // Black border for contrast
-            },
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          style: {
+            backgroundColor: "#fff", // White background
+            color: "#000", // Black text
+            border: "1px solid #000", // Black border for contrast
+          },
+        }}
+      >
+        {/* Title with DLSU Green Background */}
+        <DialogTitle
+          sx={{
+            backgroundColor: "#1E4D2B", // DLSU Green header
+            color: "#fff", // White text
+            textAlign: "center",
+            fontSize: "1.5rem",
+            fontWeight: "bold",
           }}
         >
-          {/* Title with DLSU Green Background */}
-          <DialogTitle
-            sx={{
-              backgroundColor: "#1E4D2B", // DLSU Green header
-              color: "#fff", // White text
-              textAlign: "center",
-              fontSize: "1.5rem",
-              fontWeight: "bold",
-            }}
-          >
-            View Evaluation
-          </DialogTitle>
+          View Evaluation
+        </DialogTitle>
 
-          {/* Content Section */}
-          <DialogContent
-            sx={{
-              padding: "24px",
-              maxHeight: "70vh", // Ensure it doesn't overflow the screen
-              overflowY: "auto", // Enable scrolling if content is too long
-            }}
-          >
-            {selectedEvaluation ? (
-              <>
-                {/* Social Enterprise and Evaluation Date */}
-                <Box
-                  sx={{
-                    marginBottom: "16px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
-                  }}
-                >
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: "bold",
-                      borderBottom: "1px solid #000", // Separator line
-                      paddingBottom: "8px",
-                    }}
-                  >
-                    Social Enterprise: {selectedEvaluation.social_enterprise}
-                  </Typography>
-                  <Typography
-                    variant="subtitle1"
-                    sx={{
-                      color: "#000",
-                    }}
-                  >
-                    Evaluation Date: {selectedEvaluation.evaluation_date}
-                  </Typography>
-                </Box>
-
-                {/* Categories Section */}
-                {selectedEvaluation.categories &&
-                selectedEvaluation.categories.length > 0 ? (
-                  selectedEvaluation.categories.map((category, index) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        marginBottom: "24px",
-                        padding: "16px",
-                        border: "1px solid #000", // Border for each category
-                        borderRadius: "8px",
-                      }}
-                    >
-                      {/* Category Name and Rating */}
-                      <Typography
-                        variant="subtitle1"
-                        sx={{
-                          fontWeight: "bold",
-                          marginBottom: "8px",
-                        }}
-                      >
-                        {category.category_name} - Rating:{" "}
-                        {category.star_rating} ★
-                      </Typography>
-
-                      {/* Selected Comments */}
-                      <Typography
-                        variant="body1"
-                        sx={{
-                          marginBottom: "8px",
-                        }}
-                      >
-                        Comments:{" "}
-                        {category.selected_comments.length > 0 ? (
-                          category.selected_comments.join(", ")
-                        ) : (
-                          <i>No comments</i>
-                        )}
-                      </Typography>
-
-                      {/* Additional Comment */}
-                      <Typography variant="body1">
-                        Additional Comment:{" "}
-                        {category.additional_comment || (
-                          <i>No additional comments</i>
-                        )}
-                      </Typography>
-                    </Box>
-                  ))
-                ) : (
-                  <Typography
-                    variant="body1"
-                    sx={{
-                      fontStyle: "italic",
-                    }}
-                  >
-                    No categories found for this evaluation.
-                  </Typography>
-                )}
-              </>
-            ) : (
-              <Typography
-                variant="body1"
+        {/* Content Section */}
+        <DialogContent
+          sx={{
+            padding: "24px",
+            maxHeight: "70vh", // Ensure it doesn't overflow the screen
+            overflowY: "auto", // Enable scrolling if content is too long
+          }}
+        >
+          {selectedEvaluation ? (
+            <>
+              {/* Social Enterprise and Evaluation Date */}
+              <Box
                 sx={{
-                  fontStyle: "italic",
+                  marginBottom: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
                 }}
               >
-                Loading evaluation details...
-              </Typography>
-            )}
-          </DialogContent>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: "bold",
+                    borderBottom: "1px solid #000", // Separator line
+                    paddingBottom: "8px",
+                  }}
+                >
+                  Social Enterprise: {selectedEvaluation.social_enterprise}
+                </Typography>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    color: "#000",
+                  }}
+                >
+                  Evaluation Date: {selectedEvaluation.evaluation_date}
+                </Typography>
+              </Box>
 
-          {/* Action Buttons */}
-          <DialogActions
-            sx={{
-              padding: "16px",
-              borderTop: "1px solid #000", // Separator line
-            }}
-          >
-            <Button
-              onClick={() => setOpenDialog(false)}
+              {/* Categories Section */}
+              {selectedEvaluation.categories &&
+              selectedEvaluation.categories.length > 0 ? (
+                selectedEvaluation.categories.map((category, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      marginBottom: "24px",
+                      padding: "16px",
+                      border: "1px solid #000", // Border for each category
+                      borderRadius: "8px",
+                    }}
+                  >
+                    {/* Category Name and Rating */}
+                    <Typography
+                      variant="subtitle1"
+                      sx={{
+                        fontWeight: "bold",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      {category.category_name} - Rating: {category.star_rating}{" "}
+                      ★
+                    </Typography>
+
+                    {/* Selected Comments */}
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        marginBottom: "8px",
+                      }}
+                    >
+                      Comments:{" "}
+                      {category.selected_comments.length > 0 ? (
+                        category.selected_comments.join(", ")
+                      ) : (
+                        <i>No comments</i>
+                      )}
+                    </Typography>
+
+                    {/* Additional Comment */}
+                    <Typography variant="body1">
+                      Additional Comment:{" "}
+                      {category.additional_comment || (
+                        <i>No additional comments</i>
+                      )}
+                    </Typography>
+                  </Box>
+                ))
+              ) : (
+                <Typography
+                  variant="body1"
+                  sx={{
+                    fontStyle: "italic",
+                  }}
+                >
+                  No categories found for this evaluation.
+                </Typography>
+              )}
+            </>
+          ) : (
+            <Typography
+              variant="body1"
               sx={{
-                color: "#000",
-                border: "1px solid #000",
-                "&:hover": {
-                  backgroundColor: "#f0f0f0", // Hover effect
-                },
+                fontStyle: "italic",
               }}
             >
-              Close
-            </Button>
-          </DialogActions>
+              Loading evaluation details...
+            </Typography>
+          )}
+        </DialogContent>
+
+        {/* Action Buttons */}
+        <DialogActions
+          sx={{
+            padding: "16px",
+            borderTop: "1px solid #000", // Separator line
+          }}
+        >
+          <Button
+            onClick={() => setOpenDialog(false)}
+            sx={{
+              color: "#000",
+              border: "1px solid #000",
+              "&:hover": {
+                backgroundColor: "#f0f0f0", // Hover effect
+              },
+            }}
+          >
+            Close
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Common Challenges & Performance Score */}

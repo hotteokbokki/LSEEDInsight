@@ -16,7 +16,7 @@ import {
   TextField,
   MenuItem,
   Snackbar,
-  Alert
+  Alert,
 } from "@mui/material";
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
 import { tokens } from "../../theme";
@@ -54,7 +54,7 @@ const SocialEnterprise = () => {
   const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
   const [isSuccessSEPopupOpen, setIsSuccessSEPopupOpen] = useState(false);
   const [mentors, setMentors] = useState([]);
-  const [sdgs, setSdgs] = useState([]); 
+  const [sdgs, setSdgs] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [topPerformers, setTopPerformers] = useState([]);
   // State for fetched data
@@ -109,14 +109,14 @@ const SocialEnterprise = () => {
       try {
         const response = await axios.get("http://localhost:4000/api/mentors"); // Fetch mentors from API
         setMentors(response.data);
-        console.log("mentorsdata",response.data)
+        console.log("mentorsdata", response.data);
       } catch (error) {
         console.error("❌ Error fetching mentors:", error);
       }
     };
 
     fetchSocialEnterprise();
-    fetchMentors(); 
+    fetchMentors();
   }, []);
 
   useEffect(() => {
@@ -174,9 +174,12 @@ const SocialEnterprise = () => {
         `http://localhost:4000/updateSocialEnterprise/${updatedRow.id}`,
         updatedRow
       );
-  
+
       if (response.status === 200) {
-        console.log("✅ Social Enterprise updated successfully:", response.data);
+        console.log(
+          "✅ Social Enterprise updated successfully:",
+          response.data
+        );
         setIsSuccessEditPopupOpen(true);
       } else {
         console.error("❌ Failed to update Social Enterprise:", response.data);
@@ -336,7 +339,11 @@ const SocialEnterprise = () => {
         <MentorDropdown
           value={params.value}
           onChange={(newValue) =>
-            params.api.setEditCellValue({ id: params.id, field: params.field, value: newValue })
+            params.api.setEditCellValue({
+              id: params.id,
+              field: params.field,
+              value: newValue,
+            })
           }
           mentors={mentors} // Pass the fetched mentors
         />
@@ -762,7 +769,12 @@ const SocialEnterprise = () => {
             }}
           >
             <Button
-              onClick={handleCloseAddSE}
+              onClick={() => {
+                handleCloseAddSE(); // ✅ Closes after timeout
+                setTimeout(() => {
+                  window.location.reload();
+                }, 500); // Adjust delay if needed
+              }}
               sx={{
                 color: "#000",
                 border: "1px solid #000",
@@ -773,6 +785,7 @@ const SocialEnterprise = () => {
             >
               Cancel
             </Button>
+
             <Button
               onClick={handleSubmit}
               variant="contained"
@@ -957,7 +970,12 @@ const SocialEnterprise = () => {
           >
             {/* Cancel Button */}
             <Button
-              onClick={handleCloseAddProgram}
+              onClick={() => {
+                handleCloseAddProgram(); // ✅ Closes after timeout
+                setTimeout(() => {
+                  window.location.reload();
+                }, 500); // Adjust delay if needed
+              }}
               sx={{
                 color: "#000",
                 border: "1px solid #000",
@@ -1113,7 +1131,7 @@ const SocialEnterprise = () => {
             rows={socialEnterprises}
             columns={columns}
             getRowId={(row) => row.id} // Use `id` as the unique identifier
-            // onRowEditStop={(params) => handleSERowUpdate(params.row)} 
+            // onRowEditStop={(params) => handleSERowUpdate(params.row)}
             processRowUpdate={(params) => {
               // console.log("🚨 processRowUpdate params:", params, "\n");
               handleSERowUpdate(params);

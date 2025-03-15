@@ -47,7 +47,7 @@ const Mentors = () => {
   const [selectedMentor, setSelectedMentor] = useState(null);
   const [mentorSearch, setMentorSearch] = useState(""); // For autocomplete input
   const [selectedSE, setSelectedSE] = useState("");
-  
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
   // Fetch mentors from the database
   const fetchMentors = async () => {
     try {
@@ -71,7 +71,7 @@ const Mentors = () => {
       console.error("❌ Error fetching mentors:", error);
     }
   };
-  
+
   useEffect(() => {
     fetchMentors();
   }, []);
@@ -85,12 +85,14 @@ const Mentors = () => {
   // Function to fetch assigned social enterprises
   const fetchSocialEnterprises = async (mentorId) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/mentors/${mentorId}/social-enterprises`);
-  
+      const response = await fetch(
+        `http://localhost:4000/api/mentors/${mentorId}/social-enterprises`
+      );
+
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-  
+
       const data = await response.json(); // ✅ Ensure response is parsed as JSON
       setSocialEnterprises(data);
       console.log("📥 Social Enterprises Data:", data);
@@ -112,31 +114,30 @@ const Mentors = () => {
       contactnum: params.contactnum,
       isactive: params.status === "Active" ? true : false,
     };
-    
+
     // Check if params contains the expected structure
     Object.keys(params).forEach((key) => {
-        console.log(`🛠 params[${key}]:`, params[key]);
+      console.log(`🛠 params[${key}]:`, params[key]);
     });
 
     setRows(updatedMentorData);
 
     try {
-        const response = await axios.put(
-            `http://localhost:4000/api/mentors/${params.id}`,
-            updatedMentorData,
-            { headers: { "Content-Type": "application/json" } }
-        );
+      const response = await axios.put(
+        `http://localhost:4000/api/mentors/${params.id}`,
+        updatedMentorData,
+        { headers: { "Content-Type": "application/json" } }
+      );
 
-        if (response.status === 200) {
-            console.log("✅ Mentor updated successfully:", response.data);
-        } else {
-            throw new Error("Failed to update mentor in database");
-        }
+      if (response.status === 200) {
+        console.log("✅ Mentor updated successfully:", response.data);
+      } else {
+        throw new Error("Failed to update mentor in database");
+      }
     } catch (error) {
-        console.error("❌ Error updating mentor:", error);
+      console.error("❌ Error updating mentor:", error);
     }
-};
-
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -210,14 +211,23 @@ const Mentors = () => {
     }
     console.log("mentorId: ", selectedMentor.mentor_id, " seId: ", selectedSE);
     try {
-      const response = await fetch(`http://localhost:4000/api/remove-mentorship`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mentorId: selectedMentor.mentor_id, seId: selectedSE }),
-      });
+      const response = await fetch(
+        `http://localhost:4000/api/remove-mentorship`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mentorId: selectedMentor.mentor_id,
+            seId: selectedSE,
+          }),
+        }
+      );
 
       if (response.ok) {
-        alert("Mentorship removed successfully!");
+        setSnackbarOpen(true);
+        setTimeout(() => {
+          window.location.reload();
+        }, 500); // Adjust delay if needed
         setIsModalOpen(false);
         setSelectedMentor(null);
         setSelectedSE("");
@@ -229,7 +239,6 @@ const Mentors = () => {
       console.error("Error removing mentorship:", error);
     }
   };
-  
 
   // Submit new mentor data
   const handleSubmit = async () => {
@@ -526,54 +535,214 @@ const Mentors = () => {
           >
             Remove Mentorship
           </Button>
-          
-          {/* Remove Mentorship Modal */}
-          <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} fullWidth maxWidth="sm">
-            <DialogTitle>Remove Mentorship</DialogTitle>
-            <DialogContent>
-              {/* Mentor Selection (Autocomplete) */}
-              <Autocomplete
-                options={mentors}
-                getOptionLabel={(mentor) => `${mentor.mentor_firstName} ${mentor.mentor_lastName}`}
-                value={selectedMentor}
-                onChange={(event, newValue) => setSelectedMentor(newValue)}
-                inputValue={mentorSearch}
-                onInputChange={(event, newInputValue) => setMentorSearch(newInputValue)}
-                renderInput={(params) => <TextField {...params} label="Select Mentor" fullWidth />}
-              />
 
-              {/* Social Enterprise Selection */}
-              <TextField
-                select
-                label="Select Social Enterprise"
-                fullWidth
-                value={selectedSE}
-                onChange={(event) => setSelectedSE(event.target.value)}
-                sx={{ mt: 2 }}
-                disabled={!selectedMentor || socialEnterprises.length === 0}
+          {/* Remove Mentorship Modal */}
+          <Dialog
+            open={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            fullWidth
+            maxWidth="sm"
+          >
+            {/* Dialog Title */}
+            <DialogTitle
+              sx={{
+                backgroundColor: "#1E4D2B", // DLSU Green header
+                color: "#fff", // White text
+                textAlign: "center",
+                fontSize: "1.5rem",
+                fontWeight: "bold",
+              }}
+            >
+              Remove Mentorship
+            </DialogTitle>
+
+            {/* Dialog Content */}
+            <DialogContent
+              sx={{
+                padding: "24px",
+                maxHeight: "70vh", // Ensure it doesn't overflow the screen
+                overflowY: "auto", // Enable scrolling if content is too long
+                backgroundColor: "#fff", // White background
+              }}
+            >
+              {/* Place Fields Side by Side */}
+              <Box
+                display="flex"
+                gap={2} // Add spacing between fields
+                alignItems="center" // Align fields vertically
+                mb={2} // Add margin at the bottom
+                marginTop="20px"
               >
-                {socialEnterprises.length > 0 ? (
-                  socialEnterprises.map((se) => (
-                    <MenuItem key={se.se_id} value={se.se_id}>
-                      {se.team_name}
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem disabled>No SEs assigned</MenuItem>
-                )}
-              </TextField>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    color: "#000", // Black text
+                    fontWeight: "bold",
+                    marginBottom: "8px", // Space between label and field
+                  }}
+                >
+                  Mentor
+                </Typography>
+                {/* Mentor Selection (Autocomplete) */}
+                <FormControl fullWidth margin="normal">
+                  <Autocomplete
+                    options={mentors}
+                    getOptionLabel={(mentor) =>
+                      `${mentor.mentor_firstName} ${mentor.mentor_lastName}`
+                    }
+                    value={selectedMentor}
+                    onChange={(event, newValue) => setSelectedMentor(newValue)}
+                    inputValue={mentorSearch}
+                    onInputChange={(event, newInputValue) =>
+                      setMentorSearch(newInputValue)
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Select Mentor"
+                        fullWidth
+                        sx={{
+                          "& .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#000 !important", // Consistent border color
+                          },
+                          "&:hover .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#000 !important",
+                          },
+                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#000 !important",
+                          },
+                          "& .Mui-disabled .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#000 !important", // Ensures border is black when disabled
+                          },
+                          "& .MuiInputBase-input": {
+                            color: "#000 !important", // Keeps text black when enabled
+                          },
+                          "& .Mui-disabled .MuiInputBase-input": {
+                            color: "#000 !important", // Keeps text black when disabled
+                            WebkitTextFillColor: "#000 !important", // Fixes opacity issue in some browsers
+                          },
+                        }}
+                      />
+                    )}
+                  />
+                </FormControl>
+
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    color: "#000", // Black text
+                    fontWeight: "bold",
+                    marginBottom: "8px", // Space between label and field
+                  }}
+                >
+                  Social Enterprise
+                </Typography>
+                {/* Social Enterprise Selection */}
+                <FormControl fullWidth margin="normal">
+                  <TextField
+                    select
+                    label="Select Social Enterprise"
+                    fullWidth
+                    value={selectedSE}
+                    onChange={(event) => setSelectedSE(event.target.value)}
+                    disabled={!selectedMentor || socialEnterprises.length === 0}
+                    sx={{
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000 !important", // Keeps border black
+                      },
+                      "&:hover .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000 !important",
+                      },
+                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000 !important",
+                      },
+                      "& .Mui-disabled .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000 !important", // Ensures black border when disabled
+                      },
+                      "& .MuiInputBase-input": {
+                        color: "#000 !important", // Keeps text black when enabled
+                      },
+                      "& .Mui-disabled .MuiInputBase-input": {
+                        color: "#000 !important", // Ensures text stays black when disabled
+                        WebkitTextFillColor: "#000 !important", // Fixes opacity issue in some browsers
+                      },
+                    }}
+                  >
+                    {socialEnterprises.length > 0 ? (
+                      socialEnterprises.map((se) => (
+                        <MenuItem key={se.se_id} value={se.se_id}>
+                          {se.team_name}
+                        </MenuItem>
+                      ))
+                    ) : (
+                      <MenuItem disabled>No SEs assigned</MenuItem>
+                    )}
+                  </TextField>
+                </FormControl>
+              </Box>
             </DialogContent>
 
-            <DialogActions>
-              <Button onClick={() => setIsModalOpen(false)} color="error">
+            {/* Dialog Actions */}
+            <DialogActions
+              sx={{
+                padding: "16px",
+                borderTop: "1px solid #000", // Separator line
+                backgroundColor: "#fff",
+              }}
+            >
+              <Button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 500); // Adjust delay if needed
+                }}
+                sx={{
+                  color: "#000",
+                  border: "1px solid #000",
+                  "&:hover": {
+                    backgroundColor: "#e0e0e0", // Hover effect
+                  },
+                }}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleRemoveMentorship} variant="contained" color="primary">
+
+              <Button
+                onClick={handleRemoveMentorship}
+                variant="contained"
+                disabled={!selectedMentor || !selectedSE} // Disables if either field is empty
+                sx={{
+                  backgroundColor:
+                    selectedMentor && selectedSE ? "#1E4D2B" : "#A0A0A0", // Gray when disabled
+                  color: "#fff",
+                  "&:hover": {
+                    backgroundColor:
+                      selectedMentor && selectedSE ? "#145A32" : "#A0A0A0", // Keep gray on hover if disabled
+                  },
+                }}
+              >
                 Confirm
               </Button>
             </DialogActions>
           </Dialog>
-          
+
+          {/* Snackbar for success message */}
+          <Snackbar
+            open={snackbarOpen}
+            autoHideDuration={3000} // Closes after 3 seconds
+            onClose={() => setSnackbarOpen(false)}
+            anchorOrigin={{ vertical: "top", horizontal: "center" }}
+          >
+            <Alert
+              onClose={() => setSnackbarOpen(false)}
+              severity="success"
+              sx={{ width: "100%" }}
+            >
+              Successfully removed!
+            </Alert>
+          </Snackbar>
+
           {!showEditButtons && (
             <Button
               variant="contained"
@@ -623,9 +792,15 @@ const Mentors = () => {
                 }}
                 onClick={async () => {
                   try {
-                    const selectedRow = rows.find((row) => row.id === selectedRowId); // Replace `selectedRowId`
+                    const selectedRow = rows.find(
+                      (row) => row.id === selectedRowId
+                    ); // Replace `selectedRowId`
                     if (selectedRow) {
-                      handleMentorRowUpdate({ id: selectedRow.id, field: "email", value: selectedRow.email }); 
+                      handleMentorRowUpdate({
+                        id: selectedRow.id,
+                        field: "email",
+                        value: selectedRow.email,
+                      });
                     } else {
                       console.error("No mentor selected for update");
                     }
@@ -755,7 +930,7 @@ const Mentors = () => {
               >
                 {mentors.map((mentor) => (
                   <MenuItem key={mentor.mentor_id} value={mentor.mentor_id}>
-                    {mentor.mentor_firstName} {mentor.mentor_lastName} 
+                    {mentor.mentor_firstName} {mentor.mentor_lastName}
                   </MenuItem>
                 ))}
               </Select>
@@ -827,7 +1002,12 @@ const Mentors = () => {
           }}
         >
           <Button
-            onClick={handleDialogClose}
+            onClick={() => {
+              handleDialogClose(); // Close the dialog
+              setTimeout(() => {
+                window.location.reload();
+              }, 500); // Adjust delay if needed
+            }}
             sx={{
               color: "#000",
               border: "1px solid #000",

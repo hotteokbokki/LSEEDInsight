@@ -74,24 +74,35 @@ const Scheduling = ({ userRole }) => {
 
   const handleAcceptClick = async (schedule) => {
     try {
-      const { id: mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link } = schedule; // Rename for clarity
+      const {
+        id: mentoring_session_id,
+        mentorship_id,
+        mentorship_date,
+        mentorship_time,
+        zoom_link,
+      } = schedule; // Rename for clarity
 
       const response = await fetch("http://localhost:4000/approveMentorship", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link}), // Ensure backend expects this key
+        body: JSON.stringify({
+          mentoring_session_id,
+          mentorship_id,
+          mentorship_date,
+          mentorship_time,
+          zoom_link,
+        }), // Ensure backend expects this key
       });
-  
+
       if (!response.ok) {
         const errorMessage = await response.text();
         throw new Error(`Failed to approve mentorship: ${errorMessage}`);
       }
-  
+
       console.log("Mentorship approved successfully");
-  
+
       // Show success message
       setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
-  
     } catch (error) {
       console.error("Error approving mentorship:", error);
     }
@@ -100,25 +111,24 @@ const Scheduling = ({ userRole }) => {
   const handleDeclineClick = async (schedule) => {
     try {
       const { id: mentoring_session_id } = schedule; // Extract ID
-  
+
       console.log("Declining schedule with ID:", mentoring_session_id);
-  
+
       const response = await fetch("http://localhost:4000/declineMentorship", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mentoring_session_id }),
       });
-  
+
       if (!response.ok) {
         const errorMessage = await response.text();
         throw new Error(`Failed to decline mentorship: ${errorMessage}`);
       }
-  
+
       console.log("Mentorship declined successfully");
-  
+
       // Show success message
       setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
-  
     } catch (error) {
       console.error("Error declining mentorship:", error);
     }
@@ -166,7 +176,7 @@ const Scheduling = ({ userRole }) => {
   useEffect(() => {
     const fetchMentorshipDates = async () => {
       try {
-        console.log("mentor_id: ", user.id)
+        console.log("mentor_id: ", user.id);
         const response = await axios.get(
           "http://localhost:4000/getMentorshipDates",
           {
@@ -188,7 +198,9 @@ const Scheduling = ({ userRole }) => {
     const fetchScheduleHistory = async () => {
       try {
         console.log("Fetching all mentor schedules...");
-        const response = await axios.get("http://localhost:4000/api/mentorSchedules");
+        const response = await axios.get(
+          "http://localhost:4000/api/mentorSchedules"
+        );
         console.log("📅 History Schedules:", response.data);
         setMentorHistory(response.data || []);
       } catch (error) {
@@ -196,17 +208,19 @@ const Scheduling = ({ userRole }) => {
         setMentorHistory([]);
       }
     };
-  
+
     fetchScheduleHistory();
   }, []); // Runs once when the component mounts
 
   const rows = mentorshipDates.map((mentorship) => {
-    const formattedDate = new Date(mentorship.mentoring_session_date).toLocaleDateString("en-US", {
+    const formattedDate = new Date(
+      mentorship.mentoring_session_date
+    ).toLocaleDateString("en-US", {
       month: "long",
       day: "2-digit",
       year: "numeric",
     });
-  
+
     return {
       id: mentorship.mentoring_session_id, // Unique identifier (session-based)
       team_name: mentorship.team_name || "N/A",
@@ -220,12 +234,14 @@ const Scheduling = ({ userRole }) => {
   });
 
   const historyRows = mentorHistory.map((mentorship) => {
-    const formattedDate = new Date(mentorship.mentoring_session_date).toLocaleDateString("en-US", {
+    const formattedDate = new Date(
+      mentorship.mentoring_session_date
+    ).toLocaleDateString("en-US", {
       month: "long",
       day: "2-digit",
       year: "numeric",
     });
-  
+
     return {
       id: mentorship.mentoring_session_id, // Unique identifier (session-based)
       team_name: mentorship.team_name || "N/A",
@@ -276,48 +292,53 @@ const Scheduling = ({ userRole }) => {
     }
   };
 
-const handleConfirmDate = async () => {
-  if (!selectedSE || !selectedDate) return;
-  else if (!zoomLink) {
-    alert("Please enter a valid Zoom link.");
-    return;
-  }
+  const handleConfirmDate = async () => {
+    if (!selectedSE || !selectedDate) return;
+    else if (!zoomLink) {
+      alert("Please enter a valid Zoom link.");
+      return;
+    }
 
-  try {
-    setIsLoading(true);
-    const formattedDate = selectedDate ? selectedDate.format("YYYY-MM-DD") : null;
-    const formattedStartTime = startTime ? startTime.format("HH:mm") : null;
-    const formattedEndTime = endTime ? endTime.format("HH:mm") : null;
+    try {
+      setIsLoading(true);
+      const formattedDate = selectedDate
+        ? selectedDate.format("YYYY-MM-DD")
+        : null;
+      const formattedStartTime = startTime ? startTime.format("HH:mm") : null;
+      const formattedEndTime = endTime ? endTime.format("HH:mm") : null;
 
-    const response = await fetch("http://localhost:4000/updateMentorshipDate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mentorship_id: selectedSE.id,
-        mentoring_session_date: formattedDate, // Match backend field name
-        start_time: formattedStartTime, // Ensure this is properly formatted
-        end_time: formattedEndTime, // Ensure this is properly formatted
-        zoom_link: zoomLink,
-      }),
-    });
+      const response = await fetch(
+        "http://localhost:4000/updateMentorshipDate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mentorship_id: selectedSE.id,
+            mentoring_session_date: formattedDate, // Match backend field name
+            start_time: formattedStartTime, // Ensure this is properly formatted
+            end_time: formattedEndTime, // Ensure this is properly formatted
+            zoom_link: zoomLink,
+          }),
+        }
+      );
 
-    if (!response.ok) throw new Error("Failed to update mentorship date");
+      if (!response.ok) throw new Error("Failed to update mentorship date");
 
-    // Show success Snackbar
-    setSnackbarOpen(true);
+      // Show success Snackbar
+      setSnackbarOpen(true);
 
-    // Close the dialog
-    handleCloseSEModal();
+      // Close the dialog
+      handleCloseSEModal();
 
-    setTimeout(() => {
-      window.location.reload();
-    }, 500); // Adjust delay if needed
-  } catch (error) {
-    console.error("❌ Error updating mentorship date:", error);
-  } finally {
-    setIsLoading(false);
-  }
-};
+      setTimeout(() => {
+        window.location.reload();
+      }, 500); // Adjust delay if needed
+    } catch (error) {
+      console.error("❌ Error updating mentorship date:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetch("/auth/session-check", {
@@ -493,18 +514,47 @@ const handleConfirmDate = async () => {
                     zoom_link: schedule.zoom_link || "N/A",
                   }))}
                   columns={[
-                    { field: "mentor_name", headerName: "Mentor Name", flex: 1, minWidth: 200 },
-                    { field: "se_name", headerName: "Social Enterprise", flex: 1, minWidth: 200 },
-                    { field: "mentorship_date", headerName: "Mentoring Session Date", flex: 1, minWidth: 200 }, // Increased width for longer text format
-                    { field: "mentorship_time", headerName: "Mentoring Session Time", flex: 1, minWidth: 150 },
-                    { field: "telegramstatus", headerName: "Status", flex: 1, minWidth: 100 },
+                    {
+                      field: "mentor_name",
+                      headerName: "Mentor Name",
+                      flex: 1,
+                      minWidth: 200,
+                    },
+                    {
+                      field: "se_name",
+                      headerName: "Social Enterprise",
+                      flex: 1,
+                      minWidth: 200,
+                    },
+                    {
+                      field: "mentorship_date",
+                      headerName: "Mentoring Session Date",
+                      flex: 1,
+                      minWidth: 200,
+                    }, // Increased width for longer text format
+                    {
+                      field: "mentorship_time",
+                      headerName: "Mentoring Session Time",
+                      flex: 1,
+                      minWidth: 150,
+                    },
+                    {
+                      field: "telegramstatus",
+                      headerName: "Status",
+                      flex: 1,
+                      minWidth: 100,
+                    },
                     {
                       field: "zoom_link",
                       headerName: "Zoom Link",
                       flex: 1,
                       minWidth: 200,
                       renderCell: (params) => (
-                        <a href={params.value} target="_blank" rel="noopener noreferrer">
+                        <a
+                          href={params.value}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           {params.value !== "N/A" ? "Join Meeting" : "No Link"}
                         </a>
                       ),
@@ -518,7 +568,10 @@ const handleConfirmDate = async () => {
                         <div>
                           <Button
                             variant="contained"
-                            style={{ backgroundColor: colors.greenAccent[500], marginRight: "8px" }}
+                            style={{
+                              backgroundColor: colors.greenAccent[500],
+                              marginRight: "8px",
+                            }}
                             onClick={() => handleAcceptClick(params.row)}
                           >
                             Accept
@@ -618,7 +671,11 @@ const handleConfirmDate = async () => {
                       renderCell: (params) => {
                         const { row } = params;
                         return row.status === "Accepted" && row.zoom_link ? (
-                          <a href={row.zoom_link} target="_blank" rel="noopener noreferrer">
+                          <a
+                            href={row.zoom_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             <Chip label="Join" color="primary" />
                           </a>
                         ) : (
@@ -686,65 +743,69 @@ const handleConfirmDate = async () => {
               }}
             >
               <DataGrid
-                  rows={rows}
-                  columns={[
-                    {
-                      field: "team_name",
-                      headerName: "Social Enterprise",
-                      flex: 1,
-                      minWidth: 200,
-                    },
-                    {
-                      field: "mentor_name",
-                      headerName: "Mentor",
-                      width: 200,
-                    },
-                    {
-                      field: "program_name",
-                      headerName: "Program",
-                      width: 150,
-                    },
-                    {
-                      field: "mentoring_session_date",
-                      headerName: "Date",
-                      width: 150,
-                    },
-                    {
-                      field: "mentoring_session_time",
-                      headerName: "Time",
-                      width: 150,
-                    },
-                    {
-                      field: "status",
-                      headerName: "Status",
-                      width: 150,
-                      renderCell: (params) => {
-                        let color = "default";
-                        if (params.value === "Pending SE") color = "warning";
-                        if (params.value === "Accepted") color = "success";
-                        if (params.value === "Declined") color = "error";
+                rows={rows}
+                columns={[
+                  {
+                    field: "team_name",
+                    headerName: "Social Enterprise",
+                    flex: 1,
+                    minWidth: 200,
+                  },
+                  {
+                    field: "mentor_name",
+                    headerName: "Mentor",
+                    width: 200,
+                  },
+                  {
+                    field: "program_name",
+                    headerName: "Program",
+                    width: 150,
+                  },
+                  {
+                    field: "mentoring_session_date",
+                    headerName: "Date",
+                    width: 150,
+                  },
+                  {
+                    field: "mentoring_session_time",
+                    headerName: "Time",
+                    width: 150,
+                  },
+                  {
+                    field: "status",
+                    headerName: "Status",
+                    width: 150,
+                    renderCell: (params) => {
+                      let color = "default";
+                      if (params.value === "Pending SE") color = "warning";
+                      if (params.value === "Accepted") color = "success";
+                      if (params.value === "Declined") color = "error";
 
-                        return <Chip label={params.value} color={color} />;
-                      },
+                      return <Chip label={params.value} color={color} />;
                     },
-                    {
-                      field: "zoom_link",
-                      headerName: "Zoom Link",
-                      width: 250,
-                      renderCell: (params) => {
-                        const { row } = params;
-                        return row.status === "Accepted" && row.zoom_link ? (
-                          <a href={row.zoom_link} target="_blank" rel="noopener noreferrer">
-                            <Chip label="Join" color="primary" />
-                          </a>
-                        ) : (
-                          "N/A"
-                        );
-                      },
+                  },
+                  {
+                    field: "zoom_link",
+                    headerName: "Zoom Link",
+                    width: 250,
+                    renderCell: (params) => {
+                      const { row } = params;
+                      return row.status === "Accepted" && row.zoom_link ? (
+                        <a
+                          href={row.zoom_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Chip label="Join" color="primary" />
+                        </a>
+                      ) : (
+                        "N/A"
+                      );
                     },
-                  ]}
-                  pageSize={5}
-                  rowsPerPageOptions={[5, 10]}
+                  },
+                ]}
+                pageSize={5}
+                rowsPerPageOptions={[5, 10]}
               />
             </Box>
           ) : (
@@ -894,7 +955,9 @@ const handleConfirmDate = async () => {
                           },
                           "& .MuiInputBase-input": { color: "#000" },
                           "& .MuiInputLabel-root": { color: "#000" },
-                          "& .MuiInputLabel-root.Mui-focused": { color: "#000" },
+                          "& .MuiInputLabel-root.Mui-focused": {
+                            color: "#000",
+                          },
                         },
                       },
                     }}
@@ -918,7 +981,9 @@ const handleConfirmDate = async () => {
                           },
                           "& .MuiInputBase-input": { color: "#000" },
                           "& .MuiInputLabel-root": { color: "#000" },
-                          "& .MuiInputLabel-root.Mui-focused": { color: "#000" },
+                          "& .MuiInputLabel-root.Mui-focused": {
+                            color: "#000",
+                          },
                         },
                       },
                     }}

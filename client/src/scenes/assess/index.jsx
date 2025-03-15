@@ -14,12 +14,13 @@ import {
   FormControlLabel,
   Alert,
   Skeleton,
+  Snackbar,
 } from "@mui/material";
 import { tokens } from "../../theme";
 import { DataGrid } from "@mui/x-data-grid";
 import Header from "../../components/Header";
 
-const EvaluatePage = ({userRole}) => {
+const EvaluatePage = ({ userRole }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [openSelectDialog, setOpenSelectDialog] = useState(false); // For SE selection dialog
@@ -52,6 +53,8 @@ const EvaluatePage = ({userRole}) => {
     );
   };
 
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+
   const handleSubmitEvaluations = async () => {
     if (!selectedPrograms.length) {
       console.error("❌ ERROR: No programs selected!");
@@ -73,9 +76,7 @@ const EvaluatePage = ({userRole}) => {
       );
     } finally {
       handleCloseMentorshipDialog();
-      setTimeout(() => {
-        window.location.reload();
-      }, 500); // Adjust delay if needed
+      setSnackbarOpen(true);
     }
   };
 
@@ -85,6 +86,9 @@ const EvaluatePage = ({userRole}) => {
 
   const handleCloseMentorshipDialog = () => {
     setOpenMentorshipDialog(false);
+    setTimeout(() => {
+      window.location.reload();
+    }, 500); // Adjust delay if needed
     setSelectedPrograms([]); // Reset selected programs when closing
   };
 
@@ -129,9 +133,12 @@ const EvaluatePage = ({userRole}) => {
 
         let response;
         if (userRole === "Mentor") {
-          response = await axios.get("http://localhost:4000/getMentorEvaluations", {
-            params: { mentor_id: userSession.id },
-          });
+          response = await axios.get(
+            "http://localhost:4000/getMentorEvaluations",
+            {
+              params: { mentor_id: userSession.id },
+            }
+          );
         } else if (userRole === "LSEED") {
           response = await axios.get("http://localhost:4000/getAllEvaluations");
         }
@@ -252,6 +259,9 @@ const EvaluatePage = ({userRole}) => {
   // Close the SE selection dialog
   const handleCloseSelectDialog = () => {
     setOpenSelectDialog(false);
+    setTimeout(() => {
+      window.location.reload();
+    }, 500); // Adjust delay if needed
   };
 
   // Start evaluation after SE selection
@@ -471,6 +481,9 @@ const EvaluatePage = ({userRole}) => {
     setSelectedSEs([]);
     setCurrentSEIndex(0);
     setEvaluations({});
+    setTimeout(() => {
+      window.location.reload();
+    }, 500); // Adjust delay if needed
   };
 
   {
@@ -518,11 +531,35 @@ const EvaluatePage = ({userRole}) => {
     );
   }
 
+  const columnsmentor = [
+    { field: "mentor", headerName: "Mentor", flex: 1 },
+    { field: "evaluator", headerName: "Evaluator", flex: 1 },
+    { field: "acknowledged", headerName: "Acknowledged", flex: 1 },
+    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
+    {
+      field: "action",
+      headerName: "Action",
+      flex: 1,
+      renderCell: (params) => (
+        <Button
+          variant="contained"
+          style={{ backgroundColor: colors.primary[600], color: "white" }}
+        >
+          View
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <Box m="20px">
-      <Header 
+      <Header
         title={userRole === "LSEED" ? "Evaluate Mentors" : "Evaluate SE"}
-        subtitle={userRole === "LSEED" ? "View and Manage mentor evaluations" : "Evaluate Social Enterprises based on key criteria"}
+        subtitle={
+          userRole === "LSEED"
+            ? "View and Manage mentor evaluations"
+            : "Evaluate Social Enterprises based on key criteria"
+        }
       />
 
       <Box display="flex" flexDirection="column" alignItems="center" gap={4}>
@@ -591,45 +628,53 @@ const EvaluatePage = ({userRole}) => {
               gap: "8px", // Add spacing between items
             }}
           >
-          {isLoadingPrograms ? (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {[1, 2, 3].map((index) => (
-                <Skeleton key={index} variant="rectangular" height={40} />
-              ))}
-            </Box>
-          ) : programs.length === 0 ? (
-            <Typography>No programs found.</Typography>
-          ) : (
-            programs.map((program) => (
-              <FormControlLabel
-                key={program.id}
-                control={
-                  <Checkbox
-                    checked={selectedPrograms.includes(program.id)}
-                    onChange={() => handleProgramSelectionChange(program.id, program.mentors)}
-                    sx={{
-                      color: "#000",
-                      "&.Mui-checked": { color: "#000" },
-                    }}
-                  />
-                }
-                label={
-                  <span>
-                    <strong>{program.name}</strong>
-                    <br />
-                    <span style={{ fontSize: "0.9em", color: "#666" }}>
-                      Evaluation for: {program.mentors.map((mentor) => mentor.name).join(", ")}
+            {isLoadingPrograms ? (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {[1, 2, 3].map((index) => (
+                  <Skeleton key={index} variant="rectangular" height={40} />
+                ))}
+              </Box>
+            ) : programs.length === 0 ? (
+              <Typography>No programs found.</Typography>
+            ) : (
+              programs.map((program) => (
+                <FormControlLabel
+                  key={program.id}
+                  control={
+                    <Checkbox
+                      checked={selectedPrograms.includes(program.id)}
+                      onChange={() =>
+                        handleProgramSelectionChange(
+                          program.id,
+                          program.mentors
+                        )
+                      }
+                      sx={{
+                        color: "#000",
+                        "&.Mui-checked": { color: "#000" },
+                      }}
+                    />
+                  }
+                  label={
+                    <span>
+                      <strong>{program.name}</strong>
+                      <br />
+                      <span style={{ fontSize: "0.9em", color: "#666" }}>
+                        Evaluation for:{" "}
+                        {program.mentors
+                          .map((mentor) => mentor.name)
+                          .join(", ")}
+                      </span>
                     </span>
-                  </span>
-                }
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  marginBottom: "8px",
-                }}
-              />
-            ))
-          )}
+                  }
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    marginBottom: "8px",
+                  }}
+                />
+              ))
+            )}
             {error && <Alert severity="error">{error}</Alert>}
           </DialogContent>
           <DialogActions
@@ -669,15 +714,31 @@ const EvaluatePage = ({userRole}) => {
           </DialogActions>
         </Dialog>
 
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={3000} // ✅ Disappears after 3 seconds
+          onClose={() => setSnackbarOpen(false)}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+          <Alert
+            onClose={() => setSnackbarOpen(false)}
+            severity="success"
+            sx={{ width: "100%" }}
+          >
+            Successfully Submitted!
+          </Alert>
+        </Snackbar>
+
         {/* Show DataGrid only if userRole is Mentor */}
         {userRole === "Mentor" && (
           <Box
             width="80%"
             height="250px"
             sx={{
-              "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header": {
-                backgroundColor: colors.blueAccent[700] + " !important",
-              },
+              "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
+                {
+                  backgroundColor: colors.blueAccent[700] + " !important",
+                },
               "& .MuiDataGrid-root": { border: "none" },
               "& .MuiDataGrid-cell": { borderBottom: "none" },
               "& .name-column--cell": { color: colors.greenAccent[300] },
@@ -700,15 +761,16 @@ const EvaluatePage = ({userRole}) => {
             />
           </Box>
         )}
-        {/* Show DataGrid only if userRole is Mentor */}
+        {/* Show DataGrid only if userRole is LSEED */}
         {userRole === "LSEED" && (
           <Box
             width="80%"
             height="250px"
             sx={{
-              "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header": {
-                backgroundColor: colors.blueAccent[700] + " !important",
-              },
+              "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
+                {
+                  backgroundColor: colors.blueAccent[700] + " !important",
+                },
               "& .MuiDataGrid-root": { border: "none" },
               "& .MuiDataGrid-cell": { borderBottom: "none" },
               "& .name-column--cell": { color: colors.greenAccent[300] },
@@ -727,6 +789,59 @@ const EvaluatePage = ({userRole}) => {
             <DataGrid
               rows={evaluationsData}
               columns={columns}
+              getRowId={(row) => row.id}
+            />
+          </Box>
+        )}
+
+        {userRole === "LSEED" && (
+          <Box
+            width="80%"
+            height="250px"
+            sx={{
+              "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
+                {
+                  backgroundColor: colors.blueAccent[700] + " !important",
+                },
+              "& .MuiDataGrid-root": { border: "none" },
+              "& .MuiDataGrid-cell": { borderBottom: "none" },
+              "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                backgroundColor: colors.blueAccent[700] + " !important",
+              },
+              "& .MuiDataGrid-virtualScroller": {
+                backgroundColor: colors.primary[400],
+              },
+              "& .MuiDataGrid-footerContainer": {
+                borderTop: "none",
+                backgroundColor: colors.blueAccent[700],
+              },
+            }}
+          >
+            <DataGrid
+              rows={[
+                {
+                  id: 1,
+                  mentor: "John Doe",
+                  evaluator: "Jane Smith",
+                  acknowledged: "Yes",
+                  evaluation_date: "3/1/2025",
+                },
+                {
+                  id: 2,
+                  mentor: "Emily Johnson",
+                  evaluator: "Mark Lee",
+                  acknowledged: "No",
+                  evaluation_date: "5/1/2025",
+                },
+                {
+                  id: 3,
+                  mentor: "Michael Brown",
+                  evaluator: "Sarah Davis",
+                  acknowledged: "Yes",
+                  evaluation_date: "4/1/2025",
+                },
+              ]} // ✅ Mock data directly inside DataGrid
+              columns={columnsmentor}
               getRowId={(row) => row.id}
             />
           </Box>
@@ -1049,7 +1164,11 @@ const EvaluatePage = ({userRole}) => {
               Cancel
             </Button>
             <Button
-              onClick={handleSubmit}
+              onClick={() => {
+                handleSubmit(); // ✅ Call the submit function
+                handleCloseEvaluateDialog(); // ✅ Close the dialog after submission
+                setSnackbarOpen(true);
+              }}
               variant="contained"
               disabled={isSubmitDisabled()}
               sx={{
