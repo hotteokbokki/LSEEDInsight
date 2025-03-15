@@ -41,6 +41,7 @@ const { getMentorshipsByMentorId,
         getPreviousSEWithMentors, 
         getMentorshipCount,
         getPendingSchedules,
+        getSchedulingHistory,
        } = require("./controllers/mentorshipsController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getEvaluationsByMentorID, 
@@ -353,126 +354,58 @@ async function sendMessageWithOptions(chatId, message, options) {
   }
 }
 
-// ==========================
-// 📌 FUNCTION 2: Send Mentorship Scheduling Message (New Function)
-// ==========================
-async function sendMentorshipMessage(chatId, mentorship_id, mentorship_date, mentorship_time) {
+async function sendMentorshipMessage(chatId, mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link) {
   console.log(`📩 Sending Mentorship Schedule Message to Chat ID: ${chatId}`);
+
   if (!Array.isArray(mentorship_date)) {
-    mentorship_date = [mentorship_date]; // Convert to array if it's a single value
+    mentorship_date = [mentorship_date];
   }
-  try {
-    const mentorshipQuery = `
-    SELECT mentorship_date, mentorship_time
-    FROM mentorships 
-    WHERE mentorship_id = $1
-`;
-const mentorshipResult = await pgDatabase.query(mentorshipQuery, [mentorship_id]);
 
-if (mentorshipResult.rows.length === 0) {
-    console.error(`❌ No mentorship found for ID ${mentorship_id}`);
+  // Fetch mentor name
+  const mentorResult = await pgDatabase.query(
+    `SELECT mentor_firstname, mentor_lastname FROM mentors 
+     WHERE mentor_id = (SELECT mentor_id FROM mentorships WHERE mentorship_id = $1)`,
+    [mentorship_id]
+  );
+  
+  if (mentorResult.rows.length === 0) {
+    console.error(`❌ Mentor not found for mentorship ID ${mentorship_id}`);
     return;
-}
-const mentorship = mentorshipResult.rows[0];
+  }
 
-    // Fetch Mentor Name
-    const mentorResult = await pgDatabase.query(
-      `SELECT mentor_firstname, mentor_lastname, mentor_id FROM mentors 
-       WHERE mentor_id = (SELECT mentor_id FROM mentorships WHERE mentorship_id = $1)`,
-      [mentorship_id]
-    );
+  const mentorName = `${mentorResult.rows[0].mentor_firstname} ${mentorResult.rows[0].mentor_lastname}`;
 
-    if (mentorResult.rows.length === 0) {
-      console.error(`❌ Mentor not found for mentorship ID ${mentorship_id}`);
-      return;
-    }
-
-    const mentorName = `${mentorResult.rows[0].mentor_firstname} ${mentorResult.rows[0].mentor_lastname}`;
-    const mentorId = mentorResult.rows[0].mentor_id;
-
-    // Fetch SE (Social Enterprise) Name
-    const seResult = await pgDatabase.query(
-      `SELECT team_name FROM socialenterprises 
-       WHERE se_id = (SELECT se_id FROM mentorships WHERE mentorship_id = $1)`,
-      [mentorship_id]
-    );
-
-    if (seResult.rows.length === 0) {
-      console.error(`❌ SE not found for mentorship ID ${mentorship_id}`);
-      return;
-    }
-
-    const seName = seResult.rows[0].team_name;
-
-    // Find the latest scheduled date
-    const latestIndex = mentorship.mentorship_date.reduce((latestIdx, date, idx) => {
-      return new Date(date) > new Date(mentorship.mentorship_date[latestIdx]) ? idx : latestIdx;
-    }, 0);
-
-    // Format the latest date
-    const formattedDate = new Date(mentorship.mentorship_date[latestIndex]).toLocaleDateString("en-US", {
+  // Format mentorship date properly
+  const formattedDate = mentorship_date.map(dateStr => {
+    return new Date(dateStr).toLocaleDateString("en-US", {
       month: "long",
       day: "2-digit",
       year: "numeric",
     });
+  }).join(", ");
 
-    // Get the latest time
-    let formattedTime = "N/A";
-    if (Array.isArray(mentorship.mentorship_time) && mentorship.mentorship_time.length > latestIndex) {
-      const timeStr = mentorship.mentorship_time[latestIndex]; // ✅ Use latestIndex
-      formattedTime = new Date(`1970-01-01T${timeStr}`).toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true, // ✅ Converts to 12-hour format with AM/PM
-      });
-    }
+  const message = `📅 *New Mentorship Meeting Request*\n\n`
+    + `🔹 *Mentor:* ${mentorName}\n`
+    + `🔹 *Schedule:* ${formattedDate} - ${mentorship_time}\n`
+    + `🔹 *Zoom Link:* ${zoom_link || "N/A"}\n\n`
+    + `📌 Please confirm your availability:`;
 
-    // Construct the final message
-    const message = `📅 *New Mentorship Meeting Request*\n\n`
-      + `🔹 *Mentor:* ${mentorName}\n`
-      + `🔹 *Social Enterprise:* ${seName}\n`
-      + `🔹 *Schedule:* ${formattedDate} - ${formattedTime}\n`;
+  // ✅ Inline keyboard options for Accept/Decline
+  const options = [
+    [
+      { text: `✅ Accept`, callback_data: `acceptschedule_${mentoring_session_id}` },
+      { text: `❌ Decline`, callback_data: `declineschedule_${mentoring_session_id}` }
+    ]
+  ];
 
-    // ✅ Validate that chat_id and message_id exist before deletion
-    if (mentorship.chat_id && mentorship.message_id) {
-      console.log(`📌 Attempting to delete message ${mentorship.message_id} in chat ${mentorship.chat_id}`);
+  // ✅ Use sendMessageWithOptions to send the message with buttons
+  const sentMessageSchedule = await sendMessageWithOptions(chatId, message, options);
 
-      try {
-          const response = await axios.post(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`,
-              {
-                  chat_id: mentorship.chat_id,
-                  message_id: mentorship.message_id,
-              }
-          );
-          console.log("✅ Message deleted successfully:", response.data);
-      } catch (error) {
-          console.error("❌ Failed to delete message:", error.response?.data || error.message);
-      }
-    } else {
-      console.log("⚠️ Skipping message deletion: No valid chat_id or message_id found.");
-    }
-
-    // Generate inline keyboard dynamically for multiple dates
-    const inline_keyboard = mentorship_date.map(dateObj => {
-      const dateStr = new Date(dateObj).toISOString().split("T")[0]; // Convert Date to 'YYYY-MM-DD' format
-      return [
-        { text: `✅ Accept`, callback_data: `acceptschedule_${mentorship_id}_${dateStr.replace(/-/g, "")}` },
-        { text: `❌ Decline`, callback_data: `declineschedule_${mentorship_id}_${dateStr.replace(/-/g, "")}` }
-      ];
-    });
-
-    const payload = {
-      chat_id: chatId,
-      text: message,
-      parse_mode: "Markdown",
-      reply_markup: JSON.stringify({ inline_keyboard }) // Ensure proper JSON format
-    };
-
-    const response = await axios.post(TELEGRAM_API_URL, payload);
-    console.log("✅ Mentorship message sent:", response.data);
-  } catch (error) {
-    console.error("❌ Error sending mentorship message:", error.response?.data || error.message);
+  userStates[chatId] = { sentMessageScheduleId: sentMessageSchedule.message_id };
+  if (sentMessageSchedule) {
+    console.log("✅ Mentorship message sent with buttons:", sentMessageSchedule);
+  } else {
+    console.error("❌ Failed to send mentorship message.");
   }
 }
 
@@ -857,14 +790,13 @@ app.get("/protected", requireAuth, (req, res) => {
 // Route to get all mentorship schedules
 app.get("/api/mentorSchedules", async (req, res) => {
   try {
-    const schedules = await mentorshipController.getMentorSchedules();
+    const schedules = await getSchedulingHistory();
     res.json(schedules);
   } catch (error) {
     console.error("❌ Error fetching mentor schedules:", error);
     res.status(500).json({ error: "Failed to fetch mentor schedules" });
   }
 });
-
 
 app.get("/api/admin/users", async (req, res) => {
   try {
@@ -1183,19 +1115,41 @@ app.post("/api/remove-mentorship", async (req, res) => {
   }
 
   try {
+    // Begin transaction
+    await pgDatabase.query("BEGIN");
+
+    // Delete related records in accepted_schedule
+    const deleteAcceptedSchedule = `
+      DELETE FROM accepted_schedule 
+      WHERE mentor_id = $1 AND se_id = $2
+    `;
+    await pgDatabase.query(deleteAcceptedSchedule, [mentorId, seId]);
+
+    // Delete related records in declined_schedule
+    const deleteDeclinedSchedule = `
+      DELETE FROM declined_schedule 
+      WHERE mentor_id = $1 AND se_id = $2
+    `;
+    await pgDatabase.query(deleteDeclinedSchedule, [mentorId, seId]);
+
     // Delete mentorship record
-    const deleteQuery = `
+    const deleteMentorship = `
       DELETE FROM mentorships 
       WHERE mentor_id = $1 AND se_id = $2
     `;
-    const result = await pgDatabase.query(deleteQuery, [mentorId, seId]);
+    const result = await pgDatabase.query(deleteMentorship, [mentorId, seId]);
 
     if (result.rowCount === 0) {
+      await pgDatabase.query("ROLLBACK");
       return res.status(404).json({ error: "No mentorship record found." });
     }
 
+    // Commit transaction
+    await pgDatabase.query("COMMIT");
+
     res.json({ success: true, message: "Mentorship removed successfully!" });
   } catch (error) {
+    await pgDatabase.query("ROLLBACK");
     console.error("❌ Error removing mentorship:", error.message);
     res.status(500).json({ error: "Internal Server Error", details: error.message });
   }
@@ -1752,87 +1706,69 @@ app.post("/webhook", async (req, res) => {
         if (data.startsWith("acceptschedule_")) {
           const parts = data.split("_");
       
-          if (parts.length < 3) {
+          await deletePreviousMessages(chatId, ["sentMessageScheduleId"]);
+      
+          if (parts.length < 2) {
               console.error("❌ Invalid accept callback format:", data);
               return res.sendStatus(400);
           }
       
-          const mentorship_id = parts[1];
-          const accepted_date = `${parts[2].slice(0, 4)}-${parts[2].slice(4, 6)}-${parts[2].slice(6, 8)}`;
+          const mentoring_session_id = parts[1]; // Use mentoring_session_id instead of mentorship_id
           const messageId = callbackQuery.message.message_id;
       
-          console.log(`🔹 Accepting mentorship ${mentorship_id} on ${accepted_date}`);
+          console.log(`🔹 Accepting mentoring session ${mentoring_session_id}`);
           console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
       
           try {
               // ✅ Step 1: Validate UUID format
-              if (!/^[0-9a-fA-F-]{36}$/.test(mentorship_id)) {
-                  console.error(`❌ Invalid mentorship_id format: ${mentorship_id}`);
+              if (!/^[0-9a-fA-F-]{36}$/.test(mentoring_session_id)) {
+                  console.error(`❌ Invalid mentoring_session_id format: ${mentoring_session_id}`);
                   return res.sendStatus(400);
               }
       
-              // ✅ Step 2: Fetch mentorship details (including zoom_link)
+              // ✅ Step 2: Fetch mentoring session details
               const result = await pgDatabase.query(
-                `SELECT mentorship_id, mentorship_date, se_id, mentor_id, zoom_link
-                 FROM mentorships
-                 WHERE mentorship_id = $1`,
-                [mentorship_id]
-            );
-      
-              if (result.rows.length === 0) {
-                  console.warn(`⚠️ No mentorship found for ID ${mentorship_id}`);
-                  return res.sendStatus(404);
-              }
-      
-              const { mentorship_date, se_id, mentor_id, zoom_link } = result.rows[0];
-              console.log(`🔍 Found Mentorship - SE ID: ${se_id}, Mentor ID: ${mentor_id}, Zoom Link: ${zoom_link || 'Not provided'}`);
-      
-              // ✅ Step 3: Fetch mentor details
-              const mentorResult = await pgDatabase.query(
-                  `SELECT mentor_firstname, mentor_lastname FROM mentors WHERE mentor_id = $1`,
-                  [mentor_id]
+                  `SELECT ms.mentoring_session_id, m.mentorship_id, se.team_name, 
+                          CONCAT(mt.mentor_firstname, ' ', mt.mentor_lastname) AS mentor_name,
+                          p.name AS program_name,
+                          TO_CHAR(ms.mentoring_session_date, 'FMMonth DD, YYYY') AS mentoring_session_date,
+                          CONCAT(TO_CHAR(ms.start_time, 'HH24:MI'), ' - ', TO_CHAR(ms.end_time, 'HH24:MI')) AS mentoring_session_time,
+                          ms.status, ms.zoom_link
+                   FROM mentorships m
+                   JOIN mentoring_session ms ON m.mentorship_id = ms.mentorship_id
+                   JOIN mentors mt ON m.mentor_id = mt.mentor_id
+                   JOIN socialenterprises se ON m.se_id = se.se_id
+                   JOIN programs p ON p.program_id = se.program_id
+                   WHERE ms.mentoring_session_id = $1`,
+                  [mentoring_session_id]
               );
       
-              if (mentorResult.rows.length === 0) {
-                  console.error(`❌ Mentor not found for ID ${mentor_id}`);
+              if (result.rows.length === 0) {
+                  console.warn(`⚠️ No mentoring session found for ID ${mentoring_session_id}`);
                   return res.sendStatus(404);
               }
       
-              const mentorName = `${mentorResult.rows[0].mentor_firstname} ${mentorResult.rows[0].mentor_lastname}`;
-              console.log(`👤 Mentor Name: ${mentorName}`);
+              const sessionDetails = result.rows[0];
+              console.log(`🔍 Found Mentoring Session:`, sessionDetails);
       
-              // ✅ Step 4: Delete the Telegram message
-              console.log(`🗑️ Attempting to delete message ID: ${messageId}`);
-              await deleteMessage(chatId, messageId);
-              console.log(`✅ Message ${messageId} deleted successfully.`);
-
-              console.log("Length: ", mentorship_date.length)
+              // ✅ Step 4: Update mentoring session status
+              await pgDatabase.query(
+                  `UPDATE mentoring_session SET status = 'Accepted' WHERE mentoring_session_id = $1`,
+                  [mentoring_session_id]
+              );
       
-              // ✅ Step 5: Handle database updates
-              if (mentorship_date.length === 1) {
-                  await pgDatabase.query(
-                      `UPDATE mentorships SET telegramstatus = 'Acknowledged' WHERE mentorship_id = $1`,
-                      [mentorship_id]
-                  );
-              } else {
-                  await pgDatabase.query(
-                      `UPDATE mentorships SET mentorship_date = array_remove(mentorship_date, $1)
-                      WHERE mentorship_id = $2`,
-                      [accepted_date, mentorship_id]
-                  );
-              }
-      
-              // ✅ Step 6: Send confirmation message with Zoom link
-              const confirmationMessage = `📅 *Confirmed Mentor Schedule*\n\n` +
-                  `🔹 *Schedule:* ${accepted_date}\n` +
-                  `🔹 *Mentor:* ${mentorName}\n` +
-                  `📹 *Zoom Link:* ${zoom_link || 'No Zoom link provided'}`;
+              // ✅ Step 5: Send confirmation message with details
+              const confirmationMessage = `📅 *Confirmed Mentoring Session*\n\n` +
+                  `🔹 *Date:* ${sessionDetails.mentoring_session_date}\n` +
+                  `🔹 *Time:* ${sessionDetails.mentoring_session_time}\n` +
+                  `🔹 *Mentor:* ${sessionDetails.mentor_name}\n` +
+                  `🔹 *Team:* ${sessionDetails.team_name}\n` +
+                  `📹 *Zoom Link:* ${sessionDetails.zoom_link || 'No Zoom link provided'}`;
       
               await sendMessage(chatId, confirmationMessage);
               console.log("✅ Acceptance process completed successfully.");
-              
+      
               res.sendStatus(200);
-
               return;
           } catch (error) {
               console.error("❌ Error handling acceptance:", error);
@@ -1840,82 +1776,82 @@ app.post("/webhook", async (req, res) => {
               await sendMessage(chatId, "❌ Failed to process acceptance.");
               return res.sendStatus(500);
           }
-      }
+        }
       
         
         if (data.startsWith("declineschedule_")) {
-          const parts = data.split("_");
+            const parts = data.split("_");
         
-          if (parts.length < 3) {
-            console.error("❌ Invalid decline callback format:", data);
-            return res.sendStatus(400);
-          }
+            await deletePreviousMessages(chatId, ["sentMessageScheduleId"]);
         
-          const mentorship_id = parts[1];
-          const declined_date = `${parts[2].slice(0, 4)}-${parts[2].slice(4, 6)}-${parts[2].slice(6, 8)}`;
-          const messageId = callbackQuery.message.message_id; // Store message ID to delete
-        
-          console.log(`🔹 SE declined mentorship ${mentorship_id} on ${declined_date}`);
-        
-          try {
-            // Validate UUID
-            if (!/^[0-9a-fA-F-]{36}$/.test(mentorship_id)) {
-              console.error(`❌ Invalid mentorship_id format: ${mentorship_id}`);
-              return res.sendStatus(400);
+            if (parts.length < 2) {
+                console.error("❌ Invalid decline callback format:", data);
+                return res.sendStatus(400);
             }
         
-            // Fetch mentorship details
-            const result = await pgDatabase.query(
-              `SELECT mentorship_id, mentorship_date, se_id, mentor_id 
-               FROM mentorships 
-               WHERE mentorship_id = $1`,
-              [mentorship_id]
-            );
+            const mentoring_session_id = parts[1]; // Use mentoring_session_id instead of mentorship_id
+            const messageId = callbackQuery.message.message_id;
         
-            if (result.rows.length === 0) {
-              console.warn(`⚠️ No mentorship found for ID ${mentorship_id}`);
-              return res.sendStatus(404);
+            console.log(`🔹 Declining mentoring session ${mentoring_session_id}`);
+            console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
+        
+            try {
+                // ✅ Step 1: Validate UUID format
+                if (!/^[0-9a-fA-F-]{36}$/.test(mentoring_session_id)) {
+                    console.error(`❌ Invalid mentoring_session_id format: ${mentoring_session_id}`);
+                    return res.sendStatus(400);
+                }
+        
+                // ✅ Step 2: Fetch mentoring session details
+                const result = await pgDatabase.query(
+                    `SELECT ms.mentoring_session_id, m.mentorship_id, se.team_name, 
+                            CONCAT(mt.mentor_firstname, ' ', mt.mentor_lastname) AS mentor_name,
+                            p.name AS program_name,
+                            TO_CHAR(ms.mentoring_session_date, 'FMMonth DD, YYYY') AS mentoring_session_date,
+                            CONCAT(TO_CHAR(ms.start_time, 'HH24:MI'), ' - ', TO_CHAR(ms.end_time, 'HH24:MI')) AS mentoring_session_time,
+                            ms.status, ms.zoom_link
+                    FROM mentorships m
+                    JOIN mentoring_session ms ON m.mentorship_id = ms.mentorship_id
+                    JOIN mentors mt ON m.mentor_id = mt.mentor_id
+                    JOIN socialenterprises se ON m.se_id = se.se_id
+                    JOIN programs p ON p.program_id = se.program_id
+                    WHERE ms.mentoring_session_id = $1`,
+                    [mentoring_session_id]
+                );
+        
+                if (result.rows.length === 0) {
+                    console.warn(`⚠️ No mentoring session found for ID ${mentoring_session_id}`);
+                    return res.sendStatus(404);
+                }
+        
+                const sessionDetails = result.rows[0];
+                console.log(`🔍 Found Mentoring Session:`, sessionDetails);
+        
+                // ✅ Step 4: Update mentoring session status to "Declined"
+                await pgDatabase.query(
+                    `UPDATE mentoring_session SET status = 'Declined' WHERE mentoring_session_id = $1`,
+                    [mentoring_session_id]
+                );
+        
+                // ✅ Step 5: Send decline confirmation message with details
+                const declineMessage = `⚠️ *Mentoring Session Declined*\n\n` +
+                    `🔹 *Date:* ${sessionDetails.mentoring_session_date}\n` +
+                    `🔹 *Time:* ${sessionDetails.mentoring_session_time}\n` +
+                    `🔹 *Mentor:* ${sessionDetails.mentor_name}\n` +
+                    `🔹 *Team:* ${sessionDetails.team_name}\n` +
+                    `📹 *Zoom Link:* ${sessionDetails.zoom_link || 'No Zoom link provided'}`;
+        
+                await sendMessage(chatId, declineMessage);
+                console.log("✅ Decline process completed successfully.");
+        
+                res.sendStatus(200);
+                return;
+            } catch (error) {
+                console.error("❌ Error handling decline:", error);
+                console.log("🛑 Error Stack:", error.stack);
+                await sendMessage(chatId, "❌ Failed to process decline.");
+                return res.sendStatus(500);
             }
-        
-            const { mentorship_date, se_id, mentor_id } = result.rows[0];
-        
-            // ✅ Delete the original message (New Mentorship Request)
-            await deleteMessage(chatId, messageId);
-        
-            if (mentorship_date.length === 1) {
-              // ✅ Only 1 date exists → Set telegramstatus to "Declined"
-              await pgDatabase.query(
-                `UPDATE mentorships 
-                 SET telegramstatus = 'Declined'
-                 WHERE mentorship_id = $1`,
-                [mentorship_id]
-              );
-              await sendMessage(chatId, "❌ You have declined the mentorship schedule meeting.");
-            } else {
-              // ✅ More than 1 date → Move declined date to `declined_schedule`
-              await pgDatabase.query(
-                `INSERT INTO declined_schedule (mentorship_id, se_id, mentorship_date, mentor_id)
-                 VALUES ($1, $2, $3, $4)`,
-                [mentorship_id, se_id, declined_date, mentor_id]
-              );
-        
-              // ✅ Remove the declined date from the mentorship's date array
-              await pgDatabase.query(
-                `UPDATE mentorships 
-                 SET mentorship_date = array_remove(mentorship_date, $1)
-                 WHERE mentorship_id = $2`,
-                [declined_date, mentorship_id]
-              );
-        
-              await sendMessage(chatId, `❌ The mentorship date *${declined_date}* has been declined.`);
-            }
-        
-            return res.sendStatus(200);
-          } catch (error) {
-            console.error("❌ Error handling decline:", error);
-            await sendMessage(chatId, "❌ Failed to process decline.");
-            return res.sendStatus(500);
-          }
         }
         
         if (data.startsWith("mentoreval_")) {
@@ -2054,34 +1990,6 @@ app.post("/webhook", async (req, res) => {
           }
         }
         
-        if (data.startsWith("acknowledgeschedule_")) {
-          const mentorship_id = data.split("_")[1];
-      
-          console.log(`🔹 SE acknowledged mentorship ${mentorship_id}`);
-      
-          // Update status in the database
-          await pgDatabase.query(`
-            UPDATE mentorships 
-            SET telegramstatus = 'Acknowledged'
-            WHERE mentorship_id = $1
-          `, [mentorship_id]);
-      
-          sendMessage(chatId, "✅ You have acknowledged the mentorship schedule meeting.");
-        } else if (data.startsWith("declineschedule_")) {
-          const mentorship_id = data.split("_")[1];
-      
-          console.log(`🔹 SE declined mentorship ${mentorship_id}`);
-      
-          // Update status in the database
-          await pgDatabase.query(`
-            UPDATE mentorships 
-            SET telegramstatus = 'Declined'
-            WHERE mentorship_id = $1
-          `, [mentorship_id]);
-      
-          sendMessage(chatId, "❌ You have declined the mentorship schedule.");
-        }
-
       } catch (error) {
         console.error("Error processing callback query:", error);
         return res.sendStatus(500); // Internal server error if callback fails
@@ -2198,28 +2106,53 @@ app.post("/api/mentorships", async (req, res) => {
 });
 
 app.post("/approveMentorship", async (req, res) => {
-  console.log("🔹 Received request at /approveMentorship");
-  const { mentorship_id } = req.body;
+  const { mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link } = req.body;
 
-  if (!mentorship_id) {
-    return res.status(400).json({ error: "Mentorship ID is required" });
-  }
+  console.log("Date: ", mentorship_date)
+  console.log("Time: ", mentorship_time)
+  console.log("Zoom: ", zoom_link)
 
   try {
     const query = `
-      UPDATE mentorships 
-      SET status = 'Pending SE Acknowledgement'
-      WHERE mentorship_id = $1
+      UPDATE mentoring_session
+      SET status = 'Pending SE'  -- Change this to the desired status
+      WHERE mentoring_session_id = $1
       RETURNING *;
     `;
 
-    const { rows } = await pgDatabase.query(query, [mentorship_id]);
+    const { rows } = await pgDatabase.query(query, [mentoring_session_id]);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Mentorship not found" });
     }
 
-    console.log(`✅ Mentorship ${mentorship_id} approved by LSEED. Waiting for SE acknowledgment.`);
+    // Retrieve chat IDs for the mentorship
+    const chatQuery = `
+        SELECT se.chatid AS chatid
+        FROM telegrambot AS mentor
+        JOIN mentorships ON mentorships.mentor_id = mentor.mentor_id
+        JOIN telegrambot AS se ON mentorships.se_id = se."se_ID"  
+        WHERE mentorships.mentorship_id = $1;
+    `;
+
+    const chatResult = await pgDatabase.query(chatQuery, [mentorship_id]);
+
+    if (chatResult.rows.length > 0) {
+      console.log(`📩 Sending Mentorship Message to ${chatResult.rows.length} Chat IDs`);
+
+      // Loop through all chat IDs and send the message
+      for (const row of chatResult.rows) {
+        const chatId = row.chatid;
+
+        console.log(`📤 Sending Mentorship Message to Chat ID: ${chatId}`);
+
+        // Send the mentorship invitation
+        sendMentorshipMessage(chatId, mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link);
+      }
+    } else {
+      console.warn(`⚠️ No chat IDs found for mentorship ${mentorship_id}`);
+    }
+        
     res.json({ message: "Mentorship approved", mentorship: rows[0] });
   } catch (error) {
     console.error("Database error:", error);
@@ -2227,35 +2160,80 @@ app.post("/approveMentorship", async (req, res) => {
   }
 });
 
-app.post("/updateMentorshipDate", async (req, res) => {
-  console.log("🔹 Received request at /updateMentorshipDate");
-  const { mentorship_id, mentorship_date, mentorship_time, zoom_link } = req.body;
+app.post("/declineMentorship", async (req, res) => {
+  const { mentoring_session_id } = req.body;
 
-  if (!mentorship_id || !mentorship_date || !mentorship_time) {
-    return res.status(400).json({ error: "Mentorship ID and date are required" });
-  }
-
-  console.log("Mentor ID: ", mentorship_id)
+  console.log("Declining mentorship with ID:", mentoring_session_id);
 
   try {
     const query = `
-      UPDATE mentorships 
-      SET mentorship_date = array_append(mentorship_date ,$1),
-          mentorship_time = array_append(mentorship_time, $2),
-          zoom_link = $3
-      WHERE mentorship_id = $4
+      UPDATE mentoring_session
+      SET status = 'Declined'  -- Use 'Declined' instead of 'Decline'
+      WHERE mentoring_session_id = $1
       RETURNING *;
     `;
 
-    const { rows } = await pgDatabase.query(query, [mentorship_date, mentorship_time, zoom_link, mentorship_id]);
+    const { rows } = await pgDatabase.query(query, [mentoring_session_id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Mentorship session not found" });
+    }
+
+    res.json({ message: "Mentorship declined", mentorship: rows[0] });
+  } catch (error) {
+    console.error("Database error:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/updateMentorshipDate", async (req, res) => {
+  console.log("🔹 Received request at /updateMentorshipDate");
+
+  let { mentorship_id, mentoring_session_date, start_time, end_time, zoom_link } = req.body;
+
+  if (!mentorship_id || !mentoring_session_date || !start_time || !end_time) {
+    return res.status(400).json({ error: "Mentorship ID, date, start time, and end time are required" });
+  }
+
+  // Convert times to full timestamp format
+  start_time = `${mentoring_session_date} ${start_time}:00`;
+  end_time = `${mentoring_session_date} ${end_time}:00`;
+
+  console.log("📌 Mentorship ID:", mentorship_id);
+  console.log("📅 Date:", mentoring_session_date);
+  console.log("⏰ Start Time:", start_time);
+  console.log("⏳ End Time:", end_time);
+  console.log("🔗 Zoom Link:", zoom_link);
+
+  try {
+    const query = `
+      INSERT INTO mentoring_session (
+          start_time,
+          end_time,
+          zoom_link,
+          mentoring_session_date,
+          mentorship_id
+      )
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *;
+    `;
+
+    const { rows } = await pgDatabase.query(query, [
+      start_time,
+      end_time,
+      zoom_link,
+      mentoring_session_date,
+      mentorship_id
+    ]);
+
     if (rows.length === 0) {
       return res.status(404).json({ error: "Mentorship not found" });
     }
 
-    console.log(`✅ Mentorship ${mentorship_id} updated to "Pending".`);
+    console.log(`✅ Mentorship ${mentorship_id} scheduled successfully.`);
     res.json({ message: "Mentorship date updated", mentorship: rows[0] });
   } catch (error) {
-    console.error("Database error:", error);
+    console.error("❌ Database error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -2265,23 +2243,32 @@ app.get("/getMentorshipDates", async (req, res) => {
   // console.log("server/getMentorshipDate: mentor_id: ", mentor_id);
 
   try {
-    const result = await pgDatabase.query(
-      `SELECT 
-          m.mentorship_id, 
-          m.mentorship_date, 
-          m.mentorship_time, 
-          se.team_name, 
-          p.name,
-          COALESCE(array_agg(a.mentorship_date), '{}') AS accepted_dates  
-      FROM public.mentorships m
-      LEFT JOIN public.accepted_schedule a ON m.mentorship_id = a.mentorship_id
-      LEFT JOIN public.socialenterprises se ON m.se_id = se.se_id
-      LEFT JOIN public.programs p ON se.program_id = p.program_id
-      WHERE m.mentor_id = $1
-      GROUP BY m.mentorship_id, se.team_name, p.name`,
-      [mentor_id]
-    );
-    // console.log("server/getMentorshipDate: results: ", result.rows);
+
+    const query = `
+          SELECT 
+              ms.mentoring_session_id,
+              m.mentorship_id, 
+              se.team_name, 
+              CONCAT(mt.mentor_firstname, ' ', mt.mentor_lastname) AS mentor_name,
+              p.name AS program_name,
+              ms.mentoring_session_date,
+              CONCAT(
+                to_char(ms.start_time, 'HH24:MI'), ' - ', 
+                to_char(ms.end_time, 'HH24:MI')
+              ) AS mentoring_session_time,
+              ms.status,
+              ms.zoom_link
+          FROM mentorships m
+          JOIN mentoring_session ms ON m.mentorship_id = ms.mentorship_id
+          JOIN mentors mt ON m.mentor_id = mt.mentor_id
+          JOIN socialenterprises se ON m.se_id = se.se_id
+          JOIN programs p ON p.program_id = se.program_id
+          WHERE m.mentor_id = $1
+          ORDER BY ms.mentoring_session_date, ms.start_time;
+    `;
+
+    const result = await pgDatabase.query(query, [mentor_id]);
+
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching mentorship dates:", error);

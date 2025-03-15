@@ -19,13 +19,7 @@ import {
   DialogActions,
   CircularProgress,
   Typography,
-  TableContainer,
-  Paper,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
+  Stack,
   Chip,
   Snackbar,
   TextField,
@@ -60,6 +54,9 @@ const Scheduling = ({ userRole }) => {
   const [selectedTime, setSelectedTime] = useState(dayjs().startOf("hour"));
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [zoomLink, setZoomLink] = useState("");
+  const [startTime, setStartTime] = useState(null);
+  const [endTime, setEndTime] = useState(null);
+  const [error, setError] = useState("");
   const handleRedirect = () =>
     window.open("https://calendar.google.com", "_blank");
   const handleOpenModal = () => setOpenModal(true);
@@ -75,35 +72,75 @@ const Scheduling = ({ userRole }) => {
   const [mentorSchedules, setMentorSchedules] = useState([]);
   const [mentorHistory, setMentorHistory] = useState([]);
 
-  const handleAcceptClick = async (mentorshipId) => {
+  const handleAcceptClick = async (schedule) => {
     try {
+      const { id: mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link } = schedule; // Rename for clarity
+
       const response = await fetch("http://localhost:4000/approveMentorship", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mentorship_id: mentorshipId }),
+        body: JSON.stringify({ mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link}), // Ensure backend expects this key
       });
   
-      if (!response.ok) throw new Error("Failed to approve mentorship");
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        throw new Error(`Failed to approve mentorship: ${errorMessage}`);
+      }
   
-      // Show success Snackbar
-      setSnackbarOpen(true);
+      console.log("Mentorship approved successfully");
   
-      // Refresh the DataGrid
-      setMentorSchedules((prev) =>
-        prev.map((schedule) =>
-          schedule.mentorship_id === mentorshipId
-            ? { ...schedule, telegramstatus: "Pending SE Acknowledgement" }
-            : schedule
-        )
-      );
+      // Show success message
+      setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
+  
     } catch (error) {
       console.error("Error approving mentorship:", error);
     }
   };
 
-  const handleDeclineClick = (id) => {
-    // Handle the decline action here
-    console.log("Declined schedule with ID:", id);
+  const handleDeclineClick = async (schedule) => {
+    try {
+      const { id: mentoring_session_id } = schedule; // Extract ID
+  
+      console.log("Declining schedule with ID:", mentoring_session_id);
+  
+      const response = await fetch("http://localhost:4000/declineMentorship", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mentoring_session_id }),
+      });
+  
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        throw new Error(`Failed to decline mentorship: ${errorMessage}`);
+      }
+  
+      console.log("Mentorship declined successfully");
+  
+      // Show success message
+      setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
+  
+    } catch (error) {
+      console.error("Error declining mentorship:", error);
+    }
+  };
+
+  const handleStartTimeChange = (newStartTime) => {
+    setStartTime(newStartTime);
+    if (endTime && newStartTime && newStartTime.isAfter(endTime)) {
+      setError("End time must be later than start time.");
+      setEndTime(null);
+    } else {
+      setError("");
+    }
+  };
+
+  const handleEndTimeChange = (newEndTime) => {
+    if (newEndTime && startTime && newEndTime.isBefore(startTime)) {
+      setError("End time must be later than start time.");
+    } else {
+      setError("");
+      setEndTime(newEndTime);
+    }
   };
 
   const handleCloseDialog = () => {
@@ -129,6 +166,7 @@ const Scheduling = ({ userRole }) => {
   useEffect(() => {
     const fetchMentorshipDates = async () => {
       try {
+        console.log("mentor_id: ", user.id)
         const response = await axios.get(
           "http://localhost:4000/getMentorshipDates",
           {
@@ -145,6 +183,60 @@ const Scheduling = ({ userRole }) => {
 
     fetchMentorshipDates();
   }, [user.id]); // Refetch when the user changes
+
+  useEffect(() => {
+    const fetchScheduleHistory = async () => {
+      try {
+        console.log("Fetching all mentor schedules...");
+        const response = await axios.get("http://localhost:4000/api/mentorSchedules");
+        console.log("📅 History Schedules:", response.data);
+        setMentorHistory(response.data || []);
+      } catch (error) {
+        console.error("❌ Error fetching mentor schedules:", error);
+        setMentorHistory([]);
+      }
+    };
+  
+    fetchScheduleHistory();
+  }, []); // Runs once when the component mounts
+
+  const rows = mentorshipDates.map((mentorship) => {
+    const formattedDate = new Date(mentorship.mentoring_session_date).toLocaleDateString("en-US", {
+      month: "long",
+      day: "2-digit",
+      year: "numeric",
+    });
+  
+    return {
+      id: mentorship.mentoring_session_id, // Unique identifier (session-based)
+      team_name: mentorship.team_name || "N/A",
+      mentor_name: mentorship.mentor_name || "N/A",
+      program_name: mentorship.program_name || "N/A",
+      mentoring_session_date: formattedDate,
+      mentoring_session_time: mentorship.mentoring_session_time || "N/A",
+      status: mentorship.status || "N/A",
+      zoom_link: mentorship.zoom_link || "N/A",
+    };
+  });
+
+  const historyRows = mentorHistory.map((mentorship) => {
+    const formattedDate = new Date(mentorship.mentoring_session_date).toLocaleDateString("en-US", {
+      month: "long",
+      day: "2-digit",
+      year: "numeric",
+    });
+  
+    return {
+      id: mentorship.mentoring_session_id, // Unique identifier (session-based)
+      team_name: mentorship.team_name || "N/A",
+      mentor_name: mentorship.mentor_name || "N/A",
+      program_name: mentorship.program_name || "N/A",
+      mentoring_session_date: formattedDate,
+      mentoring_session_time: mentorship.mentoring_session_time || "N/A",
+      status: mentorship.status || "N/A",
+      zoom_link: mentorship.zoom_link || "N/A",
+    };
+  });
 
   const fetchSocialEnterprises = async () => {
     try {
@@ -184,47 +276,48 @@ const Scheduling = ({ userRole }) => {
     }
   };
 
-  const handleConfirmDate = async () => {
-    if (!selectedSE || !selectedDate) return;
-    else if (!zoomLink) {
-      alert("Please enter a valid Zoom link.");
-      return;
-    }
+const handleConfirmDate = async () => {
+  if (!selectedSE || !selectedDate) return;
+  else if (!zoomLink) {
+    alert("Please enter a valid Zoom link.");
+    return;
+  }
 
-    try {
-      setIsLoading(true);
-      const formattedTime = selectedTime ? selectedTime.format("HH:mm") : null;
-      const response = await fetch(
-        "http://localhost:4000/updateMentorshipDate",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mentorship_id: selectedSE.id,
-            mentorship_date: selectedDate.format("YYYY-MM-DD"),
-            mentorship_time: formattedTime,
-            zoom_link: zoomLink
-          }),
-        }
-      );
+  try {
+    setIsLoading(true);
+    const formattedDate = selectedDate ? selectedDate.format("YYYY-MM-DD") : null;
+    const formattedStartTime = startTime ? startTime.format("HH:mm") : null;
+    const formattedEndTime = endTime ? endTime.format("HH:mm") : null;
 
-      if (!response.ok) throw new Error("Failed to update mentorship date");
+    const response = await fetch("http://localhost:4000/updateMentorshipDate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mentorship_id: selectedSE.id,
+        mentoring_session_date: formattedDate, // Match backend field name
+        start_time: formattedStartTime, // Ensure this is properly formatted
+        end_time: formattedEndTime, // Ensure this is properly formatted
+        zoom_link: zoomLink,
+      }),
+    });
 
-      // Show success Snackbar
-      setSnackbarOpen(true);
+    if (!response.ok) throw new Error("Failed to update mentorship date");
 
-      // Close the dialog
-      handleCloseSEModal();
+    // Show success Snackbar
+    setSnackbarOpen(true);
 
-      setTimeout(() => {
-        window.location.reload();
-      }, 500); // Adjust delay if needed
-    } catch (error) {
-      console.error("Error updating mentorship date:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    // Close the dialog
+    handleCloseSEModal();
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 500); // Adjust delay if needed
+  } catch (error) {
+    console.error("❌ Error updating mentorship date:", error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   useEffect(() => {
     fetch("/auth/session-check", {
@@ -389,34 +482,33 @@ const Scheduling = ({ userRole }) => {
             >
               {mentorSchedules.length > 0 ? (
                 <DataGrid
-                  rows={mentorSchedules.map((schedule, index) => {
-                    const mentorshipDateTime = new Date(schedule.mentorship_time);
-                    const mentorshipDate = mentorshipDateTime.toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    });
-                    const mentorshipTime = mentorshipDateTime.toLocaleTimeString("en-US", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: false,
-                    });
-                  
-                    return {
-                      id: `${schedule.mentorship_id}-${mentorshipDate}-${mentorshipTime}`, // Unique ID
-                      mentor_name: schedule.mentor_name || "Unknown Mentor",
-                      se_name: schedule.se_name || "Unknown SE",
-                      mentorship_date: mentorshipDate,
-                      mentorship_time: mentorshipTime,
-                      telegramstatus: schedule.status || "Pending",
-                    };
-                  })}
+                  rows={mentorSchedules.map((schedule) => ({
+                    id: schedule.mentoring_session_id, // Use mentoring_session_id as unique ID
+                    mentor_name: schedule.mentor_name || "Unknown Mentor",
+                    mentorship_id: schedule.mentorship_id,
+                    se_name: schedule.team_name || "Unknown SE", // Use team_name from SQL
+                    mentorship_date: schedule.mentoring_session_date, // Already formatted in SQL
+                    mentorship_time: schedule.mentoring_session_time, // Already formatted in SQL
+                    telegramstatus: schedule.status || "Pending",
+                    zoom_link: schedule.zoom_link || "N/A",
+                  }))}
                   columns={[
                     { field: "mentor_name", headerName: "Mentor Name", flex: 1, minWidth: 200 },
                     { field: "se_name", headerName: "Social Enterprise", flex: 1, minWidth: 200 },
-                    { field: "mentorship_date", headerName: "Mentorship Date", flex: 1, minWidth: 150 },
-                    { field: "mentorship_time", headerName: "Mentorship Time", flex: 1, minWidth: 150 },
+                    { field: "mentorship_date", headerName: "Mentoring Session Date", flex: 1, minWidth: 200 }, // Increased width for longer text format
+                    { field: "mentorship_time", headerName: "Mentoring Session Time", flex: 1, minWidth: 150 },
                     { field: "telegramstatus", headerName: "Status", flex: 1, minWidth: 100 },
+                    {
+                      field: "zoom_link",
+                      headerName: "Zoom Link",
+                      flex: 1,
+                      minWidth: 200,
+                      renderCell: (params) => (
+                        <a href={params.value} target="_blank" rel="noopener noreferrer">
+                          {params.value !== "N/A" ? "Join Meeting" : "No Link"}
+                        </a>
+                      ),
+                    },
                     {
                       field: "action",
                       headerName: "Action",
@@ -478,64 +570,65 @@ const Scheduling = ({ userRole }) => {
                 }}
               >
                 <DataGrid
-                  rows={mentorHistory.flatMap((history, index) =>
-                    history.mentorship_dates.map((date, i) => ({
-                      id: `${index}-${i}`,
-                      mentor_name: history.mentor_name,
-                      social_enterprise: history.social_enterprise,
-                      mentorship_date: new Date(date).toLocaleDateString(
-                        "en-US",
-                        {
-                          month: "long",
-                          day: "2-digit",
-                          year: "numeric",
-                        }
-                      ),
-                      status: history.status[i], // Add status for each mentorship date
-                    }))
-                  )}
+                  rows={historyRows}
                   columns={[
                     {
-                      field: "mentor_name",
-                      headerName: "Mentor Name",
-                      flex: 1,
-                      minWidth: 200,
-                    },
-                    {
-                      field: "social_enterprise",
+                      field: "team_name",
                       headerName: "Social Enterprise",
                       flex: 1,
                       minWidth: 200,
                     },
                     {
-                      field: "mentorship_date",
-                      headerName: "Mentorship Date",
-                      flex: 1,
-                      minWidth: 200,
+                      field: "mentor_name",
+                      headerName: "Mentor",
+                      width: 200,
                     },
-
+                    {
+                      field: "program_name",
+                      headerName: "Program",
+                      width: 150,
+                    },
+                    {
+                      field: "mentoring_session_date",
+                      headerName: "Date",
+                      width: 150,
+                    },
+                    {
+                      field: "mentoring_session_time",
+                      headerName: "Time",
+                      width: 150,
+                    },
                     {
                       field: "status",
                       headerName: "Status",
-                      flex: 1,
-                      minWidth: 150,
-                      renderCell: (params) => (
-                        <Typography
-                          color={
-                            params.value === "accepted"
-                              ? colors.greenAccent[500]
-                              : colors.redAccent[500]
-                          }
-                        >
-                          {params.value.charAt(0).toUpperCase() +
-                            params.value.slice(1)}
-                        </Typography>
-                      ),
+                      width: 150,
+                      renderCell: (params) => {
+                        let color = "default";
+                        if (params.value === "Pending SE") color = "warning";
+                        if (params.value === "Accepted") color = "success";
+                        if (params.value === "Declined") color = "error";
+
+                        return <Chip label={params.value} color={color} />;
+                      },
+                    },
+                    {
+                      field: "zoom_link",
+                      headerName: "Zoom Link",
+                      width: 250,
+                      renderCell: (params) => {
+                        const { row } = params;
+                        return row.status === "Accepted" && row.zoom_link ? (
+                          <a href={row.zoom_link} target="_blank" rel="noopener noreferrer">
+                            <Chip label="Join" color="primary" />
+                          </a>
+                        ) : (
+                          "N/A"
+                        );
+                      },
                     },
                   ]}
                   pageSize={5}
                   rowsPerPageOptions={[5, 10]}
-                  autoHeight
                 />
               </Box>
             ) : (
@@ -593,147 +686,65 @@ const Scheduling = ({ userRole }) => {
               }}
             >
               <DataGrid
-                rows={mentorshipDates.map((mentorship, index) => ({
-                  id: index,
-                  team_name: mentorship.team_name || "N/A",
-                  program_name: mentorship.name || "N/A",
-                  mentorship_date:
-                    Array.isArray(mentorship.mentorship_date) &&
-                    Array.isArray(mentorship.mentorship_time)
-                      ? mentorship.mentorship_date.map((date, idx) => {
-                          if (!date) return "N/A"; // ✅ Handle missing dates
+                  rows={rows}
+                  columns={[
+                    {
+                      field: "team_name",
+                      headerName: "Social Enterprise",
+                      flex: 1,
+                      minWidth: 200,
+                    },
+                    {
+                      field: "mentor_name",
+                      headerName: "Mentor",
+                      width: 200,
+                    },
+                    {
+                      field: "program_name",
+                      headerName: "Program",
+                      width: 150,
+                    },
+                    {
+                      field: "mentoring_session_date",
+                      headerName: "Date",
+                      width: 150,
+                    },
+                    {
+                      field: "mentoring_session_time",
+                      headerName: "Time",
+                      width: 150,
+                    },
+                    {
+                      field: "status",
+                      headerName: "Status",
+                      width: 150,
+                      renderCell: (params) => {
+                        let color = "default";
+                        if (params.value === "Pending SE") color = "warning";
+                        if (params.value === "Accepted") color = "success";
+                        if (params.value === "Declined") color = "error";
 
-                          const formattedDate = new Date(
-                            date
-                          ).toLocaleDateString("en-US", {
-                            month: "long",
-                            day: "2-digit",
-                            year: "numeric",
-                          });
-
-                          // ✅ Fix: Use raw PostgreSQL time instead of `new Date()`
-                          const formattedTime =
-                            Array.isArray(mentorship.mentorship_time) &&
-                            mentorship.mentorship_time.length > idx &&
-                            mentorship.mentorship_time[idx]
-                              ? new Date(
-                                  `1970-01-01T${mentorship.mentorship_time[idx]}`
-                                ).toLocaleTimeString("en-US", {
-                                  hour: "numeric",
-                                  minute: "2-digit",
-                                  hour12: true, // ✅ Convert to 12-hour format with AM/PM
-                                })
-                              : "N/A";
-
-                          return formattedTime !== "N/A"
-                            ? `${formattedDate} - ${formattedTime}`
-                            : formattedDate;
-                        })
-                      : ["N/A"],
-
-                  // ✅ Fix Approved Dates: Same logic as Pending Dates
-                  accepted_dates:
-                    Array.isArray(mentorship.accepted_dates) &&
-                    Array.isArray(mentorship.mentorship_time)
-                      ? mentorship.accepted_dates.map((date, idx) => {
-                          if (!date) return "N/A"; // ✅ Handle missing dates
-
-                          const formattedDate = new Date(
-                            date
-                          ).toLocaleDateString("en-US", {
-                            month: "long",
-                            day: "2-digit",
-                            year: "numeric",
-                          });
-
-                          // ✅ Fix: Use raw PostgreSQL time instead of `new Date()`
-                          const formattedTime =
-                            Array.isArray(mentorship.mentorship_time) &&
-                            mentorship.mentorship_time.length > idx &&
-                            mentorship.mentorship_time[idx]
-                              ? new Date(
-                                  `1970-01-01T${mentorship.mentorship_time[idx]}`
-                                ).toLocaleTimeString("en-US", {
-                                  hour: "numeric",
-                                  minute: "2-digit",
-                                  hour12: true, // ✅ Convert to 12-hour format with AM/PM
-                                })
-                              : "N/A";
-
-                          return formattedTime !== "N/A"
-                            ? `${formattedDate} - ${formattedTime}`
-                            : formattedDate;
-                        })
-                      : ["N/A"],
-                }))}
-                columns={[
-                  {
-                    field: "team_name",
-                    headerName: "Social Enterprise",
-                    flex: 1,
-                    minWidth: 200,
-                  },
-                  {
-                    field: "program_name",
-                    headerName: "Program",
-                    width: 150, //
-                  },
-                  {
-                    field: "mentorship_date",
-                    headerName: "Pending Dates",
-                    width: 500,
-                    renderCell: (params) => (
-                      <Box
-                        sx={{
-                          display: "flex",
-                          overflowX: "auto",
-                          maxWidth: "100%",
-                          whiteSpace: "nowrap",
-                          padding: "4px",
-                        }}
-                      >
-                        {Array.isArray(params.value) && params.value.length > 0
-                          ? params.value.map((entry, idx) => (
-                              <Chip
-                                key={idx}
-                                label={entry}
-                                sx={{ marginRight: "4px" }}
-                              />
-                            ))
-                          : "N/A"}
-                      </Box>
-                    ),
-                  },
-                  {
-                    field: "accepted_dates",
-                    headerName: "Approved Dates",
-                    width: 350, // ✅ Same width as Pending Dates
-                    renderCell: (params) => (
-                      <Box
-                        sx={{
-                          display: "flex",
-                          overflowX: "auto", // ✅ Enables scrolling inside the cell
-                          maxWidth: "100%",
-                          whiteSpace: "nowrap",
-                          padding: "4px",
-                        }}
-                      >
-                        {params.value.length > 0
-                          ? params.value.map((date, idx) => (
-                              <Chip
-                                key={idx}
-                                label={date}
-                                sx={{ marginRight: "4px" }}
-                              />
-                            ))
-                          : "N/A"}
-                      </Box>
-                    ),
-                  },
-                ]}
-                pageSize={5}
-                rowsPerPageOptions={[5, 10]}
-                autoHeight
+                        return <Chip label={params.value} color={color} />;
+                      },
+                    },
+                    {
+                      field: "zoom_link",
+                      headerName: "Zoom Link",
+                      width: 250,
+                      renderCell: (params) => {
+                        const { row } = params;
+                        return row.status === "Accepted" && row.zoom_link ? (
+                          <a href={row.zoom_link} target="_blank" rel="noopener noreferrer">
+                            <Chip label="Join" color="primary" />
+                          </a>
+                        ) : (
+                          "N/A"
+                        );
+                      },
+                    },
+                  ]}
+                  pageSize={5}
+                  rowsPerPageOptions={[5, 10]}
               />
             </Box>
           ) : (
@@ -864,56 +875,63 @@ const Scheduling = ({ userRole }) => {
 
             {/* Time Selection */}
             <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <TimePicker
-                label="Select Time"
-                value={selectedTime}
-                onChange={(newTime) => setSelectedTime(newTime)}
-                slotProps={{
-                  textField: {
-                    sx: {
-                      "& .MuiOutlinedInput-root": {
-                        "& fieldset": { borderColor: "#000" },
-                        "&:hover fieldset": { borderColor: "#000" },
-                        "&.Mui-focused fieldset": { borderColor: "#000" },
+              <Stack spacing={2}>
+                <Stack spacing={2} direction="row">
+                  {/* Start Time Picker */}
+                  <TimePicker
+                    label="Start Time"
+                    value={startTime}
+                    onChange={handleStartTimeChange}
+                    slotProps={{
+                      textField: {
+                        error: !!error,
+                        helperText: error,
+                        sx: {
+                          "& .MuiOutlinedInput-root": {
+                            "& fieldset": { borderColor: "#000" },
+                            "&:hover fieldset": { borderColor: "#000" },
+                            "&.Mui-focused fieldset": { borderColor: "#000" },
+                          },
+                          "& .MuiInputBase-input": { color: "#000" },
+                          "& .MuiInputLabel-root": { color: "#000" },
+                          "& .MuiInputLabel-root.Mui-focused": { color: "#000" },
+                        },
                       },
-                      "& .MuiInputBase-input": { color: "#000" },
-                      "& .MuiInputLabel-root": { color: "#000" },
-                      "& .MuiInputLabel-root.Mui-focused": { color: "#000" },
-                    },
-                    InputProps: {
-                      sx: {
-                        "& .MuiSvgIcon-root": { color: "#000" },
+                    }}
+                  />
+
+                  {/* End Time Picker */}
+                  <TimePicker
+                    label="End Time"
+                    value={endTime}
+                    minTime={startTime} // Ensures end time is not before start time
+                    onChange={handleEndTimeChange}
+                    slotProps={{
+                      textField: {
+                        error: !!error,
+                        helperText: error,
+                        sx: {
+                          "& .MuiOutlinedInput-root": {
+                            "& fieldset": { borderColor: "#000" },
+                            "&:hover fieldset": { borderColor: "#000" },
+                            "&.Mui-focused fieldset": { borderColor: "#000" },
+                          },
+                          "& .MuiInputBase-input": { color: "#000" },
+                          "& .MuiInputLabel-root": { color: "#000" },
+                          "& .MuiInputLabel-root.Mui-focused": { color: "#000" },
+                        },
                       },
-                    },
-                  },
-                  popper: {
-                    sx: {
-                      "& .MuiPaper-root": {
-                        backgroundColor: "#1E4D2B",
-                        color: "#fff",
-                      },
-                      "& .MuiClock-root": { backgroundColor: "#1E4D2B" },
-                      "& .MuiClockNumber-root": { color: "#fff" },
-                      "& .MuiClockPointer-root": { backgroundColor: "#fff" },
-                      "& .MuiClockPointer-thumb": { backgroundColor: "#fff" },
-                      "& .MuiIconButton-root": { color: "#fff" },
-                      "& .MuiTypography-root": { color: "#fff" },
-                      "& .Mui-selected": {
-                        backgroundColor: "#fff !important", // White background for selected time
-                        color: "#1E4D2B !important", // Green text to match theme
-                      },
-                    },
-                  },
-                  actionBar: {
-                    actions: ["cancel", "accept"],
-                    sx: {
-                      "& .MuiButton-root": {
-                        color: "#fff", // White "OK" button
-                      },
-                    },
-                  },
-                }}
-              />
+                    }}
+                  />
+                </Stack>
+
+                {/* Error Message */}
+                {error && (
+                  <Typography color="error" sx={{ fontSize: "14px" }}>
+                    {error}
+                  </Typography>
+                )}
+              </Stack>
             </LocalizationProvider>
           </Box>
 
