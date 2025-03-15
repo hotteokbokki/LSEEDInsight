@@ -1118,20 +1118,6 @@ app.post("/api/remove-mentorship", async (req, res) => {
     // Begin transaction
     await pgDatabase.query("BEGIN");
 
-    // Delete related records in accepted_schedule
-    const deleteAcceptedSchedule = `
-      DELETE FROM accepted_schedule 
-      WHERE mentor_id = $1 AND se_id = $2
-    `;
-    await pgDatabase.query(deleteAcceptedSchedule, [mentorId, seId]);
-
-    // Delete related records in declined_schedule
-    const deleteDeclinedSchedule = `
-      DELETE FROM declined_schedule 
-      WHERE mentor_id = $1 AND se_id = $2
-    `;
-    await pgDatabase.query(deleteDeclinedSchedule, [mentorId, seId]);
-
     // Delete mentorship record
     const deleteMentorship = `
       DELETE FROM mentorships 
