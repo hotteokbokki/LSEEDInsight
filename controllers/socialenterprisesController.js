@@ -91,6 +91,48 @@ exports.getAllSocialEnterprisesForComparison = async () => {
   }
 };
 
+exports.getFlaggedSEs = async () => {
+  try {
+
+    // Query to get a social enterprise by se_id
+    const query = `
+        WITH recent_evaluations AS (
+            SELECT 
+                e.se_id,  
+                AVG(ec.rating) AS avg_rating
+            FROM public.evaluation_categories ec
+            JOIN public.evaluations e ON ec.evaluation_id = e.evaluation_id
+            WHERE e.evaluation_type = 'Social Enterprise'
+            GROUP BY e.se_id
+        )
+        SELECT 
+            se.se_id,
+            TRIM(se.team_name) AS team_name,
+            TRIM(COALESCE(se.abbr, se.team_name)) AS abbr,  
+            COALESCE(ROUND(re.avg_rating, 2), 0) AS avg_rating,  -- Replace NULL with 0
+            CASE 
+                WHEN re.avg_rating IS NULL THEN 'No Evaluations'  
+                ELSE 'Evaluated'
+            END AS evaluation_status  -- Mark SEs without evaluations
+        FROM public.socialenterprises se
+        LEFT JOIN recent_evaluations re ON se.se_id = re.se_id
+        WHERE re.avg_rating < 1.5 OR re.avg_rating IS NULL  -- 🔥 Filter condition
+        ORDER BY avg_rating ASC, evaluation_status DESC;
+        `;
+    const res = await pgDatabase.query(query);
+    
+    if (!res.rows || res.rows.length === 0) {
+      console.error("No SE found");
+      return null; // or return an empty array []
+    }
+
+    return res.rows; // return the list of users
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    return null; // or handle error more gracefully
+  }
+};
+
 exports.getAllSocialEnterpriseswithMentorID = async (mentor_id) => {
   try {
       const query = `

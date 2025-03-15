@@ -793,6 +793,33 @@ exports.getAverageScoreForAllSEPerCategory = async () => {
     }
 };
 
+exports.getAcknowledgementData = async () => {
+    try {
+        const query = `
+            SELECT 
+                CONCAT(t.mentor_id, '-', t."se_ID") AS batch,  -- Grouping by mentor_id and se_ID
+                s.team_name AS se_name,  -- Get the social enterprise name
+                COUNT(CASE WHEN e."isAcknowledge" = true THEN 1 END) * 100.0 / COUNT(*) AS acknowledged_percentage,
+                COUNT(CASE WHEN e."isAcknowledge" = false THEN 1 END) * 100.0 / COUNT(*) AS pending_percentage
+            FROM evaluations e
+            JOIN telegrambot t 
+                ON e.mentor_id = t.mentor_id 
+                AND e.se_id = t."se_ID"  
+            JOIN socialenterprises s 
+                ON t."se_ID" = s.se_id  -- Join with SE table to get the name
+            WHERE e.evaluation_type = 'Social Enterprise'
+            GROUP BY t.mentor_id, t."se_ID", s.team_name
+            ORDER BY COUNT(CASE WHEN e."isAcknowledge" = true THEN 1 END) DESC  -- Sort by acknowledged evaluations
+            LIMIT 10;
+        `;
+        const result = await pgDatabase.query(query);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching top SE performance:", error);
+        return [];
+    }
+};
+
 exports.getImprovementScorePerMonthAnnually= async () => {
     try {
         const query = `

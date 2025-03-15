@@ -16,7 +16,8 @@ const { getSocialEnterprisesByProgram,
         getPreviousMonthSEWithOutMentors, 
         getAllSocialEnterpriseswithMentorID, 
         updateSERowUpdate, 
-        getAllSocialEnterprisesForComparison} = require("./controllers/socialenterprisesController");
+        getAllSocialEnterprisesForComparison,
+        getFlaggedSEs} = require("./controllers/socialenterprisesController");
 require("dotenv").config();
 const { getUsers, getUserName } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
@@ -65,7 +66,8 @@ const { getEvaluationsByMentorID,
         getTotalEvaluationCount,
         getPendingEvaluationCount,
         avgRatingPerSE,
-        getAcknowledgedEvaluationCount} = require("./controllers/evaluationsController.js");
+        getAcknowledgedEvaluationCount,
+        getAcknowledgementData} = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
@@ -475,6 +477,28 @@ app.get("/api/mentor-stats", async (req, res) => {
 app.get("/api/pending-schedules", async (req, res) => {
   try {
     const result = await getPendingSchedules();
+
+    res.json(result);
+  } catch (error) {
+    console.error("❌ Error fetching pending schedules:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/flagged-ses", async (req, res) => {
+  try {
+    const result = await getFlaggedSEs();
+
+    res.json(result);
+  } catch (error) {
+    console.error("❌ Error fetching pending schedules:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/ack-data", async (req, res) => {
+  try {
+    const result = await getAcknowledgementData();
 
     res.json(result);
   } catch (error) {

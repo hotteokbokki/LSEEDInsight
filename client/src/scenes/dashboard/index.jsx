@@ -8,6 +8,7 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AcknowledgmentChart from "../../components/AcknowledgmentChart";
 import TrafficIcon from "@mui/icons-material/Traffic";
 import Header from "../../components/Header";
+import { useNavigate } from "react-router-dom";
 import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
 import StatBox from "../../components/StatBox";
 import ProgressCircle from "../../components/ProgressCircle";
@@ -20,6 +21,10 @@ import listPlugin from "@fullcalendar/list";
 import { useState, useEffect } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
+import Diversity2OutlinedIcon from "@mui/icons-material/Diversity2Outlined";
+import AnalyticsOutlinedIcon from "@mui/icons-material/AnalyticsOutlined";
+import BusinessIcon from "@mui/icons-material/Business";
 import PendingActionsIcon from "@mui/icons-material/PendingActions";
 import axios from "axios";
 
@@ -33,6 +38,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [evaluations, setEvaluations] = useState([]);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     mentorWithoutMentorshipCount: [{ count: "0" }], // Default structure to prevent undefined errors
     mentorWithMentorshipCount: [{ count: "0" }],
@@ -44,18 +50,41 @@ const Dashboard = () => {
     previousUnassignedMentors: 0,
   });
   const [percentageIncrease, setPercentageIncrease] = useState("0%");
-
+  
   const alertColumns = [
     { field: "seName", headerName: "SE Name", flex: 2 },
-    { field: "averageScore", headerName: "Avg Score", flex: 1 },
-    { field: "lastEvaluated", headerName: "Last Evaluated", flex: 2 },
+    { 
+      field: "averageScore", 
+      headerName: "Avg Score", 
+      flex: 1,
+      renderCell: (params) => (
+        <Typography 
+          sx={{ 
+            color: params.value === 0 ? "gray" : params.value < 1.5 ? "red" : "black",
+            fontWeight: "bold"
+          }}
+        >
+          {params.value === 0 ? "No Evaluations" : params.value}
+        </Typography>
+      ),
+    },
+    { 
+      field: "lastEvaluated", 
+      headerName: "Last Evaluated", 
+      flex: 2,
+      renderCell: (params) => (
+        <Typography sx={{ color: params.value === "No Evaluations" ? "gray" : "black" }}>
+          {params.value}
+        </Typography>
+      ),
+    },
     { 
       field: "actions", 
       headerName: "Actions", 
       flex: 2,
       renderCell: (params) => (
         <Button variant="contained" color="error" onClick={() => handleAction(params.row.id)}>
-          Take Action
+          View SE
         </Button>
       )
     }
@@ -169,6 +198,35 @@ const Dashboard = () => {
   ];
 
   useEffect(() => {
+    const fetchFlaggedSE = async () => {
+      try {
+        const response = await axios.get(
+          "http://localhost:4000/api/flagged-ses"
+        );
+        const data = response.data; // No need for .json() with axios
+  
+        if (Array.isArray(data)) {
+          const formattedSEs = data.map(se => ({
+            id: se.se_id,  // Assuming se_id is unique
+            seName: se.team_name,
+            averageScore: se.avg_rating || 0,  // Default to 0 if no rating
+            lastEvaluated: se.evaluation_status,  // "No Evaluations" or "Evaluated"
+          }));
+  
+          setLowPerformingSEs(formattedSEs);
+        } else {
+          console.error("❌ Invalid mentor schedule format:", data);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching mentor schedules:", error);
+        setLowPerformingSEs([]);
+      }
+    };
+  
+    fetchFlaggedSE();
+  }, []);
+
+  useEffect(() => {
     const fetchMentorSchedules = async () => {
       try {
         const response = await axios.get(
@@ -193,8 +251,7 @@ const Dashboard = () => {
   }, []); 
 
   const handleAction = (id) => {
-    console.log("Taking action on SE:", id);
-    // Implement logic (e.g., send support recommendation)
+    navigate(`/se-analytics/${id}`);
   };
 
   const columns = [
@@ -383,13 +440,55 @@ const Dashboard = () => {
         </Box>
 
         {/* Total Social Enterprises */}
-        <Box gridColumn="span 3" display="flex" alignItems="center" justifyContent="center" bgcolor={colors.primary[400]}>
-          <StatBox title={stats.totalSocialEnterprises} subtitle="Total SEs" progress={1} increase="+0%" icon={<PersonAddIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />} />
+        <Box
+          flex="1 1 22%"
+          backgroundColor={colors.primary[400]}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          p="20px"
+        >
+          <Chip
+            label={`${stats.totalSocialEnterprises} involved ${stats.totalSocialEnterprises === 1 ? "Social Enterprise" : "Social Enterprises"}`}
+            icon={
+              <BusinessIcon 
+                sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // Force icon color
+              />
+            }
+            sx={{
+              fontSize: "16px",
+              p: "10px",
+              backgroundColor: colors.primary[400], // Set background explicitly
+              color: "white", // Force text color to white
+              "& .MuiChip-icon": { color: colors.greenAccent[500] } // Ensure icon color is applied
+            }}
+          />
         </Box>
 
         {/* Total Programs */}
-        <Box gridColumn="span 3" display="flex" alignItems="center" justifyContent="center" bgcolor={colors.primary[400]}>
-          <StatBox title={stats.totalPrograms} subtitle="No. of Programs" progress={1} increase="+0%" icon={<TrafficIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />} />
+        <Box
+          flex="1 1 22%"
+          backgroundColor={colors.primary[400]}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          p="20px"
+        >
+          <Chip
+            label={`${stats.totalPrograms} LSEED ${stats.totalPrograms === 1 ? "Program" : "Programs"}`}
+            icon={
+              <TrafficIcon 
+                sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // Force icon color
+              />
+            }
+            sx={{
+              fontSize: "16px",
+              p: "10px",
+              backgroundColor: colors.primary[400], // Set background explicitly
+              color: "white", // Force text color to white
+              "& .MuiChip-icon": { color: colors.greenAccent[500] } // Ensure icon color is applied
+            }}
+          />
         </Box>
 
         {/* SE Performance Trend Chart */}
@@ -469,7 +568,9 @@ const Dashboard = () => {
               "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
               "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
             }}>
-              {loading ? <Typography>Loading...</Typography> : <DataGrid rows={lowPerformingSEs} columns={alertColumns} />}
+              {loading ? <Typography>Loading...</Typography> : (
+                <DataGrid rows={lowPerformingSEs} columns={alertColumns} />
+              )}
             </Box>
           </Box>
 
@@ -511,6 +612,47 @@ const Dashboard = () => {
             </Box>
           </Box>
 
+        </Box>
+
+        {/* Quick Action Panel */}
+        <Box 
+          gridColumn="span 12" 
+          display="flex" 
+          justifyContent="space-between" 
+          alignItems="center" 
+          bgcolor={colors.primary[400]} 
+          p={2} 
+          borderRadius="8px"
+        >
+          <Typography variant="h4" fontWeight="bold">
+            Quick Actions Panel
+          </Typography>
+          <Box display="flex" gap={2}>
+            <Button 
+              variant="contained" 
+              color="primary" 
+              startIcon={<AnalyticsOutlinedIcon />} 
+              onClick={() => navigate("/analytics")}
+            >
+              View Analytics
+            </Button>
+            <Button 
+              variant="contained" 
+              color="secondary" 
+              startIcon={<Diversity2OutlinedIcon />} 
+              onClick={() => navigate("/socialenterprise")}
+            >
+              Social Enterprises
+            </Button>
+            <Button 
+              variant="contained" 
+              color="success" 
+              startIcon={<AssignmentTurnedInOutlinedIcon />} 
+              onClick={() => navigate("/assess")}
+            >
+              Evaluate Mentor
+            </Button>
+          </Box>
         </Box>
 
         {/* Mentorships Section */}
