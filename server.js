@@ -69,7 +69,8 @@ const { getEvaluationsByMentorID,
         avgRatingPerSE,
         getAcknowledgedEvaluationCount,
         getAcknowledgementData,
-        getMentorEvaluationCount} = require("./controllers/evaluationsController.js");
+        getMentorEvaluationCount,
+        getEvaluationDetailsForMentorEvaluation} = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
@@ -989,6 +990,25 @@ app.get("/getMentorEvaluationsBySEID", async (req, res) => {
   }
 });
 
+app.get("/getMentorEvaluationsByMentorID", async (req, res) => {
+  try {
+    const { mentor_id } = req.query; // Extract se_id from query parameters
+
+    if (!mentor_id) {
+      return res.status(400).json({ message: "se_id is required" });
+    }
+
+    const result = await getEvaluationsByMentorID(mentor_id); // Fetch SEs from DB
+    if (!result || result.length === 0) {
+      return res.status(404).json({ message: "No evaluations found" });
+    }
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching social enterprises:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.get("/getEvaluationDetails", async (req, res) => {
   try {
       const { evaluation_id } = req.query; // Extract evaluation_id from query parameters
@@ -998,6 +1018,27 @@ app.get("/getEvaluationDetails", async (req, res) => {
       }
 
       const result = await getEvaluationDetails(evaluation_id); // Fetch evaluation details from DB
+
+      if (!result || result.length === 0) {
+          return res.status(404).json({ message: "No evaluation details found" });
+      }
+
+      res.json(result);
+  } catch (error) {
+      console.error("❌ Error fetching evaluation details:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/getEvaluationDetailsForMentorEvaluation", async (req, res) => {
+  try {
+      const { evaluation_id } = req.query; // Extract evaluation_id from query parameters
+
+      if (!evaluation_id) {
+          return res.status(400).json({ message: "evaluation_id is required" });
+      }
+
+      const result = await getEvaluationDetailsForMentorEvaluation(evaluation_id); // Fetch evaluation details from DB
 
       if (!result || result.length === 0) {
           return res.status(404).json({ message: "No evaluation details found" });

@@ -3,6 +3,10 @@ import {
   Box,
   Typography,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
 } from "@mui/material";
 import StatBox from "../../components/StatBox"; // Adjust the path based on your project structure
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
@@ -15,6 +19,8 @@ import LineChart from "../../components/LineChart";
 import RadarChart from "../../components/RadarChart";
 import { useParams, useNavigate } from "react-router-dom"; // Import useNavigate
 import { useTheme } from "@mui/material/styles";
+import { DataGrid } from "@mui/x-data-grid";
+import axios from "axios";
 
 const MentorAnalytics = () => {
   const theme = useTheme(); // Now 'useTheme' is defined
@@ -24,6 +30,10 @@ const MentorAnalytics = () => {
   const [mentorAnalytics, setMentorAnalytics] = useState([])
   const navigate = useNavigate(); // Initialize useNavigate
   const [categoryType, setCategoryType] = useState("mentor"); // ✅ Define state here
+  const [evaluationsData, setEvaluationsData] = useState([]);
+  const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
+  const [selectedEvaluation, setSelectedEvaluation] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -51,39 +61,123 @@ const MentorAnalytics = () => {
       fetchStats();
     }
   }, [selectedMentorId]); // ✅ Ensures it runs when mentor changes
+
+  useEffect(() => {
+    const fetchEvaluations = async () => {
+      try {
+        setIsLoadingEvaluations(true);
   
-  // Mock data for charts
-  const mockLineData = [
+        const response = await axios.get(
+          "http://localhost:4000/getMentorEvaluationsByMentorID",
+          { params: { mentor_id: id } } // ✅ Correct query parameter usage
+        );
+  
+        const data = response.data; // ✅ Axios already returns JSON, no need for .json()
+  
+        if (!Array.isArray(data)) {
+          console.error("❌ Unexpected API Response (Not an Array):", data);
+          return;
+        }
+  
+        // Ensure evaluation_id is included and set as `id`
+        const formattedData = data.map((evaluation) => ({
+          id: evaluation.evaluation_id, // ✅ Use evaluation_id as the unique ID
+          mentor_name: evaluation.mentor_name,
+          evaluator_name: evaluation.evaluator_name, // ✅ SE evaluating the mentor
+          evaluation_date: new Date(evaluation.evaluation_date).toLocaleDateString(),
+          acknowledged: evaluation.acknowledged ? "Yes" : "No",
+        }));
+  
+        console.log("✅ Formatted Evaluations Data:", formattedData);
+        setEvaluationsData(formattedData);
+      } catch (error) {
+        console.error("❌ Error fetching evaluations:", error);
+      } finally {
+        setIsLoadingEvaluations(false);
+      }
+    };
+  
+    if (id) {
+      fetchEvaluations();
+    }
+  }, [id]);
+  
+  const columns = [
+    { field: "mentor_name", headerName: "Mentor", flex: 1 }, // ✅ Display the mentor being evaluated
+    { field: "evaluator_name", headerName: "Evaluator (SE)", flex: 1 }, // ✅ Ensure this refers to the SE
+    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
+    { field: "acknowledged", headerName: "Acknowledged", flex: 1 },
     {
-      id: "performance",
-      color: tokens("dark").greenAccent[500],
-      data: [
-        { x: "Jan", y: 80 },
-        { x: "Feb", y: 90 },
-        { x: "Mar", y: 70 },
-        { x: "Apr", y: 85 },
-        { x: "May", y: 95 },
-      ],
+      field: "action",
+      headerName: "Action",
+      flex: 1,
+      renderCell: (params) => (
+        <Button
+          variant="contained"
+          style={{ backgroundColor: colors.primary[600], color: "white" }}
+          onClick={() => handleViewExistingEvaluation(params.row.id)} // ✅ Pass evaluation_id
+        >
+          View
+        </Button>
+      ),
     },
   ];
 
-  const mockRadarData = [
-    {
-      category: "Communication",
-      Strength: 80,
-      Weakness: 60,
-    },
-    {
-      category: "Problem Solving",
-      Strength: 90,
-      Weakness: 50,
-    },
-    {
-      category: "Leadership",
-      Strength: 70,
-      Weakness: 75,
-    },
-  ];
+  const handleViewExistingEvaluation = async (evaluation_id) => {
+    console.log("📌 Evaluation ID Passed:", evaluation_id); // Debugging log
+  
+    try {
+      const response = await axios.get(
+        "http://localhost:4000/getEvaluationDetailsForMentorEvaluation",
+        { params: { evaluation_id } }
+      );
+  
+      console.log("📥 Raw API Response:", response);
+      console.log("📥 API Response Data:", response.data);
+  
+      // 🚨 Ensure response.data is an array
+      if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
+        console.warn("⚠️ No evaluation details found.");
+        return;
+      }
+  
+      // ✅ Process evaluation details safely
+      const groupedEvaluation = response.data.reduce((acc, evalItem) => {
+        const {
+          evaluation_date,
+          evaluator_name,
+          mentor_name,
+          category_name,
+          star_rating,
+          selected_comments,
+          additional_comment,
+        } = evalItem;
+  
+        if (!acc.id) {
+          acc.id = evaluation_id;
+          acc.evaluator_name = evaluator_name; // ✅ Social Enterprise (Evaluator)
+          acc.mentor_name = mentor_name; // ✅ Mentor being evaluated
+          acc.evaluation_date = new Date(evaluation_date).toLocaleDateString();
+          acc.categories = [];
+        }
+  
+        acc.categories.push({
+          category_name,
+          star_rating,
+          selected_comments: Array.isArray(selected_comments) ? selected_comments : [], // ✅ Ensure it's always an array
+          additional_comment: additional_comment || "", // ✅ Ensure empty comments don't cause issues
+        });
+  
+        return acc;
+      }, {});
+  
+      console.log("✅ Processed Evaluation Data:", groupedEvaluation);
+      setSelectedEvaluation(groupedEvaluation);
+      setOpenDialog(true);
+    } catch (error) {
+      console.error("❌ Error fetching evaluation details:", error);
+    }
+  };
 
   if (!selectedMentorId) {
     return <Box>No Mentor found</Box>;
@@ -227,6 +321,188 @@ const MentorAnalytics = () => {
           <MentorHorizontalBarChart mentorId={selectedMentorId} categoryType={categoryType} />
         </Box>
       </Box>
+
+      {/* Evaluations Table */}
+      <Box
+        sx={{
+          backgroundColor: colors.primary[400],
+          padding: "20px",
+          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+          minHeight: "400px", // Ensures DataGrid has enough space
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          "& .MuiDataGrid-root": { border: "none" },
+          "& .MuiDataGrid-cell": { borderBottom: "none" },
+          "& .name-column--cell": { color: colors.greenAccent[300] },
+          "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+            backgroundColor: colors.blueAccent[700] + " !important",
+          },
+          "& .MuiDataGrid-virtualScroller": {
+            backgroundColor: colors.primary[400],
+          },
+          "& .MuiDataGrid-footerContainer": {
+            borderTop: "none",
+            backgroundColor: colors.blueAccent[700],
+          },
+        }}
+      >
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          color={colors.grey[100]}
+          mb={2}
+        >
+          Evaluations
+        </Typography>
+        <DataGrid
+          rows={evaluationsData}
+          columns={columns}
+          getRowId={(row) => row.id}
+        />
+      </Box>
+
+      {/* Mentor Evaluation Details Dialog - Read-Only */}
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          style: {
+            backgroundColor: "#fff", // White background
+            color: "#000", // Black text
+            border: "1px solid #000", // Black border for contrast
+          },
+        }}
+      >
+        {/* Title with DLSU Green Background */}
+        <DialogTitle
+          sx={{
+            backgroundColor: "#1E4D2B", // DLSU Green header
+            color: "#fff", // White text
+            textAlign: "center",
+            fontSize: "1.5rem",
+            fontWeight: "bold",
+          }}
+        >
+          View Mentor Evaluation
+        </DialogTitle>
+
+        {/* Content Section */}
+        <DialogContent
+          sx={{
+            padding: "24px",
+            maxHeight: "70vh", // Ensure it doesn't overflow the screen
+            overflowY: "auto", // Enable scrolling if content is too long
+          }}
+        >
+          {selectedEvaluation ? (
+            <>
+              {/* Evaluator (Social Enterprise) and Evaluation Date */}
+              <Box
+                sx={{
+                  marginBottom: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                }}
+              >
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: "bold",
+                    borderBottom: "1px solid #000", // Separator line
+                    paddingBottom: "8px",
+                  }}
+                >
+                  Evaluator (Social Enterprise): {selectedEvaluation.evaluator_name}
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: "bold",
+                    borderBottom: "1px solid #000", // Separator line
+                    paddingBottom: "8px",
+                  }}
+                >
+                  Mentor Evaluated: {selectedEvaluation.mentor_name}
+                </Typography>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ color: "#000" }}
+                >
+                  Evaluation Date: {selectedEvaluation.evaluation_date}
+                </Typography>
+              </Box>
+
+              {/* Ratings Section */}
+              {selectedEvaluation.categories &&
+              selectedEvaluation.categories.length > 0 ? (
+                selectedEvaluation.categories.map((category, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      marginBottom: "16px",
+                      padding: "12px",
+                      border: "1px solid #000", // Border for each category
+                      borderRadius: "8px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    {/* Category Name */}
+                    <Typography
+                      variant="subtitle1"
+                      sx={{ fontWeight: "bold" }}
+                    >
+                      {category.category_name}
+                    </Typography>
+
+                    {/* Star Rating */}
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: "bold", color: "#1E4D2B" }} // DLSU Green color for rating
+                    >
+                      {category.star_rating} ★
+                    </Typography>
+                  </Box>
+                ))
+              ) : (
+                <Typography
+                  variant="body1"
+                  sx={{ fontStyle: "italic" }}
+                >
+                  No categories found for this evaluation.
+                </Typography>
+              )}
+            </>
+          ) : (
+            <Typography
+              variant="body1"
+              sx={{ fontStyle: "italic" }}
+            >
+              Loading evaluation details...
+            </Typography>
+          )}
+        </DialogContent>
+
+        {/* Action Buttons */}
+        <DialogActions sx={{ padding: "16px", borderTop: "1px solid #000" }}>
+          <Button
+            onClick={() => setOpenDialog(false)}
+            sx={{
+              color: "#000",
+              border: "1px solid #000",
+              "&:hover": { backgroundColor: "#f0f0f0" }, // Hover effect
+            }}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
 
       {/* Performance Overview */}
       <Box

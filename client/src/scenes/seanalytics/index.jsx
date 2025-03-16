@@ -244,7 +244,7 @@ const SEAnalytics = () => {
 
   const handleViewExistingEvaluation = async (evaluation_id) => {
     console.log("📌 Evaluation ID Passed:", evaluation_id); // Debugging log
-
+  
     try {
       const response = await axios.get(
         "http://localhost:4000/getEvaluationDetails",
@@ -252,33 +252,35 @@ const SEAnalytics = () => {
           params: { evaluation_id },
         }
       );
-
+  
       console.log("📥 Raw API Response:", response); // Log raw response
       console.log("📥 API Response Data:", response.data); // Log parsed response
-
+  
       if (!response.data || response.data.length === 0) {
         console.warn("⚠️ No evaluation details found.");
         return;
       }
-
+  
       // Process evaluation details
       const groupedEvaluation = response.data.reduce((acc, evalItem) => {
         const {
           evaluation_date,
+          evaluator_name,  // ✅ Added evaluator name
           social_enterprise,
           category_name,
           star_rating,
           selected_comments,
           additional_comment,
         } = evalItem;
-
+  
         if (!acc.id) {
           acc.id = evaluation_id;
-          acc.social_enterprise = social_enterprise;
+          acc.evaluator_name = evaluator_name; // ✅ Store evaluator (SE) name
+          acc.social_enterprise = social_enterprise; // ✅ Store evaluated SE
           acc.evaluation_date = new Date(evaluation_date).toLocaleDateString();
           acc.categories = [];
         }
-
+  
         acc.categories.push({
           category_name,
           star_rating,
@@ -287,10 +289,10 @@ const SEAnalytics = () => {
             : [], // Ensure selected_comments is always an array
           additional_comment,
         });
-
+  
         return acc;
       }, {});
-
+  
       console.log("✅ Processed Evaluation Data:", groupedEvaluation);
       setSelectedEvaluation(groupedEvaluation);
       setOpenDialog(true);
@@ -298,7 +300,7 @@ const SEAnalytics = () => {
       console.error("❌ Error fetching evaluation details:", error);
     }
   };
-
+  
   const handleChangeSE = (event) => {
     const newSEId = event.target.value;
     setSelectedSEId(newSEId);
@@ -482,7 +484,6 @@ const SEAnalytics = () => {
           Evaluations
         </Typography>
         <DataGrid
-          autoHeight
           rows={evaluationsData}
           columns={columns}
           getRowId={(row) => row.id}
@@ -526,7 +527,7 @@ const SEAnalytics = () => {
         >
           {selectedEvaluation ? (
             <>
-              {/* Social Enterprise and Evaluation Date */}
+              {/* Evaluator, Social Enterprise, and Evaluation Date */}
               <Box
                 sx={{
                   marginBottom: "16px",
@@ -543,13 +544,21 @@ const SEAnalytics = () => {
                     paddingBottom: "8px",
                   }}
                 >
-                  Social Enterprise: {selectedEvaluation.social_enterprise}
+                  Evaluator: {selectedEvaluation.evaluator_name} {/* ✅ Added Evaluator Name */}
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: "bold",
+                    borderBottom: "1px solid #000", // Separator line
+                    paddingBottom: "8px",
+                  }}
+                >
+                  Social Enterprise Evaluated: {selectedEvaluation.social_enterprise}
                 </Typography>
                 <Typography
                   variant="subtitle1"
-                  sx={{
-                    color: "#000",
-                  }}
+                  sx={{ color: "#000" }}
                 >
                   Evaluation Date: {selectedEvaluation.evaluation_date}
                 </Typography>
@@ -576,16 +585,13 @@ const SEAnalytics = () => {
                         marginBottom: "8px",
                       }}
                     >
-                      {category.category_name} - Rating: {category.star_rating}{" "}
-                      ★
+                      {category.category_name} - Rating: {category.star_rating} ★
                     </Typography>
 
                     {/* Selected Comments */}
                     <Typography
                       variant="body1"
-                      sx={{
-                        marginBottom: "8px",
-                      }}
+                      sx={{ marginBottom: "8px" }}
                     >
                       Comments:{" "}
                       {category.selected_comments.length > 0 ? (
@@ -598,50 +604,31 @@ const SEAnalytics = () => {
                     {/* Additional Comment */}
                     <Typography variant="body1">
                       Additional Comment:{" "}
-                      {category.additional_comment || (
-                        <i>No additional comments</i>
-                      )}
+                      {category.additional_comment || <i>No additional comments</i>}
                     </Typography>
                   </Box>
                 ))
               ) : (
-                <Typography
-                  variant="body1"
-                  sx={{
-                    fontStyle: "italic",
-                  }}
-                >
+                <Typography variant="body1" sx={{ fontStyle: "italic" }}>
                   No categories found for this evaluation.
                 </Typography>
               )}
             </>
           ) : (
-            <Typography
-              variant="body1"
-              sx={{
-                fontStyle: "italic",
-              }}
-            >
+            <Typography variant="body1" sx={{ fontStyle: "italic" }}>
               Loading evaluation details...
             </Typography>
           )}
         </DialogContent>
 
         {/* Action Buttons */}
-        <DialogActions
-          sx={{
-            padding: "16px",
-            borderTop: "1px solid #000", // Separator line
-          }}
-        >
+        <DialogActions sx={{ padding: "16px", borderTop: "1px solid #000" }}>
           <Button
             onClick={() => setOpenDialog(false)}
             sx={{
               color: "#000",
               border: "1px solid #000",
-              "&:hover": {
-                backgroundColor: "#f0f0f0", // Hover effect
-              },
+              "&:hover": { backgroundColor: "#f0f0f0" }, // Hover effect
             }}
           >
             Close
