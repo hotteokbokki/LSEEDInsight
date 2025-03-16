@@ -75,6 +75,26 @@ exports.getSEWithMentors = async () => {
     }
 };
 
+exports.getHandledSEsCountByMentor = async (mentor_id) => {
+  try {
+      const query = `
+          SELECT 
+              mentor_id, 
+              COUNT(DISTINCT se_id) AS num_se_handled
+          FROM mentorships
+          WHERE mentor_id = $1
+          GROUP BY mentor_id;
+      `;
+
+      const result = await pgDatabase.query(query, [mentor_id]); // Correctly passing mentor_id
+
+      return result.rows[0]?.num_se_handled || 0; // Return the count or 0 if no data found
+  } catch (error) {
+      console.error("❌ Error fetching mentorships:", error);
+      return 0; // Return 0 in case of an error
+  }
+};
+
 exports.getMentorshipCount = async () => {
     try {
         const query = `

@@ -1091,6 +1091,7 @@ const Mentors = () => {
         <DataGrid
           rows={rows}
           columns={columns}
+          getRowId={(row) => row.id} // Use `id` as the unique identifier
           processRowUpdate={(params) => {
             console.log("🚨 processRowUpdate params:", params, "\n");
             handleMentorRowUpdate(params);

@@ -793,6 +793,22 @@ exports.getAverageScoreForAllSEPerCategory = async () => {
     }
 };
 
+exports.getMentorEvaluationCount = async (mentor_id) => {
+    try {
+        const query = `
+            SELECT 
+                COUNT(DISTINCT evaluation_id) AS total_evaluations
+            FROM evaluations
+            WHERE evaluation_type = 'Mentors' AND mentor_id = $1;
+        `;
+        const result = await pgDatabase.query(query, [mentor_id]);
+        return result.rows[0]?.total_evaluations || 0; // Return count or 0 if no evaluations exist
+    } catch (error) {
+        console.error("❌ Error fetching mentor evaluation count:", error);
+        return 0; // Return 0 in case of an error
+    }
+};
+
 exports.getAcknowledgementData = async () => {
     try {
         const query = `

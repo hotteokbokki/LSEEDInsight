@@ -427,8 +427,8 @@ const SEAnalytics = () => {
           <StatBox
             title={stats.avgRating}
             subtitle="Average rating"
-            // progress={Math.min(stats.cumulativeGrowth / 100, 1)} // ✅ Cap at 100%
-            // increase={`${stats.cumulativeGrowth}%`}
+            progress={null} // Ensure it's not defined
+            sx={{ "& .MuiBox-root.css-1ntui4p": { display: "none" } }} // Hide the circle
             icon={
               <TrafficIcon
                 sx={{ fontSize: "26px", color: colors.blueAccent[500] }}

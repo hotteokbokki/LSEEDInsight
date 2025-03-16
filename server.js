@@ -43,6 +43,7 @@ const { getMentorshipsByMentorId,
         getMentorshipCount,
         getPendingSchedules,
         getSchedulingHistory,
+        getHandledSEsCountByMentor,
        } = require("./controllers/mentorshipsController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getEvaluationsByMentorID, 
@@ -67,11 +68,12 @@ const { getEvaluationsByMentorID,
         getPendingEvaluationCount,
         avgRatingPerSE,
         getAcknowledgedEvaluationCount,
-        getAcknowledgementData} = require("./controllers/evaluationsController.js");
+        getAcknowledgementData,
+        getMentorEvaluationCount} = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
-const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution, compareSocialEnterprisesPerformance } = require("./controllers/evaluationcategoriesController.js");
+const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution, compareSocialEnterprisesPerformance, getMentorAvgRating, getMentorFrequentRating, getAvgRatingForMentor, getPerformanceOverviewForMentor } = require("./controllers/evaluationcategoriesController.js");
 const { getMentorQuestions } = require("./controllers/mentorEvaluationsQuestionsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
 const app = express();
@@ -1048,7 +1050,34 @@ app.get("/api/top-se-performance-with-mentorships", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
-//TODO
+
+app.get("/api/mentor-analytics/:mentor_id", async (req, res) => {
+  try {
+    const { mentor_id } = req.params;
+    if (!mentor_id) return res.status(400).json({ message: "Mentor ID is required" });
+
+    // Fetch mentor analytics data
+    const mentorEvaluationCount = await getMentorEvaluationCount(mentor_id);
+    const mentorAvgRating = await getMentorAvgRating(mentor_id);
+    const mentorFrequentRating = await getMentorFrequentRating(mentor_id);
+    const handledSEs = await getHandledSEsCountByMentor(mentor_id);
+    const avgRatingPerCategory = await getAvgRatingForMentor(mentor_id);
+    const performanceOverview = await getPerformanceOverviewForMentor(mentor_id);
+
+    res.json({
+      totalEvaluations: mentorEvaluationCount,
+      avgRating: mentorAvgRating,
+      mostFrequentRating: mentorFrequentRating,
+      numHandledSEs: handledSEs,
+      avgRatingPerCategory,
+      performanceOverview
+    });
+  } catch (error) {
+    console.error("❌ Error fetching mentor analytics stats:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.get("/api/se-analytics-stats/:se_id", async (req, res) => {
   try {
     const { se_id } = req.params;
