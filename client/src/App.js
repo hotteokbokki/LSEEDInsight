@@ -22,6 +22,7 @@ import { ColorModeContext, useMode } from "./theme";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import MentorshipAnalytics from "./scenes/analytics-mentorship";
+import MentorDashboard from "./scenes/mentordashboard";
 
 const App = () => {
   const [theme, colorMode] = useMode();
@@ -83,6 +84,7 @@ const MainContent = () => {
           {/* User Routes */}
           <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" />} />
           <Route path="/socialenterprise" element={user ? <SocialEnterprise /> : <Navigate to="/" />} />
+          <Route path="/mentor-dashboard" element={user ? <MentorDashboard /> : <Navigate to="/" />} />
           <Route path="/mentors" element={user ? <Mentors /> : <Navigate to="/" />} />
           <Route path="/analytics" element={user ? <Analytics /> : <Navigate to="/" />} />
           <Route path="/reports" element={user ? <Reports /> : <Navigate to="/" />} />

@@ -48,6 +48,7 @@ const Sidebar = () => {
   const getSelectedTitle = () => {
     const routeMap = {
       "/dashboard": "Dashboard",
+      "/mentor-dashboard": "Mentor Dashboard",
       "/assess": "Assess SE",
       "/socialenterprise": "Manage SE",
       "/mentors": "LSEED Mentors",
@@ -150,22 +151,22 @@ const Sidebar = () => {
 
           {/* Navigation Items */}
           <Box paddingLeft={isCollapsed ? undefined : "10%"}>
-            <Item
-              title="Dashboard"
-              to="/dashboard"
-              icon={<GridViewOutlinedIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
-            <Item
-              title="Evaluate"
-              to="/assess"
-              icon={<AssignmentTurnedInOutlinedIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
-            {(user?.role === "Mentor") && (
+            {user?.role === "Mentor" && (
               <>
+                <Item
+                  title="Mentor Dashboard"
+                  to="/mentor-dashboard"
+                  icon={<GridViewOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Evaluate"
+                  to="/assess"
+                  icon={<AssignmentTurnedInOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
                 <Item
                   title="Show Analytics"
                   to="/analytics-mentorship"
@@ -181,18 +182,31 @@ const Sidebar = () => {
                   setSelected={setSelected}
                 />
                 <Item
-                title="Scheduling Matrix"
-                to="/scheduling"
-                icon={<CalendarMonthOutlinedIcon />}
-                selected={selected}
-                setSelected={setSelected}
+                  title="Scheduling Matrix"
+                  to="/scheduling"
+                  icon={<CalendarMonthOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
                 />
               </>
             )}
 
-
-            {(user?.role === "LSEED") && (
+            {user?.role === "LSEED" && (
               <>
+                <Item
+                  title="Dashboard"
+                  to="/dashboard"
+                  icon={<GridViewOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Evaluate"
+                  to="/assess"
+                  icon={<AssignmentTurnedInOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
                 <Item
                   title="Manage SE"
                   to="/socialenterprise"
@@ -229,11 +243,11 @@ const Sidebar = () => {
                   setSelected={setSelected}
                 />
                 <Item
-                title="Manage Users"
-                to="/admin"
-                icon={<AdminPanelSettingsOutlinedIcon />}
-                selected={selected}
-                setSelected={setSelected}
+                  title="Manage Users"
+                  to="/admin"
+                  icon={<AdminPanelSettingsOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
                 />
               </>
             )}
