@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Typography, Chip, Button, useTheme } from "@mui/material";
+import Header from "../../components/Header";
 import { DataGrid } from "@mui/x-data-grid";
 import StatBox from "../../components/StatBox";
 import {
@@ -54,10 +55,13 @@ const MentorDashboard = () => {
 
   return (
     <Box m="20px">
-      {/* HEADER */}
-      <Typography variant="h4" fontWeight="bold">
-        Mentor Dashboard
-      </Typography>
+      {/* Header */}
+      <Box display="flex" justifyContent="space-between" alignItems="center">
+        <Header
+          title="Mentor Dashboard"
+          subtitle="Welcome to Mentor Dashboard"
+        />
+      </Box>
 
       {/* Row 1 - StatBoxes */}
       <Box
