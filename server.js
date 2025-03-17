@@ -72,13 +72,15 @@ const { getEvaluationsByMentorID,
         getMentorEvaluationCount,
         getEvaluationDetailsForMentorEvaluation,
         getEvaluationsMadeByMentor,
-        getAllMentorTypeEvaluations} = require("./controllers/evaluationsController.js");
+        getAllMentorTypeEvaluations,
+        getRecentEvaluationsMadeByMentor} = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
 const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution, compareSocialEnterprisesPerformance, getMentorAvgRating, getMentorFrequentRating, getAvgRatingForMentor, getPerformanceOverviewForMentor } = require("./controllers/evaluationcategoriesController.js");
 const { getMentorQuestions } = require("./controllers/mentorEvaluationsQuestionsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
+const { getUpcomingSchedulesForMentor } = require("./controllers/mentoringSessionController.js");
 const app = express();
 
 
@@ -658,7 +660,7 @@ app.post("/evaluate", async (req, res) => {
   try {
     console.log("📥 Received Evaluation Data:", req.body);
 
-    let { mentorId, se_id, evaluations } = req.body;
+    let { mentorId, se_id, evaluations, mentoring_session_id } = req.body;
     if (!Array.isArray(se_id)) se_id = [se_id];
 
     console.log("🔹 Converted se_id:", se_id);
@@ -754,6 +756,12 @@ app.post("/evaluate", async (req, res) => {
         userStates[chatId] = { sendAcknowledgeButtonId: sendAcknowledgeButtonMessage.message_id };
       }
     }
+
+    // Update status of mentoring session
+    await pgDatabase.query(
+      `UPDATE mentoring_session SET status = 'Evaluated' WHERE mentoring_session_id = $1`,
+      [mentoring_session_id]
+    );
 
     res.status(201).json({ message: "Evaluations added successfully", evaluations: insertedEvaluations });
   } catch (error) {
@@ -963,6 +971,44 @@ app.get("/getMentorEvaluations", async (req, res) => {
     }
 
     const result = await getEvaluationsMadeByMentor(mentor_id); // Fetch SEs from DB
+    if (!result || result.length === 0) {
+      return res.status(404).json({ message: "No evaluations found" });
+    }
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching social enterprises:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/getRecentMentorEvaluations", async (req, res) => {
+  try {
+    const { mentor_id } = req.query; // Extract mentor_id from query parameters
+
+    if (!mentor_id) {
+      return res.status(400).json({ message: "mentor_id is required" });
+    }
+
+    const result = await getRecentEvaluationsMadeByMentor(mentor_id); // Fetch SEs from DB
+    if (!result || result.length === 0) {
+      return res.status(404).json({ message: "No evaluations found" });
+    }
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching social enterprises:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/getUpcomingSchedulesForMentor", async (req, res) => {
+  try {
+    const { mentor_id } = req.query; // Extract mentor_id from query parameters
+
+    if (!mentor_id) {
+      return res.status(400).json({ message: "mentor_id is required" });
+    }
+
+    const result = await getUpcomingSchedulesForMentor(mentor_id); // Fetch SEs from DB
     if (!result || result.length === 0) {
       return res.status(404).json({ message: "No evaluations found" });
     }

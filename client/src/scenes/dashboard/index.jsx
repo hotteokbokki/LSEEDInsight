@@ -1,4 +1,4 @@
-import { Box, Button, IconButton, Typography, useTheme, Chip, Snackbar, Alert, } from "@mui/material";
+import { Box, Button, IconButton, Typography, useTheme, Chip, Snackbar, Alert, Dialog, DialogContent, DialogTitle, DialogActions } from "@mui/material";
 import { tokens } from "../../theme";
 import { mockTransactions } from "../../sampledata/mockData";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
@@ -44,6 +44,12 @@ const Dashboard = ({ userRole }) => {
   const [loading, setLoading] = useState(true);
   const [evaluations, setEvaluations] = useState([]);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [mentorEvaluations, setmentorEvaluations] = useState([]);
+  const [upcomingSchedules, setupcomingSchedules] = useState([]);
+  const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
+  const [selectedEvaluation, setSelectedEvaluation] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
+  const userSession = JSON.parse(localStorage.getItem("user"));
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     mentorWithoutMentorshipCount: [{ count: "0" }], // Default structure to prevent undefined errors
@@ -132,6 +138,98 @@ const Dashboard = ({ userRole }) => {
         </Button>
       )
     }
+  ];
+
+  useEffect(() => {
+    const fetchEvaluations = async () => {
+      try {
+        setIsLoadingEvaluations(true);
+
+        let response;
+        if (userRole === "Mentor") {
+          response = await axios.get(
+            "http://localhost:4000/getRecentMentorEvaluations",
+            {
+              params: { mentor_id: userSession.id },
+            }
+          );
+        }
+        // Ensure evaluation_id is included and set as `id`
+        const formattedData = response.data.map((evaluation) => ({
+          id: evaluation.evaluation_id, // Use evaluation_id as the unique ID
+          evaluation_id: evaluation.evaluation_id, // Explicitly include evaluation_id
+          evaluator_name: evaluation.evaluator_name,
+          social_enterprise: evaluation.social_enterprise,
+          evaluation_date: evaluation.evaluation_date,
+          acknowledged: evaluation.acknowledged ? "Yes" : "No",
+        }));
+
+        console.log("✅ Formatted EvaluationsData:", formattedData); // Debugging
+        setmentorEvaluations(formattedData);
+      } catch (error) {
+        console.error("❌ Error fetching evaluations:", error);
+      } finally {
+        setIsLoadingEvaluations(false);
+      }
+    };
+
+    fetchEvaluations();
+  }, [userSession.id]);
+
+  useEffect(() => {
+    const fetchUpcomingSchedule = async () => {
+      try {
+        setIsLoadingEvaluations(true);
+
+        let response;
+        if (userRole === "Mentor") {
+          response = await axios.get(
+            "http://localhost:4000/getUpcomingSchedulesForMentor",
+            {
+              params: { mentor_id: userSession.id },
+            }
+          );
+        }
+        // Ensure evaluation_id is included and set as `id`
+        const formattedData = response.data.map((schedule) => ({
+          id: schedule.mentoring_session_id, // Use evaluation_id as the unique ID
+          team_name: schedule.social_enterprise, // Use evaluation_id as the unique ID
+          date: schedule.session_datetime, // Use evaluation_id as the unique ID
+          link: schedule.zoom_link, // Use evaluation_id as the unique ID
+          status: schedule.status, // Use evaluation_id as the unique ID
+        }));
+
+        console.log("✅ Formatted upcokming:", formattedData); // Debugging
+        setupcomingSchedules(formattedData);
+      } catch (error) {
+        console.error("❌ Error fetching evaluations:", error);
+      } finally {
+        setIsLoadingEvaluations(false);
+      }
+    };
+
+    fetchUpcomingSchedule();
+  }, [userSession.id]);
+
+  const mentorColumns = [
+    { field: "social_enterprise", headerName: "Social Enterprise", flex: 1 },
+    { field: "evaluator_name", headerName: "Evaluator", flex: 1 },
+    { field: "acknowledged", headerName: "Acknowledged", flex: 1 },
+    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
+    {
+      field: "action",
+      headerName: "Action",
+      flex: 1,
+      renderCell: (params) => (
+        <Button
+          variant="contained"
+          style={{ backgroundColor: colors.primary[600], color: "white" }}
+          onClick={() => handleViewExistingEvaluation(params.row.evaluation_id)} // Pass only evaluation_id
+        >
+          View
+        </Button>
+      ),
+    },
   ];
 
   const handleAcceptClick = async (schedule) => {
@@ -311,6 +409,65 @@ const Dashboard = ({ userRole }) => {
       flex: 1,
     },
   ];
+
+  const handleViewExistingEvaluation = async (evaluation_id) => {
+    console.log("📌 Evaluation ID Passed:", evaluation_id); // Debugging log
+  
+    try {
+      const response = await axios.get(
+        "http://localhost:4000/getEvaluationDetails",
+        {
+          params: { evaluation_id },
+        }
+      );
+  
+      console.log("📥 Raw API Response:", response); // Log raw response
+      console.log("📥 API Response Data:", response.data); // Log parsed response
+  
+      if (!response.data || response.data.length === 0) {
+        console.warn("⚠️ No evaluation details found.");
+        return;
+      }
+  
+      // Process evaluation details
+      const groupedEvaluation = response.data.reduce((acc, evalItem) => {
+        const {
+          evaluation_date,
+          evaluator_name,  // ✅ Added evaluator name
+          social_enterprise,
+          category_name,
+          star_rating,
+          selected_comments,
+          additional_comment,
+        } = evalItem;
+  
+        if (!acc.id) {
+          acc.id = evaluation_id;
+          acc.evaluator_name = evaluator_name; // ✅ Store evaluator (SE) name
+          acc.social_enterprise = social_enterprise; // ✅ Store evaluated SE
+          acc.evaluation_date = evaluation_date;
+          acc.categories = [];
+        }
+  
+        acc.categories.push({
+          category_name,
+          star_rating,
+          selected_comments: Array.isArray(selected_comments)
+            ? selected_comments
+            : [], // Ensure selected_comments is always an array
+          additional_comment,
+        });
+  
+        return acc;
+      }, {});
+  
+      console.log("✅ Processed Evaluation Data:", groupedEvaluation);
+      setSelectedEvaluation(groupedEvaluation);
+      setOpenDialog(true);
+    } catch (error) {
+      console.error("❌ Error fetching evaluation details:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchEvaluationStats = async () => {
@@ -833,7 +990,7 @@ const Dashboard = ({ userRole }) => {
             <Typography variant="h6" gutterBottom>
               Recent Evaluations
             </Typography>
-            {mockEvaluations.length > 0 ? (
+            {mentorEvaluations.length > 0 ? (
               <Box
                 sx={{
                   height: 400,
@@ -859,38 +1016,8 @@ const Dashboard = ({ userRole }) => {
                 }}
               >
                 <DataGrid
-                  rows={mockEvaluations}
-                  columns={[
-                    { field: "date", headerName: "Date", flex: 1 },
-                    {
-                      field: "enterprise",
-                      headerName: "Social Enterprise",
-                      flex: 2,
-                    },
-                    {
-                      field: "status",
-                      headerName: "Acknowledgment",
-                      flex: 1,
-                      renderCell: (params) => (
-                        <Chip
-                          label={params.value}
-                          color={
-                            params.value === "Acknowledged" ? "success" : "warning"
-                          }
-                        />
-                      ),
-                    },
-                    {
-                      field: "actions",
-                      headerName: "Actions",
-                      flex: 1,
-                      renderCell: () => (
-                        <Button variant="contained" size="small">
-                          View Details
-                        </Button>
-                      ),
-                    },
-                  ]}
+                  rows={mentorEvaluations}
+                  columns={mentorColumns}
                   pageSize={5}
                   rowsPerPageOptions={[5, 10]}
                 />
@@ -899,6 +1026,152 @@ const Dashboard = ({ userRole }) => {
               <Typography>No evaluations available.</Typography>
             )}
           </Box>
+
+          {/* Evaluation Details Dialog - Read-Only */}
+          <Dialog
+            open={openDialog}
+            onClose={() => setOpenDialog(false)}
+            maxWidth="md"
+            fullWidth
+            PaperProps={{
+              style: {
+                backgroundColor: "#fff", // White background
+                color: "#000", // Black text
+                border: "1px solid #000", // Black border for contrast
+              },
+            }}
+          >
+            {/* Title with DLSU Green Background */}
+            <DialogTitle
+              sx={{
+                backgroundColor: "#1E4D2B", // DLSU Green header
+                color: "#fff", // White text
+                textAlign: "center",
+                fontSize: "1.5rem",
+                fontWeight: "bold",
+              }}
+            >
+              View Evaluation
+            </DialogTitle>
+
+            {/* Content Section */}
+            <DialogContent
+              sx={{
+                padding: "24px",
+                maxHeight: "70vh", // Ensure it doesn't overflow the screen
+                overflowY: "auto", // Enable scrolling if content is too long
+              }}
+            >
+              {selectedEvaluation ? (
+                <>
+                  {/* Evaluator, Social Enterprise, and Evaluation Date */}
+                  <Box
+                    sx={{
+                      marginBottom: "16px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                    }}
+                  >
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: "bold",
+                        borderBottom: "1px solid #000", // Separator line
+                        paddingBottom: "8px",
+                      }}
+                    >
+                      Evaluator: {selectedEvaluation.evaluator_name} {/* ✅ Added Evaluator Name */}
+                    </Typography>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: "bold",
+                        borderBottom: "1px solid #000", // Separator line
+                        paddingBottom: "8px",
+                      }}
+                    >
+                      Social Enterprise Evaluated: {selectedEvaluation.social_enterprise}
+                    </Typography>
+                    <Typography
+                      variant="subtitle1"
+                      sx={{ color: "#000" }}
+                    >
+                      Evaluation Date: {selectedEvaluation.evaluation_date}
+                    </Typography>
+                  </Box>
+
+                  {/* Categories Section */}
+                  {selectedEvaluation.categories &&
+                  selectedEvaluation.categories.length > 0 ? (
+                    selectedEvaluation.categories.map((category, index) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          marginBottom: "24px",
+                          padding: "16px",
+                          border: "1px solid #000", // Border for each category
+                          borderRadius: "8px",
+                        }}
+                      >
+                        {/* Category Name and Rating */}
+                        <Typography
+                          variant="subtitle1"
+                          sx={{
+                            fontWeight: "bold",
+                            marginBottom: "8px",
+                          }}
+                        >
+                          {category.category_name} - Rating: {category.star_rating} ★
+                        </Typography>
+
+                        {/* Selected Comments */}
+                        <Typography
+                          variant="body1"
+                          sx={{ marginBottom: "8px" }}
+                        >
+                          Comments:{" "}
+                          {category.selected_comments.length > 0 ? (
+                            category.selected_comments.join(", ")
+                          ) : (
+                            <i>No comments</i>
+                          )}
+                        </Typography>
+
+                        {/* Additional Comment */}
+                        <Typography variant="body1">
+                          Additional Comment:{" "}
+                          {category.additional_comment || <i>No additional comments</i>}
+                        </Typography>
+                      </Box>
+                    ))
+                  ) : (
+                    <Typography variant="body1" sx={{ fontStyle: "italic" }}>
+                      No categories found for this evaluation.
+                    </Typography>
+                  )}
+                </>
+              ) : (
+                <Typography variant="body1" sx={{ fontStyle: "italic" }}>
+                  Loading evaluation details...
+                </Typography>
+              )}
+            </DialogContent>
+
+            {/* Action Buttons */}
+            <DialogActions sx={{ padding: "16px", borderTop: "1px solid #000" }}>
+              <Button
+                onClick={() => setOpenDialog(false)}
+                sx={{
+                  color: "#000",
+                  border: "1px solid #000",
+                  "&:hover": { backgroundColor: "#f0f0f0" }, // Hover effect
+                }}
+              >
+                Close
+              </Button>
+            </DialogActions>
+          </Dialog>
 
           {/* Quick Action Panel */}
           <Box 
@@ -972,26 +1245,37 @@ const Dashboard = ({ userRole }) => {
                 }}
               >
                 <DataGrid
-                  rows={mockSessions}
+                  rows={upcomingSchedules}
                   columns={[
-                    { field: "date", headerName: "Date & Time", flex: 1 },
                     {
-                      field: "enterprise",
+                      field: "team_name",
                       headerName: "Social Enterprise",
-                      flex: 2,
+                      flex: 1,
+                      minWidth: 100,
                     },
                     {
-                      field: "status",
-                      headerName: "Status",
-                      flex: 1,
-                      renderCell: (params) => (
-                        <Chip
-                          label={params.value}
-                          color={
-                            params.value === "Confirmed" ? "success" : "warning"
-                          }
-                        />
-                      ),
+                      field: "date",
+                      headerName: "Date",
+                      width: 100,
+                    },
+                    {
+                      field: "link",
+                      headerName: "Zoom Link",
+                      width: 250,
+                      renderCell: (params) => {
+                        const { row } = params;
+                        return row.status === "Accepted" && row.link ? (
+                          <a
+                            href={row.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <Chip label="Join" color="primary" />
+                          </a>
+                        ) : (
+                          "N/A"
+                        );
+                      },
                     },
                   ]}
                   pageSize={5}

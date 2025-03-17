@@ -389,43 +389,25 @@ const EvaluatePage = ({ userRole }) => {
     setOpenEvaluateDialog(true);
   };
 
-  // Handle rating change for the current SE
   const handleRatingChange = (category, value) => {
     const currentSEId = selectedSEs[currentSEIndex];
-
+  
+    const predefinedComments =
+      evaluationCriteria[category]?.[value] || ["No predefined comment available."];
+  
+    console.log(`Rating: ${value}, Predefined Comments:`, predefinedComments);
+  
     setEvaluations((prev) => ({
       ...prev,
       [currentSEId]: {
         ...prev[currentSEId],
         [category]: {
           rating: value,
-          selectedCriteria: [],
-          predefinedComments: evaluationCriteria[category]?.[value] || [],
+          selectedCriteria: predefinedComments.length > 0 ? [predefinedComments[0]] : [], // ✅ Auto-select first comment
+          predefinedComments,
         },
       },
     }));
-  };
-
-  // Handle predefined criteria selection for the current SE
-  const handleCriteriaChange = (category, criterion) => {
-    const currentSEId = selectedSEs[currentSEIndex];
-    setEvaluations((prev) => ({
-      ...prev,
-      [currentSEId]: {
-        ...prev[currentSEId],
-        [category]: {
-          ...prev[currentSEId]?.[category],
-          selectedCriteria: prev[currentSEId]?.[
-            category
-          ]?.selectedCriteria.includes(criterion)
-            ? prev[currentSEId][category].selectedCriteria.filter(
-                (c) => c !== criterion
-              )
-            : [...prev[currentSEId][category].selectedCriteria, criterion],
-        },
-      },
-    }));
-    setError("");
   };
 
   // Handle additional comments change for the current SE
@@ -444,39 +426,42 @@ const EvaluatePage = ({ userRole }) => {
   };
 
   useEffect(() => {
-      if (userRole === "Mentor") {
-        const fetchSocialEnterprises = async () => {
-          try {
-            setIsLoadingSocialEnterprises(true); // Start loading
-
-            const mentorshipsResponse = await axios.get(
-              "http://localhost:4000/getMentorshipsbyID",
-              {
-                params: { mentor_id: userSession.id },
-              }
-            );
-            console.log("📥 Mentorship Response:", mentorshipsResponse.data);
-
-            const updatedSocialEnterprises = mentorshipsResponse.data.map((se) => ({
-              id: se.id,
-              mentor_id: se.mentor_id,
-              se_id: se.se_id,
-              team_name: se.se || "Unknown Team",
-              mentor_name: se.mentor || "No Mentor Assigned",
-              program_name: se.program || "Unknown Program",
-              sdg_name: se.sdgs || "No SDG Name",
-            }));
-
-            setSocialEnterprises(updatedSocialEnterprises);
-          } catch (error) {
-            console.error("❌ Error fetching data:", error);
-          } finally {
-            setIsLoadingSocialEnterprises(false); // Stop loading
-          }
-        };
+    if (userRole === "Mentor") {
+      const fetchSocialEnterprises = async () => {
+        try {
+          setIsLoadingSocialEnterprises(true); // Start loading
+  
+          const mentorshipsResponse = await axios.get(
+            "http://localhost:4000/getMentorshipsbyID",
+            {
+              params: { mentor_id: userSession.id },
+            }
+          );
+          console.log("📥 Mentorship Response:", mentorshipsResponse.data);
+  
+          const updatedSocialEnterprises = mentorshipsResponse.data.map((se) => ({
+            id: se.mentoring_session_id, // Updated ID reference
+            mentor_name: se.mentor_name || "No Mentor Assigned",
+            team_name: se.social_enterprise_name || "Unknown Team",
+            se_id: se.se_id || "Unknown Team",
+            mentor_id: se.mentor_id || "Unknown Team",
+            program_name: se.program_name || "Unknown Program",
+            sdg_name: se.sdgs || "No SDG Assigned",
+            start_time: se.start_time || "No Start Time",
+            end_time: se.end_time || "No End Time",
+            date: se.mentoring_session_date
+          }));
+  
+          setSocialEnterprises(updatedSocialEnterprises);
+        } catch (error) {
+          console.error("❌ Error fetching data:", error);
+        } finally {
+          setIsLoadingSocialEnterprises(false); // Stop loading
+        }
+      };
       fetchSocialEnterprises();
-      }
-    }, [userSession.id]);
+    }
+  }, [userSession.id]);
 
   // Scroll to the top of the dialog when it opens
   useEffect(() => {
@@ -497,10 +482,16 @@ const EvaluatePage = ({ userRole }) => {
       return;
     }
 
-    const selectedSE = socialEnterprises.find((se) => se.se_id === currentSEId);
+    const selectedSE = socialEnterprises.find((se) => se.id === currentSEId);
     if (!selectedSE) {
       console.error("❌ Selected SE not found.");
       alert("Error: Selected Social Enterprise not found.");
+      return;
+    }
+
+    const mentoring_session_id = selectedSE.id;
+    if (!mentoring_session_id) {
+      console.error("❌ ERROR: mentorId is missing!");
       return;
     }
 
@@ -510,15 +501,27 @@ const EvaluatePage = ({ userRole }) => {
       return;
     }
 
-    const sdgIds = Array.isArray(selectedSE.sdg_id)
-      ? selectedSE.sdg_id
-      : [selectedSE.sdg_id];
+    const se_id = selectedSE.se_id;
+    if (!mentorId) {
+      console.error("❌ ERROR: mentorId is missing!");
+      return;
+    }
 
-    // Validation: Ensure every category has a rating and at least one predefined comment
-    const isValid = Object.values(currentEvaluations || {}).every(
-      (categoryEval) =>
-        categoryEval.rating > 0 && categoryEval.selectedCriteria?.length > 0
-    );
+    const sdgIds = Array.isArray(selectedSE.sdg_name)
+      ? selectedSE.sdg_name
+      : [selectedSE.sdg_name];
+
+    const isValid = Object.keys(evaluationCriteria).every((category) => {
+      const currentSEId = selectedSEs[currentSEIndex];
+      const categoryEval = evaluations[currentSEId]?.[category];
+    
+      return (
+        categoryEval &&
+        categoryEval.rating > 0 &&
+        categoryEval.selectedCriteria &&
+        categoryEval.selectedCriteria.length > 0
+      );
+    });
 
     if (!isValid) {
       setError(
@@ -527,14 +530,13 @@ const EvaluatePage = ({ userRole }) => {
       return;
     }
 
-    console.log("This is the se_id: ", currentSEId);
-
     const formData = {
       evaluatorId: userSession.id,
-      se_id: [currentSEId],
+      se_id: se_id,
       mentorId: mentorId,
       evaluations: currentEvaluations,
       sdg_id: sdgIds,
+      mentoring_session_id: mentoring_session_id,
     };
 
     Object.keys(currentEvaluations).forEach((category) => {
@@ -580,8 +582,7 @@ const EvaluatePage = ({ userRole }) => {
       (category) => {
         const categoryEval = currentEvaluations[category] || {};
         return (
-          categoryEval.rating > 0 &&
-          (categoryEval.selectedCriteria?.length || 0) >= 1
+          categoryEval.rating > 0
         );
       }
     );
@@ -947,18 +948,26 @@ const EvaluatePage = ({ userRole }) => {
           <DialogContent>
             {socialEnterprises.map((se) => (
               <FormControlLabel
-                key={se.se_id}
+                key={se.id} // Ensure this matches the property in state
                 control={
                   <Checkbox
-                    checked={selectedSEs.includes(se.se_id)} // Use se_id here
-                    onChange={() => handleSESelectionChange(se.se_id)} // Pass se_id
+                    checked={selectedSEs.includes(se.id)} // Use consistent ID reference
+                    onChange={() => handleSESelectionChange(se.id)} // Pass correct ID
                     sx={{
                       color: "#000",
                       "&.Mui-checked": { color: "#000" },
                     }}
                   />
                 }
-                label={`${se.team_name} [SDG: ${se.sdg_name}]`}
+                label={
+                  <span>
+                    <strong>{se.team_name} [SDG: {se.sdg_name}]</strong>
+                    <br />
+                    <span style={{ fontSize: "0.9em", color: "#666" }}>
+                      Mentoring Session on {se.date}, {se.start_time} - {se.end_time}
+                    </span>
+                  </span>
+                }
                 sx={{ marginBottom: "8px" }}
               />
             ))}
@@ -1036,7 +1045,7 @@ const EvaluatePage = ({ userRole }) => {
               overflowY: "auto", // Enable scrolling if content is too long
             }}
           >
-            {/* Current SE Name */}
+            {/* Current SE Name with Mentoring Session Details */}
             <Typography
               variant="h6"
               sx={{
@@ -1046,10 +1055,38 @@ const EvaluatePage = ({ userRole }) => {
                 paddingBottom: "8px",
               }}
             >
+              Evaluating 
               {
                 socialEnterprises.find(
-                  (se) => se.se_id === selectedSEs[currentSEIndex]
-                )?.team_name
+                  (se) => se.id === selectedSEs[currentSEIndex] // Match session ID
+                ) && (
+                  <>
+                    <strong>
+                      {" "}{socialEnterprises.find(
+                        (se) => se.id === selectedSEs[currentSEIndex]
+                      )?.team_name}
+                    </strong> 
+                    {" "} [SDG:{" "}
+                    {socialEnterprises.find(
+                      (se) => se.id === selectedSEs[currentSEIndex]
+                    )?.sdg_name}
+                    ]
+                    <br />
+                    <span style={{ fontSize: "0.9em", color: "#666" }}>
+                      Mentoring Session on{" "}
+                      {socialEnterprises.find(
+                        (se) => se.id === selectedSEs[currentSEIndex]
+                      )?.date}
+                      ,{" "}
+                      {socialEnterprises.find(
+                        (se) => se.id === selectedSEs[currentSEIndex]
+                      )?.start_time} -{" "}
+                      {socialEnterprises.find(
+                        (se) => se.id === selectedSEs[currentSEIndex]
+                      )?.end_time}
+                    </span>
+                  </>
+                )
               }
             </Typography>
             <Typography
@@ -1125,39 +1162,19 @@ const EvaluatePage = ({ userRole }) => {
                         display: "flex",
                         flexDirection: "column",
                         gap: 1,
+                        backgroundColor: "#f9f9f9", // Light background for contrast
                       }}
                     >
                       {categoryEval.predefinedComments.length > 0 ? (
-                        categoryEval.predefinedComments.map(
-                          (criterion, index) => (
-                            <FormControlLabel
-                              key={index}
-                              control={
-                                <Checkbox
-                                  checked={categoryEval.selectedCriteria?.includes(
-                                    criterion
-                                  )}
-                                  onChange={() =>
-                                    handleCriteriaChange(category, criterion)
-                                  }
-                                  sx={{
-                                    color: "#000",
-                                    "&.Mui-checked": {
-                                      color: "#000",
-                                    },
-                                  }}
-                                />
-                              }
-                              label={criterion}
-                              sx={{
-                                marginBottom: "4px",
-                              }}
-                            />
-                          )
-                        )
+                        <Typography
+                          variant="body1"
+                          sx={{ fontStyle: "italic", color: "#333", fontWeight: "bold" }}
+                        >
+                          {categoryEval.predefinedComments[0]} {/* Always show the first comment */}
+                        </Typography>
                       ) : (
                         <Typography variant="body2" color="textSecondary">
-                          Loading predefined comments...
+                          No predefined comment available.
                         </Typography>
                       )}
                     </Box>

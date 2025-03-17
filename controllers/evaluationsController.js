@@ -123,6 +123,40 @@ exports.getEvaluationsMadeByMentor = async (mentor_id) => {
     }
 };
 
+exports.getRecentEvaluationsMadeByMentor = async (mentor_id) => {
+    try {
+        const query = `
+            SELECT 
+                e.evaluation_id,
+                m.mentor_firstname || ' ' || m.mentor_lastname AS evaluator_name, -- ✅ Mentor who evaluated the SE
+                se.team_name AS social_enterprise, -- ✅ SE being evaluated
+                TO_CHAR(e.created_at, 'FMMonth DD, YYYY') AS evaluation_date, -- ✅ Formatted date
+                e."isAcknowledge" AS acknowledged
+            FROM 
+                evaluations AS e
+            JOIN 
+                mentors AS m ON e.mentor_id = m.mentor_id -- ✅ Get mentor details
+            JOIN 
+                socialenterprises AS se ON e.se_id = se.se_id -- ✅ Get SE details
+            WHERE	
+                e.mentor_id = $1 -- ✅ Filter by a specific mentor
+                AND e.evaluation_type = 'Social Enterprise' -- ✅ Ensure it's an SE evaluation
+            ORDER BY 
+                e.created_at DESC -- ✅ Order by most recent evaluations
+            LIMIT 10; -- ✅ Get only the latest 10 evaluations
+
+        `;
+
+        const values = [mentor_id];
+        const result = await pgDatabase.query(query, values);
+
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching evaluations:", error);
+        return [];
+    }
+};
+
 exports.getEvaluationsBySEID = async (se_id) => {
     try {
         const query = `

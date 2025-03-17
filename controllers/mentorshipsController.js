@@ -3,21 +3,36 @@ const pgDatabase = require('../database.js'); // Import PostgreSQL client
 exports.getMentorshipsByMentorId = async (mentor_id) => {
     try {
         const query = `
-        SELECT 
-            ms.mentorship_id AS id, 
-            m.mentor_id, 
-            CONCAT(m.mentor_firstname, ' ', m.mentor_lastname) AS Mentor, 
-            se.se_id,
-            se.team_name AS SE, 
-            p."name" AS Program, 
-            STRING_AGG(sdg."name", ', ') AS SDGs -- Aggregating SDGs into one column
-        FROM mentorships AS ms 
-        JOIN socialenterprises AS se ON ms."se_id" = se."se_id"
-        JOIN mentors AS m ON m."mentor_id" = ms."mentor_id"
-        JOIN programs AS p ON se."program_id" = p."program_id"
-        JOIN sdg AS sdg ON sdg."sdg_id" = ANY(se."sdg_id")
-        WHERE m."mentor_id" = $1
-        GROUP BY ms.mentorship_id, m.mentor_id, Mentor, se.se_id, SE, Program;
+            SELECT 
+                ms.mentoring_session_id, -- ✅ Add to GROUP BY
+                m.mentor_firstname || ' ' || m.mentor_lastname AS mentor_name, -- ✅ Mentor assigned
+                se.team_name AS social_enterprise_name, -- ✅ Social Enterprise assigned
+                se.se_id,
+                m.mentor_id,
+                p."name" AS program_name, -- ✅ Program the SE belongs to
+                STRING_AGG(sdg."name", ', ') AS SDGs, -- ✅ Aggregate multiple SDGs
+                TO_CHAR(ms.start_time, 'HH24:MI') AS start_time, -- ✅ Formatted start time
+                TO_CHAR(ms.end_time, 'HH24:MI') AS end_time, -- ✅ Formatted end time
+                TO_CHAR(ms.mentoring_session_date, 'FMMonth DD, YYYY') AS mentoring_session_date
+            FROM mentoring_session AS ms
+            JOIN mentorships AS mt ON ms.mentorship_id = mt.mentorship_id -- ✅ Get mentorship details
+            JOIN mentors AS m ON mt.mentor_id = m.mentor_id -- ✅ Get mentor details from mentorships
+            JOIN socialenterprises AS se ON mt.se_id = se.se_id -- ✅ Get SE details from mentorships
+            JOIN programs AS p ON se.program_id = p.program_id -- ✅ Get the program the SE belongs to
+            JOIN sdg AS sdg ON sdg.sdg_id = ANY(se.sdg_id) -- ✅ Get the SDGs for the SE
+            WHERE ms.status = 'Accepted' AND mt.mentor_id = $1
+            GROUP BY 
+                ms.mentoring_session_id, -- ✅ Added to GROUP BY
+                m.mentor_firstname, 
+                m.mentor_lastname, 
+                se.team_name, 
+                se.se_id,
+                m.mentor_id,
+                p."name", 
+                ms.start_time, 
+                ms.end_time, 
+                mentoring_session_date
+            ORDER BY ms.start_time DESC; -- ✅ Show most recent sessions first
         `;
     
         const values = [mentor_id];

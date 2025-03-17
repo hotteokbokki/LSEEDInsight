@@ -341,7 +341,7 @@ const Scheduling = ({ userRole }) => {
   };
 
   useEffect(() => {
-    fetch("/auth/session-check", {
+    fetch("http://localhost:4000/auth/session-check", {
       method: "GET",
       credentials: "include", // ✅ Required for sending cookies
       headers: {
@@ -657,9 +657,11 @@ const Scheduling = ({ userRole }) => {
                       width: 150,
                       renderCell: (params) => {
                         let color = "default";
-                        if (params.value === "Pending SE") color = "warning";
-                        if (params.value === "Accepted") color = "success";
-                        if (params.value === "Declined") color = "error";
+                        if (params.value === "Pending SE") color = "warning"; // Yellow - Pending action
+                        if (params.value === "Accepted") color = "success"; // Green - Approved
+                        if (params.value === "Declined") color = "error"; // Red - Rejected
+                        if (params.value === "Evaluated") color = "info"; // Dark Blue - Reviewed but not yet finalized
+                        if (params.value === "Completed") color = "primary"; // Light Blue - Fully done
 
                         return <Chip label={params.value} color={color} />;
                       },
