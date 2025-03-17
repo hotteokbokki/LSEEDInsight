@@ -1,4 +1,17 @@
-import { Box, Button, IconButton, Typography, useTheme, Chip, Snackbar, Alert, Dialog, DialogContent, DialogTitle, DialogActions } from "@mui/material";
+import {
+  Box,
+  Button,
+  IconButton,
+  Typography,
+  useTheme,
+  Chip,
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogActions,
+} from "@mui/material";
 import { tokens } from "../../theme";
 import { mockTransactions } from "../../sampledata/mockData";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
@@ -69,7 +82,7 @@ const Dashboard = ({ userRole }) => {
     mostCommonRating: 5,
     socialEnterprisesHandled: 10,
   };
-  
+
   const mockEvaluations = [
     {
       id: 1,
@@ -85,7 +98,7 @@ const Dashboard = ({ userRole }) => {
       status: "Acknowledged",
     },
   ];
-  
+
   const mockSessions = [
     {
       id: 1,
@@ -100,44 +113,55 @@ const Dashboard = ({ userRole }) => {
       status: "Pending Approval",
     },
   ];
-  
+
   const alertColumns = [
     { field: "seName", headerName: "SE Name", flex: 2 },
-    { 
-      field: "averageScore", 
-      headerName: "Avg Score", 
+    {
+      field: "averageScore",
+      headerName: "Avg Score",
       flex: 1,
       renderCell: (params) => (
-        <Typography 
-          sx={{ 
-            color: params.value === 0 ? "gray" : params.value < 1.5 ? "red" : "black",
-            fontWeight: "bold"
+        <Typography
+          sx={{
+            color:
+              params.value === 0
+                ? "gray"
+                : params.value < 1.5
+                ? "red"
+                : "black",
+            fontWeight: "bold",
           }}
         >
           {params.value === 0 ? "No Evaluations" : params.value}
         </Typography>
       ),
     },
-    { 
-      field: "lastEvaluated", 
-      headerName: "Last Evaluated", 
+    {
+      field: "lastEvaluated",
+      headerName: "Last Evaluated",
       flex: 2,
       renderCell: (params) => (
-        <Typography sx={{ color: params.value === "No Evaluations" ? "gray" : "black" }}>
+        <Typography
+          sx={{ color: params.value === "No Evaluations" ? "gray" : "black" }}
+        >
           {params.value}
         </Typography>
       ),
     },
-    { 
-      field: "actions", 
-      headerName: "Actions", 
+    {
+      field: "actions",
+      headerName: "Actions",
       flex: 2,
       renderCell: (params) => (
-        <Button variant="contained" color="error" onClick={() => handleAction(params.row.id)}>
+        <Button
+          variant="contained"
+          color="error"
+          onClick={() => handleAction(params.row.id)}
+        >
           View SE
         </Button>
-      )
-    }
+      ),
+    },
   ];
 
   useEffect(() => {
@@ -234,38 +258,43 @@ const Dashboard = ({ userRole }) => {
 
   const handleAcceptClick = async (schedule) => {
     try {
-      const { 
-        id: mentoring_session_id, 
-        mentorship_id, 
-        date: mentorship_date, 
-        time: mentorship_time, 
-        zoom: zoom_link 
-      } = schedule; 
-  
+      const {
+        id: mentoring_session_id,
+        mentorship_id,
+        date: mentorship_date,
+        time: mentorship_time,
+        zoom: zoom_link,
+      } = schedule;
+
       console.log("Approving mentorship with details:", {
         mentoring_session_id,
         mentorship_id,
         mentorship_date,
         mentorship_time,
-        zoom_link
+        zoom_link,
       });
-  
+
       const response = await fetch("http://localhost:4000/approveMentorship", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link }), 
+        body: JSON.stringify({
+          mentoring_session_id,
+          mentorship_id,
+          mentorship_date,
+          mentorship_time,
+          zoom_link,
+        }),
       });
-  
+
       if (!response.ok) {
         const errorMessage = await response.text();
         throw new Error(`Failed to approve mentorship: ${errorMessage}`);
       }
-  
+
       console.log("Mentorship approved successfully");
-  
+
       // Show success message
-      setSnackbarOpen(true); 
-  
+      setSnackbarOpen(true);
     } catch (error) {
       console.error("Error approving mentorship:", error);
     }
@@ -274,55 +303,62 @@ const Dashboard = ({ userRole }) => {
   const handleDeclineClick = async (schedule) => {
     try {
       const { id: mentoring_session_id } = schedule; // Extract ID
-  
+
       console.log("Declining schedule with ID:", mentoring_session_id);
-  
+
       const response = await fetch("http://localhost:4000/declineMentorship", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mentoring_session_id }),
       });
-  
+
       if (!response.ok) {
         const errorMessage = await response.text();
         throw new Error(`Failed to decline mentorship: ${errorMessage}`);
       }
-  
+
       console.log("Mentorship declined successfully");
-  
+
       // Show success message
       setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
-  
     } catch (error) {
       console.error("Error declining mentorship:", error);
     }
   };
 
   const pendingScheduleColumns = [
-    { field: "sessionDetails", headerName: "Mentoring Session Information", flex: 1, minWidth: 200 },
+    {
+      field: "sessionDetails",
+      headerName: "Mentoring Session Information",
+      flex: 1,
+      minWidth: 200,
+    },
     { field: "date", headerName: "Scheduled Date", flex: 1, minWidth: 200 },
-    { 
-      field: "status", 
-      headerName: "Status", 
-      flex: 1, 
+    {
+      field: "status",
+      headerName: "Status",
+      flex: 1,
       minWidth: 150,
       renderCell: (params) => (
-        <Chip 
-          label={params.value} 
-          color={params.value === "Pending" ? "warning" : "success"} 
+        <Chip
+          label={params.value}
+          color={params.value === "Pending" ? "warning" : "success"}
         />
-      ) 
+      ),
     },
-    { 
-      field: "actions", 
-      headerName: "Action", 
-      flex: 1, 
+    {
+      field: "actions",
+      headerName: "Action",
+      flex: 1,
       minWidth: 200,
       renderCell: (params) => (
         <div>
           <Button
             variant="contained"
-            style={{ backgroundColor: colors.greenAccent[500], marginRight: "8px" }}
+            style={{
+              backgroundColor: colors.greenAccent[500],
+              marginRight: "8px",
+            }}
             onClick={() => handleAcceptClick(params.row)}
           >
             Accept
@@ -336,7 +372,7 @@ const Dashboard = ({ userRole }) => {
           </Button>
         </div>
       ),
-    }
+    },
   ];
 
   useEffect(() => {
@@ -346,15 +382,15 @@ const Dashboard = ({ userRole }) => {
           "http://localhost:4000/api/flagged-ses"
         );
         const data = response.data; // No need for .json() with axios
-  
+
         if (Array.isArray(data)) {
-          const formattedSEs = data.map(se => ({
-            id: se.se_id,  // Assuming se_id is unique
+          const formattedSEs = data.map((se) => ({
+            id: se.se_id, // Assuming se_id is unique
             seName: se.team_name,
-            averageScore: se.avg_rating || 0,  // Default to 0 if no rating
-            lastEvaluated: se.evaluation_status,  // "No Evaluations" or "Evaluated"
+            averageScore: se.avg_rating || 0, // Default to 0 if no rating
+            lastEvaluated: se.evaluation_status, // "No Evaluations" or "Evaluated"
           }));
-  
+
           setLowPerformingSEs(formattedSEs);
         } else {
           console.error("❌ Invalid mentor schedule format:", data);
@@ -364,7 +400,7 @@ const Dashboard = ({ userRole }) => {
         setLowPerformingSEs([]);
       }
     };
-  
+
     fetchFlaggedSE();
   }, []);
 
@@ -375,9 +411,9 @@ const Dashboard = ({ userRole }) => {
           "http://localhost:4000/api/pending-schedules"
         );
         const data = response.data; // No need for .json() with axios
-  
+
         console.log("📅 Mentor Schedules Data:", data); // ✅ Debugging log
-  
+
         if (Array.isArray(data)) {
           setMentorSchedules(data);
         } else {
@@ -388,9 +424,9 @@ const Dashboard = ({ userRole }) => {
         setMentorSchedules([]);
       }
     };
-  
+
     fetchMentorSchedules();
-  }, []); 
+  }, []);
 
   const handleAction = (id) => {
     navigate(`/se-analytics/${id}`);
@@ -412,7 +448,7 @@ const Dashboard = ({ userRole }) => {
 
   const handleViewExistingEvaluation = async (evaluation_id) => {
     console.log("📌 Evaluation ID Passed:", evaluation_id); // Debugging log
-  
+
     try {
       const response = await axios.get(
         "http://localhost:4000/getEvaluationDetails",
@@ -420,27 +456,27 @@ const Dashboard = ({ userRole }) => {
           params: { evaluation_id },
         }
       );
-  
+
       console.log("📥 Raw API Response:", response); // Log raw response
       console.log("📥 API Response Data:", response.data); // Log parsed response
-  
+
       if (!response.data || response.data.length === 0) {
         console.warn("⚠️ No evaluation details found.");
         return;
       }
-  
+
       // Process evaluation details
       const groupedEvaluation = response.data.reduce((acc, evalItem) => {
         const {
           evaluation_date,
-          evaluator_name,  // ✅ Added evaluator name
+          evaluator_name, // ✅ Added evaluator name
           social_enterprise,
           category_name,
           star_rating,
           selected_comments,
           additional_comment,
         } = evalItem;
-  
+
         if (!acc.id) {
           acc.id = evaluation_id;
           acc.evaluator_name = evaluator_name; // ✅ Store evaluator (SE) name
@@ -448,7 +484,7 @@ const Dashboard = ({ userRole }) => {
           acc.evaluation_date = evaluation_date;
           acc.categories = [];
         }
-  
+
         acc.categories.push({
           category_name,
           star_rating,
@@ -457,10 +493,10 @@ const Dashboard = ({ userRole }) => {
             : [], // Ensure selected_comments is always an array
           additional_comment,
         });
-  
+
         return acc;
       }, {});
-  
+
       console.log("✅ Processed Evaluation Data:", groupedEvaluation);
       setSelectedEvaluation(groupedEvaluation);
       setOpenDialog(true);
@@ -472,20 +508,21 @@ const Dashboard = ({ userRole }) => {
   useEffect(() => {
     const fetchEvaluationStats = async () => {
       try {
-        const response = await fetch("http://localhost:4000/api/evaluation-stats");
+        const response = await fetch(
+          "http://localhost:4000/api/evaluation-stats"
+        );
         const data = await response.json();
-        
+
         console.log("Evaluation Stats Data:", data); // Log API response
-        setEvaluations({ 
-          total: data[0]?.totalevaluations ?? 0, 
-          acknowledged: data[0]?.acknowledgedevaluations ?? 0 
+        setEvaluations({
+          total: data[0]?.totalevaluations ?? 0,
+          acknowledged: data[0]?.acknowledgedevaluations ?? 0,
         });
-  
+
         console.log("Updated Evaluations State:", {
           total: data.totalevaluations,
-          acknowledged: data.acknowledgedevaluations
+          acknowledged: data.acknowledgedevaluations,
         }); // Log the updated state
-  
       } catch (error) {
         console.error("Error fetching evaluation stats:", error);
       }
@@ -493,10 +530,10 @@ const Dashboard = ({ userRole }) => {
     fetchEvaluationStats();
   }, []);
 
-  const acknowledgedPercentage = 
-  evaluations.total > 0
-    ? ((evaluations.acknowledged / evaluations.total) * 100).toFixed(1) + "%"
-    : "0%";
+  const acknowledgedPercentage =
+    evaluations.total > 0
+      ? ((evaluations.acknowledged / evaluations.total) * 100).toFixed(1) + "%"
+      : "0%";
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
@@ -594,14 +631,14 @@ const Dashboard = ({ userRole }) => {
     <Box m="20px">
       {/* HEADER */}
       <Box display="flex" justifyContent="space-between" alignItems="center">
-      <Header
-        title="Dashboard"
-        subtitle={
-          userRole === "LSEED"
-            ? "Welcome to LSEED Dashboard"
-            : "Welcome to Mentor Dashboard"
-        }
-      />
+        <Header
+          title="Dashboard"
+          subtitle={
+            userRole === "LSEED"
+              ? "Welcome to LSEED Dashboard"
+              : "Welcome to Mentor Dashboard"
+          }
+        />
       </Box>
 
       {userRole === "LSEED" && (
@@ -613,7 +650,13 @@ const Dashboard = ({ userRole }) => {
             gap="20px"
           >
             {/* Unassigned Mentors */}
-            <Box gridColumn="span 3" display="flex" alignItems="center" justifyContent="center" bgcolor={colors.primary[400]}>
+            <Box
+              gridColumn="span 3"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              bgcolor={colors.primary[400]}
+            >
               <StatBox
                 title={stats?.mentorWithoutMentorshipCount[0]?.count}
                 subtitle="Unassigned Mentors"
@@ -626,12 +669,22 @@ const Dashboard = ({ userRole }) => {
                     parseInt(stats?.mentorCountTotal[0]?.count)) *
                   100
                 ).toFixed(2)}%`}
-                icon={<EmailIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
+                icon={
+                  <EmailIcon
+                    sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+                  />
+                }
               />
             </Box>
 
             {/* Assigned Mentors */}
-            <Box gridColumn="span 3" display="flex" alignItems="center" justifyContent="center" bgcolor={colors.primary[400]}>
+            <Box
+              gridColumn="span 3"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              bgcolor={colors.primary[400]}
+            >
               <StatBox
                 title={stats?.mentorWithMentorshipCount[0]?.count}
                 subtitle="Assigned Mentors"
@@ -644,7 +697,11 @@ const Dashboard = ({ userRole }) => {
                     parseInt(stats?.mentorCountTotal[0]?.count)) *
                   100
                 ).toFixed(2)}%`}
-                icon={<PointOfSaleIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
+                icon={
+                  <PointOfSaleIcon
+                    sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
+                  />
+                }
               />
             </Box>
 
@@ -658,9 +715,13 @@ const Dashboard = ({ userRole }) => {
               p="20px"
             >
               <Chip
-                label={`${stats.totalSocialEnterprises} involved ${stats.totalSocialEnterprises === 1 ? "Social Enterprise" : "Social Enterprises"}`}
+                label={`${stats.totalSocialEnterprises} involved ${
+                  stats.totalSocialEnterprises === 1
+                    ? "Social Enterprise"
+                    : "Social Enterprises"
+                }`}
                 icon={
-                  <BusinessIcon 
+                  <BusinessIcon
                     sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // Force icon color
                   />
                 }
@@ -669,7 +730,7 @@ const Dashboard = ({ userRole }) => {
                   p: "10px",
                   backgroundColor: colors.primary[400], // Set background explicitly
                   color: "white", // Force text color to white
-                  "& .MuiChip-icon": { color: colors.greenAccent[500] } // Ensure icon color is applied
+                  "& .MuiChip-icon": { color: colors.greenAccent[500] }, // Ensure icon color is applied
                 }}
               />
             </Box>
@@ -684,9 +745,11 @@ const Dashboard = ({ userRole }) => {
               p="20px"
             >
               <Chip
-                label={`${stats.totalPrograms} LSEED ${stats.totalPrograms === 1 ? "Program" : "Programs"}`}
+                label={`${stats.totalPrograms} LSEED ${
+                  stats.totalPrograms === 1 ? "Program" : "Programs"
+                }`}
                 icon={
-                  <TrafficIcon 
+                  <TrafficIcon
                     sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // Force icon color
                   />
                 }
@@ -695,97 +758,146 @@ const Dashboard = ({ userRole }) => {
                   p: "10px",
                   backgroundColor: colors.primary[400], // Set background explicitly
                   color: "white", // Force text color to white
-                  "& .MuiChip-icon": { color: colors.greenAccent[500] } // Ensure icon color is applied
+                  "& .MuiChip-icon": { color: colors.greenAccent[500] }, // Ensure icon color is applied
                 }}
               />
             </Box>
 
             {/* SE Performance Trend Chart */}
-            <Box gridColumn="span 12" gridRow="span 3" bgcolor={colors.primary[400]} p={2}>
+            <Box
+              gridColumn="span 12"
+              gridRow="span 3"
+              bgcolor={colors.primary[400]}
+              p={2}
+            >
               <SEPerformanceTrendChart />
             </Box>
 
             {/* Left Section (Stat Boxes) */}
-            <Box gridColumn="span 4" gridRow="span 2" display="grid" gridTemplateRows="1fr 1fr" gap={2} bgcolor={colors.primary[400]}>
+            <Box
+              gridColumn="span 4"
+              gridRow="span 2"
+              display="grid"
+              gridTemplateRows="1fr 1fr"
+              gap={2}
+              bgcolor={colors.primary[400]}
+            >
               {/* Total Evaluations */}
-              <Box 
-                bgcolor={colors.primary[400]} 
-                display="flex" 
-                alignItems="center" 
-                justifyContent="center" 
-                p={2} 
+              <Box
+                bgcolor={colors.primary[400]}
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                p={2}
                 borderRadius="8px"
               >
-                <StatBox 
-                  title={evaluations.total} 
-                  subtitle="Total Evaluations" 
-                  icon={<PendingActionsIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />} 
+                <StatBox
+                  title={evaluations.total}
+                  subtitle="Total Evaluations"
+                  icon={
+                    <PendingActionsIcon
+                      sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
+                    />
+                  }
                 />
               </Box>
 
               {/* Acknowledged Evaluations */}
-              <Box 
-                bgcolor={colors.primary[400]} 
-                display="flex" 
-                alignItems="center" 
-                justifyContent="center" 
-                p={2} 
+              <Box
+                bgcolor={colors.primary[400]}
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                p={2}
                 borderRadius="8px"
               >
-                <StatBox 
-                  title={evaluations.acknowledged} 
-                  subtitle="Acknowledged Evaluations" 
-                  increase={acknowledgedPercentage} 
-                  icon={<AssignmentTurnedInIcon sx={{ fontSize: "26px", color: colors.greenAccent[500] }} />} 
+                <StatBox
+                  title={evaluations.acknowledged}
+                  subtitle="Acknowledged Evaluations"
+                  increase={acknowledgedPercentage}
+                  icon={
+                    <AssignmentTurnedInIcon
+                      sx={{ fontSize: "26px", color: colors.greenAccent[500] }}
+                    />
+                  }
                 />
               </Box>
             </Box>
 
             {/* Right Section (Chart) */}
-            <Box 
-              gridColumn="span 8" 
-              gridRow="span 2" 
-              bgcolor={colors.primary[400]} 
-              p={2} 
-              display="flex" 
-              alignItems="center" 
-              justifyContent="center" 
+            <Box
+              gridColumn="span 8"
+              gridRow="span 2"
+              bgcolor={colors.primary[400]}
+              p={2}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
             >
               <AcknowledgmentChart style={{ width: "100%", height: "100%" }} />
             </Box>
-            
+
             {/* Alert & Schedule Sections */}
-            <Box 
-              gridColumn="span 12" 
+            <Box
+              gridColumn="span 12"
               gridRow="span 4" // Increase row span to give it more space
-              display="grid" 
-              gridTemplateColumns="repeat(12, 1fr)" 
-              gap="20px" 
+              display="grid"
+              gridTemplateColumns="repeat(12, 1fr)"
+              gap="20px"
               marginTop="20px" // Increase margin to avoid overlap
             >
-              
               {/* SEs Requiring Immediate Attention 🚨 */}
-              <Box gridColumn="span 6" bgcolor={colors.primary[400]} p={2} borderRadius="8px">
-                <Typography variant="h4" fontWeight="bold" color={colors.redAccent[500]}>
+              <Box
+                gridColumn="span 6"
+                bgcolor={colors.primary[400]}
+                p={2}
+                borderRadius="8px"
+              >
+                <Typography
+                  variant="h4"
+                  fontWeight="bold"
+                  color={colors.redAccent[500]}
+                >
                   SEs Requiring Immediate Attention 🚨
                 </Typography>
-                <Box sx={{
-                  height: "auto",
-                  "& .MuiDataGrid-root": { border: "none" },
-                  "& .MuiDataGrid-cell": { borderBottom: "none" },
-                  "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.blueAccent[700] },
-                  "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
-                  "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
-                }}>
-                  {loading ? <Typography>Loading...</Typography> : (
+                <Box
+                  sx={{
+                    height: "auto",
+                    "& .MuiDataGrid-root": { border: "none" },
+                    "& .MuiDataGrid-cell": { borderBottom: "none" },
+                    "& .MuiDataGrid-columnHeaders": {
+                      backgroundColor: colors.blueAccent[700],
+                    },
+                    "& .MuiDataGrid-virtualScroller": {
+                      backgroundColor: colors.primary[400],
+                    },
+                    "& .MuiDataGrid-footerContainer": {
+                      borderTop: "none",
+                      backgroundColor: colors.blueAccent[700],
+                      color: colors.grey[100],
+                    },
+                  }}
+                >
+                  {loading ? (
+                    <Typography>Loading...</Typography>
+                  ) : (
                     <DataGrid rows={lowPerformingSEs} columns={alertColumns} />
                   )}
                 </Box>
               </Box>
 
               {/* Pending Mentoring Schedules 🕒 */}
-              <Box gridColumn="span 6" bgcolor={colors.primary[400]} p={2} borderRadius="8px">
-                <Typography variant="h4" fontWeight="bold" color={colors.blueAccent[500]}>
+              <Box
+                gridColumn="span 6"
+                bgcolor={colors.primary[400]}
+                p={2}
+                borderRadius="8px"
+              >
+                <Typography
+                  variant="h4"
+                  fontWeight="bold"
+                  color={colors.blueAccent[500]}
+                >
                   Pending Mentoring Schedules 🕒
                 </Typography>
                 <Box
@@ -793,92 +905,146 @@ const Dashboard = ({ userRole }) => {
                     height: "auto",
                     "& .MuiDataGrid-root": { border: "none" },
                     "& .MuiDataGrid-cell": { borderBottom: "none" },
-                    "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.blueAccent[700] },
-                    "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
-                    "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
+                    "& .MuiDataGrid-columnHeaders": {
+                      backgroundColor: colors.blueAccent[700],
+                    },
+                    "& .MuiDataGrid-virtualScroller": {
+                      backgroundColor: colors.primary[400],
+                    },
+                    "& .MuiDataGrid-footerContainer": {
+                      borderTop: "none",
+                      backgroundColor: colors.blueAccent[700],
+                      color: colors.grey[100],
+                    },
                   }}
                 >
                   {loading ? (
                     <Typography>Loading...</Typography>
                   ) : mentorSchedules.length > 0 ? (
-                      <DataGrid
-                        rows={mentorSchedules.map((schedule) => ({
-                          id: schedule.mentoring_session_id, // Unique ID
-                          sessionDetails: `Mentoring Session for ${schedule.team_name || "Unknown SE"} with Mentor ${schedule.mentor_name || "Unknown Mentor"}`,
-                          date: `${schedule.mentoring_session_date}, ${schedule.mentoring_session_time}`  || "N/A",
-                          time: schedule.mentoring_session_time || "N/A",
-                          zoom: schedule.zoom_link || "N/A",
-                          mentorship_id: schedule.mentorship_id,
-                          status: schedule.status || "Pending",
-                        }))}
-                        columns={pendingScheduleColumns}
-                        pageSize={5}
-                        rowsPerPageOptions={[5, 10]}
-                      />
+                    <DataGrid
+                      rows={mentorSchedules.map((schedule) => ({
+                        id: schedule.mentoring_session_id, // Unique ID
+                        sessionDetails: `Mentoring Session for ${
+                          schedule.team_name || "Unknown SE"
+                        } with Mentor ${
+                          schedule.mentor_name || "Unknown Mentor"
+                        }`,
+                        date:
+                          `${schedule.mentoring_session_date}, ${schedule.mentoring_session_time}` ||
+                          "N/A",
+                        time: schedule.mentoring_session_time || "N/A",
+                        zoom: schedule.zoom_link || "N/A",
+                        mentorship_id: schedule.mentorship_id,
+                        status: schedule.status || "Pending",
+                      }))}
+                      columns={pendingScheduleColumns}
+                      pageSize={5}
+                      rowsPerPageOptions={[5, 10]}
+                    />
                   ) : (
                     <Typography>No pending schedules available.</Typography>
                   )}
                 </Box>
               </Box>
-
             </Box>
 
             {/* Quick Action Panel */}
-            <Box 
-              gridColumn="span 12" 
-              display="flex" 
-              justifyContent="space-between" 
-              alignItems="center" 
-              bgcolor={colors.primary[400]} 
-              p={2} 
-              borderRadius="8px"
+            <Box
+              gridColumn="span 12"
+              display="grid"
+              gridTemplateColumns="repeat(12, 1fr)"
+              gap={1}
             >
-              <Typography variant="h4" fontWeight="bold">
+              <Typography variant="h6" gridColumn="span 6">
                 Quick Actions Panel
               </Typography>
-              <Box display="flex" gap={2}>
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  startIcon={<AnalyticsOutlinedIcon />} 
-                  onClick={() => navigate("/analytics")}
-                >
-                  View Analytics
-                </Button>
-                <Button 
-                  variant="contained" 
-                  color="secondary" 
-                  startIcon={<Diversity2OutlinedIcon />} 
-                  onClick={() => navigate("/socialenterprise")}
-                >
-                  Social Enterprises
-                </Button>
-                <Button 
-                  variant="contained" 
-                  color="success" 
-                  startIcon={<AssignmentTurnedInOutlinedIcon />} 
-                  onClick={() => navigate("/assess")}
-                >
-                  Evaluate Mentor
-                </Button>
+              <Box
+                gridColumn="span 12"
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                bgcolor={colors.primary[400]}
+                paddingLeft={2}
+                paddingRight={2}
+                width="100%"
+              >
+                <Box display="flex" flexGrow={1} gap={2} width="100%">
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<AnalyticsOutlinedIcon />}
+                    onClick={() => navigate("/analytics")}
+                    sx={{ flexGrow: 1 }}
+                  >
+                    View Analytics
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<Diversity2OutlinedIcon />}
+                    onClick={() => navigate("/socialenterprise")}
+                    sx={{ flexGrow: 1 }}
+                  >
+                    Social Enterprises
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    startIcon={<AssignmentTurnedInOutlinedIcon />}
+                    onClick={() => navigate("/assess")}
+                    sx={{ flexGrow: 1 }}
+                  >
+                    Evaluate Mentor
+                  </Button>
+                </Box>
               </Box>
             </Box>
 
             {/* Mentorships Section */}
-            <Box gridColumn="span 12" gridRow="span 3" display="grid" gridTemplateColumns="repeat(12, 1fr)" gap="20px">
-              <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]} gridColumn="span 12">
+            <Box
+              gridColumn="span 12"
+              gridRow="span 3"
+              display="grid"
+              gridTemplateColumns="repeat(12, 1fr)"
+              gap="20px"
+            >
+              <Typography
+                variant="h3"
+                fontWeight="bold"
+                color={colors.greenAccent[500]}
+                gridColumn="span 12"
+              >
                 Mentorships
               </Typography>
-              <Box gridColumn="span 12" sx={{
-                height: "auto",
-                "& .MuiDataGrid-root": { border: "none" },
-                "& .MuiDataGrid-cell": { borderBottom: "none" },
-                "& .name-column--cell": { color: colors.greenAccent[300] },
-                "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": { backgroundColor: colors.blueAccent[700] + " !important" },
-                "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
-                "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
-              }}>
-                {loading ? <Typography>Loading...</Typography> : <DataGrid rows={socialEnterprises} columns={columns} autoHeight />}
+              <Box
+                gridColumn="span 12"
+                sx={{
+                  height: "auto",
+                  "& .MuiDataGrid-root": { border: "none" },
+                  "& .MuiDataGrid-cell": { borderBottom: "none" },
+                  "& .name-column--cell": { color: colors.greenAccent[300] },
+                  "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                    backgroundColor: colors.blueAccent[700] + " !important",
+                  },
+                  "& .MuiDataGrid-virtualScroller": {
+                    backgroundColor: colors.primary[400],
+                  },
+                  "& .MuiDataGrid-footerContainer": {
+                    borderTop: "none",
+                    backgroundColor: colors.blueAccent[700],
+                    color: colors.grey[100],
+                  },
+                }}
+              >
+                {loading ? (
+                  <Typography>Loading...</Typography>
+                ) : (
+                  <DataGrid
+                    rows={socialEnterprises}
+                    columns={columns}
+                    autoHeight
+                  />
+                )}
               </Box>
             </Box>
           </Box>
@@ -932,9 +1098,13 @@ const Dashboard = ({ userRole }) => {
                 title={mockStats.averageRating}
                 subtitle="Average Rating Given to SEs"
                 progress={mockStats.averageRating / 5} // Placeholder progress
-                increase={`${((mockStats.averageRating / 5) * 100).toFixed(2)}%`}
+                increase={`${((mockStats.averageRating / 5) * 100).toFixed(
+                  2
+                )}%`}
                 icon={
-                  <Star sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />
+                  <Star
+                    sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
+                  />
                 }
               />
             </Box>
@@ -952,9 +1122,13 @@ const Dashboard = ({ userRole }) => {
                 title={mockStats.mostCommonRating}
                 subtitle="Most Common Rating"
                 progress={mockStats.mostCommonRating / 5} // Placeholder progress
-                increase={`${((mockStats.mostCommonRating / 5) * 100).toFixed(2)}%`}
+                increase={`${((mockStats.mostCommonRating / 5) * 100).toFixed(
+                  2
+                )}%`}
                 icon={
-                  <Star sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />
+                  <Star
+                    sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
+                  />
                 }
               />
             </Box>
@@ -1081,7 +1255,8 @@ const Dashboard = ({ userRole }) => {
                         paddingBottom: "8px",
                       }}
                     >
-                      Evaluator: {selectedEvaluation.evaluator_name} {/* ✅ Added Evaluator Name */}
+                      Evaluator: {selectedEvaluation.evaluator_name}{" "}
+                      {/* ✅ Added Evaluator Name */}
                     </Typography>
                     <Typography
                       variant="h6"
@@ -1091,12 +1266,10 @@ const Dashboard = ({ userRole }) => {
                         paddingBottom: "8px",
                       }}
                     >
-                      Social Enterprise Evaluated: {selectedEvaluation.social_enterprise}
+                      Social Enterprise Evaluated:{" "}
+                      {selectedEvaluation.social_enterprise}
                     </Typography>
-                    <Typography
-                      variant="subtitle1"
-                      sx={{ color: "#000" }}
-                    >
+                    <Typography variant="subtitle1" sx={{ color: "#000" }}>
                       Evaluation Date: {selectedEvaluation.evaluation_date}
                     </Typography>
                   </Box>
@@ -1122,7 +1295,8 @@ const Dashboard = ({ userRole }) => {
                             marginBottom: "8px",
                           }}
                         >
-                          {category.category_name} - Rating: {category.star_rating} ★
+                          {category.category_name} - Rating:{" "}
+                          {category.star_rating} ★
                         </Typography>
 
                         {/* Selected Comments */}
@@ -1141,7 +1315,9 @@ const Dashboard = ({ userRole }) => {
                         {/* Additional Comment */}
                         <Typography variant="body1">
                           Additional Comment:{" "}
-                          {category.additional_comment || <i>No additional comments</i>}
+                          {category.additional_comment || (
+                            <i>No additional comments</i>
+                          )}
                         </Typography>
                       </Box>
                     ))
@@ -1159,7 +1335,9 @@ const Dashboard = ({ userRole }) => {
             </DialogContent>
 
             {/* Action Buttons */}
-            <DialogActions sx={{ padding: "16px", borderTop: "1px solid #000" }}>
+            <DialogActions
+              sx={{ padding: "16px", borderTop: "1px solid #000" }}
+            >
               <Button
                 onClick={() => setOpenDialog(false)}
                 sx={{
@@ -1174,43 +1352,53 @@ const Dashboard = ({ userRole }) => {
           </Dialog>
 
           {/* Quick Action Panel */}
-          <Box 
-            gridColumn="span 12" 
-            display="flex" 
-            justifyContent="space-between" 
-            alignItems="center" 
-            bgcolor={colors.primary[400]} 
-            p={2} 
-            borderRadius="8px"
+          <Box
+            gridColumn="span 12"
+            display="grid"
+            gridTemplateColumns="repeat(12, 1fr)"
           >
-            <Typography variant="h4" fontWeight="bold">
+            <Typography variant="h6" sx={{ pl: 2 }}>
               Quick Actions Panel
             </Typography>
-            <Box display="flex" gap={2}>
-              <Button 
-                variant="contained" 
-                color="primary" 
-                startIcon={<AnalyticsOutlinedIcon />} 
-                onClick={() => navigate("/scheduling")}
-              >
-                Appoint Mentoring Session
-              </Button>
-              <Button 
-                variant="contained" 
-                color="secondary" 
-                startIcon={<Diversity2OutlinedIcon />} 
-                onClick={() => navigate("/assess")}
-              >
-                Evaluate SE
-              </Button>
-              <Button 
-                variant="contained" 
-                color="success" 
-                startIcon={<AssignmentTurnedInOutlinedIcon />} 
-                onClick={() => navigate("/mentorships")}
-              >
-                View Managed SE
-              </Button>
+
+            <Box
+              gridColumn="span 12"
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              bgcolor={colors.primary[400]}
+              padding={2}
+              width="100%"
+            >
+              <Box display="flex" gap={2} flexGrow={1} width="100%">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<AnalyticsOutlinedIcon />}
+                  onClick={() => navigate("/analytics")}
+                  sx={{ flexGrow: 1 }}
+                >
+                  View Analytics
+                </Button>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<Diversity2OutlinedIcon />}
+                  onClick={() => navigate("/socialenterprise")}
+                  sx={{ flexGrow: 1 }}
+                >
+                  Social Enterprises
+                </Button>
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={<AssignmentTurnedInOutlinedIcon />}
+                  onClick={() => navigate("/assess")}
+                  sx={{ flexGrow: 1 }}
+                >
+                  Evaluate Mentor
+                </Button>
+              </Box>
             </Box>
           </Box>
 
@@ -1306,7 +1494,6 @@ const Dashboard = ({ userRole }) => {
       </Snackbar>
     </Box>
   );
-  
 };
 
 export default Dashboard;
