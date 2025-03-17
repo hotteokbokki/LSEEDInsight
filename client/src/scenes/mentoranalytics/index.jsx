@@ -84,8 +84,7 @@ const MentorAnalytics = () => {
           id: evaluation.evaluation_id, // ✅ Use evaluation_id as the unique ID
           mentor_name: evaluation.mentor_name,
           evaluator_name: evaluation.evaluator_name, // ✅ SE evaluating the mentor
-          evaluation_date: new Date(evaluation.evaluation_date).toLocaleDateString(),
-          acknowledged: evaluation.acknowledged ? "Yes" : "No",
+          evaluation_date: evaluation.evaluation_date,
         }));
   
         console.log("✅ Formatted Evaluations Data:", formattedData);
@@ -103,10 +102,9 @@ const MentorAnalytics = () => {
   }, [id]);
   
   const columns = [
-    { field: "mentor_name", headerName: "Mentor", flex: 1 }, // ✅ Display the mentor being evaluated
-    { field: "evaluator_name", headerName: "Evaluator (SE)", flex: 1 }, // ✅ Ensure this refers to the SE
+    { field: "mentor_name", headerName: "Mentor", flex: 1 }, 
+    { field: "evaluator_name", headerName: "Evaluator (SE)", flex: 1 }, 
     { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
-    { field: "acknowledged", headerName: "Acknowledged", flex: 1 },
     {
       field: "action",
       headerName: "Action",
@@ -157,7 +155,7 @@ const MentorAnalytics = () => {
           acc.id = evaluation_id;
           acc.evaluator_name = evaluator_name; // ✅ Social Enterprise (Evaluator)
           acc.mentor_name = mentor_name; // ✅ Mentor being evaluated
-          acc.evaluation_date = new Date(evaluation_date).toLocaleDateString();
+          acc.evaluation_date = evaluation_date;
           acc.categories = [];
         }
   

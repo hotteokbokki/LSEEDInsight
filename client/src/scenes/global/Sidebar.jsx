@@ -48,7 +48,6 @@ const Sidebar = () => {
   const getSelectedTitle = () => {
     const routeMap = {
       "/dashboard": "Dashboard",
-      "/mentor-dashboard": "Mentor Dashboard",
       "/assess": "Assess SE",
       "/socialenterprise": "Manage SE",
       "/mentors": "LSEED Mentors",
@@ -154,8 +153,8 @@ const Sidebar = () => {
             {user?.role === "Mentor" && (
               <>
                 <Item
-                  title="Mentor Dashboard"
-                  to="/mentor-dashboard"
+                  title="Dashboard"
+                  to="/dashboard"
                   icon={<GridViewOutlinedIcon />}
                   selected={selected}
                   setSelected={setSelected}
@@ -164,13 +163,6 @@ const Sidebar = () => {
                   title="Evaluate"
                   to="/assess"
                   icon={<AssignmentTurnedInOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-                <Item
-                  title="Show Analytics"
-                  to="/analytics-mentorship"
-                  icon={<AnalyticsOutlinedIcon />}
                   selected={selected}
                   setSelected={setSelected}
                 />

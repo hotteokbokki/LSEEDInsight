@@ -1,4 +1,4 @@
-import { Box, Button, IconButton, Typography, useTheme, Chip, Snackbar, Alert } from "@mui/material";
+import { Box, Button, IconButton, Typography, useTheme, Chip, Snackbar, Alert, } from "@mui/material";
 import { tokens } from "../../theme";
 import { mockTransactions } from "../../sampledata/mockData";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
@@ -26,9 +26,15 @@ import Diversity2OutlinedIcon from "@mui/icons-material/Diversity2Outlined";
 import AnalyticsOutlinedIcon from "@mui/icons-material/AnalyticsOutlined";
 import BusinessIcon from "@mui/icons-material/Business";
 import PendingActionsIcon from "@mui/icons-material/PendingActions";
+import {
+  Assessment,
+  Star,
+  Business,
+  EventAvailable,
+} from "@mui/icons-material";
 import axios from "axios";
 
-const Dashboard = () => {
+const Dashboard = ({ userRole }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [currentEvents, setCurrentEvents] = useState([]);
@@ -50,6 +56,44 @@ const Dashboard = () => {
     previousUnassignedMentors: 0,
   });
   const [percentageIncrease, setPercentageIncrease] = useState("0%");
+
+  const mockStats = {
+    totalEvaluations: 25,
+    averageRating: 4.3,
+    mostCommonRating: 5,
+    socialEnterprisesHandled: 10,
+  };
+  
+  const mockEvaluations = [
+    {
+      id: 1,
+      date: "2025-03-10",
+      enterprise: "GreenFuture SE",
+      status: "Acknowledged",
+    },
+    { id: 2, date: "2025-03-08", enterprise: "EcoSavers", status: "Pending" },
+    {
+      id: 3,
+      date: "2025-03-05",
+      enterprise: "BlueWater Solutions",
+      status: "Acknowledged",
+    },
+  ];
+  
+  const mockSessions = [
+    {
+      id: 1,
+      date: "2025-03-20",
+      enterprise: "GreenFuture SE",
+      status: "Confirmed",
+    },
+    {
+      id: 2,
+      date: "2025-03-22",
+      enterprise: "EcoSavers",
+      status: "Pending Approval",
+    },
+  ];
   
   const alertColumns = [
     { field: "seName", headerName: "SE Name", flex: 2 },
@@ -393,286 +437,574 @@ const Dashboard = () => {
     <Box m="20px">
       {/* HEADER */}
       <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Header title="DASHBOARD" subtitle="Welcome to your dashboard" />
+      <Header
+        title="Dashboard"
+        subtitle={
+          userRole === "LSEED"
+            ? "Welcome to LSEED Dashboard"
+            : "Welcome to Mentor Dashboard"
+        }
+      />
       </Box>
 
-      {/* GRID & CHARTS */}
-      <Box
-        display="grid"
-        gridTemplateColumns="repeat(12, 1fr)"
-        gridAutoRows="140px"
-        gap="20px"
-      >
-        {/* Unassigned Mentors */}
-        <Box gridColumn="span 3" display="flex" alignItems="center" justifyContent="center" bgcolor={colors.primary[400]}>
-          <StatBox
-            title={stats?.mentorWithoutMentorshipCount[0]?.count}
-            subtitle="Unassigned Mentors"
-            progress={
-              parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
-              parseInt(stats?.mentorCountTotal[0]?.count)
-            }
-            increase={`${(
-              (parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
-                parseInt(stats?.mentorCountTotal[0]?.count)) *
-              100
-            ).toFixed(2)}%`}
-            icon={<EmailIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
-          />
-        </Box>
-
-        {/* Assigned Mentors */}
-        <Box gridColumn="span 3" display="flex" alignItems="center" justifyContent="center" bgcolor={colors.primary[400]}>
-          <StatBox
-            title={stats?.mentorWithMentorshipCount[0]?.count}
-            subtitle="Assigned Mentors"
-            progress={
-              parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
-              parseInt(stats?.mentorCountTotal[0]?.count)
-            }
-            increase={`${(
-              (parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
-                parseInt(stats?.mentorCountTotal[0]?.count)) *
-              100
-            ).toFixed(2)}%`}
-            icon={<PointOfSaleIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
-          />
-        </Box>
-
-        {/* Total Social Enterprises */}
-        <Box
-          flex="1 1 22%"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          p="20px"
-        >
-          <Chip
-            label={`${stats.totalSocialEnterprises} involved ${stats.totalSocialEnterprises === 1 ? "Social Enterprise" : "Social Enterprises"}`}
-            icon={
-              <BusinessIcon 
-                sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // Force icon color
-              />
-            }
-            sx={{
-              fontSize: "16px",
-              p: "10px",
-              backgroundColor: colors.primary[400], // Set background explicitly
-              color: "white", // Force text color to white
-              "& .MuiChip-icon": { color: colors.greenAccent[500] } // Ensure icon color is applied
-            }}
-          />
-        </Box>
-
-        {/* Total Programs */}
-        <Box
-          flex="1 1 22%"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          p="20px"
-        >
-          <Chip
-            label={`${stats.totalPrograms} LSEED ${stats.totalPrograms === 1 ? "Program" : "Programs"}`}
-            icon={
-              <TrafficIcon 
-                sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // Force icon color
-              />
-            }
-            sx={{
-              fontSize: "16px",
-              p: "10px",
-              backgroundColor: colors.primary[400], // Set background explicitly
-              color: "white", // Force text color to white
-              "& .MuiChip-icon": { color: colors.greenAccent[500] } // Ensure icon color is applied
-            }}
-          />
-        </Box>
-
-        {/* SE Performance Trend Chart */}
-        <Box gridColumn="span 12" gridRow="span 3" bgcolor={colors.primary[400]} p={2}>
-          <SEPerformanceTrendChart />
-        </Box>
-
-        {/* Left Section (Stat Boxes) */}
-        <Box gridColumn="span 4" gridRow="span 2" display="grid" gridTemplateRows="1fr 1fr" gap={2} bgcolor={colors.primary[400]}>
-          {/* Total Evaluations */}
-          <Box 
-            bgcolor={colors.primary[400]} 
-            display="flex" 
-            alignItems="center" 
-            justifyContent="center" 
-            p={2} 
-            borderRadius="8px"
+      {userRole === "LSEED" && (
+        <>
+          <Box
+            display="grid"
+            gridTemplateColumns="repeat(12, 1fr)"
+            gridAutoRows="140px"
+            gap="20px"
           >
-            <StatBox 
-              title={evaluations.total} 
-              subtitle="Total Evaluations" 
-              icon={<PendingActionsIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />} 
-            />
-          </Box>
-
-          {/* Acknowledged Evaluations */}
-          <Box 
-            bgcolor={colors.primary[400]} 
-            display="flex" 
-            alignItems="center" 
-            justifyContent="center" 
-            p={2} 
-            borderRadius="8px"
-          >
-            <StatBox 
-              title={evaluations.acknowledged} 
-              subtitle="Acknowledged Evaluations" 
-              increase={acknowledgedPercentage} 
-              icon={<AssignmentTurnedInIcon sx={{ fontSize: "26px", color: colors.greenAccent[500] }} />} 
-            />
-          </Box>
-        </Box>
-
-        {/* Right Section (Chart) */}
-        <Box 
-          gridColumn="span 8" 
-          gridRow="span 2" 
-          bgcolor={colors.primary[400]} 
-          p={2} 
-          display="flex" 
-          alignItems="center" 
-          justifyContent="center" 
-        >
-          <AcknowledgmentChart style={{ width: "100%", height: "100%" }} />
-        </Box>
-        
-        {/* Alert & Schedule Sections */}
-        <Box 
-          gridColumn="span 12" 
-          gridRow="span 4" // Increase row span to give it more space
-          display="grid" 
-          gridTemplateColumns="repeat(12, 1fr)" 
-          gap="20px" 
-          marginTop="20px" // Increase margin to avoid overlap
-        >
-          
-          {/* SEs Requiring Immediate Attention 🚨 */}
-          <Box gridColumn="span 6" bgcolor={colors.primary[400]} p={2} borderRadius="8px">
-            <Typography variant="h4" fontWeight="bold" color={colors.redAccent[500]}>
-              SEs Requiring Immediate Attention 🚨
-            </Typography>
-            <Box sx={{
-              height: "auto",
-              "& .MuiDataGrid-root": { border: "none" },
-              "& .MuiDataGrid-cell": { borderBottom: "none" },
-              "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.blueAccent[700] },
-              "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
-              "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
-            }}>
-              {loading ? <Typography>Loading...</Typography> : (
-                <DataGrid rows={lowPerformingSEs} columns={alertColumns} />
-              )}
+            {/* Unassigned Mentors */}
+            <Box gridColumn="span 3" display="flex" alignItems="center" justifyContent="center" bgcolor={colors.primary[400]}>
+              <StatBox
+                title={stats?.mentorWithoutMentorshipCount[0]?.count}
+                subtitle="Unassigned Mentors"
+                progress={
+                  parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
+                  parseInt(stats?.mentorCountTotal[0]?.count)
+                }
+                increase={`${(
+                  (parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
+                    parseInt(stats?.mentorCountTotal[0]?.count)) *
+                  100
+                ).toFixed(2)}%`}
+                icon={<EmailIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
+              />
             </Box>
-          </Box>
 
-          {/* Pending Mentoring Schedules 🕒 */}
-          <Box gridColumn="span 6" bgcolor={colors.primary[400]} p={2} borderRadius="8px">
-            <Typography variant="h4" fontWeight="bold" color={colors.blueAccent[500]}>
-              Pending Mentoring Schedules 🕒
-            </Typography>
+            {/* Assigned Mentors */}
+            <Box gridColumn="span 3" display="flex" alignItems="center" justifyContent="center" bgcolor={colors.primary[400]}>
+              <StatBox
+                title={stats?.mentorWithMentorshipCount[0]?.count}
+                subtitle="Assigned Mentors"
+                progress={
+                  parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
+                  parseInt(stats?.mentorCountTotal[0]?.count)
+                }
+                increase={`${(
+                  (parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
+                    parseInt(stats?.mentorCountTotal[0]?.count)) *
+                  100
+                ).toFixed(2)}%`}
+                icon={<PointOfSaleIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
+              />
+            </Box>
+
+            {/* Total Social Enterprises */}
             <Box
-              sx={{
+              flex="1 1 22%"
+              backgroundColor={colors.primary[400]}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              p="20px"
+            >
+              <Chip
+                label={`${stats.totalSocialEnterprises} involved ${stats.totalSocialEnterprises === 1 ? "Social Enterprise" : "Social Enterprises"}`}
+                icon={
+                  <BusinessIcon 
+                    sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // Force icon color
+                  />
+                }
+                sx={{
+                  fontSize: "16px",
+                  p: "10px",
+                  backgroundColor: colors.primary[400], // Set background explicitly
+                  color: "white", // Force text color to white
+                  "& .MuiChip-icon": { color: colors.greenAccent[500] } // Ensure icon color is applied
+                }}
+              />
+            </Box>
+
+            {/* Total Programs */}
+            <Box
+              flex="1 1 22%"
+              backgroundColor={colors.primary[400]}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              p="20px"
+            >
+              <Chip
+                label={`${stats.totalPrograms} LSEED ${stats.totalPrograms === 1 ? "Program" : "Programs"}`}
+                icon={
+                  <TrafficIcon 
+                    sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // Force icon color
+                  />
+                }
+                sx={{
+                  fontSize: "16px",
+                  p: "10px",
+                  backgroundColor: colors.primary[400], // Set background explicitly
+                  color: "white", // Force text color to white
+                  "& .MuiChip-icon": { color: colors.greenAccent[500] } // Ensure icon color is applied
+                }}
+              />
+            </Box>
+
+            {/* SE Performance Trend Chart */}
+            <Box gridColumn="span 12" gridRow="span 3" bgcolor={colors.primary[400]} p={2}>
+              <SEPerformanceTrendChart />
+            </Box>
+
+            {/* Left Section (Stat Boxes) */}
+            <Box gridColumn="span 4" gridRow="span 2" display="grid" gridTemplateRows="1fr 1fr" gap={2} bgcolor={colors.primary[400]}>
+              {/* Total Evaluations */}
+              <Box 
+                bgcolor={colors.primary[400]} 
+                display="flex" 
+                alignItems="center" 
+                justifyContent="center" 
+                p={2} 
+                borderRadius="8px"
+              >
+                <StatBox 
+                  title={evaluations.total} 
+                  subtitle="Total Evaluations" 
+                  icon={<PendingActionsIcon sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />} 
+                />
+              </Box>
+
+              {/* Acknowledged Evaluations */}
+              <Box 
+                bgcolor={colors.primary[400]} 
+                display="flex" 
+                alignItems="center" 
+                justifyContent="center" 
+                p={2} 
+                borderRadius="8px"
+              >
+                <StatBox 
+                  title={evaluations.acknowledged} 
+                  subtitle="Acknowledged Evaluations" 
+                  increase={acknowledgedPercentage} 
+                  icon={<AssignmentTurnedInIcon sx={{ fontSize: "26px", color: colors.greenAccent[500] }} />} 
+                />
+              </Box>
+            </Box>
+
+            {/* Right Section (Chart) */}
+            <Box 
+              gridColumn="span 8" 
+              gridRow="span 2" 
+              bgcolor={colors.primary[400]} 
+              p={2} 
+              display="flex" 
+              alignItems="center" 
+              justifyContent="center" 
+            >
+              <AcknowledgmentChart style={{ width: "100%", height: "100%" }} />
+            </Box>
+            
+            {/* Alert & Schedule Sections */}
+            <Box 
+              gridColumn="span 12" 
+              gridRow="span 4" // Increase row span to give it more space
+              display="grid" 
+              gridTemplateColumns="repeat(12, 1fr)" 
+              gap="20px" 
+              marginTop="20px" // Increase margin to avoid overlap
+            >
+              
+              {/* SEs Requiring Immediate Attention 🚨 */}
+              <Box gridColumn="span 6" bgcolor={colors.primary[400]} p={2} borderRadius="8px">
+                <Typography variant="h4" fontWeight="bold" color={colors.redAccent[500]}>
+                  SEs Requiring Immediate Attention 🚨
+                </Typography>
+                <Box sx={{
+                  height: "auto",
+                  "& .MuiDataGrid-root": { border: "none" },
+                  "& .MuiDataGrid-cell": { borderBottom: "none" },
+                  "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.blueAccent[700] },
+                  "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
+                  "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
+                }}>
+                  {loading ? <Typography>Loading...</Typography> : (
+                    <DataGrid rows={lowPerformingSEs} columns={alertColumns} />
+                  )}
+                </Box>
+              </Box>
+
+              {/* Pending Mentoring Schedules 🕒 */}
+              <Box gridColumn="span 6" bgcolor={colors.primary[400]} p={2} borderRadius="8px">
+                <Typography variant="h4" fontWeight="bold" color={colors.blueAccent[500]}>
+                  Pending Mentoring Schedules 🕒
+                </Typography>
+                <Box
+                  sx={{
+                    height: "auto",
+                    "& .MuiDataGrid-root": { border: "none" },
+                    "& .MuiDataGrid-cell": { borderBottom: "none" },
+                    "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.blueAccent[700] },
+                    "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
+                    "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
+                  }}
+                >
+                  {loading ? (
+                    <Typography>Loading...</Typography>
+                  ) : mentorSchedules.length > 0 ? (
+                      <DataGrid
+                        rows={mentorSchedules.map((schedule) => ({
+                          id: schedule.mentoring_session_id, // Unique ID
+                          sessionDetails: `Mentoring Session for ${schedule.team_name || "Unknown SE"} with Mentor ${schedule.mentor_name || "Unknown Mentor"}`,
+                          date: `${schedule.mentoring_session_date}, ${schedule.mentoring_session_time}`  || "N/A",
+                          time: schedule.mentoring_session_time || "N/A",
+                          zoom: schedule.zoom_link || "N/A",
+                          mentorship_id: schedule.mentorship_id,
+                          status: schedule.status || "Pending",
+                        }))}
+                        columns={pendingScheduleColumns}
+                        pageSize={5}
+                        rowsPerPageOptions={[5, 10]}
+                      />
+                  ) : (
+                    <Typography>No pending schedules available.</Typography>
+                  )}
+                </Box>
+              </Box>
+
+            </Box>
+
+            {/* Quick Action Panel */}
+            <Box 
+              gridColumn="span 12" 
+              display="flex" 
+              justifyContent="space-between" 
+              alignItems="center" 
+              bgcolor={colors.primary[400]} 
+              p={2} 
+              borderRadius="8px"
+            >
+              <Typography variant="h4" fontWeight="bold">
+                Quick Actions Panel
+              </Typography>
+              <Box display="flex" gap={2}>
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  startIcon={<AnalyticsOutlinedIcon />} 
+                  onClick={() => navigate("/analytics")}
+                >
+                  View Analytics
+                </Button>
+                <Button 
+                  variant="contained" 
+                  color="secondary" 
+                  startIcon={<Diversity2OutlinedIcon />} 
+                  onClick={() => navigate("/socialenterprise")}
+                >
+                  Social Enterprises
+                </Button>
+                <Button 
+                  variant="contained" 
+                  color="success" 
+                  startIcon={<AssignmentTurnedInOutlinedIcon />} 
+                  onClick={() => navigate("/assess")}
+                >
+                  Evaluate Mentor
+                </Button>
+              </Box>
+            </Box>
+
+            {/* Mentorships Section */}
+            <Box gridColumn="span 12" gridRow="span 3" display="grid" gridTemplateColumns="repeat(12, 1fr)" gap="20px">
+              <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]} gridColumn="span 12">
+                Mentorships
+              </Typography>
+              <Box gridColumn="span 12" sx={{
                 height: "auto",
                 "& .MuiDataGrid-root": { border: "none" },
                 "& .MuiDataGrid-cell": { borderBottom: "none" },
-                "& .MuiDataGrid-columnHeaders": { backgroundColor: colors.blueAccent[700] },
+                "& .name-column--cell": { color: colors.greenAccent[300] },
+                "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": { backgroundColor: colors.blueAccent[700] + " !important" },
                 "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
                 "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
-              }}
+              }}>
+                {loading ? <Typography>Loading...</Typography> : <DataGrid rows={socialEnterprises} columns={columns} autoHeight />}
+              </Box>
+            </Box>
+          </Box>
+        </>
+      )}
+
+      {userRole === "Mentor" && (
+        <>
+          {/* Row 1 - StatBoxes */}
+          <Box
+            display="flex"
+            flexWrap="wrap"
+            gap="20px"
+            justifyContent="space-between"
+            mt="20px"
+          >
+            {/* Total Evaluations Submitted */}
+            <Box
+              flex="1 1 22%" // Responsive width for each StatBox
+              backgroundColor={colors.primary[400]}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              p="20px"
             >
-              {loading ? (
-                <Typography>Loading...</Typography>
-              ) : mentorSchedules.length > 0 ? (
-                  <DataGrid
-                    rows={mentorSchedules.map((schedule) => ({
-                      id: schedule.mentoring_session_id, // Unique ID
-                      sessionDetails: `Mentoring Session for ${schedule.team_name || "Unknown SE"} with Mentor ${schedule.mentor_name || "Unknown Mentor"}`,
-                      date: `${schedule.mentoring_session_date}, ${schedule.mentoring_session_time}`  || "N/A",
-                      time: schedule.mentoring_session_time || "N/A",
-                      zoom: schedule.zoom_link || "N/A",
-                      mentorship_id: schedule.mentorship_id,
-                      status: schedule.status || "Pending",
-                    }))}
-                    columns={pendingScheduleColumns}
-                    pageSize={5}
-                    rowsPerPageOptions={[5, 10]}
+              <StatBox
+                title={mockStats.totalEvaluations}
+                subtitle="Total Evaluations Submitted"
+                progress={mockStats.totalEvaluations / 50} // Placeholder percentage
+                increase={`${((mockStats.totalEvaluations / 50) * 100).toFixed(
+                  2
+                )}%`}
+                icon={
+                  <Assessment
+                    sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
                   />
-              ) : (
-                <Typography>No pending schedules available.</Typography>
-              )}
+                }
+              />
+            </Box>
+
+            {/* Average Rating Given to SEs */}
+            <Box
+              flex="1 1 22%"
+              backgroundColor={colors.primary[400]}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              p="20px"
+            >
+              <StatBox
+                title={mockStats.averageRating}
+                subtitle="Average Rating Given to SEs"
+                progress={mockStats.averageRating / 5} // Placeholder progress
+                increase={`${((mockStats.averageRating / 5) * 100).toFixed(2)}%`}
+                icon={
+                  <Star sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />
+                }
+              />
+            </Box>
+
+            {/* Most Common Rating */}
+            <Box
+              flex="1 1 22%"
+              backgroundColor={colors.primary[400]}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              p="20px"
+            >
+              <StatBox
+                title={mockStats.mostCommonRating}
+                subtitle="Most Common Rating"
+                progress={mockStats.mostCommonRating / 5} // Placeholder progress
+                increase={`${((mockStats.mostCommonRating / 5) * 100).toFixed(2)}%`}
+                icon={
+                  <Star sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />
+                }
+              />
+            </Box>
+
+            {/* Social Enterprises Handled */}
+            <Box
+              flex="1 1 22%"
+              backgroundColor={colors.primary[400]}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              p="20px"
+            >
+              <StatBox
+                title={mockStats.socialEnterprisesHandled}
+                subtitle="Social Enterprises Handled"
+                progress={mockStats.socialEnterprisesHandled / 20} // Placeholder percentage
+                increase={`${(
+                  (mockStats.socialEnterprisesHandled / 20) *
+                  100
+                ).toFixed(2)}%`}
+                icon={
+                  <Business
+                    sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
+                  />
+                }
+              />
             </Box>
           </Box>
 
-        </Box>
-
-        {/* Quick Action Panel */}
-        <Box 
-          gridColumn="span 12" 
-          display="flex" 
-          justifyContent="space-between" 
-          alignItems="center" 
-          bgcolor={colors.primary[400]} 
-          p={2} 
-          borderRadius="8px"
-        >
-          <Typography variant="h4" fontWeight="bold">
-            Quick Actions Panel
-          </Typography>
-          <Box display="flex" gap={2}>
-            <Button 
-              variant="contained" 
-              color="primary" 
-              startIcon={<AnalyticsOutlinedIcon />} 
-              onClick={() => navigate("/analytics")}
-            >
-              View Analytics
-            </Button>
-            <Button 
-              variant="contained" 
-              color="secondary" 
-              startIcon={<Diversity2OutlinedIcon />} 
-              onClick={() => navigate("/socialenterprise")}
-            >
-              Social Enterprises
-            </Button>
-            <Button 
-              variant="contained" 
-              color="success" 
-              startIcon={<AssignmentTurnedInOutlinedIcon />} 
-              onClick={() => navigate("/assess")}
-            >
-              Evaluate Mentor
-            </Button>
+          {/* Evaluation History */}
+          <Box mt={4}>
+            <Typography variant="h6" gutterBottom>
+              Recent Evaluations
+            </Typography>
+            {mockEvaluations.length > 0 ? (
+              <Box
+                sx={{
+                  height: 400,
+                  width: "100%",
+                  overflowX: "auto",
+                  "& .MuiDataGrid-root": {
+                    border: "none",
+                  },
+                  "& .MuiDataGrid-cell": {
+                    borderBottom: "none",
+                  },
+                  "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                    backgroundColor: colors.blueAccent[700] + " !important",
+                  },
+                  "& .MuiDataGrid-virtualScroller": {
+                    backgroundColor: colors.primary[400],
+                  },
+                  "& .MuiDataGrid-footerContainer": {
+                    borderTop: "none",
+                    backgroundColor: colors.blueAccent[700],
+                    color: colors.grey[100],
+                  },
+                }}
+              >
+                <DataGrid
+                  rows={mockEvaluations}
+                  columns={[
+                    { field: "date", headerName: "Date", flex: 1 },
+                    {
+                      field: "enterprise",
+                      headerName: "Social Enterprise",
+                      flex: 2,
+                    },
+                    {
+                      field: "status",
+                      headerName: "Acknowledgment",
+                      flex: 1,
+                      renderCell: (params) => (
+                        <Chip
+                          label={params.value}
+                          color={
+                            params.value === "Acknowledged" ? "success" : "warning"
+                          }
+                        />
+                      ),
+                    },
+                    {
+                      field: "actions",
+                      headerName: "Actions",
+                      flex: 1,
+                      renderCell: () => (
+                        <Button variant="contained" size="small">
+                          View Details
+                        </Button>
+                      ),
+                    },
+                  ]}
+                  pageSize={5}
+                  rowsPerPageOptions={[5, 10]}
+                />
+              </Box>
+            ) : (
+              <Typography>No evaluations available.</Typography>
+            )}
           </Box>
-        </Box>
 
-        {/* Mentorships Section */}
-        <Box gridColumn="span 12" gridRow="span 3" display="grid" gridTemplateColumns="repeat(12, 1fr)" gap="20px">
-          <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]} gridColumn="span 12">
-            Mentorships
-          </Typography>
-          <Box gridColumn="span 12" sx={{
-            height: "auto",
-            "& .MuiDataGrid-root": { border: "none" },
-            "& .MuiDataGrid-cell": { borderBottom: "none" },
-            "& .name-column--cell": { color: colors.greenAccent[300] },
-            "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": { backgroundColor: colors.blueAccent[700] + " !important" },
-            "& .MuiDataGrid-virtualScroller": { backgroundColor: colors.primary[400] },
-            "& .MuiDataGrid-footerContainer": { borderTop: "none", backgroundColor: colors.blueAccent[700], color: colors.grey[100] },
-          }}>
-            {loading ? <Typography>Loading...</Typography> : <DataGrid rows={socialEnterprises} columns={columns} autoHeight />}
+          {/* Quick Action Panel */}
+          <Box 
+            gridColumn="span 12" 
+            display="flex" 
+            justifyContent="space-between" 
+            alignItems="center" 
+            bgcolor={colors.primary[400]} 
+            p={2} 
+            borderRadius="8px"
+          >
+            <Typography variant="h4" fontWeight="bold">
+              Quick Actions Panel
+            </Typography>
+            <Box display="flex" gap={2}>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                startIcon={<AnalyticsOutlinedIcon />} 
+                onClick={() => navigate("/scheduling")}
+              >
+                Appoint Mentoring Session
+              </Button>
+              <Button 
+                variant="contained" 
+                color="secondary" 
+                startIcon={<Diversity2OutlinedIcon />} 
+                onClick={() => navigate("/assess")}
+              >
+                Evaluate SE
+              </Button>
+              <Button 
+                variant="contained" 
+                color="success" 
+                startIcon={<AssignmentTurnedInOutlinedIcon />} 
+                onClick={() => navigate("/mentorships")}
+              >
+                View Managed SE
+              </Button>
+            </Box>
           </Box>
-        </Box>
-      </Box>
+
+          {/* Upcoming Mentoring Sessions */}
+          <Box mt={4}>
+            <Typography variant="h6" gutterBottom>
+              Upcoming Mentoring Sessions
+            </Typography>
+            {mockSessions.length > 0 ? (
+              <Box
+                sx={{
+                  height: 400,
+                  width: "100%",
+                  overflowX: "auto",
+                  "& .MuiDataGrid-root": {
+                    border: "none",
+                  },
+                  "& .MuiDataGrid-cell": {
+                    borderBottom: "none",
+                  },
+                  "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                    backgroundColor: colors.blueAccent[700] + " !important",
+                  },
+                  "& .MuiDataGrid-virtualScroller": {
+                    backgroundColor: colors.primary[400],
+                  },
+                  "& .MuiDataGrid-footerContainer": {
+                    borderTop: "none",
+                    backgroundColor: colors.blueAccent[700],
+                    color: colors.grey[100],
+                  },
+                }}
+              >
+                <DataGrid
+                  rows={mockSessions}
+                  columns={[
+                    { field: "date", headerName: "Date & Time", flex: 1 },
+                    {
+                      field: "enterprise",
+                      headerName: "Social Enterprise",
+                      flex: 2,
+                    },
+                    {
+                      field: "status",
+                      headerName: "Status",
+                      flex: 1,
+                      renderCell: (params) => (
+                        <Chip
+                          label={params.value}
+                          color={
+                            params.value === "Confirmed" ? "success" : "warning"
+                          }
+                        />
+                      ),
+                    },
+                  ]}
+                  pageSize={5}
+                  rowsPerPageOptions={[5, 10]}
+                />
+              </Box>
+            ) : (
+              <Typography>No mentoring sessions scheduled.</Typography>
+            )}
+          </Box>
+        </>
+      )}
+
       {/* Snackbar for Success Alert */}
       <Snackbar
         open={snackbarOpen} // Controlled by state

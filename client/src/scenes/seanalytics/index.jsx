@@ -201,9 +201,7 @@ const SEAnalytics = () => {
           evaluation_id: evaluation.evaluation_id, // Explicitly include evaluation_id
           evaluator_name: evaluation.evaluator_name,
           social_enterprise: evaluation.social_enterprise,
-          evaluation_date: new Date(
-            evaluation.evaluation_date
-          ).toLocaleDateString(),
+          evaluation_date: evaluation.evaluation_date,
           acknowledged: evaluation.acknowledged ? "Yes" : "No",
         }));
 
@@ -277,7 +275,7 @@ const SEAnalytics = () => {
           acc.id = evaluation_id;
           acc.evaluator_name = evaluator_name; // ✅ Store evaluator (SE) name
           acc.social_enterprise = social_enterprise; // ✅ Store evaluated SE
-          acc.evaluation_date = new Date(evaluation_date).toLocaleDateString();
+          acc.evaluation_date = evaluation_date;
           acc.categories = [];
         }
   

@@ -7,7 +7,7 @@ exports.getEvaluations = async () => {
                 e.evaluation_id,
                 m.mentor_firstname || ' ' || m.mentor_lastname AS evaluator_name,
                 se.team_name AS social_enterprise,
-                e.created_at AS evaluation_date,
+                TO_CHAR(e.created_at, 'FMMonth DD, YYYY') AS evaluation_date, -- ✅ Formatted date
                 e."isAcknowledge" AS acknowledged,
 				e.evaluation_type
             FROM 
@@ -16,6 +16,8 @@ exports.getEvaluations = async () => {
                 mentors AS m ON e.mentor_id = m.mentor_id
             JOIN 
                 socialenterprises AS se ON e.se_id = se.se_id
+            WHERE 
+                e.evaluation_type = 'Social Enterprise'
         `;
 
         const result = await pgDatabase.query(query);
@@ -34,7 +36,7 @@ exports.getEvaluationsByMentorID = async (mentor_id) => {
                 e.evaluation_id,
                 se.team_name AS evaluator_name, -- ✅ Social Enterprise evaluating the mentor
                 m.mentor_firstname || ' ' || m.mentor_lastname AS mentor_name, -- ✅ Mentor being evaluated
-                e.created_at AS evaluation_date,
+                TO_CHAR(e.created_at, 'FMMonth DD, YYYY') AS evaluation_date, -- ✅ Formatted date
                 e."isAcknowledge" AS acknowledged
             FROM 
                 evaluations AS e
@@ -59,6 +61,68 @@ exports.getEvaluationsByMentorID = async (mentor_id) => {
     }
 };
 
+exports.getAllMentorTypeEvaluations = async () => {
+    try {
+        const query = `
+            SELECT 
+                e.evaluation_id,
+                se.team_name AS evaluator_name, -- ✅ Social Enterprise evaluating the mentor
+                m.mentor_firstname || ' ' || m.mentor_lastname AS mentor_name, -- ✅ Mentor being evaluated
+                TO_CHAR(e.created_at, 'FMMonth DD, YYYY') AS evaluation_date, -- ✅ Formatted date
+                e."isAcknowledge" AS acknowledged
+            FROM 
+                evaluations AS e
+            JOIN 
+                mentors AS m ON e.mentor_id = m.mentor_id -- ✅ Get mentor details
+            JOIN 
+                socialenterprises AS se ON e.se_id = se.se_id -- ✅ Get SE details
+            WHERE	
+                e.evaluation_type = 'Mentors' -- ✅ Ensure it's a mentor evaluation
+            ORDER BY 
+                e.created_at DESC; -- ✅ Order by most recent evaluations
+        `;
+
+        const result = await pgDatabase.query(query);
+
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching evaluations:", error);
+        return [];
+    }
+};
+
+exports.getEvaluationsMadeByMentor = async (mentor_id) => {
+    try {
+        const query = `
+            SELECT 
+                e.evaluation_id,
+                m.mentor_firstname || ' ' || m.mentor_lastname AS evaluator_name, -- ✅ Mentor who evaluated the SE
+                se.team_name AS social_enterprise, -- ✅ SE being evaluated
+                TO_CHAR(e.created_at, 'FMMonth DD, YYYY') AS evaluation_date, -- ✅ Formatted date
+                e."isAcknowledge" AS acknowledged
+            FROM 
+                evaluations AS e
+            JOIN 
+                mentors AS m ON e.mentor_id = m.mentor_id -- ✅ Get mentor details
+            JOIN 
+                socialenterprises AS se ON e.se_id = se.se_id -- ✅ Get SE details
+            WHERE	
+                e.mentor_id = $1 AND -- ✅ Filter by a specific mentor
+                e.evaluation_type = 'Social Enterprise' -- ✅ Ensure it's an SE evaluation
+            ORDER BY 
+                e.created_at DESC; -- ✅ Order by most recent evaluations
+        `;
+
+        const values = [mentor_id];
+        const result = await pgDatabase.query(query, values);
+
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching evaluations:", error);
+        return [];
+    }
+};
+
 exports.getEvaluationsBySEID = async (se_id) => {
     try {
         const query = `
@@ -66,7 +130,7 @@ exports.getEvaluationsBySEID = async (se_id) => {
                 e.evaluation_id,
                 m.mentor_firstname || ' ' || m.mentor_lastname AS evaluator_name,
                 se.team_name AS social_enterprise,
-                e.created_at AS evaluation_date,
+                TO_CHAR(e.created_at, 'FMMonth DD, YYYY') AS evaluation_date, -- ✅ Formatted date
                 e."isAcknowledge" AS acknowledged
             FROM 
                 evaluations AS e
@@ -96,7 +160,7 @@ exports.getEvaluationDetails = async (evaluation_id) => {
         const query = `
             SELECT 
                 e.evaluation_id,
-                e.created_at AS evaluation_date,
+                TO_CHAR(e.created_at, 'FMMonth DD, YYYY') AS evaluation_date, -- ✅ Formatted date
                 se.team_name AS social_enterprise, -- ✅ Social Enterprise being evaluated
                 m.mentor_firstname || ' ' || m.mentor_lastname AS evaluator_name, -- ✅ Evaluator (Mentor)
                 ec.category_name,
@@ -132,7 +196,7 @@ exports.getEvaluationDetailsForMentorEvaluation = async (evaluation_id) => {
         const query = `
             SELECT 
                 e.evaluation_id,
-                e.created_at AS evaluation_date,
+                TO_CHAR(e.created_at, 'FMMonth DD, YYYY') AS evaluation_date, -- ✅ Formatted date
                 se.team_name AS evaluator_name, -- ✅ SE is the evaluator
                 m.mentor_firstname || ' ' || m.mentor_lastname AS mentor_name,
                 ec.category_name,

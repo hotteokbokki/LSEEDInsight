@@ -34,6 +34,7 @@ const EvaluatePage = ({ userRole }) => {
     useState(false);
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
   const [evaluationsData, setEvaluationsData] = useState([]);
+  const [mentorevaluationsData, setmentorEvaluationsData] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedEvaluation, setSelectedEvaluation] = useState(null);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
@@ -43,6 +44,7 @@ const EvaluatePage = ({ userRole }) => {
   const [programs, setPrograms] = useState([]); // List of programs
   const [selectedPrograms, setSelectedPrograms] = useState([]); // Selected programs
   const [isLoadingPrograms, setIsLoadingPrograms] = useState(false);
+  const [openMentorEvalDialog, setMentorEvalDialog] = useState(false);
 
   const handleProgramSelectionChange = (programId) => {
     setSelectedPrograms(
@@ -149,9 +151,7 @@ const EvaluatePage = ({ userRole }) => {
           evaluation_id: evaluation.evaluation_id, // Explicitly include evaluation_id
           evaluator_name: evaluation.evaluator_name,
           social_enterprise: evaluation.social_enterprise,
-          evaluation_date: new Date(
-            evaluation.evaluation_date
-          ).toLocaleDateString(),
+          evaluation_date: evaluation.evaluation_date,
           acknowledged: evaluation.acknowledged ? "Yes" : "No",
         }));
 
@@ -188,6 +188,117 @@ const EvaluatePage = ({ userRole }) => {
     },
   ];
 
+  useEffect(() => {
+    const fetchmentorEvaluations = async () => {
+      try {
+        setIsLoadingEvaluations(true);
+  
+        const response = await axios.get(
+          "http://localhost:4000/getAllMentorEvaluationType",
+        );
+  
+        const data = response.data; // ✅ Axios already returns JSON, no need for .json()
+  
+        if (!Array.isArray(data)) {
+          console.error("❌ Unexpected API Response (Not an Array):", data);
+          return;
+        }
+  
+        // Ensure evaluation_id is included and set as `id`
+        const formattedData = data.map((evaluation) => ({
+          id: evaluation.evaluation_id, // ✅ Use evaluation_id as the unique ID
+          mentor_name: evaluation.mentor_name,
+          evaluator_name: evaluation.evaluator_name, // ✅ SE evaluating the mentor
+          evaluation_date: evaluation.evaluation_date,
+        }));
+  
+        setmentorEvaluationsData(formattedData);
+      } catch (error) {
+        console.error("❌ Error fetching evaluations:", error);
+      } finally {
+        setIsLoadingEvaluations(false);
+      }
+    };
+  
+    fetchmentorEvaluations();
+  }, []);
+
+  const mentorEvaluationColumns = [
+    { field: "mentor_name", headerName: "Mentor", flex: 1 }, 
+    { field: "evaluator_name", headerName: "Evaluator (SE)", flex: 1 }, 
+    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
+    {
+      field: "action",
+      headerName: "Action",
+      flex: 1,
+      renderCell: (params) => (
+        <Button
+          variant="contained"
+          style={{ backgroundColor: colors.primary[600], color: "white" }}
+          onClick={() => handleMentorViewExistingEvaluation(params.row.id)} // ✅ Pass evaluation_id
+        >
+          View
+        </Button>
+      ),
+    },
+  ];
+
+  const handleMentorViewExistingEvaluation = async (evaluation_id) => {
+    console.log("📌 Evaluation ID Passed:", evaluation_id); // Debugging log
+  
+    try {
+      const response = await axios.get(
+        "http://localhost:4000/getEvaluationDetailsForMentorEvaluation",
+        { params: { evaluation_id } }
+      );
+  
+      console.log("📥 Raw API Response:", response);
+      console.log("📥 API Response Data:", response.data);
+  
+      // 🚨 Ensure response.data is an array
+      if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
+        console.warn("⚠️ No evaluation details found.");
+        return;
+      }
+  
+      // ✅ Process evaluation details safely
+      const groupedEvaluation = response.data.reduce((acc, evalItem) => {
+        const {
+          evaluation_date,
+          evaluator_name,
+          mentor_name,
+          category_name,
+          star_rating,
+          selected_comments,
+          additional_comment,
+        } = evalItem;
+  
+        if (!acc.id) {
+          acc.id = evaluation_id;
+          acc.evaluator_name = evaluator_name; // ✅ Social Enterprise (Evaluator)
+          acc.mentor_name = mentor_name; // ✅ Mentor being evaluated
+          acc.evaluation_date = evaluation_date;
+          acc.categories = [];
+        }
+  
+        acc.categories.push({
+          category_name,
+          star_rating,
+          selected_comments: Array.isArray(selected_comments) ? selected_comments : [], // ✅ Ensure it's always an array
+          additional_comment: additional_comment || "", // ✅ Ensure empty comments don't cause issues
+        });
+  
+        return acc;
+      }, {});
+  
+      console.log("✅ Processed Evaluation Data:", groupedEvaluation);
+      setSelectedEvaluation(groupedEvaluation);
+      setMentorEvalDialog(true);
+    } catch (error) {
+      console.error("❌ Error fetching evaluation details:", error);
+    }
+  };
+
   const handleViewExistingEvaluation = async (evaluation_id) => {
     console.log("📌 Evaluation ID Passed:", evaluation_id); // Debugging log
   
@@ -223,7 +334,7 @@ const EvaluatePage = ({ userRole }) => {
           acc.id = evaluation_id;
           acc.evaluator_name = evaluator_name; // ✅ Store evaluator (SE) name
           acc.social_enterprise = social_enterprise; // ✅ Store evaluated SE
-          acc.evaluation_date = new Date(evaluation_date).toLocaleDateString();
+          acc.evaluation_date = evaluation_date;
           acc.categories = [];
         }
   
@@ -333,38 +444,39 @@ const EvaluatePage = ({ userRole }) => {
   };
 
   useEffect(() => {
-    const fetchSocialEnterprises = async () => {
-      try {
-        setIsLoadingSocialEnterprises(true); // Start loading
+      if (userRole === "Mentor") {
+        const fetchSocialEnterprises = async () => {
+          try {
+            setIsLoadingSocialEnterprises(true); // Start loading
 
-        const mentorshipsResponse = await axios.get(
-          "http://localhost:4000/getMentorshipsbyID",
-          {
-            params: { mentor_id: userSession.id },
+            const mentorshipsResponse = await axios.get(
+              "http://localhost:4000/getMentorshipsbyID",
+              {
+                params: { mentor_id: userSession.id },
+              }
+            );
+            console.log("📥 Mentorship Response:", mentorshipsResponse.data);
+
+            const updatedSocialEnterprises = mentorshipsResponse.data.map((se) => ({
+              id: se.id,
+              mentor_id: se.mentor_id,
+              se_id: se.se_id,
+              team_name: se.se || "Unknown Team",
+              mentor_name: se.mentor || "No Mentor Assigned",
+              program_name: se.program || "Unknown Program",
+              sdg_name: se.sdgs || "No SDG Name",
+            }));
+
+            setSocialEnterprises(updatedSocialEnterprises);
+          } catch (error) {
+            console.error("❌ Error fetching data:", error);
+          } finally {
+            setIsLoadingSocialEnterprises(false); // Stop loading
           }
-        );
-        console.log("📥 Mentorship Response:", mentorshipsResponse.data);
-
-        const updatedSocialEnterprises = mentorshipsResponse.data.map((se) => ({
-          id: se.id,
-          mentor_id: se.mentor_id,
-          se_id: se.se_id,
-          team_name: se.se || "Unknown Team",
-          mentor_name: se.mentor || "No Mentor Assigned",
-          program_name: se.program || "Unknown Program",
-          sdg_name: se.sdgs || "No SDG Name",
-        }));
-
-        setSocialEnterprises(updatedSocialEnterprises);
-      } catch (error) {
-        console.error("❌ Error fetching data:", error);
-      } finally {
-        setIsLoadingSocialEnterprises(false); // Stop loading
+        };
+      fetchSocialEnterprises();
       }
-    };
-
-    fetchSocialEnterprises();
-  }, [userSession.id]);
+    }, [userSession.id]);
 
   // Scroll to the top of the dialog when it opens
   useEffect(() => {
@@ -532,26 +644,6 @@ const EvaluatePage = ({ userRole }) => {
       />
     );
   }
-
-  const columnsmentor = [
-    { field: "mentor", headerName: "Mentor", flex: 1 },
-    { field: "evaluator", headerName: "Evaluator", flex: 1 },
-    { field: "acknowledged", headerName: "Acknowledged", flex: 1 },
-    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
-    {
-      field: "action",
-      headerName: "Action",
-      flex: 1,
-      renderCell: (params) => (
-        <Button
-          variant="contained"
-          style={{ backgroundColor: colors.primary[600], color: "white" }}
-        >
-          View
-        </Button>
-      ),
-    },
-  ];
 
   return (
     <Box m="20px">
@@ -820,30 +912,8 @@ const EvaluatePage = ({ userRole }) => {
             }}
           >
             <DataGrid
-              rows={[
-                {
-                  id: 1,
-                  mentor: "John Doe",
-                  evaluator: "Jane Smith",
-                  acknowledged: "Yes",
-                  evaluation_date: "3/1/2025",
-                },
-                {
-                  id: 2,
-                  mentor: "Emily Johnson",
-                  evaluator: "Mark Lee",
-                  acknowledged: "No",
-                  evaluation_date: "5/1/2025",
-                },
-                {
-                  id: 3,
-                  mentor: "Michael Brown",
-                  evaluator: "Sarah Davis",
-                  acknowledged: "Yes",
-                  evaluation_date: "4/1/2025",
-                },
-              ]} // ✅ Mock data directly inside DataGrid
-              columns={columnsmentor}
+              rows={mentorevaluationsData}
+              columns={mentorEvaluationColumns}
               getRowId={(row) => row.id}
             />
           </Box>
@@ -1321,6 +1391,147 @@ const EvaluatePage = ({ userRole }) => {
           <DialogActions sx={{ padding: "16px", borderTop: "1px solid #000" }}>
             <Button
               onClick={() => setOpenDialog(false)}
+              sx={{
+                color: "#000",
+                border: "1px solid #000",
+                "&:hover": { backgroundColor: "#f0f0f0" }, // Hover effect
+              }}
+            >
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Mentor Evaluation Details Dialog - Read-Only */}
+        <Dialog
+          open={openMentorEvalDialog}
+          onClose={() => setMentorEvalDialog(false)}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            style: {
+              backgroundColor: "#fff", // White background
+              color: "#000", // Black text
+              border: "1px solid #000", // Black border for contrast
+            },
+          }}
+        >
+          {/* Title with DLSU Green Background */}
+          <DialogTitle
+            sx={{
+              backgroundColor: "#1E4D2B", // DLSU Green header
+              color: "#fff", // White text
+              textAlign: "center",
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+            }}
+          >
+            View Mentor Evaluation
+          </DialogTitle>
+  
+          {/* Content Section */}
+          <DialogContent
+            sx={{
+              padding: "24px",
+              maxHeight: "70vh", // Ensure it doesn't overflow the screen
+              overflowY: "auto", // Enable scrolling if content is too long
+            }}
+          >
+            {selectedEvaluation ? (
+              <>
+                {/* Evaluator (Social Enterprise) and Evaluation Date */}
+                <Box
+                  sx={{
+                    marginBottom: "16px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: "bold",
+                      borderBottom: "1px solid #000", // Separator line
+                      paddingBottom: "8px",
+                    }}
+                  >
+                    Evaluator (Social Enterprise): {selectedEvaluation.evaluator_name}
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: "bold",
+                      borderBottom: "1px solid #000", // Separator line
+                      paddingBottom: "8px",
+                    }}
+                  >
+                    Mentor Evaluated: {selectedEvaluation.mentor_name}
+                  </Typography>
+                  <Typography
+                    variant="subtitle1"
+                    sx={{ color: "#000" }}
+                  >
+                    Evaluation Date: {selectedEvaluation.evaluation_date}
+                  </Typography>
+                </Box>
+  
+                {/* Ratings Section */}
+                {selectedEvaluation.categories &&
+                selectedEvaluation.categories.length > 0 ? (
+                  selectedEvaluation.categories.map((category, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        marginBottom: "16px",
+                        padding: "12px",
+                        border: "1px solid #000", // Border for each category
+                        borderRadius: "8px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      {/* Category Name */}
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: "bold" }}
+                      >
+                        {category.category_name}
+                      </Typography>
+  
+                      {/* Star Rating */}
+                      <Typography
+                        variant="h6"
+                        sx={{ fontWeight: "bold", color: "#1E4D2B" }} // DLSU Green color for rating
+                      >
+                        {category.star_rating} ★
+                      </Typography>
+                    </Box>
+                  ))
+                ) : (
+                  <Typography
+                    variant="body1"
+                    sx={{ fontStyle: "italic" }}
+                  >
+                    No categories found for this evaluation.
+                  </Typography>
+                )}
+              </>
+            ) : (
+              <Typography
+                variant="body1"
+                sx={{ fontStyle: "italic" }}
+              >
+                Loading evaluation details...
+              </Typography>
+            )}
+          </DialogContent>
+  
+          {/* Action Buttons */}
+          <DialogActions sx={{ padding: "16px", borderTop: "1px solid #000" }}>
+            <Button
+              onClick={() => setMentorEvalDialog(false)}
               sx={{
                 color: "#000",
                 border: "1px solid #000",

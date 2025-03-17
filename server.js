@@ -70,7 +70,9 @@ const { getEvaluationsByMentorID,
         getAcknowledgedEvaluationCount,
         getAcknowledgementData,
         getMentorEvaluationCount,
-        getEvaluationDetailsForMentorEvaluation} = require("./controllers/evaluationsController.js");
+        getEvaluationDetailsForMentorEvaluation,
+        getEvaluationsMadeByMentor,
+        getAllMentorTypeEvaluations} = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
@@ -960,7 +962,7 @@ app.get("/getMentorEvaluations", async (req, res) => {
       return res.status(400).json({ message: "mentor_id is required" });
     }
 
-    const result = await getEvaluationsByMentorID(mentor_id); // Fetch SEs from DB
+    const result = await getEvaluationsMadeByMentor(mentor_id); // Fetch SEs from DB
     if (!result || result.length === 0) {
       return res.status(404).json({ message: "No evaluations found" });
     }
@@ -999,6 +1001,19 @@ app.get("/getMentorEvaluationsByMentorID", async (req, res) => {
     }
 
     const result = await getEvaluationsByMentorID(mentor_id); // Fetch SEs from DB
+    if (!result || result.length === 0) {
+      return res.status(404).json({ message: "No evaluations found" });
+    }
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching social enterprises:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/getAllMentorEvaluationType", async (req, res) => {
+  try {
+    const result = await getAllMentorTypeEvaluations() // Fetch SEs from DB
     if (!result || result.length === 0) {
       return res.status(404).json({ message: "No evaluations found" });
     }
