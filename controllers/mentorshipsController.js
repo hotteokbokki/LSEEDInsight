@@ -45,6 +45,36 @@ exports.getMentorshipsByMentorId = async (mentor_id) => {
     }
 };
 
+exports.getMentorshipsForScheduling = async (mentor_id) => {
+    try {
+        const query = `
+        SELECT 
+            ms.mentorship_id AS id, 
+            m.mentor_id, 
+            CONCAT(m.mentor_firstname, ' ', m.mentor_lastname) AS Mentor, 
+            se.se_id,
+            se.team_name AS SE, 
+            p."name" AS Program, 
+            STRING_AGG(sdg."name", ', ') AS SDGs -- Aggregating SDGs into one column
+        FROM mentorships AS ms 
+        JOIN socialenterprises AS se ON ms."se_id" = se."se_id"
+        JOIN mentors AS m ON m."mentor_id" = ms."mentor_id"
+        JOIN programs AS p ON se."program_id" = p."program_id"
+        JOIN sdg AS sdg ON sdg."sdg_id" = ANY(se."sdg_id")
+        WHERE m."mentor_id" = $1
+        GROUP BY ms.mentorship_id, m.mentor_id, Mentor, se.se_id, SE, Program;
+        `;
+    
+        const values = [mentor_id];
+        const result = await pgDatabase.query(query, values);
+    
+        return result.rows.length ? result.rows : [];
+    } catch (error) {
+        console.error("❌ Error fetching mentorships by mentor_id:", error);
+        return []; // Return an empty array in case of an error
+    }
+};
+
 exports.getMentorBySEID = async (se_id) => {
     try {
         const query = `

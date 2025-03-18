@@ -44,6 +44,7 @@ const { getMentorshipsByMentorId,
         getPendingSchedules,
         getSchedulingHistory,
         getHandledSEsCountByMentor,
+        getMentorshipsForScheduling,
        } = require("./controllers/mentorshipsController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getEvaluationsByMentorID, 
@@ -1306,6 +1307,28 @@ app.get("/getMentorshipsbyID", async (req, res) => {
     }
 
     // Fetch mentorships based on mentor_id from the database
+    const mentorships = await getMentorshipsForScheduling(mentor_id) // Assume this function exists in your DB logic
+
+    if (!mentorships || mentorships.length === 0) {
+      return res.status(404).json({ message: "No mentorships found for the given mentor_id" });
+    }
+
+    res.json(mentorships); // Send the mentorships data
+  } catch (error) {
+    console.error("Error fetching mentorships:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/getAvailableEvaluations", async (req, res) => {
+  try {
+    const { mentor_id } = req.query; // Extract mentor_id from query parameters
+
+    if (!mentor_id) {
+      return res.status(400).json({ message: "mentor_id is required" });
+    }
+
+    // Fetch mentorships based on mentor_id from the database
     const mentorships = await getMentorshipsByMentorId(mentor_id) // Assume this function exists in your DB logic
 
     if (!mentorships || mentorships.length === 0) {
@@ -1318,6 +1341,7 @@ app.get("/getMentorshipsbyID", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
 app.get("/getPreDefinedComments", async (req, res) => {
   try {
     const data = await getPreDefinedComments(); // Fetch predefined comments
@@ -2336,10 +2360,6 @@ app.post("/updateMentorshipDate", async (req, res) => {
   if (!mentorship_id || !mentoring_session_date || !start_time || !end_time) {
     return res.status(400).json({ error: "Mentorship ID, date, start time, and end time are required" });
   }
-
-  // Convert times to full timestamp format
-  start_time = `${mentoring_session_date} ${start_time}:00`;
-  end_time = `${mentoring_session_date} ${end_time}:00`;
 
   console.log("📌 Mentorship ID:", mentorship_id);
   console.log("📅 Date:", mentoring_session_date);

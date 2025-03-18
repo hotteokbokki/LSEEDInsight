@@ -432,7 +432,7 @@ const EvaluatePage = ({ userRole }) => {
           setIsLoadingSocialEnterprises(true); // Start loading
   
           const mentorshipsResponse = await axios.get(
-            "http://localhost:4000/getMentorshipsbyID",
+            "http://localhost:4000/getAvailableEvaluations",
             {
               params: { mentor_id: userSession.id },
             }

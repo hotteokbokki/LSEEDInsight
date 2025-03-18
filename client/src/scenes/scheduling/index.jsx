@@ -274,16 +274,15 @@ const Scheduling = ({ userRole }) => {
         return;
       }
 
-      // Transform if needed (like in assess.js)
       const updatedSocialEnterprises = data.map((se) => ({
-        id: se.id,
+        id: se.id, // Correctly map `se_id` from API response
         mentor_id: se.mentor_id,
-        se_id: se.se_id,
+        se_id: se.se_id, // Ensure this is correctly assigned
         team_name: se.se || "Unknown Team",
         program_name: se.program || "Unknown Program",
         sdg_name: se.sdgs || "No SDG Name",
       }));
-
+      
       setSocialEnterprises(updatedSocialEnterprises);
     } catch (error) {
       console.error("❌ Error fetching social enterprises:", error);
@@ -293,55 +292,73 @@ const Scheduling = ({ userRole }) => {
   };
 
   const handleConfirmDate = async () => {
-    if (!selectedSE || !selectedDate) return;
-    else if (!zoomLink) {
-      alert("Please enter a valid Zoom link.");
+    console.log("SE ID:", selectedSE?.id);
+    console.log("Date:", selectedDate?.format?.("YYYY-MM-DD"));
+    console.log("Start Time:", startTime?.format?.("HH:mm"));
+    console.log("End Time:", endTime?.format?.("HH:mm"));
+    console.log("Zoom Link:", zoomLink);
+  
+    // Ensure all fields are filled before proceeding
+    if (!selectedSE?.id || !selectedDate || !startTime || !endTime || !zoomLink) {
+      alert("All fields are required: SE, Date, Start Time, End Time, Zoom Link.");
       return;
     }
-
+  
     try {
       setIsLoading(true);
-      const formattedDate = selectedDate
-        ? selectedDate.format("YYYY-MM-DD")
+  
+      // ✅ Ensure `selectedDate`, `startTime`, and `endTime` are dayjs objects before formatting
+      const formattedDate = selectedDate?.isValid?.() ? selectedDate.format("YYYY-MM-DD") : null;
+      const formattedStartTime = selectedDate?.isValid?.() && startTime?.isValid?.()
+      ? `${selectedDate.format("YYYY-MM-DD")} ${startTime.format("HH:mm:ss")}`
+      : null;
+    
+      const formattedEndTime = selectedDate?.isValid?.() && endTime?.isValid?.()
+        ? `${selectedDate.format("YYYY-MM-DD")} ${endTime.format("HH:mm:ss")}`
         : null;
-      const formattedStartTime = startTime ? startTime.format("HH:mm") : null;
-      const formattedEndTime = endTime ? endTime.format("HH:mm") : null;
-
-      const response = await fetch(
-        "http://localhost:4000/updateMentorshipDate",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mentorship_id: selectedSE.id,
-            mentoring_session_date: formattedDate, // Match backend field name
-            start_time: formattedStartTime, // Ensure this is properly formatted
-            end_time: formattedEndTime, // Ensure this is properly formatted
-            zoom_link: zoomLink,
-          }),
-        }
-      );
-
-      if (!response.ok) throw new Error("Failed to update mentorship date");
-
-      // Show success Snackbar
-      setSnackbarOpen(true);
-
-      // Close the dialog
-      handleCloseSEModal();
-
+  
+      if (!formattedDate || !formattedStartTime || !formattedEndTime) {
+        throw new Error("Invalid date or time format.");
+      }
+  
+      const requestBody = {
+        mentorship_id: selectedSE.id,
+        mentoring_session_date: formattedDate,
+        start_time: formattedStartTime,
+        end_time: formattedEndTime,
+        zoom_link: zoomLink,
+      };
+  
+      console.log("📤 Sending Data:", requestBody);
+  
+      const response = await fetch("http://localhost:4000/updateMentorshipDate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+  
+      if (!response.ok) {
+        // ✅ Get detailed error response (JSON or text)
+        const errorMessage = await response.json().catch(() => response.text());
+        throw new Error(`Failed to update: ${JSON.stringify(errorMessage)}`);
+      }
+  
+      setSnackbarOpen(true); // ✅ Show success message
+      handleCloseSEModal(); // ✅ Close modal
+  
       setTimeout(() => {
         window.location.reload();
-      }, 500); // Adjust delay if needed
+      }, 500);
     } catch (error) {
-      console.error("❌ Error updating mentorship date:", error);
+      console.error("❌ Error updating mentorship date:", error.message);
+      alert(error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetch("http://localhost:4000/auth/session-check", {
+    fetch("/auth/session-check", {
       method: "GET",
       credentials: "include", // ✅ Required for sending cookies
       headers: {
