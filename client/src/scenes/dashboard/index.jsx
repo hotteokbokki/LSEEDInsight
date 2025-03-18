@@ -13,6 +13,9 @@ import {
   DialogActions,
 } from "@mui/material";
 import { tokens } from "../../theme";
+import PersonIcon from "@mui/icons-material/Person";
+
+import SchoolIcon from "@mui/icons-material/School";
 import { mockTransactions } from "../../sampledata/mockData";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import EmailIcon from "@mui/icons-material/Email";
@@ -670,8 +673,8 @@ const Dashboard = ({ userRole }) => {
                   100
                 ).toFixed(2)}%`}
                 icon={
-                  <EmailIcon
-                    sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+                  <PersonIcon
+                    sx={{ color: colors.greenAccent[600], fontSize: "26px" }} // 🔄 Updated to PersonIcon
                   />
                 }
               />
@@ -698,8 +701,8 @@ const Dashboard = ({ userRole }) => {
                   100
                 ).toFixed(2)}%`}
                 icon={
-                  <PointOfSaleIcon
-                    sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
+                  <PersonIcon
+                    sx={{ fontSize: "26px", color: colors.blueAccent[500] }} // 🔄 Updated to PersonIcon
                   />
                 }
               />
@@ -707,12 +710,11 @@ const Dashboard = ({ userRole }) => {
 
             {/* Total Social Enterprises */}
             <Box
-              flex="1 1 22%"
-              backgroundColor={colors.primary[400]}
+              gridColumn="span 3"
               display="flex"
               alignItems="center"
               justifyContent="center"
-              p="20px"
+              bgcolor={colors.primary[400]}
             >
               <Chip
                 label={`${stats.totalSocialEnterprises} involved ${
@@ -722,43 +724,42 @@ const Dashboard = ({ userRole }) => {
                 }`}
                 icon={
                   <BusinessIcon
-                    sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // Force icon color
+                    sx={{ fontSize: "26px", color: colors.greenAccent[500] }}
                   />
                 }
                 sx={{
                   fontSize: "16px",
                   p: "10px",
-                  backgroundColor: colors.primary[400], // Set background explicitly
-                  color: "white", // Force text color to white
-                  "& .MuiChip-icon": { color: colors.greenAccent[500] }, // Ensure icon color is applied
+                  backgroundColor: colors.primary[400],
+                  color: "white",
+                  "& .MuiChip-icon": { color: colors.greenAccent[500] },
                 }}
               />
             </Box>
 
-            {/* Total Programs */}
+            {/* Total Programs (LSEED) */}
             <Box
-              flex="1 1 22%"
-              backgroundColor={colors.primary[400]}
+              gridColumn="span 3"
               display="flex"
               alignItems="center"
               justifyContent="center"
-              p="20px"
+              bgcolor={colors.primary[400]}
             >
               <Chip
                 label={`${stats.totalPrograms} LSEED ${
                   stats.totalPrograms === 1 ? "Program" : "Programs"
                 }`}
                 icon={
-                  <TrafficIcon
-                    sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // Force icon color
+                  <SchoolIcon
+                    sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // 🔄 Updated to SchoolIcon
                   />
                 }
                 sx={{
                   fontSize: "16px",
                   p: "10px",
-                  backgroundColor: colors.primary[400], // Set background explicitly
-                  color: "white", // Force text color to white
-                  "& .MuiChip-icon": { color: colors.greenAccent[500] }, // Ensure icon color is applied
+                  backgroundColor: colors.primary[400],
+                  color: "white",
+                  "& .MuiChip-icon": { color: colors.greenAccent[500] },
                 }}
               />
             </Box>
@@ -779,17 +780,16 @@ const Dashboard = ({ userRole }) => {
               gridRow="span 2"
               display="grid"
               gridTemplateRows="1fr 1fr"
-              gap={2}
-              bgcolor={colors.primary[400]}
+              gap={3} // Adjust the gap between stat boxes
+              borderRadius="8px" // Optional: To match the child boxes' rounded corners
             >
               {/* Total Evaluations */}
               <Box
-                bgcolor={colors.primary[400]}
+                bgcolor={colors.primary[400]} // Set the background color to transparent
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
                 p={2}
-                borderRadius="8px"
               >
                 <StatBox
                   title={evaluations.total}
@@ -809,7 +809,6 @@ const Dashboard = ({ userRole }) => {
                 alignItems="center"
                 justifyContent="center"
                 p={2}
-                borderRadius="8px"
               >
                 <StatBox
                   title={evaluations.acknowledged}
@@ -833,41 +832,50 @@ const Dashboard = ({ userRole }) => {
               display="flex"
               alignItems="center"
               justifyContent="center"
+              height="100%"
+              minHeight="300px"
+              overflow="hidden"
             >
-              <AcknowledgmentChart style={{ width: "100%", height: "100%" }} />
+              <AcknowledgmentChart
+                style={{
+                  width: "200px", // Reduce width slightly to fit better
+                  height: "200px", // Reduce height slightly
+                  maxWidth: "400px", // Keep it from getting too large
+                  maxHeight: "300px", // Adjust height to fit
+                  objectFit: "contain",
+                }}
+              />
             </Box>
 
             {/* Alert & Schedule Sections */}
             <Box
               gridColumn="span 12"
-              gridRow="span 4" // Increase row span to give it more space
+              gridRow="span 3"
               display="grid"
               gridTemplateColumns="repeat(12, 1fr)"
               gap="20px"
-              marginTop="20px" // Increase margin to avoid overlap
+              marginTop="20px"
             >
               {/* SEs Requiring Immediate Attention 🚨 */}
-              <Box
-                gridColumn="span 6"
-                bgcolor={colors.primary[400]}
-                p={2}
-                borderRadius="8px"
-              >
+              <Box gridColumn="span 6">
                 <Typography
-                  variant="h4"
+                  variant="h3"
                   fontWeight="bold"
                   color={colors.redAccent[500]}
+                  marginBottom="15px" // Ensures a small gap between header & DataGrid
                 >
                   SEs Requiring Immediate Attention 🚨
                 </Typography>
                 <Box
                   sx={{
-                    height: "auto",
+                    height: "400px",
+                    minHeight: "400px", // Ensures it does not shrink with missing data
                     "& .MuiDataGrid-root": { border: "none" },
                     "& .MuiDataGrid-cell": { borderBottom: "none" },
-                    "& .MuiDataGrid-columnHeaders": {
-                      backgroundColor: colors.blueAccent[700],
-                    },
+                    "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader":
+                      {
+                        backgroundColor: colors.blueAccent[700] + " !important",
+                      },
                     "& .MuiDataGrid-virtualScroller": {
                       backgroundColor: colors.primary[400],
                     },
@@ -887,27 +895,25 @@ const Dashboard = ({ userRole }) => {
               </Box>
 
               {/* Pending Mentoring Schedules 🕒 */}
-              <Box
-                gridColumn="span 6"
-                bgcolor={colors.primary[400]}
-                p={2}
-                borderRadius="8px"
-              >
+              <Box gridColumn="span 6">
                 <Typography
-                  variant="h4"
+                  variant="h3"
                   fontWeight="bold"
                   color={colors.blueAccent[500]}
+                  marginBottom="15px"
                 >
                   Pending Mentoring Schedules 🕒
                 </Typography>
                 <Box
                   sx={{
-                    height: "auto",
+                    height: "400px",
+                    minHeight: "400px", // Ensures it does not shrink with missing data
                     "& .MuiDataGrid-root": { border: "none" },
                     "& .MuiDataGrid-cell": { borderBottom: "none" },
-                    "& .MuiDataGrid-columnHeaders": {
-                      backgroundColor: colors.blueAccent[700],
-                    },
+                    "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader":
+                      {
+                        backgroundColor: colors.blueAccent[700] + " !important",
+                      },
                     "& .MuiDataGrid-virtualScroller": {
                       backgroundColor: colors.primary[400],
                     },

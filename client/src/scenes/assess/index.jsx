@@ -192,18 +192,18 @@ const EvaluatePage = ({ userRole }) => {
     const fetchmentorEvaluations = async () => {
       try {
         setIsLoadingEvaluations(true);
-  
+
         const response = await axios.get(
-          "http://localhost:4000/getAllMentorEvaluationType",
+          "http://localhost:4000/getAllMentorEvaluationType"
         );
-  
+
         const data = response.data; // ✅ Axios already returns JSON, no need for .json()
-  
+
         if (!Array.isArray(data)) {
           console.error("❌ Unexpected API Response (Not an Array):", data);
           return;
         }
-  
+
         // Ensure evaluation_id is included and set as `id`
         const formattedData = data.map((evaluation) => ({
           id: evaluation.evaluation_id, // ✅ Use evaluation_id as the unique ID
@@ -211,7 +211,7 @@ const EvaluatePage = ({ userRole }) => {
           evaluator_name: evaluation.evaluator_name, // ✅ SE evaluating the mentor
           evaluation_date: evaluation.evaluation_date,
         }));
-  
+
         setmentorEvaluationsData(formattedData);
       } catch (error) {
         console.error("❌ Error fetching evaluations:", error);
@@ -219,13 +219,13 @@ const EvaluatePage = ({ userRole }) => {
         setIsLoadingEvaluations(false);
       }
     };
-  
+
     fetchmentorEvaluations();
   }, []);
 
   const mentorEvaluationColumns = [
-    { field: "mentor_name", headerName: "Mentor", flex: 1 }, 
-    { field: "evaluator_name", headerName: "Evaluator (SE)", flex: 1 }, 
+    { field: "mentor_name", headerName: "Mentor", flex: 1 },
+    { field: "evaluator_name", headerName: "Evaluator (SE)", flex: 1 },
     { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
     {
       field: "action",
@@ -245,22 +245,26 @@ const EvaluatePage = ({ userRole }) => {
 
   const handleMentorViewExistingEvaluation = async (evaluation_id) => {
     console.log("📌 Evaluation ID Passed:", evaluation_id); // Debugging log
-  
+
     try {
       const response = await axios.get(
         "http://localhost:4000/getEvaluationDetailsForMentorEvaluation",
         { params: { evaluation_id } }
       );
-  
+
       console.log("📥 Raw API Response:", response);
       console.log("📥 API Response Data:", response.data);
-  
+
       // 🚨 Ensure response.data is an array
-      if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
+      if (
+        !response.data ||
+        !Array.isArray(response.data) ||
+        response.data.length === 0
+      ) {
         console.warn("⚠️ No evaluation details found.");
         return;
       }
-  
+
       // ✅ Process evaluation details safely
       const groupedEvaluation = response.data.reduce((acc, evalItem) => {
         const {
@@ -272,7 +276,7 @@ const EvaluatePage = ({ userRole }) => {
           selected_comments,
           additional_comment,
         } = evalItem;
-  
+
         if (!acc.id) {
           acc.id = evaluation_id;
           acc.evaluator_name = evaluator_name; // ✅ Social Enterprise (Evaluator)
@@ -280,17 +284,19 @@ const EvaluatePage = ({ userRole }) => {
           acc.evaluation_date = evaluation_date;
           acc.categories = [];
         }
-  
+
         acc.categories.push({
           category_name,
           star_rating,
-          selected_comments: Array.isArray(selected_comments) ? selected_comments : [], // ✅ Ensure it's always an array
+          selected_comments: Array.isArray(selected_comments)
+            ? selected_comments
+            : [], // ✅ Ensure it's always an array
           additional_comment: additional_comment || "", // ✅ Ensure empty comments don't cause issues
         });
-  
+
         return acc;
       }, {});
-  
+
       console.log("✅ Processed Evaluation Data:", groupedEvaluation);
       setSelectedEvaluation(groupedEvaluation);
       setMentorEvalDialog(true);
@@ -301,7 +307,7 @@ const EvaluatePage = ({ userRole }) => {
 
   const handleViewExistingEvaluation = async (evaluation_id) => {
     console.log("📌 Evaluation ID Passed:", evaluation_id); // Debugging log
-  
+
     try {
       const response = await axios.get(
         "http://localhost:4000/getEvaluationDetails",
@@ -309,27 +315,27 @@ const EvaluatePage = ({ userRole }) => {
           params: { evaluation_id },
         }
       );
-  
+
       console.log("📥 Raw API Response:", response); // Log raw response
       console.log("📥 API Response Data:", response.data); // Log parsed response
-  
+
       if (!response.data || response.data.length === 0) {
         console.warn("⚠️ No evaluation details found.");
         return;
       }
-  
+
       // Process evaluation details
       const groupedEvaluation = response.data.reduce((acc, evalItem) => {
         const {
           evaluation_date,
-          evaluator_name,  // ✅ Added evaluator name
+          evaluator_name, // ✅ Added evaluator name
           social_enterprise,
           category_name,
           star_rating,
           selected_comments,
           additional_comment,
         } = evalItem;
-  
+
         if (!acc.id) {
           acc.id = evaluation_id;
           acc.evaluator_name = evaluator_name; // ✅ Store evaluator (SE) name
@@ -337,7 +343,7 @@ const EvaluatePage = ({ userRole }) => {
           acc.evaluation_date = evaluation_date;
           acc.categories = [];
         }
-  
+
         acc.categories.push({
           category_name,
           star_rating,
@@ -346,10 +352,10 @@ const EvaluatePage = ({ userRole }) => {
             : [], // Ensure selected_comments is always an array
           additional_comment,
         });
-  
+
         return acc;
       }, {});
-  
+
       console.log("✅ Processed Evaluation Data:", groupedEvaluation);
       setSelectedEvaluation(groupedEvaluation);
       setOpenDialog(true);
@@ -391,19 +397,21 @@ const EvaluatePage = ({ userRole }) => {
 
   const handleRatingChange = (category, value) => {
     const currentSEId = selectedSEs[currentSEIndex];
-  
-    const predefinedComments =
-      evaluationCriteria[category]?.[value] || ["No predefined comment available."];
-  
+
+    const predefinedComments = evaluationCriteria[category]?.[value] || [
+      "No predefined comment available.",
+    ];
+
     console.log(`Rating: ${value}, Predefined Comments:`, predefinedComments);
-  
+
     setEvaluations((prev) => ({
       ...prev,
       [currentSEId]: {
         ...prev[currentSEId],
         [category]: {
           rating: value,
-          selectedCriteria: predefinedComments.length > 0 ? [predefinedComments[0]] : [], // ✅ Auto-select first comment
+          selectedCriteria:
+            predefinedComments.length > 0 ? [predefinedComments[0]] : [], // ✅ Auto-select first comment
           predefinedComments,
         },
       },
@@ -430,7 +438,7 @@ const EvaluatePage = ({ userRole }) => {
       const fetchSocialEnterprises = async () => {
         try {
           setIsLoadingSocialEnterprises(true); // Start loading
-  
+
           const mentorshipsResponse = await axios.get(
             "http://localhost:4000/getAvailableEvaluations",
             {
@@ -438,20 +446,22 @@ const EvaluatePage = ({ userRole }) => {
             }
           );
           console.log("📥 Mentorship Response:", mentorshipsResponse.data);
-  
-          const updatedSocialEnterprises = mentorshipsResponse.data.map((se) => ({
-            id: se.mentoring_session_id, // Updated ID reference
-            mentor_name: se.mentor_name || "No Mentor Assigned",
-            team_name: se.social_enterprise_name || "Unknown Team",
-            se_id: se.se_id || "Unknown Team",
-            mentor_id: se.mentor_id || "Unknown Team",
-            program_name: se.program_name || "Unknown Program",
-            sdg_name: se.sdgs || "No SDG Assigned",
-            start_time: se.start_time || "No Start Time",
-            end_time: se.end_time || "No End Time",
-            date: se.mentoring_session_date
-          }));
-  
+
+          const updatedSocialEnterprises = mentorshipsResponse.data.map(
+            (se) => ({
+              id: se.mentoring_session_id, // Updated ID reference
+              mentor_name: se.mentor_name || "No Mentor Assigned",
+              team_name: se.social_enterprise_name || "Unknown Team",
+              se_id: se.se_id || "Unknown Team",
+              mentor_id: se.mentor_id || "Unknown Team",
+              program_name: se.program_name || "Unknown Program",
+              sdg_name: se.sdgs || "No SDG Assigned",
+              start_time: se.start_time || "No Start Time",
+              end_time: se.end_time || "No End Time",
+              date: se.mentoring_session_date,
+            })
+          );
+
           setSocialEnterprises(updatedSocialEnterprises);
         } catch (error) {
           console.error("❌ Error fetching data:", error);
@@ -514,7 +524,7 @@ const EvaluatePage = ({ userRole }) => {
     const isValid = Object.keys(evaluationCriteria).every((category) => {
       const currentSEId = selectedSEs[currentSEIndex];
       const categoryEval = evaluations[currentSEId]?.[category];
-    
+
       return (
         categoryEval &&
         categoryEval.rating > 0 &&
@@ -581,9 +591,7 @@ const EvaluatePage = ({ userRole }) => {
     const allCategoriesValid = Object.keys(evaluationCriteria).every(
       (category) => {
         const categoryEval = currentEvaluations[category] || {};
-        return (
-          categoryEval.rating > 0
-        );
+        return categoryEval.rating > 0;
       }
     );
 
@@ -828,7 +836,8 @@ const EvaluatePage = ({ userRole }) => {
         {userRole === "Mentor" && (
           <Box
             width="80%"
-            height="250px"
+            height="400px"
+            minHeight="400px" // Ensures it does not shrink with missing data
             sx={{
               "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
                 {
@@ -860,7 +869,8 @@ const EvaluatePage = ({ userRole }) => {
         {userRole === "LSEED" && (
           <Box
             width="80%"
-            height="250px"
+            height="400px"
+            minHeight="400px" // Ensures it does not shrink with missing data
             sx={{
               "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
                 {
@@ -892,7 +902,8 @@ const EvaluatePage = ({ userRole }) => {
         {userRole === "LSEED" && (
           <Box
             width="80%"
-            height="250px"
+            height="400px"
+            minHeight="400px" // Ensures it does not shrink with missing data
             sx={{
               "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
                 {
@@ -961,10 +972,13 @@ const EvaluatePage = ({ userRole }) => {
                 }
                 label={
                   <span>
-                    <strong>{se.team_name} [SDG: {se.sdg_name}]</strong>
+                    <strong>
+                      {se.team_name} [SDG: {se.sdg_name}]
+                    </strong>
                     <br />
                     <span style={{ fontSize: "0.9em", color: "#666" }}>
-                      Mentoring Session on {se.date}, {se.start_time} - {se.end_time}
+                      Mentoring Session on {se.date}, {se.start_time} -{" "}
+                      {se.end_time}
                     </span>
                   </span>
                 }
@@ -1055,39 +1069,49 @@ const EvaluatePage = ({ userRole }) => {
                 paddingBottom: "8px",
               }}
             >
-              Evaluating 
-              {
-                socialEnterprises.find(
-                  (se) => se.id === selectedSEs[currentSEIndex] // Match session ID
-                ) && (
-                  <>
-                    <strong>
-                      {" "}{socialEnterprises.find(
+              Evaluating
+              {socialEnterprises.find(
+                (se) => se.id === selectedSEs[currentSEIndex] // Match session ID
+              ) && (
+                <>
+                  <strong>
+                    {" "}
+                    {
+                      socialEnterprises.find(
                         (se) => se.id === selectedSEs[currentSEIndex]
-                      )?.team_name}
-                    </strong> 
-                    {" "} [SDG:{" "}
-                    {socialEnterprises.find(
+                      )?.team_name
+                    }
+                  </strong>{" "}
+                  [SDG:{" "}
+                  {
+                    socialEnterprises.find(
                       (se) => se.id === selectedSEs[currentSEIndex]
-                    )?.sdg_name}
-                    ]
-                    <br />
-                    <span style={{ fontSize: "0.9em", color: "#666" }}>
-                      Mentoring Session on{" "}
-                      {socialEnterprises.find(
+                    )?.sdg_name
+                  }
+                  ]
+                  <br />
+                  <span style={{ fontSize: "0.9em", color: "#666" }}>
+                    Mentoring Session on{" "}
+                    {
+                      socialEnterprises.find(
                         (se) => se.id === selectedSEs[currentSEIndex]
-                      )?.date}
-                      ,{" "}
-                      {socialEnterprises.find(
+                      )?.date
+                    }
+                    ,{" "}
+                    {
+                      socialEnterprises.find(
                         (se) => se.id === selectedSEs[currentSEIndex]
-                      )?.start_time} -{" "}
-                      {socialEnterprises.find(
+                      )?.start_time
+                    }{" "}
+                    -{" "}
+                    {
+                      socialEnterprises.find(
                         (se) => se.id === selectedSEs[currentSEIndex]
-                      )?.end_time}
-                    </span>
-                  </>
-                )
-              }
+                      )?.end_time
+                    }
+                  </span>
+                </>
+              )}
             </Typography>
             <Typography
               variant="h6"
@@ -1168,9 +1192,14 @@ const EvaluatePage = ({ userRole }) => {
                       {categoryEval.predefinedComments.length > 0 ? (
                         <Typography
                           variant="body1"
-                          sx={{ fontStyle: "italic", color: "#333", fontWeight: "bold" }}
+                          sx={{
+                            fontStyle: "italic",
+                            color: "#333",
+                            fontWeight: "bold",
+                          }}
                         >
-                          {categoryEval.predefinedComments[0]} {/* Always show the first comment */}
+                          {categoryEval.predefinedComments[0]}{" "}
+                          {/* Always show the first comment */}
                         </Typography>
                       ) : (
                         <Typography variant="body2" color="textSecondary">
@@ -1327,7 +1356,8 @@ const EvaluatePage = ({ userRole }) => {
                       paddingBottom: "8px",
                     }}
                   >
-                    Evaluator: {selectedEvaluation.evaluator_name} {/* ✅ Added Evaluator Name */}
+                    Evaluator: {selectedEvaluation.evaluator_name}{" "}
+                    {/* ✅ Added Evaluator Name */}
                   </Typography>
                   <Typography
                     variant="h6"
@@ -1337,12 +1367,10 @@ const EvaluatePage = ({ userRole }) => {
                       paddingBottom: "8px",
                     }}
                   >
-                    Social Enterprise Evaluated: {selectedEvaluation.social_enterprise}
+                    Social Enterprise Evaluated:{" "}
+                    {selectedEvaluation.social_enterprise}
                   </Typography>
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ color: "#000" }}
-                  >
+                  <Typography variant="subtitle1" sx={{ color: "#000" }}>
                     Evaluation Date: {selectedEvaluation.evaluation_date}
                   </Typography>
                 </Box>
@@ -1368,14 +1396,12 @@ const EvaluatePage = ({ userRole }) => {
                           marginBottom: "8px",
                         }}
                       >
-                        {category.category_name} - Rating: {category.star_rating} ★
+                        {category.category_name} - Rating:{" "}
+                        {category.star_rating} ★
                       </Typography>
 
                       {/* Selected Comments */}
-                      <Typography
-                        variant="body1"
-                        sx={{ marginBottom: "8px" }}
-                      >
+                      <Typography variant="body1" sx={{ marginBottom: "8px" }}>
                         Comments:{" "}
                         {category.selected_comments.length > 0 ? (
                           category.selected_comments.join(", ")
@@ -1387,7 +1413,9 @@ const EvaluatePage = ({ userRole }) => {
                       {/* Additional Comment */}
                       <Typography variant="body1">
                         Additional Comment:{" "}
-                        {category.additional_comment || <i>No additional comments</i>}
+                        {category.additional_comment || (
+                          <i>No additional comments</i>
+                        )}
                       </Typography>
                     </Box>
                   ))
@@ -1445,7 +1473,7 @@ const EvaluatePage = ({ userRole }) => {
           >
             View Mentor Evaluation
           </DialogTitle>
-  
+
           {/* Content Section */}
           <DialogContent
             sx={{
@@ -1473,7 +1501,8 @@ const EvaluatePage = ({ userRole }) => {
                       paddingBottom: "8px",
                     }}
                   >
-                    Evaluator (Social Enterprise): {selectedEvaluation.evaluator_name}
+                    Evaluator (Social Enterprise):{" "}
+                    {selectedEvaluation.evaluator_name}
                   </Typography>
                   <Typography
                     variant="h6"
@@ -1485,14 +1514,11 @@ const EvaluatePage = ({ userRole }) => {
                   >
                     Mentor Evaluated: {selectedEvaluation.mentor_name}
                   </Typography>
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ color: "#000" }}
-                  >
+                  <Typography variant="subtitle1" sx={{ color: "#000" }}>
                     Evaluation Date: {selectedEvaluation.evaluation_date}
                   </Typography>
                 </Box>
-  
+
                 {/* Ratings Section */}
                 {selectedEvaluation.categories &&
                 selectedEvaluation.categories.length > 0 ? (
@@ -1516,7 +1542,7 @@ const EvaluatePage = ({ userRole }) => {
                       >
                         {category.category_name}
                       </Typography>
-  
+
                       {/* Star Rating */}
                       <Typography
                         variant="h6"
@@ -1527,24 +1553,18 @@ const EvaluatePage = ({ userRole }) => {
                     </Box>
                   ))
                 ) : (
-                  <Typography
-                    variant="body1"
-                    sx={{ fontStyle: "italic" }}
-                  >
+                  <Typography variant="body1" sx={{ fontStyle: "italic" }}>
                     No categories found for this evaluation.
                   </Typography>
                 )}
               </>
             ) : (
-              <Typography
-                variant="body1"
-                sx={{ fontStyle: "italic" }}
-              >
+              <Typography variant="body1" sx={{ fontStyle: "italic" }}>
                 Loading evaluation details...
               </Typography>
             )}
           </DialogContent>
-  
+
           {/* Action Buttons */}
           <DialogActions sx={{ padding: "16px", borderTop: "1px solid #000" }}>
             <Button

@@ -16,6 +16,8 @@ import {
 } from "@mui/material";
 import { tokens } from "../../theme";
 import axios from "axios";
+import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
+import PersonIcon from "@mui/icons-material/Person";
 import { DataGrid } from "@mui/x-data-grid";
 import Header from "../../components/Header";
 import StatBox from "../../components/StatBox";
@@ -418,7 +420,7 @@ const Mentors = () => {
               100
             ).toFixed(2)}%`} // Calculate percentage of mentors with mentorship
             icon={
-              <EmailIcon
+              <PersonIcon
                 sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
               />
             }
@@ -445,7 +447,7 @@ const Mentors = () => {
               100
             ).toFixed(2)}%`} // Calculate percentage of mentors with mentorship
             icon={
-              <PointOfSaleIcon
+              <PersonIcon
                 sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
               />
             }
@@ -499,7 +501,7 @@ const Mentors = () => {
               100
             ).toFixed(2)}%`} // Adjust to calculate increase
             icon={
-              <TrafficIcon
+              <PersonRemoveIcon
                 sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
               />
             }

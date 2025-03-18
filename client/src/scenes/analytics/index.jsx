@@ -9,6 +9,10 @@ import BarChart from "../../components/BarChart";
 import EmailIcon from "@mui/icons-material/Email";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import StoreIcon from "@mui/icons-material/Store";
+import GroupIcon from "@mui/icons-material/Group";
+import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrafficIcon from "@mui/icons-material/Traffic";
 import HeatmapWrapper from "../../components/MyHeatMap";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -59,6 +63,7 @@ const Analytics = () => {
         justifyContent="space-between"
         mt="20px"
       >
+        {/* SE's Enrolled */}
         <Box
           flex="1 1 22%"
           backgroundColor={colors.primary[400]}
@@ -72,7 +77,7 @@ const Analytics = () => {
             subtitle="SE's Enrolled"
             progress={
               stats.totalSocialEnterprises / (stats.previousMonthSECount || 1)
-            } // Assuming max 100
+            }
             increase={`${
               stats.previousMonthSECount > 0
                 ? (
@@ -85,12 +90,13 @@ const Analytics = () => {
             }%`}
             icon={
               <EmailIcon
-                sx={{ fontSize: "26px", color: colors.greenAccent[500] }}
+                sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // 🔄 Updated icon
               />
             }
           />
         </Box>
 
+        {/* SE's with Mentors */}
         <Box
           flex="1 1 22%"
           backgroundColor={colors.primary[400]}
@@ -104,19 +110,20 @@ const Analytics = () => {
             subtitle="SE's with Mentors"
             progress={
               stats.withMentorship / (stats.totalSocialEnterprises || 1)
-            } // Shows percentage filled
+            }
             increase={`${(
               (stats.withMentorship / (stats.totalSocialEnterprises || 1)) *
               100
             ).toFixed(2)}%`}
             icon={
-              <PointOfSaleIcon
-                sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
+              <GroupIcon
+                sx={{ fontSize: "26px", color: colors.blueAccent[500] }} // 🔄 Updated icon
               />
             }
           />
         </Box>
 
+        {/* SE's without Mentors */}
         <Box
           flex="1 1 22%"
           backgroundColor={colors.primary[400]}
@@ -130,19 +137,20 @@ const Analytics = () => {
             subtitle="SEs without mentors"
             progress={
               stats.withoutMentorship / (stats.totalSocialEnterprises || 1)
-            } // Avoid division by zero
+            }
             increase={`${(
               (stats.withoutMentorship / (stats.totalSocialEnterprises || 1)) *
               100
             ).toFixed(2)}%`}
             icon={
-              <PersonAddIcon
-                sx={{ fontSize: "26px", color: colors.redAccent[500] }}
+              <PersonRemoveIcon
+                sx={{ fontSize: "26px", color: colors.redAccent[500] }} // 🔄 Updated icon
               />
             }
           />
         </Box>
 
+        {/* SE with Significant Growth */}
         <Box
           flex="1 1 22%"
           backgroundColor={colors.primary[400]}
@@ -159,8 +167,8 @@ const Analytics = () => {
             progress={Math.min(stats.cumulativeGrowth / 100, 1)} // ✅ Cap at 100%
             increase={`${stats.cumulativeGrowth}%`}
             icon={
-              <TrafficIcon
-                sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
+              <TrendingUpIcon
+                sx={{ fontSize: "26px", color: colors.blueAccent[500] }} // 🔄 Updated icon
               />
             }
           />

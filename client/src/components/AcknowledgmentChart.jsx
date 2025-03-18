@@ -1,5 +1,5 @@
-import { ResponsiveBar } from '@nivo/bar';
-import { Box, Typography } from '@mui/material';
+import { ResponsiveBar } from "@nivo/bar";
+import { Box, Typography } from "@mui/material";
 import { useState, useEffect } from "react";
 import axios from "axios";
 
@@ -13,17 +13,17 @@ const AcknowledgmentChart = () => {
         console.log("✅ Raw Data:", response.data);
 
         const rawData = response.data;
-        const formattedData = rawData.map(item => ({
-          batch: item.se_name,  // 🔹 Use SE name instead of batch ID
+        const formattedData = rawData.map((item) => ({
+          batch: item.se_name, // 🔹 Using SE name for readability
           acknowledged: Number(item.acknowledged_percentage) || 0,
-          pending: Number(item.pending_percentage) || 0
+          pending: Number(item.pending_percentage) || 0,
         }));
 
         console.log("✅ Formatted Data:", formattedData);
         setAckData(formattedData);
       } catch (error) {
         console.error("❌ Error fetching acknowledgment data:", error);
-        setAckData([]);  
+        setAckData([]);
       }
     };
 
@@ -31,55 +31,79 @@ const AcknowledgmentChart = () => {
   }, []);
 
   if (!ackData?.length) {
-    return <Typography variant="h6" textAlign="center">No data available</Typography>;
+    return (
+      <Typography variant="h6" textAlign="center" color="white">
+        No data available
+      </Typography>
+    );
   }
 
   return (
-    <Box sx={{ height: 400, width: '100%' }}>
-      <Typography variant="h6" textAlign="center" sx={{ mb: 2 }}>
+    <Box sx={{ height: "100%", width: "100%", minHeight: "350px" }}>
+      <Typography variant="h6" textAlign="center" sx={{ mb: 2 }} color="white">
         Acknowledgment & Pending Evaluations
       </Typography>
       <ResponsiveBar
         data={ackData}
-        keys={['acknowledged', 'pending']}
-        indexBy='batch'
-        margin={{ top: 50, right: 100, bottom: 80, left: 60 }}
-        padding={0.4}
-        layout="vertical"  // 🔹 Makes labels more readable
-        colors={{ scheme: 'set2' }}
+        keys={["acknowledged", "pending"]}
+        indexBy="batch"
+        margin={{ top: 30, right: 50, bottom: 120, left: 60 }} // 🔹 Moved chart up
+        padding={0.3} // 🔹 Slightly wider bars for better readability
+        layout="vertical"
+        colors={{ scheme: "set2" }}
         borderRadius={4}
         enableLabel={true}
         labelSkipWidth={12}
         labelSkipHeight={12}
-        labelTextColor={{ from: 'color', modifiers: [['darker', 2]] }}
+        labelTextColor="white" // 🔹 White text for better contrast
         axisBottom={{
           tickSize: 5,
           tickPadding: 5,
-          tickRotation: -15,  // 🔹 Rotates to prevent overlap
-          legend: 'Social Enterprises',
-          legendPosition: 'middle',
-          legendOffset: 60,
+          tickRotation: 0, // 🔹 Straight labels
+          legend: "Social Enterprises",
+          legendPosition: "middle",
+          legendOffset: 40, // 🔹 Adjusted to avoid overlap
+          tickTextColor: "white", // 🔹 White tick labels
         }}
         axisLeft={{
           tickSize: 5,
           tickPadding: 5,
-          legend: 'Percentage',
-          legendPosition: 'middle',
-          legendOffset: -40,
+          legend: "Percentage",
+          legendPosition: "middle",
+          legendOffset: -50,
+          tickTextColor: "white", // 🔹 White text
+          labelTextColor: "white", // 🔹 White text
+          itemTextColor: "white", // 🔹 White text
         }}
         legends={[
           {
-            dataFrom: 'keys',
-            anchor: 'bottom-right',
-            direction: 'column',
-            translateX: 80,
-            itemWidth: 100,
-            itemHeight: 20,
+            dataFrom: "keys",
+            anchor: "bottom-right",
+            direction: "column",
+            translateX: 40, // 🔹 Reduced spacing to prevent overflow
+            itemWidth: 90,
+            itemHeight: 18,
             itemsSpacing: 2,
-            symbolSize: 18,
+            symbolSize: 15,
+            itemTextColor: "white", // 🔹 White legend text
           },
         ]}
-        groupMode="grouped"  // 🔹 Grouped bars for better comparison
+        groupMode="grouped"
+        animate={true} // 🔹 Smooth animations
+        motionConfig="wobbly"
+        tooltip={({ id, value, color }) => (
+          <Box
+            sx={{
+              p: 1,
+              bgcolor: "#333",
+              borderRadius: "5px",
+              boxShadow: 3,
+              color: "white",
+            }}
+          >
+            <strong style={{ color }}>{id}</strong>: {value}%
+          </Box>
+        )}
       />
     </Box>
   );
