@@ -668,19 +668,23 @@ const EvaluatePage = ({ userRole }) => {
       <Box display="flex" flexDirection="column" alignItems="center" gap={4}>
         {/* Buttons */}
         <Box
-          width="50%"
-          p={3}
+          width="100%"
           bgcolor={colors.primary[400]}
           display="flex"
-          justifyContent="center" // Center items horizontally
-          gap="20px" // Add spacing between buttons
+          padding={2}
+          gap={2} // Adds spacing between buttons
         >
-          {/* Show this button only if userRole is LSEED */}
+          {/* Show this button only if userRole is Mentor */}
           {userRole === "Mentor" && (
             <Button
               variant="contained"
               color="secondary"
-              sx={{ fontSize: "20px", padding: "20px", width: "48%" }}
+              sx={{
+                fontSize: "16px", // Adjust font size for better fit
+                py: "10px", // Reduces height
+                flexGrow: 1, // Makes it take full width
+                minWidth: 0, // Ensures responsiveness
+              }}
               onClick={handleOpenSelectDialog}
             >
               Evaluate SE
@@ -692,7 +696,12 @@ const EvaluatePage = ({ userRole }) => {
               onClick={handleOpenMentorshipDialog}
               variant="contained"
               color="secondary"
-              sx={{ fontSize: "20px", padding: "20px", width: "48%" }}
+              sx={{
+                fontSize: "16px",
+                py: "10px",
+                flexGrow: 1,
+                minWidth: 0,
+              }}
             >
               Mentorship Assessment
             </Button>
@@ -835,99 +844,141 @@ const EvaluatePage = ({ userRole }) => {
         {/* Show DataGrid only if userRole is Mentor */}
         {userRole === "Mentor" && (
           <Box
-            width="80%"
-            height="400px"
-            minHeight="400px" // Ensures it does not shrink with missing data
-            sx={{
-              "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
-                {
+            width="100%"
+            backgroundColor={colors.primary[400]}
+            padding="20px"
+          >
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+              marginBottom="15px" // Ensures a small gap between header & DataGrid
+            >
+              My Evaluations
+            </Typography>
+            <Box
+              width="100%"
+              height="400px"
+              minHeight="400px" // Ensures it does not shrink with missing data
+              sx={{
+                "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
+                  {
+                    backgroundColor: colors.blueAccent[700] + " !important",
+                  },
+                "& .MuiDataGrid-root": { border: "none" },
+                "& .MuiDataGrid-cell": { borderBottom: "none" },
+                "& .name-column--cell": { color: colors.greenAccent[300] },
+                "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
                   backgroundColor: colors.blueAccent[700] + " !important",
                 },
-              "& .MuiDataGrid-root": { border: "none" },
-              "& .MuiDataGrid-cell": { borderBottom: "none" },
-              "& .name-column--cell": { color: colors.greenAccent[300] },
-              "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-                backgroundColor: colors.blueAccent[700] + " !important",
-              },
-              "& .MuiDataGrid-virtualScroller": {
-                backgroundColor: colors.primary[400],
-              },
-              "& .MuiDataGrid-footerContainer": {
-                borderTop: "none",
-                backgroundColor: colors.blueAccent[700],
-              },
-            }}
-          >
-            <DataGrid
-              rows={evaluationsData}
-              columns={columns}
-              getRowId={(row) => row.id}
-            />
+                "& .MuiDataGrid-virtualScroller": {
+                  backgroundColor: colors.primary[400],
+                },
+                "& .MuiDataGrid-footerContainer": {
+                  borderTop: "none",
+                  backgroundColor: colors.blueAccent[700],
+                },
+              }}
+            >
+              <DataGrid
+                rows={evaluationsData}
+                columns={columns}
+                getRowId={(row) => row.id}
+              />
+            </Box>
           </Box>
         )}
         {/* Show DataGrid only if userRole is LSEED */}
         {userRole === "LSEED" && (
           <Box
-            width="80%"
-            height="400px"
-            minHeight="400px" // Ensures it does not shrink with missing data
-            sx={{
-              "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
-                {
+            width="100%"
+            backgroundColor={colors.primary[400]}
+            padding="20px"
+          >
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+              marginBottom="15px" // Ensures a small gap between header & DataGrid
+            >
+              SE Evaluations
+            </Typography>
+            <Box
+              width="100%"
+              height="400px"
+              minHeight="400px" // Ensures it does not shrink with missing data
+              sx={{
+                "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
+                  {
+                    backgroundColor: colors.blueAccent[700] + " !important",
+                  },
+                "& .MuiDataGrid-root": { border: "none" },
+                "& .MuiDataGrid-cell": { borderBottom: "none" },
+                "& .name-column--cell": { color: colors.greenAccent[300] },
+                "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
                   backgroundColor: colors.blueAccent[700] + " !important",
                 },
-              "& .MuiDataGrid-root": { border: "none" },
-              "& .MuiDataGrid-cell": { borderBottom: "none" },
-              "& .name-column--cell": { color: colors.greenAccent[300] },
-              "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-                backgroundColor: colors.blueAccent[700] + " !important",
-              },
-              "& .MuiDataGrid-virtualScroller": {
-                backgroundColor: colors.primary[400],
-              },
-              "& .MuiDataGrid-footerContainer": {
-                borderTop: "none",
-                backgroundColor: colors.blueAccent[700],
-              },
-            }}
-          >
-            <DataGrid
-              rows={evaluationsData}
-              columns={columns}
-              getRowId={(row) => row.id}
-            />
+                "& .MuiDataGrid-virtualScroller": {
+                  backgroundColor: colors.primary[400],
+                },
+                "& .MuiDataGrid-footerContainer": {
+                  borderTop: "none",
+                  backgroundColor: colors.blueAccent[700],
+                },
+              }}
+            >
+              <DataGrid
+                rows={evaluationsData}
+                columns={columns}
+                getRowId={(row) => row.id}
+              />
+            </Box>
           </Box>
         )}
 
         {userRole === "LSEED" && (
           <Box
-            width="80%"
-            height="400px"
-            minHeight="400px" // Ensures it does not shrink with missing data
-            sx={{
-              "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
-                {
+            width="100%"
+            backgroundColor={colors.primary[400]}
+            padding="20px"
+          >
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+              marginBottom="15px" // Ensures a small gap between header & DataGrid
+            >
+              Mentor Evaluations
+            </Typography>
+            <Box
+              width="100%"
+              height="400px"
+              minHeight="400px" // Ensures it does not shrink with missing data
+              sx={{
+                "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
+                  {
+                    backgroundColor: colors.blueAccent[700] + " !important",
+                  },
+                "& .MuiDataGrid-root": { border: "none" },
+                "& .MuiDataGrid-cell": { borderBottom: "none" },
+                "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
                   backgroundColor: colors.blueAccent[700] + " !important",
                 },
-              "& .MuiDataGrid-root": { border: "none" },
-              "& .MuiDataGrid-cell": { borderBottom: "none" },
-              "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-                backgroundColor: colors.blueAccent[700] + " !important",
-              },
-              "& .MuiDataGrid-virtualScroller": {
-                backgroundColor: colors.primary[400],
-              },
-              "& .MuiDataGrid-footerContainer": {
-                borderTop: "none",
-                backgroundColor: colors.blueAccent[700],
-              },
-            }}
-          >
-            <DataGrid
-              rows={mentorevaluationsData}
-              columns={mentorEvaluationColumns}
-              getRowId={(row) => row.id}
-            />
+                "& .MuiDataGrid-virtualScroller": {
+                  backgroundColor: colors.primary[400],
+                },
+                "& .MuiDataGrid-footerContainer": {
+                  borderTop: "none",
+                  backgroundColor: colors.blueAccent[700],
+                },
+              }}
+            >
+              <DataGrid
+                rows={mentorevaluationsData}
+                columns={mentorEvaluationColumns}
+                getRowId={(row) => row.id}
+              />
+            </Box>
           </Box>
         )}
 

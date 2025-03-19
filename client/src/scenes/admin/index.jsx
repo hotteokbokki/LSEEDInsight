@@ -292,25 +292,23 @@ const AdminPage = () => {
         </Alert>
       </Snackbar>
 
-      {/* GRID & TABLE */}
-      <Box
-        display="grid"
-        gridTemplateColumns="repeat(12, 1fr)"
-        gridAutoRows="140px"
-        gap="20px"
-      >
-        {/* User Table */}
+      {/* Manage Users */}
+      <Box width="100%" backgroundColor={colors.primary[400]} padding="20px">
+        <Typography
+          variant="h3"
+          fontWeight="bold"
+          color={colors.greenAccent[500]}
+          marginBottom="15px"
+        >
+          Manage Users
+        </Typography>
+
         <Box
-          gridColumn="span 12"
-          gridRow="span 6"
-          backgroundColor={colors.primary[400]}
+          height="600px"
+          minHeight="600px"
           sx={{
-            "& .MuiDataGrid-root": {
-              border: "none",
-            },
-            "& .MuiDataGrid-cell": {
-              borderBottom: "none",
-            },
+            "& .MuiDataGrid-root": { border: "none" },
+            "& .MuiDataGrid-cell": { borderBottom: "none" },
             "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
               backgroundColor: colors.blueAccent[700] + " !important",
             },
@@ -327,12 +325,12 @@ const AdminPage = () => {
           <DataGrid
             rows={users.map((user) => ({
               ...user,
-              id: user.user_id, // ✅ Ensure `id` is assigned properly
+              id: user.user_id, // Ensure `id` is assigned properly
             }))}
             columns={columns}
             pageSize={5}
-            rowsPerPageOptions={[5]}
-            getRowId={(row) => row.user_id} // ✅ Use `user_id` as row ID
+            rowsPerPageOptions={[5, 10]}
+            getRowId={(row) => row.user_id} // Use `user_id` as row ID
             processRowUpdate={handleRowUpdate}
             onProcessRowUpdateError={(error) =>
               console.error("Update failed:", error)

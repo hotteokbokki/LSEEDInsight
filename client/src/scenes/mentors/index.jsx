@@ -1065,42 +1065,51 @@ const Mentors = () => {
       </Snackbar>
       {/* ROW 2: DATA GRID */}
       <Box
-        height="75vh"
-        mt="20px"
-        sx={{
-          "& .MuiDataGrid-root": {
-            border: "none",
-          },
-          "& .MuiDataGrid-cell": {
-            borderBottom: "none",
-          },
-          "& .name-column--cell": {
-            color: colors.greenAccent[300],
-          },
-          "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-            backgroundColor: colors.blueAccent[700] + " !important",
-          },
-          "& .MuiDataGrid-virtualScroller": {
-            backgroundColor: colors.primary[400],
-          },
-          "& .MuiDataGrid-footerContainer": {
-            borderTop: "none",
-            backgroundColor: colors.blueAccent[700],
-            color: colors.grey[100],
-          },
-        }}
+        width="100%"
+        backgroundColor={colors.primary[400]}
+        padding="20px"
+        marginTop="20px"
       >
-        <DataGrid
-          rows={rows}
-          columns={columns}
-          getRowId={(row) => row.id} // Use `id` as the unique identifier
-          processRowUpdate={(params) => {
-            console.log("🚨 processRowUpdate params:", params, "\n");
-            handleMentorRowUpdate(params);
-            return params;
+        <Typography
+          variant="h3"
+          fontWeight="bold"
+          color={colors.greenAccent[500]}
+          marginBottom="15px" // Ensures a small gap between header & DataGrid
+        >
+          Mentors
+        </Typography>
+        <Box
+          width="100%"
+          height="400px"
+          minHeight="400px"
+          sx={{
+            "& .MuiDataGrid-root": { border: "none" },
+            "& .MuiDataGrid-cell": { borderBottom: "none" },
+            "& .name-column--cell": { color: colors.greenAccent[300] },
+            "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+              backgroundColor: colors.blueAccent[700] + " !important",
+            },
+            "& .MuiDataGrid-virtualScroller": {
+              backgroundColor: colors.primary[400],
+            },
+            "& .MuiDataGrid-footerContainer": {
+              borderTop: "none",
+              backgroundColor: colors.blueAccent[700],
+              color: colors.grey[100],
+            },
           }}
-          editMode="row"
-        />
+        >
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            getRowId={(row) => row.id} // Use `id` as the unique identifier
+            processRowUpdate={(params) => {
+              handleMentorRowUpdate(params);
+              return params;
+            }}
+            editMode="row"
+          />
+        </Box>
       </Box>
     </Box>
   );

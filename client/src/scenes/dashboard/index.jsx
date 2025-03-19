@@ -130,9 +130,13 @@ const Dashboard = ({ userRole }) => {
               params.value === 0
                 ? "gray"
                 : params.value < 1.5
-                ? "red"
+                ? colors.redAccent[500]
                 : "black",
+            display: "flex",
             fontWeight: "bold",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            height: "100%",
           }}
         >
           {params.value === 0 ? "No Evaluations" : params.value}
@@ -145,7 +149,15 @@ const Dashboard = ({ userRole }) => {
       flex: 2,
       renderCell: (params) => (
         <Typography
-          sx={{ color: params.value === "No Evaluations" ? "gray" : "black" }}
+          sx={{
+            color:
+              params.value === "No Evaluations" ? "gray" : colors.grey[100],
+            display: "flex",
+            fontWeight: "bold",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            height: "100%",
+          }}
         >
           {params.value}
         </Typography>
@@ -158,7 +170,13 @@ const Dashboard = ({ userRole }) => {
       renderCell: (params) => (
         <Button
           variant="contained"
-          color="error"
+          sx={{
+            backgroundColor: colors.redAccent[500] + " !important", // Force color
+            color: colors.grey[100], // Ensure text is visible
+            "&:hover": {
+              backgroundColor: colors.redAccent[700] + " !important", // Darker red on hover
+            },
+          }}
           onClick={() => handleAction(params.row.id)}
         >
           View SE
@@ -345,7 +363,9 @@ const Dashboard = ({ userRole }) => {
       renderCell: (params) => (
         <Chip
           label={params.value}
-          color={params.value === "Pending" ? "warning" : "success"}
+          color={
+            params.value === "Pending" ? "warning" : colors.greenAccent[600]
+          }
         />
       ),
     },
@@ -728,10 +748,10 @@ const Dashboard = ({ userRole }) => {
                   />
                 }
                 sx={{
-                  fontSize: "16px",
+                  fontSize: "20px",
                   p: "10px",
                   backgroundColor: colors.primary[400],
-                  color: "white",
+                  color: colors.grey[100],
                   "& .MuiChip-icon": { color: colors.greenAccent[500] },
                 }}
               />
@@ -755,10 +775,11 @@ const Dashboard = ({ userRole }) => {
                   />
                 }
                 sx={{
-                  fontSize: "16px",
+                  fontSize: "20px",
+
                   p: "10px",
                   backgroundColor: colors.primary[400],
-                  color: "white",
+                  color: colors.grey[100],
                   "& .MuiChip-icon": { color: colors.greenAccent[500] },
                 }}
               />
@@ -769,14 +790,16 @@ const Dashboard = ({ userRole }) => {
               gridColumn="span 12"
               gridRow="span 3"
               bgcolor={colors.primary[400]}
-              p={2}
+              paddingTop={2}
+              paddingLeft={2}
+              paddingright={2}
             >
               <SEPerformanceTrendChart />
             </Box>
 
             {/* Left Section (Stat Boxes) */}
             <Box
-              gridColumn="span 4"
+              gridColumn="span 3"
               gridRow="span 2"
               display="grid"
               gridTemplateRows="1fr 1fr"
@@ -785,20 +808,26 @@ const Dashboard = ({ userRole }) => {
             >
               {/* Total Evaluations */}
               <Box
-                bgcolor={colors.primary[400]} // Set the background color to transparent
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
+                bgcolor={colors.primary[400]}
                 p={2}
               >
-                <StatBox
-                  title={evaluations.total}
-                  subtitle="Total Evaluations"
+                <Chip
+                  label={`${evaluations.total} Total Evaluations`}
                   icon={
                     <PendingActionsIcon
                       sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
                     />
                   }
+                  sx={{
+                    fontSize: "20px",
+                    p: "10px",
+                    backgroundColor: colors.primary[400],
+                    color: colors.grey[100],
+                    "& .MuiChip-icon": { color: colors.blueAccent[500] },
+                  }}
                 />
               </Box>
 
@@ -825,7 +854,7 @@ const Dashboard = ({ userRole }) => {
 
             {/* Right Section (Chart) */}
             <Box
-              gridColumn="span 8"
+              gridColumn="span 9"
               gridRow="span 2"
               bgcolor={colors.primary[400]}
               p={2}
@@ -854,10 +883,13 @@ const Dashboard = ({ userRole }) => {
               display="grid"
               gridTemplateColumns="repeat(12, 1fr)"
               gap="20px"
-              marginTop="20px"
             >
               {/* SEs Requiring Immediate Attention 🚨 */}
-              <Box gridColumn="span 6">
+              <Box
+                gridColumn="span 6"
+                backgroundColor={colors.primary[400]}
+                padding="20px"
+              >
                 <Typography
                   variant="h3"
                   fontWeight="bold"
@@ -870,6 +902,8 @@ const Dashboard = ({ userRole }) => {
                   sx={{
                     height: "400px",
                     minHeight: "400px", // Ensures it does not shrink with missing data
+                    backgroundColor: colors.primary[400],
+
                     "& .MuiDataGrid-root": { border: "none" },
                     "& .MuiDataGrid-cell": { borderBottom: "none" },
                     "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader":
@@ -895,7 +929,11 @@ const Dashboard = ({ userRole }) => {
               </Box>
 
               {/* Pending Mentoring Schedules 🕒 */}
-              <Box gridColumn="span 6">
+              <Box
+                gridColumn="span 6"
+                backgroundColor={colors.primary[400]}
+                padding="20px"
+              >
                 <Typography
                   variant="h3"
                   fontWeight="bold"
@@ -908,6 +946,8 @@ const Dashboard = ({ userRole }) => {
                   sx={{
                     height: "400px",
                     minHeight: "400px", // Ensures it does not shrink with missing data
+                    backgroundColor: colors.primary[400],
+
                     "& .MuiDataGrid-root": { border: "none" },
                     "& .MuiDataGrid-cell": { borderBottom: "none" },
                     "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader":
@@ -957,100 +997,119 @@ const Dashboard = ({ userRole }) => {
             {/* Quick Action Panel */}
             <Box
               gridColumn="span 12"
-              display="grid"
-              gridTemplateColumns="repeat(12, 1fr)"
-              gap={1}
+              gridRow="span 1"
+              bgcolor={colors.primary[400]}
+              padding="20px"
+              marginTop={3}
             >
-              <Typography variant="h6" gridColumn="span 6">
+              <Typography
+                variant="h4"
+                fontWeight="bold"
+                color={colors.greenAccent[500]}
+                marginBottom="15px"
+              >
                 Quick Actions Panel
               </Typography>
+
               <Box
-                gridColumn="span 12"
                 display="flex"
                 justifyContent="space-between"
                 alignItems="center"
-                bgcolor={colors.primary[400]}
-                paddingLeft={2}
-                paddingRight={2}
+                gap={2}
                 width="100%"
               >
-                <Box display="flex" flexGrow={1} gap={2} width="100%">
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<AnalyticsOutlinedIcon />}
-                    onClick={() => navigate("/analytics")}
-                    sx={{ flexGrow: 1 }}
-                  >
-                    View Analytics
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    startIcon={<Diversity2OutlinedIcon />}
-                    onClick={() => navigate("/socialenterprise")}
-                    sx={{ flexGrow: 1 }}
-                  >
-                    Social Enterprises
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    startIcon={<AssignmentTurnedInOutlinedIcon />}
-                    onClick={() => navigate("/assess")}
-                    sx={{ flexGrow: 1 }}
-                  >
-                    Evaluate Mentor
-                  </Button>
-                </Box>
+                <Button
+                  variant="contained"
+                  startIcon={<AnalyticsOutlinedIcon />}
+                  onClick={() => navigate("/analytics")}
+                  sx={{
+                    flexGrow: 1,
+                    backgroundColor: colors.blueAccent[800], // Custom Background Color
+                    color: colors.grey[100], // Custom Text Color
+                    "&:hover": {
+                      backgroundColor: colors.blueAccent[900], // Darker shade on hover
+                    },
+                  }}
+                >
+                  View Analytics
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<Diversity2OutlinedIcon />}
+                  onClick={() => navigate("/socialenterprise")}
+                  sx={{
+                    flexGrow: 1,
+                    backgroundColor: colors.blueAccent[600], // Custom Background Color
+                    color: colors.grey[100], // Custom Text Color
+                    "&:hover": {
+                      backgroundColor: colors.blueAccent[700], // Darker shade on hover
+                    },
+                  }}
+                >
+                  Social Enterprises
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<AssignmentTurnedInOutlinedIcon />}
+                  onClick={() => navigate("/assess")}
+                  sx={{
+                    flexGrow: 1,
+                    backgroundColor: colors.greenAccent[600], // Custom Background Color
+                    color: colors.grey[100], // Custom Text Color
+                    "&:hover": {
+                      backgroundColor: colors.greenAccent[800], // Darker shade on hover
+                    },
+                  }}
+                >
+                  Evaluate Mentor
+                </Button>
               </Box>
             </Box>
 
             {/* Mentorships Section */}
-            <Box
-              gridColumn="span 12"
-              gridRow="span 3"
-              display="grid"
-              gridTemplateColumns="repeat(12, 1fr)"
-              gap="20px"
-            >
-              <Typography
-                variant="h3"
-                fontWeight="bold"
-                color={colors.greenAccent[500]}
-                gridColumn="span 12"
-              >
-                Mentorships
-              </Typography>
+            <Box gridColumn="span 12" gridRow="span 3" display="grid">
               <Box
                 gridColumn="span 12"
-                sx={{
-                  height: "auto",
-                  "& .MuiDataGrid-root": { border: "none" },
-                  "& .MuiDataGrid-cell": { borderBottom: "none" },
-                  "& .name-column--cell": { color: colors.greenAccent[300] },
-                  "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-                    backgroundColor: colors.blueAccent[700] + " !important",
-                  },
-                  "& .MuiDataGrid-virtualScroller": {
-                    backgroundColor: colors.primary[400],
-                  },
-                  "& .MuiDataGrid-footerContainer": {
-                    borderTop: "none",
-                    backgroundColor: colors.blueAccent[700],
-                    color: colors.grey[100],
-                  },
-                }}
+                backgroundColor={colors.primary[400]}
+                padding="20px"
               >
-                {loading ? (
-                  <Typography>Loading...</Typography>
-                ) : (
-                  <DataGrid
-                    rows={socialEnterprises}
-                    columns={columns}
-                    autoHeight
-                  />
-                )}
+                <Typography
+                  variant="h3"
+                  fontWeight="bold"
+                  color={colors.greenAccent[500]}
+                  marginBottom="15px" // Ensures a small gap between header & DataGrid
+                >
+                  Mentorships
+                </Typography>
+                <Box
+                  sx={{
+                    height: "400px",
+                    minHeight: "400px", // Ensures it does not shrink with missing data
+                    backgroundColor: colors.primary[400],
+
+                    "& .MuiDataGrid-root": { border: "none" },
+                    "& .MuiDataGrid-cell": { borderBottom: "none" },
+                    "& .name-column--cell": { color: colors.greenAccent[300] },
+                    "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader":
+                      {
+                        backgroundColor: colors.blueAccent[700] + " !important",
+                      },
+                    "& .MuiDataGrid-virtualScroller": {
+                      backgroundColor: colors.primary[400],
+                    },
+                    "& .MuiDataGrid-footerContainer": {
+                      borderTop: "none",
+                      backgroundColor: colors.blueAccent[700],
+                      color: colors.grey[100],
+                    },
+                  }}
+                >
+                  {loading ? (
+                    <Typography>Loading...</Typography>
+                  ) : (
+                    <DataGrid rows={socialEnterprises} columns={columns} />
+                  )}
+                </Box>
               </Box>
             </Box>
           </Box>
@@ -1165,23 +1224,29 @@ const Dashboard = ({ userRole }) => {
             </Box>
           </Box>
 
-          {/* Evaluation History */}
-          <Box mt={4}>
-            <Typography variant="h6" gutterBottom>
+          {/* Recent Evaluations */}
+          <Box
+            width="100%"
+            backgroundColor={colors.primary[400]}
+            padding="20px"
+            mt={4}
+          >
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+              marginBottom="15px"
+            >
               Recent Evaluations
             </Typography>
+
             {mentorEvaluations.length > 0 ? (
               <Box
+                height="400px"
+                minHeight="400px"
                 sx={{
-                  height: 400,
-                  width: "100%",
-                  overflowX: "auto",
-                  "& .MuiDataGrid-root": {
-                    border: "none",
-                  },
-                  "& .MuiDataGrid-cell": {
-                    borderBottom: "none",
-                  },
+                  "& .MuiDataGrid-root": { border: "none" },
+                  "& .MuiDataGrid-cell": { borderBottom: "none" },
                   "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
                     backgroundColor: colors.blueAccent[700] + " !important",
                   },
@@ -1360,71 +1425,98 @@ const Dashboard = ({ userRole }) => {
           {/* Quick Action Panel */}
           <Box
             gridColumn="span 12"
-            display="grid"
-            gridTemplateColumns="repeat(12, 1fr)"
+            gridRow="span 1"
+            bgcolor={colors.primary[400]}
+            padding="20px"
+            marginTop={3}
           >
-            <Typography variant="h6" sx={{ pl: 2 }}>
+            <Typography
+              variant="h4"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+              marginBottom="15px"
+            >
               Quick Actions Panel
             </Typography>
 
             <Box
-              gridColumn="span 12"
               display="flex"
               justifyContent="space-between"
               alignItems="center"
-              bgcolor={colors.primary[400]}
-              padding={2}
+              gap={2}
               width="100%"
             >
-              <Box display="flex" gap={2} flexGrow={1} width="100%">
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<AnalyticsOutlinedIcon />}
-                  onClick={() => navigate("/analytics")}
-                  sx={{ flexGrow: 1 }}
-                >
-                  View Analytics
-                </Button>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  startIcon={<Diversity2OutlinedIcon />}
-                  onClick={() => navigate("/socialenterprise")}
-                  sx={{ flexGrow: 1 }}
-                >
-                  Social Enterprises
-                </Button>
-                <Button
-                  variant="contained"
-                  color="success"
-                  startIcon={<AssignmentTurnedInOutlinedIcon />}
-                  onClick={() => navigate("/assess")}
-                  sx={{ flexGrow: 1 }}
-                >
-                  Evaluate Mentor
-                </Button>
-              </Box>
+              <Button
+                variant="contained"
+                startIcon={<AnalyticsOutlinedIcon />}
+                onClick={() => navigate("/analytics")}
+                sx={{
+                  flexGrow: 1,
+                  backgroundColor: colors.blueAccent[800], // Custom Background Color
+                  color: colors.grey[100], // Custom Text Color
+                  "&:hover": {
+                    backgroundColor: colors.blueAccent[900], // Darker shade on hover
+                  },
+                }}
+              >
+                View Analytics
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<Diversity2OutlinedIcon />}
+                onClick={() => navigate("/socialenterprise")}
+                sx={{
+                  flexGrow: 1,
+                  backgroundColor: colors.blueAccent[600], // Custom Background Color
+                  color: colors.grey[100], // Custom Text Color
+                  "&:hover": {
+                    backgroundColor: colors.blueAccent[700], // Darker shade on hover
+                  },
+                }}
+              >
+                Social Enterprises
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<AssignmentTurnedInOutlinedIcon />}
+                onClick={() => navigate("/assess")}
+                sx={{
+                  flexGrow: 1,
+                  backgroundColor: colors.greenAccent[600], // Custom Background Color
+                  color: colors.grey[100], // Custom Text Color
+                  "&:hover": {
+                    backgroundColor: colors.greenAccent[800], // Darker shade on hover
+                  },
+                }}
+              >
+                Evaluate Mentor
+              </Button>
             </Box>
           </Box>
 
           {/* Upcoming Mentoring Sessions */}
-          <Box mt={4}>
-            <Typography variant="h6" gutterBottom>
+          <Box
+            width="100%"
+            backgroundColor={colors.primary[400]}
+            padding="20px"
+            mt={4}
+          >
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+              marginBottom="15px"
+            >
               Upcoming Mentoring Sessions
             </Typography>
+
             {mockSessions.length > 0 ? (
               <Box
+                height="400px"
+                minHeight="400px"
                 sx={{
-                  height: 400,
-                  width: "100%",
-                  overflowX: "auto",
-                  "& .MuiDataGrid-root": {
-                    border: "none",
-                  },
-                  "& .MuiDataGrid-cell": {
-                    borderBottom: "none",
-                  },
+                  "& .MuiDataGrid-root": { border: "none" },
+                  "& .MuiDataGrid-cell": { borderBottom: "none" },
                   "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
                     backgroundColor: colors.blueAccent[700] + " !important",
                   },
@@ -1445,12 +1537,12 @@ const Dashboard = ({ userRole }) => {
                       field: "team_name",
                       headerName: "Social Enterprise",
                       flex: 1,
-                      minWidth: 100,
+                      minWidth: 150,
                     },
                     {
                       field: "date",
                       headerName: "Date",
-                      width: 100,
+                      width: 150,
                     },
                     {
                       field: "link",

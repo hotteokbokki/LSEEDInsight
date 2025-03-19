@@ -23,6 +23,7 @@ import SEPerformanceTrendChartByMentorship from "../../components/SEPerformanceT
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import { useNavigate } from "react-router-dom"; // For navigation
 import { Snackbar, Alert } from "@mui/material";
+import { JsonRequestError } from "@fullcalendar/core/index.js";
 
 const Mentorships = () => {
   const theme = useTheme();
@@ -274,13 +275,20 @@ const Mentorships = () => {
       width: 200,
       renderCell: (params) => {
         return (
-          <Box display="flex" gap={1}>
+          <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            height="100%"
+            gap={1}
+            width="100%" // Ensures full width for centering
+          >
             <Button
               onClick={() => navigate(`/se-analytics/${params.row.id}`)}
               sx={{
                 color: "#fff",
-                backgroundColor: colors.primary[700],
-                "&:hover": { backgroundColor: colors.primary[800] },
+                backgroundColor: colors.greenAccent[500], // Custom color
+                "&:hover": { backgroundColor: colors.greenAccent[700] },
               }}
             >
               View SE
@@ -289,8 +297,8 @@ const Mentorships = () => {
               onClick={() => navigate(`/se-analytics/${params.row.id}`)}
               sx={{
                 color: "#fff",
-                backgroundColor: colors.primary[700],
-                "&:hover": { backgroundColor: colors.primary[800] },
+                backgroundColor: colors.blueAccent[500], // Custom color
+                "&:hover": { backgroundColor: colors.blueAccent[700] },
               }}
             >
               Generate OTP
@@ -979,37 +987,47 @@ const Mentorships = () => {
           </Alert>
         </Snackbar>
       </Box>
-      <Box
-        height="75vh"
-        mt="20px"
-        sx={{
-          "& .MuiDataGrid-root": { border: "none" },
-          "& .MuiDataGrid-cell": { borderBottom: "none" },
-          "& .name-column--cell": { color: colors.greenAccent[300] },
-          "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-            backgroundColor: colors.blueAccent[700] + " !important",
-          },
-          "& .MuiDataGrid-virtualScroller": {
-            backgroundColor: colors.primary[400],
-          },
-          "& .MuiDataGrid-footerContainer": {
-            borderTop: "none",
-            backgroundColor: colors.blueAccent[700],
-          },
-        }}
-      >
-        {loading ? (
-          <Typography>Loading...</Typography>
-        ) : (
-          <DataGrid
-            rows={socialEnterprises}
-            columns={columns}
-            getRowId={(row) => row.id} // Use `id` as the unique identifier
-            onRowClick={handleRowClick}
-            editMode="row" // Enable row editing
-            autoHeight
-          />
-        )}
+      <Box width="100%" backgroundColor={colors.primary[400]} padding="20px">
+        <Typography
+          variant="h3"
+          fontWeight="bold"
+          color={colors.greenAccent[500]}
+          marginBottom="15px" // Ensures a small gap between header & DataGrid
+        >
+          My Mentorships
+        </Typography>
+        <Box
+          height="400px"
+          minHeight="400px"
+          width="100%"
+          sx={{
+            "& .MuiDataGrid-root": { border: "none" },
+            "& .MuiDataGrid-cell": { borderBottom: "none" },
+            "& .name-column--cell": { color: colors.greenAccent[300] },
+            "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+              backgroundColor: colors.blueAccent[700] + " !important",
+            },
+            "& .MuiDataGrid-virtualScroller": {
+              backgroundColor: colors.primary[400],
+            },
+            "& .MuiDataGrid-footerContainer": {
+              borderTop: "none",
+              backgroundColor: colors.blueAccent[700],
+            },
+          }}
+        >
+          {loading ? (
+            <Typography>Loading...</Typography>
+          ) : (
+            <DataGrid
+              rows={socialEnterprises}
+              columns={columns}
+              getRowId={(row) => row.id} // Use `id` as the unique identifier
+              onRowClick={handleRowClick}
+              editMode="row" // Enable row editing
+            />
+          )}
+        </Box>
       </Box>
     </Box>
   );

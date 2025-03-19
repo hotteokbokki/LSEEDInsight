@@ -111,59 +111,71 @@ const Scheduling = ({ userRole }) => {
 
   const generateICS = () => {
     if (mentorshipDates.length === 0) {
-        alert("No scheduled mentorship dates to export.");
-        return;
+      alert("No scheduled mentorship dates to export.");
+      return;
     }
 
-    let icsContent = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//SEED Insight//Mentorship Schedule//EN\r\n";
+    let icsContent =
+      "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//SEED Insight//Mentorship Schedule//EN\r\n";
 
     mentorshipDates.forEach((session) => {
-        if (session.status !== "Accepted") {
-            return; // Skip non-accepted sessions
-        }
+      if (session.status !== "Accepted") {
+        return; // Skip non-accepted sessions
+      }
 
-        const [year, month, day] = session.mentoring_session_date.split("T")[0].split("-").map(Number);
-        const [hour, minute] = session.mentoring_session_time.split(" - ")[0].split(":").map(Number);
+      const [year, month, day] = session.mentoring_session_date
+        .split("T")[0]
+        .split("-")
+        .map(Number);
+      const [hour, minute] = session.mentoring_session_time
+        .split(" - ")[0]
+        .split(":")
+        .map(Number);
 
-        // Construct date using local time (prevents timezone shift)
-        const parsedDate = new Date(year, month - 1, day + 1, hour, minute);
+      // Construct date using local time (prevents timezone shift)
+      const parsedDate = new Date(year, month - 1, day + 1, hour, minute);
 
-        if (isNaN(parsedDate.getTime())) {
-            console.error("Invalid date:", session.mentoring_session_date, session.mentoring_session_time);
-            return;
-        }
+      if (isNaN(parsedDate.getTime())) {
+        console.error(
+          "Invalid date:",
+          session.mentoring_session_date,
+          session.mentoring_session_time
+        );
+        return;
+      }
 
-        const startDate = parsedDate.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-        const endDate = new Date(parsedDate.getTime() + 60 * 60 * 1000) // 1-hour session
-            .toISOString()
-            .replace(/[-:]/g, "")
-            .split(".")[0] + "Z";
+      const startDate =
+        parsedDate.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+      const endDate =
+        new Date(parsedDate.getTime() + 60 * 60 * 1000) // 1-hour session
+          .toISOString()
+          .replace(/[-:]/g, "")
+          .split(".")[0] + "Z";
 
-        icsContent += `BEGIN:VEVENT\r\n`;
-        icsContent += `UID:${session.team_name}-${startDate}\r\n`;
-        icsContent += `SUMMARY:Mentorship Session with ${session.team_name}\r\n`;
-        icsContent += `DESCRIPTION:Mentor: ${session.mentor_name}\\nProgram: ${session.program_name}\\nStatus: ${session.status}\r\n`;
-        icsContent += `DTSTART:${startDate}\r\n`;
-        icsContent += `DTEND:${endDate}\r\n`;
-        icsContent += `LOCATION:${session.zoom_link ? session.zoom_link : "TBD"}\r\n`;
-        icsContent += `STATUS:CONFIRMED\r\n`;
-        icsContent += `END:VEVENT\r\n`;
+      icsContent += `BEGIN:VEVENT\r\n`;
+      icsContent += `UID:${session.team_name}-${startDate}\r\n`;
+      icsContent += `SUMMARY:Mentorship Session with ${session.team_name}\r\n`;
+      icsContent += `DESCRIPTION:Mentor: ${session.mentor_name}\\nProgram: ${session.program_name}\\nStatus: ${session.status}\r\n`;
+      icsContent += `DTSTART:${startDate}\r\n`;
+      icsContent += `DTEND:${endDate}\r\n`;
+      icsContent += `LOCATION:${
+        session.zoom_link ? session.zoom_link : "TBD"
+      }\r\n`;
+      icsContent += `STATUS:CONFIRMED\r\n`;
+      icsContent += `END:VEVENT\r\n`;
     });
 
     icsContent += "END:VCALENDAR\r\n";
 
     if (!icsContent.includes("BEGIN:VEVENT")) {
-        alert("No Accepted mentorship schedules to export.");
-        return;
+      alert("No Accepted mentorship schedules to export.");
+      return;
     }
 
     // Create a Blob and trigger download
     const blob = new Blob([icsContent], { type: "text/calendar" });
     saveAs(blob, "mentorship_schedule.ics");
   };
-
-
-
 
   const handleDeclineClick = async (schedule) => {
     try {
@@ -339,7 +351,7 @@ const Scheduling = ({ userRole }) => {
         program_name: se.program || "Unknown Program",
         sdg_name: se.sdgs || "No SDG Name",
       }));
-      
+
       setSocialEnterprises(updatedSocialEnterprises);
     } catch (error) {
       console.error("❌ Error fetching social enterprises:", error);
@@ -354,30 +366,44 @@ const Scheduling = ({ userRole }) => {
     console.log("Start Time:", startTime?.format?.("HH:mm"));
     console.log("End Time:", endTime?.format?.("HH:mm"));
     console.log("Zoom Link:", zoomLink);
-  
+
     // Ensure all fields are filled before proceeding
-    if (!selectedSE?.id || !selectedDate || !startTime || !endTime || !zoomLink) {
-      alert("All fields are required: SE, Date, Start Time, End Time, Zoom Link.");
+    if (
+      !selectedSE?.id ||
+      !selectedDate ||
+      !startTime ||
+      !endTime ||
+      !zoomLink
+    ) {
+      alert(
+        "All fields are required: SE, Date, Start Time, End Time, Zoom Link."
+      );
       return;
     }
-  
+
     try {
       setIsLoading(true);
-  
+
       // ✅ Ensure `selectedDate`, `startTime`, and `endTime` are dayjs objects before formatting
-      const formattedDate = selectedDate?.isValid?.() ? selectedDate.format("YYYY-MM-DD") : null;
-      const formattedStartTime = selectedDate?.isValid?.() && startTime?.isValid?.()
-      ? `${selectedDate.format("YYYY-MM-DD")} ${startTime.format("HH:mm:ss")}`
-      : null;
-    
-      const formattedEndTime = selectedDate?.isValid?.() && endTime?.isValid?.()
-        ? `${selectedDate.format("YYYY-MM-DD")} ${endTime.format("HH:mm:ss")}`
+      const formattedDate = selectedDate?.isValid?.()
+        ? selectedDate.format("YYYY-MM-DD")
         : null;
-  
+      const formattedStartTime =
+        selectedDate?.isValid?.() && startTime?.isValid?.()
+          ? `${selectedDate.format("YYYY-MM-DD")} ${startTime.format(
+              "HH:mm:ss"
+            )}`
+          : null;
+
+      const formattedEndTime =
+        selectedDate?.isValid?.() && endTime?.isValid?.()
+          ? `${selectedDate.format("YYYY-MM-DD")} ${endTime.format("HH:mm:ss")}`
+          : null;
+
       if (!formattedDate || !formattedStartTime || !formattedEndTime) {
         throw new Error("Invalid date or time format.");
       }
-  
+
       const requestBody = {
         mentorship_id: selectedSE.id,
         mentoring_session_date: formattedDate,
@@ -385,24 +411,27 @@ const Scheduling = ({ userRole }) => {
         end_time: formattedEndTime,
         zoom_link: zoomLink,
       };
-  
+
       console.log("📤 Sending Data:", requestBody);
-  
-      const response = await fetch("http://localhost:4000/updateMentorshipDate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
-  
+
+      const response = await fetch(
+        "http://localhost:4000/updateMentorshipDate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        }
+      );
+
       if (!response.ok) {
         // ✅ Get detailed error response (JSON or text)
         const errorMessage = await response.json().catch(() => response.text());
         throw new Error(`Failed to update: ${JSON.stringify(errorMessage)}`);
       }
-  
+
       setSnackbarOpen(true); // ✅ Show success message
       handleCloseSEModal(); // ✅ Close modal
-  
+
       setTimeout(() => {
         window.location.reload();
       }, 500);
@@ -473,28 +502,32 @@ const Scheduling = ({ userRole }) => {
           display="flex"
           flexDirection="column"
           alignItems="center"
-          gap={4}
+          gap={2}
           mt={2}
+          marginBottom="20px"
         >
           <Box
-            width="80%"
+            width="100%"
             p={3}
             bgcolor={colors.primary[400]}
             display="flex"
-            justifyContent="space-between"
+            gap={2}
           >
+            {/* Open LSEED Calendar Button */}
             <Button
               variant="contained"
               color="secondary"
-              sx={{ fontSize: "20px", padding: "20px", width: "48%" }}
+              sx={{ fontSize: "16px", py: "10px", flexGrow: 1, minWidth: 0 }}
               onClick={handleRedirect}
             >
               Open LSEED Calendar
             </Button>
+
+            {/* Schedule a Mentoring Session Button */}
             <Button
               variant="contained"
               color="secondary"
-              sx={{ fontSize: "20px", padding: "20px", width: "48%" }}
+              sx={{ fontSize: "16px", py: "10px", flexGrow: 1, minWidth: 0 }}
               onClick={handleOpenSEModal}
             >
               Schedule a Mentoring Session
@@ -539,27 +572,41 @@ const Scheduling = ({ userRole }) => {
         </Box>
       )}
 
-      <Box mt={4}>
-        <Typography variant="h6" gutterBottom>
+      <Box width="100%" backgroundColor={colors.primary[400]} padding="20px">
+        <Typography
+          variant="h3"
+          fontWeight="bold"
+          color={colors.greenAccent[500]}
+          marginBottom="15px"
+        >
           Mentor Scheduling Calendar
         </Typography>
 
-        {/* ✅ Add Calendar Component Here */}
         <Calendar isDashboard={true} />
       </Box>
 
       {user.role === "LSEED" && (
         <Box mt={4} display="flex" flexDirection="column" gap={2}>
           {/* Mentor Schedules */}
-          <Box>
-            <Typography variant="h6" gutterBottom>
+          <Box
+            width="100%"
+            backgroundColor={colors.primary[400]}
+            padding="20px"
+          >
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+              marginBottom="15px"
+            >
               Pending Schedules
             </Typography>
+
             <Box
+              width="100%"
+              height="400px"
+              minHeight="400px"
               sx={{
-                height: 400,
-                width: "100%",
-                overflowX: "auto",
                 "& .MuiDataGrid-root": { border: "none" },
                 "& .MuiDataGrid-cell": { borderBottom: "none" },
                 "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
@@ -578,12 +625,12 @@ const Scheduling = ({ userRole }) => {
               {mentorSchedules.length > 0 ? (
                 <DataGrid
                   rows={mentorSchedules.map((schedule) => ({
-                    id: schedule.mentoring_session_id, // Use mentoring_session_id as unique ID
+                    id: schedule.mentoring_session_id,
                     mentor_name: schedule.mentor_name || "Unknown Mentor",
                     mentorship_id: schedule.mentorship_id,
-                    se_name: schedule.team_name || "Unknown SE", // Use team_name from SQL
-                    mentorship_date: schedule.mentoring_session_date, // Already formatted in SQL
-                    mentorship_time: schedule.mentoring_session_time, // Already formatted in SQL
+                    se_name: schedule.team_name || "Unknown SE",
+                    mentorship_date: schedule.mentoring_session_date,
+                    mentorship_time: schedule.mentoring_session_time,
                     telegramstatus: schedule.status || "Pending",
                     zoom_link: schedule.zoom_link || "N/A",
                   }))}
@@ -605,7 +652,7 @@ const Scheduling = ({ userRole }) => {
                       headerName: "Mentoring Session Date",
                       flex: 1,
                       minWidth: 200,
-                    }, // Increased width for longer text format
+                    },
                     {
                       field: "mentorship_time",
                       headerName: "Mentoring Session Time",
@@ -623,41 +670,51 @@ const Scheduling = ({ userRole }) => {
                       headerName: "Zoom Link",
                       flex: 1,
                       minWidth: 200,
-                      renderCell: (params) => (
-                        <a
-                          href={params.value}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {params.value !== "N/A" ? "Join Meeting" : "No Link"}
-                        </a>
-                      ),
+                      renderCell: (params) => {
+                        const { row } = params;
+                        return row.zoom_link && row.zoom_link !== "N/A" ? (
+                          <a
+                            href={row.zoom_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <Chip label="Join" color="primary" clickable />
+                          </a>
+                        ) : (
+                          "No Link"
+                        );
+                      },
                     },
+
                     {
                       field: "action",
                       headerName: "Action",
                       flex: 1,
                       minWidth: 200,
                       renderCell: (params) => (
-                        <div>
+                        <Box
+                          display="flex"
+                          justifyContent="center" // Centers horizontally
+                          alignItems="center" // Centers vertically
+                          width="100%" // Ensures it spans full width of the column
+                          height="100%" // Ensures it spans full height of the cell
+                          gap={1} // Adds spacing between buttons
+                        >
                           <Button
                             variant="contained"
-                            style={{
-                              backgroundColor: colors.greenAccent[500],
-                              marginRight: "8px",
-                            }}
+                            sx={{ backgroundColor: colors.greenAccent[500] }}
                             onClick={() => handleAcceptClick(params.row)}
                           >
                             Accept
                           </Button>
                           <Button
                             variant="contained"
-                            style={{ backgroundColor: colors.redAccent[500] }}
+                            sx={{ backgroundColor: colors.redAccent[500] }}
                             onClick={() => handleDeclineClick(params.row)}
                           >
                             Decline
                           </Button>
-                        </div>
+                        </Box>
                       ),
                     },
                   ]}
@@ -665,17 +722,178 @@ const Scheduling = ({ userRole }) => {
                   rowsPerPageOptions={[5, 10]}
                 />
               ) : (
-                <p>No schedules available.</p>
+                <Typography color={colors.grey[300]}>
+                  No schedules available.
+                </Typography>
               )}
             </Box>
           </Box>
 
           {/* Mentorship History */}
-          <Box>
-            <Typography variant="h6" gutterBottom>
+          <Box
+            width="100%"
+            backgroundColor={colors.primary[400]}
+            padding="20px"
+          >
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+              marginBottom="15px"
+            >
               Mentoring Sessions History
             </Typography>
+
             {mentorHistory.length > 0 ? (
+              <Box
+                width="100%"
+                height="400px"
+                minHeight="400px"
+                sx={{
+                  "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
+                    {
+                      backgroundColor: colors.blueAccent[700] + " !important",
+                    },
+                  "& .MuiDataGrid-root": { border: "none" },
+                  "& .MuiDataGrid-cell": { borderBottom: "none" },
+                  "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                    backgroundColor: colors.blueAccent[700] + " !important",
+                  },
+                  "& .MuiDataGrid-virtualScroller": {
+                    backgroundColor: colors.primary[400],
+                  },
+                  "& .MuiDataGrid-footerContainer": {
+                    borderTop: "none",
+                    backgroundColor: colors.blueAccent[700],
+                    color: colors.grey[100],
+                  },
+                }}
+              >
+                <DataGrid
+                  rows={historyRows}
+                  columns={[
+                    {
+                      field: "team_name",
+                      headerName: "Social Enterprise",
+                      flex: 1,
+                      minWidth: 250,
+                    },
+                    {
+                      field: "mentor_name",
+                      headerName: "Mentor",
+                      width: 250,
+                    },
+                    {
+                      field: "program_name",
+                      headerName: "Program",
+                      width: 250,
+                    },
+                    {
+                      field: "mentoring_session_date",
+                      headerName: "Date",
+                      width: 250,
+                    },
+                    {
+                      field: "mentoring_session_time",
+                      headerName: "Time",
+                      width: 250,
+                    },
+                    {
+                      field: "status",
+                      headerName: "Status",
+                      width: 200,
+                      renderCell: (params) => {
+                        let color = "default";
+                        if (params.value === "Pending SE") color = "warning";
+                        if (params.value === "Accepted") color = "success";
+                        if (params.value === "Declined") color = "error";
+                        if (params.value === "Evaluated") color = "info";
+                        if (params.value === "Completed") color = "primary";
+
+                        return <Chip label={params.value} color={color} />;
+                      },
+                    },
+                    {
+                      field: "zoom_link",
+                      headerName: "Zoom Link",
+                      flex: 1,
+                      minWidth: 50,
+                      renderCell: (params) => {
+                        const { row } = params;
+                        return row.zoom_link && row.zoom_link !== "N/A" ? (
+                          <a
+                            href={row.zoom_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <Chip label="Join" color="primary" clickable />
+                          </a>
+                        ) : (
+                          "N/A"
+                        );
+                      },
+                    },
+                  ]}
+                  pageSize={5}
+                  rowsPerPageOptions={[5, 10]}
+                />
+              </Box>
+            ) : (
+              <Typography>No mentorship history available.</Typography>
+            )}
+          </Box>
+        </Box>
+      )}
+
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>Manage Mentor Schedule</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Do you want to accept or decline this mentor schedule?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAccept} color="success">
+            Accept
+          </Button>
+          <Button onClick={handleDecline} color="error">
+            Decline
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {userRole === "Mentor" && (
+        <Box mt={4}>
+          {/* Export Button Positioned Outside DataGrid */}
+          <Box mb={2}>
+            <Button
+              variant="contained"
+              sx={{
+                backgroundColor: colors.greenAccent[600],
+                color: colors.grey[100],
+                "&:hover": { backgroundColor: colors.greenAccent[700] },
+              }}
+              onClick={generateICS}
+            >
+              Export Calendar
+            </Button>
+          </Box>
+
+          <Box
+            width="100%"
+            backgroundColor={colors.primary[400]}
+            padding="20px"
+          >
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+              marginBottom="15px"
+            >
+              Mentoring Sessions History
+            </Typography>
+
+            {mentorshipDates.length > 0 ? (
               <Box
                 sx={{
                   height: 400,
@@ -705,11 +923,7 @@ const Scheduling = ({ userRole }) => {
                       flex: 1,
                       minWidth: 200,
                     },
-                    {
-                      field: "mentor_name",
-                      headerName: "Mentor",
-                      width: 200,
-                    },
+                    { field: "mentor_name", headerName: "Mentor", width: 200 },
                     {
                       field: "program_name",
                       headerName: "Program",
@@ -731,12 +945,11 @@ const Scheduling = ({ userRole }) => {
                       width: 150,
                       renderCell: (params) => {
                         let color = "default";
-                        if (params.value === "Pending SE") color = "warning"; // Yellow - Pending action
-                        if (params.value === "Accepted") color = "success"; // Green - Approved
-                        if (params.value === "Declined") color = "error"; // Red - Rejected
-                        if (params.value === "Evaluated") color = "info"; // Dark Blue - Reviewed but not yet finalized
-                        if (params.value === "Completed") color = "primary"; // Light Blue - Fully done
-
+                        if (params.value === "Pending SE") color = "warning";
+                        if (params.value === "Accepted") color = "success";
+                        if (params.value === "Declined") color = "error";
+                        if (params.value === "Evaluated") color = "info";
+                        if (params.value === "Completed") color = "primary";
                         return <Chip label={params.value} color={color} />;
                       },
                     },
@@ -746,13 +959,13 @@ const Scheduling = ({ userRole }) => {
                       width: 250,
                       renderCell: (params) => {
                         const { row } = params;
-                        return row.status === "Accepted" && row.zoom_link ? (
+                        return row.zoom_link && row.zoom_link !== "N/A" ? (
                           <a
                             href={row.zoom_link}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            <Chip label="Join" color="primary" />
+                            <Chip label="Join" color="primary" clickable />
                           </a>
                         ) : (
                           "N/A"
@@ -764,144 +977,10 @@ const Scheduling = ({ userRole }) => {
                   rowsPerPageOptions={[5, 10]}
                 />
               </Box>
-              
-
             ) : (
               <Typography>No mentorship history available.</Typography>
             )}
-            
           </Box>
-        </Box>
-      )}
-
-      <Dialog open={openDialog} onClose={handleCloseDialog}>
-        <DialogTitle>Manage Mentor Schedule</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Do you want to accept or decline this mentor schedule?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleAccept} color="success">
-            Accept
-          </Button>
-          <Button onClick={handleDecline} color="error">
-            Decline
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {userRole === "Mentor" && (
-        <Box mt={4}>
-          <Typography variant="h6" gutterBottom>
-            Your Scheduled Mentorship Dates
-          </Typography>
-
-          <Box mt={2}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={generateICS}
-              disabled={mentorshipDates.length === 0}
-            >
-              Export Calendar
-            </Button>
-          </Box>
-
-          {mentorshipDates.length > 0 ? (
-            <Box
-              sx={{
-                height: 400,
-                width: "100%", // ✅ Ensures full DataGrid width
-                overflowX: "auto", // ✅ Enables global left-right scrolling
-                "& .MuiDataGrid-root": {
-                  border: "none",
-                },
-                "& .MuiDataGrid-cell": {
-                  borderBottom: "none",
-                },
-                "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-                  backgroundColor: colors.blueAccent[700] + " !important",
-                },
-                "& .MuiDataGrid-virtualScroller": {
-                  backgroundColor: colors.primary[400],
-                },
-                "& .MuiDataGrid-footerContainer": {
-                  borderTop: "none",
-                  backgroundColor: colors.blueAccent[700],
-                  color: colors.grey[100],
-                },
-              }}
-            >
-              <DataGrid
-                rows={rows}
-                columns={[
-                  {
-                    field: "team_name",
-                    headerName: "Social Enterprise",
-                    flex: 1,
-                    minWidth: 200,
-                  },
-                  {
-                    field: "mentor_name",
-                    headerName: "Mentor",
-                    width: 200,
-                  },
-                  {
-                    field: "program_name",
-                    headerName: "Program",
-                    width: 150,
-                  },
-                  {
-                    field: "mentoring_session_date",
-                    headerName: "Date",
-                    width: 150,
-                  },
-                  {
-                    field: "mentoring_session_time",
-                    headerName: "Time",
-                    width: 150,
-                  },
-                  {
-                    field: "status",
-                    headerName: "Status",
-                    width: 150,
-                    renderCell: (params) => {
-                      let color = "default";
-                      if (params.value === "Pending SE") color = "warning";
-                      if (params.value === "Accepted") color = "success";
-                      if (params.value === "Declined") color = "error";
-
-                      return <Chip label={params.value} color={color} />;
-                    },
-                  },
-                  {
-                    field: "zoom_link",
-                    headerName: "Zoom Link",
-                    width: 250,
-                    renderCell: (params) => {
-                      const { row } = params;
-                      return row.status === "Accepted" && row.zoom_link ? (
-                        <a
-                          href={row.zoom_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Chip label="Join" color="primary" />
-                        </a>
-                      ) : (
-                        "N/A"
-                      );
-                    },
-                  },
-                ]}
-                pageSize={5}
-                rowsPerPageOptions={[5, 10]}
-              />
-            </Box>
-          ) : (
-            <Typography>No mentorship dates scheduled.</Typography>
-          )}
         </Box>
       )}
 

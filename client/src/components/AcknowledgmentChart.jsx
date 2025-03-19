@@ -1,11 +1,13 @@
 import { ResponsiveBar } from "@nivo/bar";
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, useTheme } from "@mui/material";
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { tokens } from "../theme";
 
 const AcknowledgmentChart = () => {
   const [ackData, setAckData] = useState([]);
-
+  const theme = useTheme();
+  const colors = tokens(theme.palette.mode);
   useEffect(() => {
     const fetchAckData = async () => {
       try {
@@ -47,7 +49,7 @@ const AcknowledgmentChart = () => {
         data={ackData}
         keys={["acknowledged", "pending"]}
         indexBy="batch"
-        margin={{ top: 30, right: 50, bottom: 120, left: 60 }} // 🔹 Moved chart up
+        margin={{ top: 50, right: 50, bottom: 130, left: 60 }} // 🔹 Moved chart up
         padding={0.3} // 🔹 Slightly wider bars for better readability
         layout="vertical"
         colors={{ scheme: "set2" }}
@@ -55,7 +57,7 @@ const AcknowledgmentChart = () => {
         enableLabel={true}
         labelSkipWidth={12}
         labelSkipHeight={12}
-        labelTextColor="white" // 🔹 White text for better contrast
+        labelTextColor={colors.primary[100]} // 🔹 White text for better contrast
         axisBottom={{
           tickSize: 5,
           tickPadding: 5,
@@ -74,18 +76,39 @@ const AcknowledgmentChart = () => {
           tickTextColor: "white", // 🔹 White text
           labelTextColor: "white", // 🔹 White text
           itemTextColor: "white", // 🔹 White text
+          legendTextColor: "white", // 🔹 White text
+        }}
+        theme={{
+          axis: {
+            ticks: {
+              text: {
+                fill: colors.primary[100],
+              },
+            },
+            legend: {
+              text: {
+                fill: colors.primary[100],
+              },
+            },
+          },
+          keys: {
+            text: {
+              fill: colors.primary[100],
+            },
+          },
         }}
         legends={[
           {
             dataFrom: "keys",
             anchor: "bottom-right",
             direction: "column",
-            translateX: 40, // 🔹 Reduced spacing to prevent overflow
+            translateX: -10,
+            translateY: 50, // 🔹 Reduced spacing to prevent overflow
             itemWidth: 90,
             itemHeight: 18,
             itemsSpacing: 2,
             symbolSize: 15,
-            itemTextColor: "white", // 🔹 White legend text
+            itemTextColor: colors.primary[100], // 🔹 White legend text
           },
         ]}
         groupMode="grouped"

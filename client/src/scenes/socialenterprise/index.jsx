@@ -1105,43 +1105,57 @@ const SocialEnterprise = () => {
           </Alert>
         </Snackbar>
       </Box>
+
       <Box
-        height="75vh"
-        mt="20px"
-        sx={{
-          "& .MuiDataGrid-root": { border: "none" },
-          "& .MuiDataGrid-cell": { borderBottom: "none" },
-          "& .name-column--cell": { color: colors.greenAccent[300] },
-          "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-            backgroundColor: colors.blueAccent[700] + " !important",
-          },
-          "& .MuiDataGrid-virtualScroller": {
-            backgroundColor: colors.primary[400],
-          },
-          "& .MuiDataGrid-footerContainer": {
-            borderTop: "none",
-            backgroundColor: colors.blueAccent[700],
-          },
-        }}
+        width="100%"
+        backgroundColor={colors.primary[400]}
+        padding="20px"
+        marginTop="20px"
       >
-        {loading ? (
-          <Typography>Loading...</Typography>
-        ) : (
-          <DataGrid
-            rows={socialEnterprises}
-            columns={columns}
-            getRowId={(row) => row.id} // Use `id` as the unique identifier
-            // onRowEditStop={(params) => handleSERowUpdate(params.row)}
-            processRowUpdate={(params) => {
-              // console.log("🚨 processRowUpdate params:", params, "\n");
-              handleSERowUpdate(params);
-              return params;
-            }}
-            onRowClick={handleRowClick}
-            editMode="row" // Enable row editing
-            autoHeight
-          />
-        )}
+        <Typography
+          variant="h3"
+          fontWeight="bold"
+          color={colors.greenAccent[500]}
+          marginBottom="15px" // Ensures a small gap between header & DataGrid
+        >
+          Social Enterprises
+        </Typography>
+        <Box
+          width="100%"
+          height="400px"
+          minHeight="400px"
+          sx={{
+            "& .MuiDataGrid-root": { border: "none" },
+            "& .MuiDataGrid-cell": { borderBottom: "none" },
+            "& .name-column--cell": { color: colors.greenAccent[300] },
+            "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+              backgroundColor: colors.blueAccent[700] + " !important",
+            },
+            "& .MuiDataGrid-virtualScroller": {
+              backgroundColor: colors.primary[400],
+            },
+            "& .MuiDataGrid-footerContainer": {
+              borderTop: "none",
+              backgroundColor: colors.blueAccent[700],
+            },
+          }}
+        >
+          {loading ? (
+            <Typography>Loading...</Typography>
+          ) : (
+            <DataGrid
+              rows={socialEnterprises}
+              columns={columns}
+              getRowId={(row) => row.id} // Use `id` as the unique identifier
+              processRowUpdate={(params) => {
+                handleSERowUpdate(params);
+                return params;
+              }}
+              onRowClick={handleRowClick}
+              editMode="row" // Enable row editing
+            />
+          )}
+        </Box>
       </Box>
     </Box>
   );
