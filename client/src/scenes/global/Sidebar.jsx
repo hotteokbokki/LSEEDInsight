@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { ProSidebar, Menu, MenuItem } from "react-pro-sidebar";
 import "react-pro-sidebar/dist/css/styles.css";
-import { Box, IconButton, Typography, useTheme } from "@mui/material";
+import { Box, IconButton, Typography, useTheme, Dialog, DialogTitle, DialogActions, Button } from "@mui/material";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { tokens } from "../../theme";
+import { createCalendarEvents } from "../../utils/googleCalendar";
 import GridViewOutlinedIcon from "@mui/icons-material/GridViewOutlined";
 import SupervisorAccountOutlinedIcon from "@mui/icons-material/SupervisorAccountOutlined";
 import Diversity2OutlinedIcon from "@mui/icons-material/Diversity2Outlined";
@@ -16,6 +17,8 @@ import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
 import { useAuth } from "../../context/authContext";
+import { useGoogleLogin } from "@react-oauth/google";
+import axios from "axios";
 
 const Item = ({ title, to, icon, selected, setSelected }) => {
   const theme = useTheme();
@@ -41,8 +44,36 @@ const Sidebar = () => {
   const colors = tokens(theme.palette.mode);
   const [isCollapsed, setIsCollapsed] = useState(true);
   const { user, logout } = useAuth();
+  const [googleUser, setGoogleUser] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Manage pop-up state
+  const [openDialog, setOpenDialog] = useState(false);
+
+  const login = useGoogleLogin({
+    onSuccess: (response) => {
+      console.log("Google Login Success:", response);
+      setGoogleUser(response); // ✅ Store Google user separately
+    },
+    onError: (error) => console.error("Google Login Failed", error),
+    scope: "https://www.googleapis.com/auth/calendar.events",
+  });
+  
+
+  // Function to handle dialog close
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+  };
+
+  // Function to confirm navigation
+  const handleConfirmNavigation = async () => {
+    if (!googleUser) {
+      login(); // Prompt Google login if not logged in
+    } else {
+      await createCalendarEvents(googleUser, user); // ✅ Use googleUser for Calendar API
+    }
+  };
 
   // Determine the default selected item based on the current route
   const getSelectedTitle = () => {
@@ -173,13 +204,14 @@ const Sidebar = () => {
                   selected={selected}
                   setSelected={setSelected}
                 />
-                <Item
-                  title="Scheduling Matrix"
-                  to="/scheduling"
+                <MenuItem
+                  active={selected === "Scheduling Matrix"}
                   icon={<CalendarMonthOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
+                  onClick={() => setOpenDialog(true)} // Open the pop-up
+                  style={{ color: colors.grey[100], fontWeight: selected === "Scheduling Matrix" ? "bold" : "normal" }}
+                >
+                  <Typography variant="body1">Scheduling Matrix</Typography>
+                </MenuItem>
               </>
             )}
 
@@ -246,6 +278,21 @@ const Sidebar = () => {
           </Box>
         </Menu>
       </ProSidebar>
+        {/* MUI Dialog for Confirmation */}
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>
+          Going to Scheduling Matrix. 
+          This will require logging into Google to sync your calendar dates. Continue?
+        </DialogTitle>
+        <DialogActions>
+        <Button onClick={handleCloseDialog} sx={{ color: "white", backgroundColor: "red", "&:hover": { backgroundColor: "darkred" } }}>
+          Cancel
+        </Button>
+        <Button onClick={handleConfirmNavigation} sx={{ color: "white", backgroundColor: "green", "&:hover": { backgroundColor: "darkgreen" } }}>
+          Continue
+        </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
