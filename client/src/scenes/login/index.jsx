@@ -98,7 +98,7 @@ const Login = () => {
       />
       <div className="cover">
         <div className="front">
-          <img src="frontphot.png" alt="Welcome" />
+          <img src="frontphot.jpg" alt="Welcome" />
           <div className="text">
             <span className="text-1">
               <h4>WELCOME TO</h4>
