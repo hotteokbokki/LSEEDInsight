@@ -35,6 +35,7 @@ import axios from "axios";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { saveAs } from "file-saver";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -107,6 +108,62 @@ const Scheduling = ({ userRole }) => {
       console.error("Error approving mentorship:", error);
     }
   };
+
+  const generateICS = () => {
+    if (mentorshipDates.length === 0) {
+        alert("No scheduled mentorship dates to export.");
+        return;
+    }
+
+    let icsContent = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//SEED Insight//Mentorship Schedule//EN\r\n";
+
+    mentorshipDates.forEach((session) => {
+        if (session.status !== "Accepted") {
+            return; // Skip non-accepted sessions
+        }
+
+        const [year, month, day] = session.mentoring_session_date.split("T")[0].split("-").map(Number);
+        const [hour, minute] = session.mentoring_session_time.split(" - ")[0].split(":").map(Number);
+
+        // Construct date using local time (prevents timezone shift)
+        const parsedDate = new Date(year, month - 1, day + 1, hour, minute);
+
+        if (isNaN(parsedDate.getTime())) {
+            console.error("Invalid date:", session.mentoring_session_date, session.mentoring_session_time);
+            return;
+        }
+
+        const startDate = parsedDate.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+        const endDate = new Date(parsedDate.getTime() + 60 * 60 * 1000) // 1-hour session
+            .toISOString()
+            .replace(/[-:]/g, "")
+            .split(".")[0] + "Z";
+
+        icsContent += `BEGIN:VEVENT\r\n`;
+        icsContent += `UID:${session.team_name}-${startDate}\r\n`;
+        icsContent += `SUMMARY:Mentorship Session with ${session.team_name}\r\n`;
+        icsContent += `DESCRIPTION:Mentor: ${session.mentor_name}\\nProgram: ${session.program_name}\\nStatus: ${session.status}\r\n`;
+        icsContent += `DTSTART:${startDate}\r\n`;
+        icsContent += `DTEND:${endDate}\r\n`;
+        icsContent += `LOCATION:${session.zoom_link ? session.zoom_link : "TBD"}\r\n`;
+        icsContent += `STATUS:CONFIRMED\r\n`;
+        icsContent += `END:VEVENT\r\n`;
+    });
+
+    icsContent += "END:VCALENDAR\r\n";
+
+    if (!icsContent.includes("BEGIN:VEVENT")) {
+        alert("No Accepted mentorship schedules to export.");
+        return;
+    }
+
+    // Create a Blob and trigger download
+    const blob = new Blob([icsContent], { type: "text/calendar" });
+    saveAs(blob, "mentorship_schedule.ics");
+  };
+
+
+
 
   const handleDeclineClick = async (schedule) => {
     try {
@@ -707,9 +764,12 @@ const Scheduling = ({ userRole }) => {
                   rowsPerPageOptions={[5, 10]}
                 />
               </Box>
+              
+
             ) : (
               <Typography>No mentorship history available.</Typography>
             )}
+            
           </Box>
         </Box>
       )}
@@ -736,6 +796,18 @@ const Scheduling = ({ userRole }) => {
           <Typography variant="h6" gutterBottom>
             Your Scheduled Mentorship Dates
           </Typography>
+
+          <Box mt={2}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={generateICS}
+              disabled={mentorshipDates.length === 0}
+            >
+              Export Calendar
+            </Button>
+          </Box>
+
           {mentorshipDates.length > 0 ? (
             <Box
               sx={{
