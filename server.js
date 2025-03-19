@@ -2487,6 +2487,48 @@ async function updateUser(id, updatedUser) {
   }
 }
 
+// Endpoint to create a notification when a schedule is made
+app.post('/api/createNotification', async (req, res) => {
+  const { userId, seId, startTime, mentorshipDate } = req.body;
+
+  if (!userId || !seId || !startTime || !mentorshipDate) {
+      return res.status(400).json({ error: 'All fields are required' });
+  }
+
+  try {
+      const title = 'Scheduling';
+      const message = `${userId} is trying to make a schedule during ${startTime} on ${mentorshipDate}.`;
+
+      await pool.query(
+          `INSERT INTO notification (notification_id, user_id, se_id, title)
+           VALUES ($1, $2, $3, $4)`,
+          [uuidv4(), userId, seId, title]
+      );
+
+      res.status(201).json({ message: 'Notification created successfully' });
+  } catch (error) {
+      console.error('❌ Error creating notification:', error);
+      res.status(500).json({ error: 'Failed to create notification' });
+  }
+});
+
+// Endpoint to fetch notifications
+app.get('/api/notifications', async (req, res) => {
+  try {
+      const result = await pool.query(
+          `SELECT n.notification_id, u.first_name || ' ' || u.last_name AS user_name, n.title, n.created_at
+           FROM notification n
+           JOIN users u ON n.user_id = u.user_id
+           ORDER BY n.created_at DESC`
+      );
+      res.json(result.rows);
+  } catch (error) {
+      console.error('❌ Error fetching notifications:', error);
+      res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+
 // app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
 //   const { id } = req.params;
 //   const { role } = req.body; // 'admin' or 'user'

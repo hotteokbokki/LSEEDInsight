@@ -7,7 +7,7 @@ import {
   useTheme,
   Divider,
 } from "@mui/material";
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ColorModeContext, tokens } from "../../theme";
 import InputBase from "@mui/material/InputBase";
@@ -19,6 +19,7 @@ import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import { useAuth } from "../../context/authContext";
+import axios from "axios";
 
 const Topbar = () => {
   const theme = useTheme();
@@ -35,26 +36,47 @@ const Topbar = () => {
   const handleNotifOpen = (event) => setNotifAnchorEl(event.currentTarget);
   const handleNotifClose = () => setNotifAnchorEl(null);
 
-  const notifications = [
-    {
-      id: 1,
-      title: "New Mentorship",
-      message: "John Doe has been assigned.",
-      time: "5m ago",
-    },
-    {
-      id: 2,
-      title: "System Update",
-      message: "System maintenance at 2 AM.",
-      time: "1h ago",
-    },
-    {
-      id: 3,
-      title: "Reminder",
-      message: "Monthly report due tomorrow.",
-      time: "1d ago",
-    },
-  ];
+  const fetchNotifications = async () => {
+    try {
+        const response = await axios.get('/api/notifications');
+        setNotifications(response.data);
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+    }
+};
+
+useEffect(() => {
+    fetchNotifications();
+
+    // Refresh every 5 seconds
+    const interval = setInterval(fetchNotifications, 5000);
+    return () => clearInterval(interval);
+}, []);
+
+
+  const [notifications, setNotifications] = useState([]);
+
+
+  // const notifications = [
+  //   {
+  //     id: 1,
+  //     title: "New Mentorship",
+  //     message: "John Doe has been assigned.",
+  //     time: "5m ago",
+  //   },
+  //   {
+  //     id: 2,
+  //     title: "System Update",
+  //     message: "System maintenance at 2 AM.",
+  //     time: "1h ago",
+  //   },
+  //   {
+  //     id: 3,
+  //     title: "Reminder",
+  //     message: "Monthly report due tomorrow.",
+  //     time: "1d ago",
+  //   },
+  // ];
 
   return (
     <Box display="flex" justifyContent="space-between" p={2}>
@@ -117,7 +139,7 @@ const Topbar = () => {
           {/* Notification Items */}
           {notifications.length > 0 ? (
             notifications.map((notif, index) => (
-              <Box key={notif.id}>
+              <Box key={notif.notification_id}>
                 <MenuItem
                   onClick={handleNotifClose}
                   sx={{
@@ -131,13 +153,14 @@ const Topbar = () => {
                   <Typography sx={{ fontWeight: "bold" }}>
                     {notif.title}
                   </Typography>
-                  <Typography variant="body2">{notif.message}</Typography>
+                  <Typography variant="body2">
+                    {notif.user_name} created a schedule.
+                  </Typography>
                   <Typography variant="caption" color="gray">
-                    {notif.time}
+                    {new Date(notif.created_at).toLocaleString()}
                   </Typography>
                 </MenuItem>
 
-                {/* Divider Between Items */}
                 {index < notifications.length - 1 && <Divider />}
               </Box>
             ))
@@ -146,7 +169,8 @@ const Topbar = () => {
               No new notifications
             </MenuItem>
           )}
-        </Menu>
+</Menu>
+
 
         <IconButton>
           <SettingsOutlinedIcon />
