@@ -82,6 +82,7 @@ const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution, compareSoc
 const { getMentorQuestions } = require("./controllers/mentorEvaluationsQuestionsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
 const { getUpcomingSchedulesForMentor } = require("./controllers/mentoringSessionController.js");
+const mentorshipRoutes = require("./routes/mentorships");
 const app = express();
 
 
@@ -115,6 +116,8 @@ app.use(cookieParser());
 
 // Use authentication routes
 app.use("/auth", authRoutes);
+app.use("/api/mentorships", mentorshipRoutes);
+
 
 // Temporary storage for user states
 const userStates = {};

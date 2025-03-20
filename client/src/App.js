@@ -23,21 +23,24 @@ import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import MentorshipAnalytics from "./scenes/analytics-mentorship";
 import MentorDashboard from "./scenes/mentordashboard";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const App = () => {
   const [theme, colorMode] = useMode();
 
   return (
-    <AuthContextProvider>
-      <ColorModeContext.Provider value={colorMode}>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <Box sx={{ display: "flex", minHeight: "100vh" }}>
-            <MainContent />
-          </Box>
-        </ThemeProvider>
-      </ColorModeContext.Provider>
-    </AuthContextProvider>
+    <GoogleOAuthProvider clientId="1025918978584-niisk93pun37oujtrjdkpra1cn1b8esv.apps.googleusercontent.com">
+      <AuthContextProvider>
+        <ColorModeContext.Provider value={colorMode}>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <Box sx={{ display: "flex", minHeight: "100vh" }}>
+              <MainContent />
+            </Box>
+          </ThemeProvider>
+        </ColorModeContext.Provider>
+      </AuthContextProvider>
+    </GoogleOAuthProvider>
   );
 };
 
