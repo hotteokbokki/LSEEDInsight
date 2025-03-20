@@ -21,6 +21,7 @@ import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import { useAuth } from "../../context/authContext";
 import axios from "axios";
 
+
 const Topbar = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
@@ -28,7 +29,8 @@ const Topbar = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [notifAnchorEl, setNotifAnchorEl] = useState(null);
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user  } = useAuth();
+  const [notifications, setNotifications] = useState([]);
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
@@ -36,24 +38,36 @@ const Topbar = () => {
   const handleNotifOpen = (event) => setNotifAnchorEl(event.currentTarget);
   const handleNotifClose = () => setNotifAnchorEl(null);
 
+  const API_BASE_URL = "http://localhost:4000";
+
   const fetchNotifications = async () => {
     try {
-      const response = await axios.get("/api/notifications");
-      setNotifications(response.data);
+        if (!user || !user.id) {
+            console.warn("⚠️ No user ID found, skipping notification fetch.");
+            return;
+        }
+
+        const requestUrl = `${API_BASE_URL}/api/notifications?user_id=${user.id}`;
+        console.log("🔍 Making request to:", requestUrl);
+
+        const response = await axios.get(requestUrl);
+
+        console.log("📩 Notifications received:", response.data);
+        setNotifications(response.data);
     } catch (error) {
-      console.error("Error fetching notifications:", error);
+        console.error("❌ Error fetching notifications:", error);
     }
-  };
+};
 
-  useEffect(() => {
-    fetchNotifications();
 
-    // Refresh every 5 seconds
-    const interval = setInterval(fetchNotifications, 5000);
-    return () => clearInterval(interval);
-  }, []);
 
-  const [notifications, setNotifications] = useState([]);
+useEffect(() => {
+    if (user && user.id) { // ✅ Ensure user exists before making requests
+        fetchNotifications();
+        const interval = setInterval(fetchNotifications, 5000);
+        return () => clearInterval(interval);
+    }
+}, [user]); // ✅ Re-run when user changes
 
   // const notifications = [
   //   {

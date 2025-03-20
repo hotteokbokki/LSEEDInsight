@@ -2502,7 +2502,7 @@ app.post('/api/createNotification', async (req, res) => {
       const title = 'Scheduling';
       const message = `${userId} is trying to make a schedule during ${startTime} on ${mentorshipDate}.`;
 
-      await pool.query(
+      await pgDatabase.query(
           `INSERT INTO notification (notification_id, user_id, se_id, title)
            VALUES ($1, $2, $3, $4)`,
           [uuidv4(), userId, seId, title]
@@ -2516,18 +2516,31 @@ app.post('/api/createNotification', async (req, res) => {
 });
 
 // Endpoint to fetch notifications
-app.get('/api/notifications', async (req, res) => {
+app.get("/api/notifications", async (req, res) => {
   try {
-      const result = await pool.query(
-          `SELECT n.notification_id, u.first_name || ' ' || u.last_name AS user_name, n.title, n.created_at
-           FROM notification n
-           JOIN users u ON n.user_id = u.user_id
-           ORDER BY n.created_at DESC`
-      );
+      const { user_id } = req.query;
+      if (!user_id) {
+          return res.status(400).json({ message: "User ID is required" });
+      }
+
+      const query = `
+          SELECT n.notification_id, n.title, n.created_at, u.first_name AS user_name
+          FROM notification n
+          JOIN users u ON n.user_id = u.user_id
+          WHERE n.user_id = $1
+          ORDER BY n.created_at DESC
+      `;
+
+      const result = await pgDatabase.query(query, [user_id]);
+
+      if (result.rows.length === 0) {
+          return res.status(200).json([]); // Return empty array if no notifications
+      }
+
       res.json(result.rows);
   } catch (error) {
-      console.error('❌ Error fetching notifications:', error);
-      res.status(500).json({ error: 'Failed to fetch notifications' });
+      console.error("❌ Error fetching notifications:", error);
+      res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
