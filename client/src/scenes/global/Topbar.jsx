@@ -47,27 +47,33 @@ const Topbar = () => {
             return;
         }
 
-        const requestUrl = `${API_BASE_URL}/api/notifications?user_id=${user.id}`;
+        const requestUrl = `${API_BASE_URL}/api/notifications?receiver_id=${user.id}`;
         console.log("🔍 Making request to:", requestUrl);
 
         const response = await axios.get(requestUrl);
 
-        console.log("📩 Notifications received:", response.data);
-        setNotifications(response.data);
+        console.log("📩 Notifications received:", response.data); // ✅ Debugging API Response
+        setNotifications([...response.data]);  // ✅ Force React to detect state change
+        console.log("🔔 Updated notifications state:", notifications); // ✅ Check if state updates
     } catch (error) {
         console.error("❌ Error fetching notifications:", error);
     }
 };
 
 
+useEffect(() => {
+  console.log("👤 User detected:", user); // ✅ Log user info
+  if (user && user.id) {
+      console.log("🔄 Fetching notifications for:", user.id);
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 5000);
+      return () => clearInterval(interval);
+  }
+}, [user]);
 
 useEffect(() => {
-    if (user && user.id) { // ✅ Ensure user exists before making requests
-        fetchNotifications();
-        const interval = setInterval(fetchNotifications, 5000);
-        return () => clearInterval(interval);
-    }
-}, [user]); // ✅ Re-run when user changes
+  console.log("🔥 Notifications state updated:", notifications);
+}, [notifications]);  // ✅ Ensure React tracks updates
 
   // const notifications = [
   //   {
@@ -148,6 +154,9 @@ useEffect(() => {
             Notifications
           </Typography>
 
+          {/* Debug JSX */}
+          {console.log("🛠 Rendering Notifications:", notifications)}
+
           {/* Notification Items */}
           {notifications.length > 0 ? (
             notifications.map((notif, index) => (
@@ -166,7 +175,7 @@ useEffect(() => {
                     {notif.title}
                   </Typography>
                   <Typography variant="body2">
-                    {notif.user_name} created a schedule.
+                    {notif.sender_name} created a schedule for {notif.se_name}.
                   </Typography>
                   <Typography variant="caption" color="gray">
                     {new Date(notif.created_at).toLocaleString()}

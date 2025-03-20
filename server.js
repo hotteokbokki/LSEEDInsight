@@ -2490,48 +2490,27 @@ async function updateUser(id, updatedUser) {
   }
 }
 
-// Endpoint to create a notification when a schedule is made
-app.post('/api/createNotification', async (req, res) => {
-  const { userId, seId, startTime, mentorshipDate } = req.body;
-
-  if (!userId || !seId || !startTime || !mentorshipDate) {
-      return res.status(400).json({ error: 'All fields are required' });
-  }
-
-  try {
-      const title = 'Scheduling';
-      const message = `${userId} is trying to make a schedule during ${startTime} on ${mentorshipDate}.`;
-
-      await pgDatabase.query(
-          `INSERT INTO notification (notification_id, user_id, se_id, title)
-           VALUES ($1, $2, $3, $4)`,
-          [uuidv4(), userId, seId, title]
-      );
-
-      res.status(201).json({ message: 'Notification created successfully' });
-  } catch (error) {
-      console.error('❌ Error creating notification:', error);
-      res.status(500).json({ error: 'Failed to create notification' });
-  }
-});
-
+// Endpoint to fetch notifications
 // Endpoint to fetch notifications
 app.get("/api/notifications", async (req, res) => {
   try {
-      const { user_id } = req.query;
-      if (!user_id) {
-          return res.status(400).json({ message: "User ID is required" });
+      const { receiver_id } = req.query;
+      if (!receiver_id) {
+          return res.status(400).json({ message: "Receiver ID is required" });
       }
 
       const query = `
-          SELECT n.notification_id, n.title, n.created_at, u.first_name AS user_name
+          SELECT n.notification_id, n.title, n.created_at, 
+                 u.first_name || ' ' || u.last_name AS sender_name,
+                 se.team_name AS se_name 
           FROM notification n
-          JOIN users u ON n.user_id = u.user_id
-          WHERE n.user_id = $1
+          JOIN users u ON n.sender_id = u.user_id  
+          JOIN socialenterprises se ON n.se_id = se.se_id 
+          WHERE n.receiver_id = $1  
           ORDER BY n.created_at DESC
       `;
 
-      const result = await pgDatabase.query(query, [user_id]);
+      const result = await pgDatabase.query(query, [receiver_id]);
 
       if (result.rows.length === 0) {
           return res.status(200).json([]); // Return empty array if no notifications
