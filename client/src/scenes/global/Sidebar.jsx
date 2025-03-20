@@ -72,6 +72,8 @@ const Sidebar = () => {
       login(); // Prompt Google login if not logged in
     } else {
       await createCalendarEvents(googleUser, user); // ✅ Use googleUser for Calendar API
+      navigate("/scheduling");
+      handleCloseDialog();
     }
   };
 
