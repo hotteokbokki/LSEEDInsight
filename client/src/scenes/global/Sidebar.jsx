@@ -91,6 +91,11 @@ const Sidebar = () => {
     }
   };
 
+  const confirmNavNoSync = async () => {
+  	navigate("/scheduling");
+    handleCloseDialog();
+  };
+
   const [selected, setSelected] = useState(getSelectedTitle());
 
   return (
@@ -281,12 +286,15 @@ const Sidebar = () => {
       {/* MUI Dialog for Confirmation */}
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>
-          Going to Scheduling Matrix. 
-          This will require logging into Google to sync your calendar dates. Continue?
+          Logging in to google. 
+          This will sync mentorship schedules with your Google Calendar. Continue?
         </DialogTitle>
         <DialogActions>
         <Button onClick={handleCloseDialog} sx={{ color: "white", backgroundColor: "red", "&:hover": { backgroundColor: "darkred" } }}>
           Cancel
+        </Button>
+        <Button onClick={confirmNavNoSync} sx={{ color: "white", backgroundColor: "green", "&:hover": { backgroundColor: "darkgreen" } }}>
+          Continue without Sync
         </Button>
         <Button onClick={handleConfirmNavigation} sx={{ color: "white", backgroundColor: "green", "&:hover": { backgroundColor: "darkgreen" } }}>
           Continue
