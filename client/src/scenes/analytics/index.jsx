@@ -240,38 +240,18 @@ const Analytics = () => {
       {/* Main container */}
       <Box display="flex" flexDirection="column" gap="20px" mt="20px">
         {/* Row 3 - Social Enterprise Performance Heatmap */}
-        <Box
-          width="100%"
-          minHeight="350px" // ✅ Ensures enough space for text and heatmap
-          padding={2}
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          flexDirection="column"
-          justifyContent="flex-start" // ✅ Keeps content aligned properly
-        >
-          {/* Title */}
-          <Typography
-            variant="h3"
-            fontWeight="bold"
-            color={colors.greenAccent[500]}
-            mb="10px"
-            whiteSpace="nowrap" // ✅ Prevents text from wrapping incorrectly
-            overflow="visible" // ✅ Ensures text is fully readable
-          >
-            Heat Map
-          </Typography>
 
-          {/* Heatmap */}
-          <Box
-            flexGrow={1} // ✅ Makes sure the heatmap takes available space
-            minHeight="300px" // ✅ Ensures it doesn't shrink too much
-            maxHeight="100%"
-            overflow="auto" // ✅ Adds scrolling if needed
-            width="90%"
-            alignSelf="center"
-          >
-            <HeatmapWrapper />
-          </Box>
+        <Box
+          flexGrow={1} // ✅ Makes sure the heatmap takes available space
+          gridColumn="span 12"
+          width="100%"
+          backgroundColor={colors.primary[400]}
+          p="20px"
+          alignSelf="center"
+          paddingleft="20px"
+          paddingRight="20px"
+        >
+          <HeatmapWrapper />
         </Box>
 
         {/* Row 4 - Leaderboard */}
@@ -313,7 +293,7 @@ const Analytics = () => {
           </Box>
         </Box>
       </Box>
-      {/* Row 4 - Improvement Score Over Time */}
+      {/* Row 5 - Improvement Score Over Time */}
       <Box display="flex" flexDirection="column" gap="20px" mt="20px">
         <Box height="300px" backgroundColor={colors.primary[400]} p="20px">
           {/* Title and Tooltip Container */}

@@ -25,6 +25,10 @@ import {
   TextField,
   Alert,
   useTheme,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -73,6 +77,19 @@ const Scheduling = ({ userRole }) => {
   const [mentorSchedules, setMentorSchedules] = useState([]);
   const [mentorHistory, setMentorHistory] = useState([]);
 
+  const generateTimeSlots = () => {
+    const slots = [];
+    let time = dayjs().startOf("day"); // Start at 00:00
+    for (let i = 0; i < 48; i++) {
+      // 48 half-hour slots in a day
+      slots.push(time.format("hh:mm A"));
+      time = time.add(30, "minute");
+    }
+    return slots;
+  };
+
+  const timeSlots = generateTimeSlots();
+
   const handleAcceptClick = async (schedule) => {
     try {
       const {
@@ -108,6 +125,14 @@ const Scheduling = ({ userRole }) => {
       console.error("Error approving mentorship:", error);
     }
   };
+
+  const isConfirmDisabled =
+    !selectedSE ||
+    !selectedDate ||
+    !startTime ||
+    !endTime ||
+    !zoomLink ||
+    isLoading;
 
   const generateICS = () => {
     if (mentorshipDates.length === 0) {
@@ -1035,6 +1060,7 @@ const Scheduling = ({ userRole }) => {
                   <ListItemButton
                     onClick={() => handleSelectSE(se)}
                     sx={{
+                      marginBottom: "6px", // Add spacing between items
                       border:
                         selectedSE?.id === se.id ? "2px solid #000" : "none", // Add black outline for selected SE
                       borderRadius: "4px", // Rounded corners for better aesthetics
@@ -1062,52 +1088,8 @@ const Scheduling = ({ userRole }) => {
             {/* Date Selection */}
             {/* Date Selection Section */}
             <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DatePicker
-                label="Select Date"
-                value={selectedDate}
-                onChange={(newDate) => setSelectedDate(newDate)}
-                slotProps={{
-                  textField: {
-                    sx: {
-                      "& .MuiOutlinedInput-root": {
-                        "& fieldset": { borderColor: "#000" },
-                        "&:hover fieldset": { borderColor: "#000" },
-                        "&.Mui-focused fieldset": { borderColor: "#000" },
-                      },
-                      "& .MuiInputBase-input": { color: "#000" },
-                      "& .MuiInputLabel-root": { color: "#000" },
-                      "& .MuiInputLabel-root.Mui-focused": { color: "#000" },
-                    },
-                    InputProps: {
-                      sx: {
-                        "& .MuiSvgIcon-root": { color: "#000" },
-                      },
-                    },
-                  },
-                  popper: {
-                    sx: {
-                      "& .MuiPaper-root": {
-                        backgroundColor: "#1E4D2B", // Green background
-                        color: "#fff",
-                      },
-                      "& .MuiPickersDay-root": { color: "#fff" },
-                      "& .MuiPickersDay-root.Mui-selected": {
-                        backgroundColor: "#fff !important",
-                        color: "#1E4D2B",
-                      },
-                      "& .MuiIconButton-root": { color: "#fff" },
-                      "& .MuiTypography-root": { color: "#fff" },
-                      "& .MuiOutlinedInput-root": { borderColor: "#fff" },
-                    },
-                  },
-                }}
-              />
-            </LocalizationProvider>
-
-            {/* Time Selection */}
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
               <Stack spacing={2}>
-                <Stack spacing={2} direction="row">
+                <Stack spacing={2} direction="row" sx={{ width: "100%" }}>
                   {/* Start Time Picker */}
                   <TimePicker
                     label="Start Time"
@@ -1115,8 +1097,7 @@ const Scheduling = ({ userRole }) => {
                     onChange={handleStartTimeChange}
                     slotProps={{
                       textField: {
-                        error: !!error,
-                        helperText: error,
+                        fullWidth: true,
                         sx: {
                           "& .MuiOutlinedInput-root": {
                             "& fieldset": { borderColor: "#000" },
@@ -1127,6 +1108,28 @@ const Scheduling = ({ userRole }) => {
                           "& .MuiInputLabel-root": { color: "#000" },
                           "& .MuiInputLabel-root.Mui-focused": {
                             color: "#000",
+                          },
+                          "& .MuiSvgIcon-root": { color: "#000" }, // Icon color black
+                        },
+                      },
+                      popper: {
+                        sx: {
+                          "& .MuiPaper-root": {
+                            backgroundColor: "#1E4D2B", // Green dropdown background
+                            color: "#fff", // White text
+                          },
+                          "& .MuiMenuItem-root": { color: "#fff" }, // Default item color
+                          "& .MuiMenuItem-root.Mui-selected": {
+                            backgroundColor: "#fff !important",
+                            color: "#1E4D2B", // Green text for selected item
+                          },
+                        },
+                      },
+                      actionBar: {
+                        actions: ["cancel", "accept"],
+                        sx: {
+                          "& .MuiButton-root": {
+                            color: colors.grey[100], // Change OK button text color to white
                           },
                         },
                       },
@@ -1137,12 +1140,11 @@ const Scheduling = ({ userRole }) => {
                   <TimePicker
                     label="End Time"
                     value={endTime}
-                    minTime={startTime} // Ensures end time is not before start time
+                    minTime={startTime} // Prevents selecting a time before the start
                     onChange={handleEndTimeChange}
                     slotProps={{
                       textField: {
-                        error: !!error,
-                        helperText: error,
+                        fullWidth: true,
                         sx: {
                           "& .MuiOutlinedInput-root": {
                             "& fieldset": { borderColor: "#000" },
@@ -1153,6 +1155,28 @@ const Scheduling = ({ userRole }) => {
                           "& .MuiInputLabel-root": { color: "#000" },
                           "& .MuiInputLabel-root.Mui-focused": {
                             color: "#000",
+                          },
+                          "& .MuiSvgIcon-root": { color: "#000" }, // Icon color black
+                        },
+                      },
+                      popper: {
+                        sx: {
+                          "& .MuiPaper-root": {
+                            backgroundColor: "#1E4D2B", // Green dropdown background
+                            color: "#fff", // White text
+                          },
+                          "& .MuiMenuItem-root": { color: "#fff" }, // Default item color
+                          "& .MuiMenuItem-root.Mui-selected": {
+                            backgroundColor: "#fff !important",
+                            color: "#1E4D2B", // Green text for selected item
+                          },
+                        },
+                      },
+                      actionBar: {
+                        actions: ["cancel", "accept"],
+                        sx: {
+                          "& .MuiButton-root": {
+                            color: colors.grey[100], // Change OK button text color to white
                           },
                         },
                       },
@@ -1241,12 +1265,12 @@ const Scheduling = ({ userRole }) => {
 
           <Button
             onClick={handleConfirmDate}
-            disabled={!selectedSE || isLoading}
+            disabled={isConfirmDisabled}
             sx={{
-              backgroundColor: "#1E4D2B", // DLSU Green button
+              backgroundColor: isConfirmDisabled ? "#A9A9A9" : "#1E4D2B", // Grey out if disabled
               color: "#fff",
               "&:hover": {
-                backgroundColor: "#145A32", // Darker green on hover
+                backgroundColor: isConfirmDisabled ? "#A9A9A9" : "#145A32", // Only hover effect when enabled
               },
             }}
           >

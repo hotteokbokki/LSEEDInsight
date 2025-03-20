@@ -11,13 +11,19 @@ const HorizontalBarChart = ({ data, type }) => {
       console.warn("No data available for", type);
       return [];
     }
-  
+
     return data.map((item) => ({
-      label: type === "allCommonChallenges" ? item.comment || "No Comment" : item.category || "Unknown Category",
-      value: parseFloat(type === "allCommonChallenges" ? item.percentage : item.score) || 0,
+      label:
+        type === "allCommonChallenges"
+          ? item.comment || "No Comment"
+          : item.category || "Unknown Category",
+      value:
+        parseFloat(
+          type === "allCommonChallenges" ? item.percentage : item.score
+        ) || 0,
     }));
   };
-  
+
   const transformedData = transformData(data, type);
 
   return (
@@ -29,7 +35,7 @@ const HorizontalBarChart = ({ data, type }) => {
         top: 50,
         right: 50,
         bottom: 50,
-        left: type === "allCommonChallenges" ? 50 : 250
+        left: type === "allCommonChallenges" ? 50 : 250,
       }}
       padding={0.3}
       layout="horizontal"
@@ -51,9 +57,10 @@ const HorizontalBarChart = ({ data, type }) => {
         tickSize: 5,
         tickPadding: 5,
         tickRotation: 0,
-        legend: type === "allCommonChallenges" ? "Common Challenges" : "Categories", // Remove legend for Common Challenges
+        legend:
+          type === "allCommonChallenges" ? "Common Challenges" : "Categories", // Remove legend for Common Challenges
         legendPosition: "middle",
-        legendOffset: -200,
+        legendOffset: -220,
         tickValues: type === "allCommonChallenges" ? [] : undefined, // Hide tick labels for Common Challenges
       }}
       enableLabel={true}
@@ -61,10 +68,14 @@ const HorizontalBarChart = ({ data, type }) => {
       labelSkipHeight={12}
       labelTextColor={{ from: "color", modifiers: [["darker", 1.6]] }}
       tooltip={({ indexValue, value }) => (
-        <div style={{ background: "#333", padding: "6px", borderRadius: "4px" }}>
+        <div
+          style={{ background: "#333", padding: "6px", borderRadius: "4px" }}
+        >
           <strong>{indexValue}</strong>
           <br />
-          {type === "allCommonChallenges" ? `Score: ${value}%` : `Score: ${value}`}
+          {type === "allCommonChallenges"
+            ? `Score: ${value}%`
+            : `Score: ${value}`}
         </div>
       )}
       legends={[]}

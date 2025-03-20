@@ -52,21 +52,43 @@ const HeatmapWrapper = () => {
 
   return (
     <Box>
-      {/* Period Selector */}
-      <Box display="flex" justifyContent="flex-end" alignItems="center" mb={2}>
-        <Select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value)}
-          sx={{
-            minWidth: 120,
-            backgroundColor: colors.primary[300],
-            color: colors.grey[100],
-          }}
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={2}
+      >
+        <Box>
+          <Typography
+            variant="h3"
+            fontWeight="bold"
+            color={colors.greenAccent[500]}
+          >
+            Heat Map
+          </Typography>
+        </Box>
+        {/* Period Selector */}
+        <Box
+          display="flex"
+          justifyContent="flex-end"
+          alignItems="center"
+          mb={2}
         >
-          <MenuItem value="overall">Overall</MenuItem>
-          <MenuItem value="quarterly">Quarterly</MenuItem>
-          <MenuItem value="yearly">Yearly</MenuItem>
-        </Select>
+          <Select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            sx={{
+              minWidth: 120,
+              bordercolor: colors.grey[100],
+              backgroundColor: colors.blueAccent[600],
+              color: colors.grey[100],
+            }}
+          >
+            <MenuItem value="overall">Overall</MenuItem>
+            <MenuItem value="quarterly">Quarterly</MenuItem>
+            <MenuItem value="yearly">Yearly</MenuItem>
+          </Select>
+        </Box>
       </Box>
       <div
         style={{
@@ -79,28 +101,23 @@ const HeatmapWrapper = () => {
         <div style={{ height: 500, width: "100%" }}>
           <ResponsiveHeatMap
             data={transformedData}
-            margin={{ top: 150, right: 150, bottom: 60, left: 160 }}
             valueFormat=">-.2f"
+            margin={{ top: 80, right: 60, bottom: 60, left: 180 }}
             axisTop={{
               tickSize: 5,
               tickPadding: 5,
-              legend: "Category",
-              legendOffset: -40,
+              legend: "Categories",
+              legendOffset: -70, // Adjust for positioning
               legendPosition: "middle",
-              tickRotation: -90,
+              tickRotation: 0, // Keep text horizontal
               truncateTickAt: 0,
-            }}
-            axisRight={{
-              tickSize: 5,
-              tickPadding: 5,
-              legendPosition: "middle",
             }}
             axisLeft={{
               tickSize: 5,
               tickPadding: 5,
               legend: "Social Enterprise",
               legendPosition: "middle",
-              legendOffset: -150,
+              legendOffset: -170,
               truncateTickAt: 0,
             }}
             colors={({ value }) => {

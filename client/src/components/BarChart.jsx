@@ -11,7 +11,9 @@ const CustomTooltip = ({ value, indexValue, id, data }) => {
   const se1Value = se1?.[id] || 0;
 
   // Extract the second SE key dynamically (excluding "category" and "abbrMap")
-  const seKeys = Object.keys(se1).filter((key) => key !== "category" && key !== "abbrMap" && key !== id);
+  const seKeys = Object.keys(se1).filter(
+    (key) => key !== "category" && key !== "abbrMap" && key !== id
+  );
   const se2Key = seKeys.length > 0 ? seKeys[0] : null;
   const se2Value = se2Key ? se1[se2Key] : 0;
 
@@ -61,7 +63,9 @@ const BarChart = () => {
   useEffect(() => {
     const fetchSEs = async () => {
       try {
-        const response = await axios.get("http://localhost:4000/getAllSocialEnterprisesForComparison");
+        const response = await axios.get(
+          "http://localhost:4000/getAllSocialEnterprisesForComparison"
+        );
         setSeList(response.data);
       } catch (error) {
         console.error("Error fetching SE list:", error);
@@ -79,12 +83,14 @@ const BarChart = () => {
   const fetchComparisonData = async (se1, se2) => {
     setLoading(true);
     try {
-      const response = await axios.get(`http://localhost:4000/comparePerformanceScore/${se1}/${se2}`);
+      const response = await axios.get(
+        `http://localhost:4000/comparePerformanceScore/${se1}/${se2}`
+      );
       console.log("Fetched Comparison Data:", response.data);
-  
+
       const categoryMap = {};
       const abbrMap = {}; // Store abbreviations for each SE ID
-  
+
       response.data.forEach(({ category_name, se_id, abbr, avg_rating }) => {
         if (!categoryMap[category_name]) {
           categoryMap[category_name] = { category: category_name };
@@ -92,13 +98,13 @@ const BarChart = () => {
         categoryMap[category_name][se_id] = Number(avg_rating);
         abbrMap[se_id] = abbr; // Store abbreviation mapping
       });
-  
+
       // Attach abbreviation mapping for use in tooltips
       const formattedData = Object.values(categoryMap).map((category) => ({
         ...category,
         abbrMap, // Add abbreviation mapping for reference
       }));
-  
+
       setChartData(formattedData);
     } catch (error) {
       console.error("Error fetching comparison data:", error);
@@ -118,18 +124,22 @@ const BarChart = () => {
     setChartData([]);
   };
 
-  console.log("chart data: ",chartData)
+  console.log("chart data: ", chartData);
   return (
     <div style={{ height: "100%", width: "100%" }}>
       {selectedSEs.length < 2 ? (
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "center", 
-          alignItems: "center", 
-          minHeight: "50vh",  // Ensures the div takes full height of the viewport
-          flexDirection: "column" 
-        }}>
-          <Typography variant="h6" gutterBottom>Select 2 Social Enterprises</Typography>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: "50vh", // Ensures the div takes full height of the viewport
+            flexDirection: "column",
+          }}
+        >
+          <Typography variant="h6" gutterBottom>
+            Select 2 Social Enterprises
+          </Typography>
           <Select
             value={selectedSEs[0]?.id || ""}
             onChange={(e) => handleSelectSE(0, e.target.value)}
@@ -137,9 +147,15 @@ const BarChart = () => {
             fullWidth
             style={{ marginBottom: 10 }}
           >
-            <MenuItem value="" disabled>Select First SE</MenuItem>
+            <MenuItem value="" disabled>
+              Select First SE
+            </MenuItem>
             {seList.map((se) => (
-              <MenuItem key={se.se_id} value={se.se_id} disabled={se.se_id === selectedSEs[1]?.id}>
+              <MenuItem
+                key={se.se_id}
+                value={se.se_id}
+                disabled={se.se_id === selectedSEs[1]?.id}
+              >
                 {se.abbr}
               </MenuItem>
             ))}
@@ -151,9 +167,15 @@ const BarChart = () => {
             displayEmpty
             fullWidth
           >
-            <MenuItem value="" disabled>Select Second SE</MenuItem>
+            <MenuItem value="" disabled>
+              Select Second SE
+            </MenuItem>
             {seList.map((se) => (
-              <MenuItem key={se.se_id} value={se.se_id} disabled={se.se_id === selectedSEs[0]?.id}>
+              <MenuItem
+                key={se.se_id}
+                value={se.se_id}
+                disabled={se.se_id === selectedSEs[0]?.id}
+              >
                 {se.abbr}
               </MenuItem>
             ))}
@@ -167,7 +189,7 @@ const BarChart = () => {
             <div style={{ height: 400 }}>
               <ResponsiveBar
                 data={chartData}
-                keys={selectedSEs.map(se => se.id)}
+                keys={selectedSEs.map((se) => se.id)}
                 indexBy="category"
                 margin={{ top: 40, right: 130, bottom: 70, left: 60 }}
                 padding={0.3}
@@ -182,33 +204,67 @@ const BarChart = () => {
                   tickPadding: 0,
                   tickRotation: 0,
                   format: () => "",
-                  legend: "Evaluation Category",
+                  legend: "Hover for Category",
                   legendPosition: "middle",
                   legendOffset: 40,
+                  color: colors.grey[100],
                 }}
-                axisLeft={{ legend: "Average Rating", legendPosition: "middle", legendOffset: -50 }}
-                enableLabel={false}
+                axisLeft={{
+                  legend: "Average Rating",
+                  legendPosition: "middle",
+                  legendOffset: -50,
+                }}
+                enableLabel={true} // Enables labels
+                labelSkipHeight={12} // Hides labels on very small bars
+                labelTextColor={colors.grey[100]} // Ensures text is visible inside the bars
+                label={({ value }) => value.toFixed(1)} // Shows numbers inside bars
                 minValue={0}
                 maxValue={5}
                 theme={{
-                  axis: { ticks: { text: { fill: colors.grey[200] } } },
-                  legends: { text: { fill: colors.grey[900] } },
+                  axis: {
+                    ticks: {
+                      text: {
+                        fill: colors.grey[100], // Change tick labels color
+                      },
+                    },
+                    legend: {
+                      text: {
+                        fill: colors.grey[100], // Change legend color
+                      },
+                    },
+                  },
+                  legends: {
+                    text: {
+                      fill: colors.grey[100], // Change legend text color
+                    },
+                  },
                 }}
                 tooltip={({ value, indexValue, id }) => (
-                  <CustomTooltip value={value} indexValue={indexValue} id={id} data={chartData} />
+                  <CustomTooltip
+                    value={value}
+                    indexValue={indexValue}
+                    id={id}
+                    data={chartData}
+                  />
                 )}
                 legends={[
                   {
-                    data: selectedSEs.map(se => ({
+                    data: selectedSEs.map((se) => ({
                       id: se.id,
-                      label: chartData.length > 0 ? chartData[0].abbrMap[se.id] : se.id, // Map SE ID to abbreviation
-                      color: se.id === selectedSEs[0].id ? colors.blueAccent[500] : colors.greenAccent[500],
+                      label:
+                        chartData.length > 0
+                          ? chartData[0].abbrMap[se.id]
+                          : se.id, // Map SE ID to abbreviation
+                      color:
+                        se.id === selectedSEs[0].id
+                          ? colors.blueAccent[500]
+                          : colors.greenAccent[500],
                     })),
                     anchor: "right",
                     direction: "column",
                     justify: false,
-                    translateX: 120,
-                    translateY: 0,
+                    translateX: 0,
+                    translateY: 190,
                     itemsSpacing: 2,
                     itemWidth: 100,
                     itemHeight: 20,
@@ -229,7 +285,14 @@ const BarChart = () => {
               />
             </div>
           )}
-          <Button variant="contained" color="primary" onClick={handleSelectAgain} style={{ marginTop: 10 }}>
+          <Button
+            variant="contained"
+            onClick={handleSelectAgain}
+            sx={{
+              backgroundColor: colors.blueAccent[500], // Change button color
+              "&:hover": { backgroundColor: "darkviolet" }, // Change hover color
+            }}
+          >
             Select Again
           </Button>
         </>

@@ -14,6 +14,8 @@ import {
   DialogTitle,
   Chip,
 } from "@mui/material";
+import StarIcon from "@mui/icons-material/Star";
+import AssignmentIcon from "@mui/icons-material/Assignment";
 import { tokens } from "../../theme";
 import SSEPerformanceTrendChart from "../../components/SSEPerformanceTrendChart";
 import PieChart from "../../components/PieChart";
@@ -242,7 +244,7 @@ const SEAnalytics = () => {
 
   const handleViewExistingEvaluation = async (evaluation_id) => {
     console.log("📌 Evaluation ID Passed:", evaluation_id); // Debugging log
-  
+
     try {
       const response = await axios.get(
         "http://localhost:4000/getEvaluationDetails",
@@ -250,27 +252,27 @@ const SEAnalytics = () => {
           params: { evaluation_id },
         }
       );
-  
+
       console.log("📥 Raw API Response:", response); // Log raw response
       console.log("📥 API Response Data:", response.data); // Log parsed response
-  
+
       if (!response.data || response.data.length === 0) {
         console.warn("⚠️ No evaluation details found.");
         return;
       }
-  
+
       // Process evaluation details
       const groupedEvaluation = response.data.reduce((acc, evalItem) => {
         const {
           evaluation_date,
-          evaluator_name,  // ✅ Added evaluator name
+          evaluator_name, // ✅ Added evaluator name
           social_enterprise,
           category_name,
           star_rating,
           selected_comments,
           additional_comment,
         } = evalItem;
-  
+
         if (!acc.id) {
           acc.id = evaluation_id;
           acc.evaluator_name = evaluator_name; // ✅ Store evaluator (SE) name
@@ -278,7 +280,7 @@ const SEAnalytics = () => {
           acc.evaluation_date = evaluation_date;
           acc.categories = [];
         }
-  
+
         acc.categories.push({
           category_name,
           star_rating,
@@ -287,10 +289,10 @@ const SEAnalytics = () => {
             : [], // Ensure selected_comments is always an array
           additional_comment,
         });
-  
+
         return acc;
       }, {});
-  
+
       console.log("✅ Processed Evaluation Data:", groupedEvaluation);
       setSelectedEvaluation(groupedEvaluation);
       setOpenDialog(true);
@@ -298,7 +300,7 @@ const SEAnalytics = () => {
       console.error("❌ Error fetching evaluation details:", error);
     }
   };
-  
+
   const handleChangeSE = (event) => {
     const newSEId = event.target.value;
     setSelectedSEId(newSEId);
@@ -357,10 +359,10 @@ const SEAnalytics = () => {
               />
             }
             sx={{
-              fontSize: "16px",
+              fontSize: "20px",
               p: "10px",
               backgroundColor: colors.primary[400], // Set background explicitly
-              color: "white", // Force text color to white
+              color: colors.grey[100],
               "& .MuiChip-icon": { color: colors.greenAccent[500] }, // Ensure icon color is applied
             }}
           />
@@ -385,7 +387,7 @@ const SEAnalytics = () => {
               100
             ).toFixed(2)}%`}
             icon={
-              <PointOfSaleIcon
+              <AssignmentIcon
                 sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
               />
             }
@@ -409,7 +411,7 @@ const SEAnalytics = () => {
               100
             ).toFixed(2)}%`}
             icon={
-              <PersonAddIcon
+              <AssignmentIcon
                 sx={{ fontSize: "26px", color: colors.redAccent[500] }}
               />
             }
@@ -430,7 +432,7 @@ const SEAnalytics = () => {
             progress={null} // Ensure it's not defined
             sx={{ "& .MuiBox-root.css-1ntui4p": { display: "none" } }} // Hide the circle
             icon={
-              <TrafficIcon
+              <StarIcon
                 sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
               />
             }
@@ -542,7 +544,8 @@ const SEAnalytics = () => {
                     paddingBottom: "8px",
                   }}
                 >
-                  Evaluator: {selectedEvaluation.evaluator_name} {/* ✅ Added Evaluator Name */}
+                  Evaluator: {selectedEvaluation.evaluator_name}{" "}
+                  {/* ✅ Added Evaluator Name */}
                 </Typography>
                 <Typography
                   variant="h6"
@@ -552,12 +555,10 @@ const SEAnalytics = () => {
                     paddingBottom: "8px",
                   }}
                 >
-                  Social Enterprise Evaluated: {selectedEvaluation.social_enterprise}
+                  Social Enterprise Evaluated:{" "}
+                  {selectedEvaluation.social_enterprise}
                 </Typography>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ color: "#000" }}
-                >
+                <Typography variant="subtitle1" sx={{ color: "#000" }}>
                   Evaluation Date: {selectedEvaluation.evaluation_date}
                 </Typography>
               </Box>
@@ -583,14 +584,12 @@ const SEAnalytics = () => {
                         marginBottom: "8px",
                       }}
                     >
-                      {category.category_name} - Rating: {category.star_rating} ★
+                      {category.category_name} - Rating: {category.star_rating}{" "}
+                      ★
                     </Typography>
 
                     {/* Selected Comments */}
-                    <Typography
-                      variant="body1"
-                      sx={{ marginBottom: "8px" }}
-                    >
+                    <Typography variant="body1" sx={{ marginBottom: "8px" }}>
                       Comments:{" "}
                       {category.selected_comments.length > 0 ? (
                         category.selected_comments.join(", ")
@@ -602,7 +601,9 @@ const SEAnalytics = () => {
                     {/* Additional Comment */}
                     <Typography variant="body1">
                       Additional Comment:{" "}
-                      {category.additional_comment || <i>No additional comments</i>}
+                      {category.additional_comment || (
+                        <i>No additional comments</i>
+                      )}
                     </Typography>
                   </Box>
                 ))

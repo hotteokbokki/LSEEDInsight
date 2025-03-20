@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@mui/material";
+import AssignmentIcon from "@mui/icons-material/Assignment";
 import StatBox from "../../components/StatBox"; // Adjust the path based on your project structure
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import StarIcon from "@mui/icons-material/Star";
@@ -27,7 +28,7 @@ const MentorAnalytics = () => {
   const colors = tokens(theme.palette.mode);
   const { id } = useParams(); // Extract the `id` from the URL
   const [selectedMentorId, setSelectedMentorId] = useState(id);
-  const [mentorAnalytics, setMentorAnalytics] = useState([])
+  const [mentorAnalytics, setMentorAnalytics] = useState([]);
   const navigate = useNavigate(); // Initialize useNavigate
   const [categoryType, setCategoryType] = useState("mentor"); // ✅ Define state here
   const [evaluationsData, setEvaluationsData] = useState([]);
@@ -42,21 +43,21 @@ const MentorAnalytics = () => {
           `http://localhost:4000/api/mentor-analytics/${selectedMentorId}`
         );
         const data = await response.json();
-  
+
         // Extract values correctly
         setMentorAnalytics({
           totalEvaluations: data.totalEvaluations || 0,
           avgRating: data.avgRating || "N/A",
           mostFrequentRating: data.mostFrequentRating || "N/A",
           numHandledSEs: data.numHandledSEs || 0,
-          avgRatingPerCategory: data.avgRatingPerCategory || [], 
+          avgRatingPerCategory: data.avgRatingPerCategory || [],
           performanceOverview: data.performanceOverview || [],
         });
       } catch (error) {
         console.error("❌ Error fetching analytics stats:", error);
       }
     };
-  
+
     if (selectedMentorId) {
       fetchStats();
     }
@@ -66,19 +67,19 @@ const MentorAnalytics = () => {
     const fetchEvaluations = async () => {
       try {
         setIsLoadingEvaluations(true);
-  
+
         const response = await axios.get(
           "http://localhost:4000/getMentorEvaluationsByMentorID",
           { params: { mentor_id: id } } // ✅ Correct query parameter usage
         );
-  
+
         const data = response.data; // ✅ Axios already returns JSON, no need for .json()
-  
+
         if (!Array.isArray(data)) {
           console.error("❌ Unexpected API Response (Not an Array):", data);
           return;
         }
-  
+
         // Ensure evaluation_id is included and set as `id`
         const formattedData = data.map((evaluation) => ({
           id: evaluation.evaluation_id, // ✅ Use evaluation_id as the unique ID
@@ -86,7 +87,7 @@ const MentorAnalytics = () => {
           evaluator_name: evaluation.evaluator_name, // ✅ SE evaluating the mentor
           evaluation_date: evaluation.evaluation_date,
         }));
-  
+
         console.log("✅ Formatted Evaluations Data:", formattedData);
         setEvaluationsData(formattedData);
       } catch (error) {
@@ -95,15 +96,15 @@ const MentorAnalytics = () => {
         setIsLoadingEvaluations(false);
       }
     };
-  
+
     if (id) {
       fetchEvaluations();
     }
   }, [id]);
-  
+
   const columns = [
-    { field: "mentor_name", headerName: "Mentor", flex: 1 }, 
-    { field: "evaluator_name", headerName: "Evaluator (SE)", flex: 1 }, 
+    { field: "mentor_name", headerName: "Mentor", flex: 1 },
+    { field: "evaluator_name", headerName: "Evaluator (SE)", flex: 1 },
     { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
     {
       field: "action",
@@ -123,22 +124,26 @@ const MentorAnalytics = () => {
 
   const handleViewExistingEvaluation = async (evaluation_id) => {
     console.log("📌 Evaluation ID Passed:", evaluation_id); // Debugging log
-  
+
     try {
       const response = await axios.get(
         "http://localhost:4000/getEvaluationDetailsForMentorEvaluation",
         { params: { evaluation_id } }
       );
-  
+
       console.log("📥 Raw API Response:", response);
       console.log("📥 API Response Data:", response.data);
-  
+
       // 🚨 Ensure response.data is an array
-      if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
+      if (
+        !response.data ||
+        !Array.isArray(response.data) ||
+        response.data.length === 0
+      ) {
         console.warn("⚠️ No evaluation details found.");
         return;
       }
-  
+
       // ✅ Process evaluation details safely
       const groupedEvaluation = response.data.reduce((acc, evalItem) => {
         const {
@@ -150,7 +155,7 @@ const MentorAnalytics = () => {
           selected_comments,
           additional_comment,
         } = evalItem;
-  
+
         if (!acc.id) {
           acc.id = evaluation_id;
           acc.evaluator_name = evaluator_name; // ✅ Social Enterprise (Evaluator)
@@ -158,17 +163,19 @@ const MentorAnalytics = () => {
           acc.evaluation_date = evaluation_date;
           acc.categories = [];
         }
-  
+
         acc.categories.push({
           category_name,
           star_rating,
-          selected_comments: Array.isArray(selected_comments) ? selected_comments : [], // ✅ Ensure it's always an array
+          selected_comments: Array.isArray(selected_comments)
+            ? selected_comments
+            : [], // ✅ Ensure it's always an array
           additional_comment: additional_comment || "", // ✅ Ensure empty comments don't cause issues
         });
-  
+
         return acc;
       }, {});
-  
+
       console.log("✅ Processed Evaluation Data:", groupedEvaluation);
       setSelectedEvaluation(groupedEvaluation);
       setOpenDialog(true);
@@ -214,7 +221,7 @@ const MentorAnalytics = () => {
             progress={1} // Always full bar
             increase={`${mentorAnalytics.totalEvaluations} Evaluations`}
             icon={
-              <PointOfSaleIcon
+              <AssignmentIcon
                 sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
               />
             }
@@ -292,10 +299,16 @@ const MentorAnalytics = () => {
         flex="1 1 100%"
         height="450px"
         backgroundColor={colors.primary[400]}
+        marginTop="20px"
         p="20px"
       >
         {/* Title */}
-        <Typography variant="h3" fontWeight="bold" color={colors.greenAccent[500]} mb={2}>
+        <Typography
+          variant="h3"
+          fontWeight="bold"
+          color={colors.greenAccent[500]}
+          mb={2}
+        >
           Average Rating per Category
         </Typography>
 
@@ -308,15 +321,22 @@ const MentorAnalytics = () => {
               color: "black",
               "&:hover": { backgroundColor: colors.blueAccent[700] },
             }}
-            onClick={() => setCategoryType(categoryType === "mentor" ? "session" : "mentor")}
+            onClick={() =>
+              setCategoryType(categoryType === "mentor" ? "session" : "mentor")
+            }
           >
-            {categoryType === "mentor" ? "Show Mentoring Sessions" : "Show Mentor Categories"}
+            {categoryType === "mentor"
+              ? "Show Mentoring Sessions"
+              : "Show Mentor Categories"}
           </Button>
         </Box>
 
         {/* Chart Container */}
         <Box height="90%" display="flex" flexDirection="column">
-          <MentorHorizontalBarChart mentorId={selectedMentorId} categoryType={categoryType} />
+          <MentorHorizontalBarChart
+            mentorId={selectedMentorId}
+            categoryType={categoryType}
+          />
         </Box>
       </Box>
 
@@ -325,6 +345,7 @@ const MentorAnalytics = () => {
         sx={{
           backgroundColor: colors.primary[400],
           padding: "20px",
+          marginTop: "20px",
           boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
           minHeight: "400px", // Ensures DataGrid has enough space
           display: "flex",
@@ -414,7 +435,8 @@ const MentorAnalytics = () => {
                     paddingBottom: "8px",
                   }}
                 >
-                  Evaluator (Social Enterprise): {selectedEvaluation.evaluator_name}
+                  Evaluator (Social Enterprise):{" "}
+                  {selectedEvaluation.evaluator_name}
                 </Typography>
                 <Typography
                   variant="h6"
@@ -426,10 +448,7 @@ const MentorAnalytics = () => {
                 >
                   Mentor Evaluated: {selectedEvaluation.mentor_name}
                 </Typography>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ color: "#000" }}
-                >
+                <Typography variant="subtitle1" sx={{ color: "#000" }}>
                   Evaluation Date: {selectedEvaluation.evaluation_date}
                 </Typography>
               </Box>
@@ -451,10 +470,7 @@ const MentorAnalytics = () => {
                     }}
                   >
                     {/* Category Name */}
-                    <Typography
-                      variant="subtitle1"
-                      sx={{ fontWeight: "bold" }}
-                    >
+                    <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
                       {category.category_name}
                     </Typography>
 
@@ -468,19 +484,13 @@ const MentorAnalytics = () => {
                   </Box>
                 ))
               ) : (
-                <Typography
-                  variant="body1"
-                  sx={{ fontStyle: "italic" }}
-                >
+                <Typography variant="body1" sx={{ fontStyle: "italic" }}>
                   No categories found for this evaluation.
                 </Typography>
               )}
             </>
           ) : (
-            <Typography
-              variant="body1"
-              sx={{ fontStyle: "italic" }}
-            >
+            <Typography variant="body1" sx={{ fontStyle: "italic" }}>
               Loading evaluation details...
             </Typography>
           )}
@@ -501,7 +511,6 @@ const MentorAnalytics = () => {
         </DialogActions>
       </Dialog>
 
-
       {/* Performance Overview */}
       <Box
         mt="20px"
@@ -520,7 +529,8 @@ const MentorAnalytics = () => {
           justifyContent="center"
           alignItems="center"
         >
-          {!mentorAnalytics.performanceOverview || mentorAnalytics.performanceOverview.length === 0 ? (
+          {!mentorAnalytics.performanceOverview ||
+          mentorAnalytics.performanceOverview.length === 0 ? (
             <Typography variant="h6" color={colors.grey[300]}>
               Performance Overview Unavailable.
             </Typography>
