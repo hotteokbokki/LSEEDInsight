@@ -38,24 +38,22 @@ const Topbar = () => {
 
   const fetchNotifications = async () => {
     try {
-        const response = await axios.get('/api/notifications');
-        setNotifications(response.data);
+      const response = await axios.get("/api/notifications");
+      setNotifications(response.data);
     } catch (error) {
-        console.error('Error fetching notifications:', error);
+      console.error("Error fetching notifications:", error);
     }
-};
+  };
 
-useEffect(() => {
+  useEffect(() => {
     fetchNotifications();
 
     // Refresh every 5 seconds
     const interval = setInterval(fetchNotifications, 5000);
     return () => clearInterval(interval);
-}, []);
-
+  }, []);
 
   const [notifications, setNotifications] = useState([]);
-
 
   // const notifications = [
   //   {
@@ -169,12 +167,14 @@ useEffect(() => {
               No new notifications
             </MenuItem>
           )}
-</Menu>
+        </Menu>
 
+        {/* 
+<IconButton>
+  <SettingsOutlinedIcon />
+</IconButton> 
+*/}
 
-        <IconButton>
-          <SettingsOutlinedIcon />
-        </IconButton>
         <IconButton onClick={handleMenuOpen}>
           <PersonOutlinedIcon />
         </IconButton>

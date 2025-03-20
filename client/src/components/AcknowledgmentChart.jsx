@@ -57,7 +57,7 @@ const AcknowledgmentChart = () => {
         enableLabel={true}
         labelSkipWidth={12}
         labelSkipHeight={12}
-        labelTextColor={colors.primary[100]} // 🔹 White text for better contrast
+        labelTextColor={colors.grey[100]} // 🔹 White text for better contrast
         axisBottom={{
           tickSize: 5,
           tickPadding: 5,
