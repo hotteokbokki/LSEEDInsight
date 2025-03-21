@@ -62,6 +62,7 @@ const Scheduling = ({ userRole }) => {
   const [startTime, setStartTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
   const [error, setError] = useState("");
+  const userSession = JSON.parse(localStorage.getItem("user"));
   const handleRedirect = () =>
     window.open("https://calendar.google.com", "_blank");
   const handleOpenModal = () => setOpenModal(true);
@@ -291,11 +292,21 @@ const Scheduling = ({ userRole }) => {
   useEffect(() => {
     const fetchScheduleHistory = async () => {
       try {
-        console.log("Fetching all mentor schedules...");
-        const response = await axios.get(
-          "http://localhost:4000/api/mentorSchedules"
-        );
-        console.log("📅 History Schedules:", response.data);
+        
+        let response;
+        if (userRole === "Mentor") {
+          response = await axios.get(
+            "http://localhost:4000/api/mentorSchedulesByID",
+            {
+              params: { mentor_id: userSession.id },
+            }
+          );
+        } else if (userRole === "LSEED") {
+          response = await axios.get(
+            "http://localhost:4000/api/mentorSchedules"
+          );
+        }
+
         setMentorHistory(response.data || []);
       } catch (error) {
         console.error("❌ Error fetching mentor schedules:", error);

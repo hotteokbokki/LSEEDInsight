@@ -45,6 +45,7 @@ const { getMentorshipsByMentorId,
         getSchedulingHistory,
         getHandledSEsCountByMentor,
         getMentorshipsForScheduling,
+        getSchedulingHistoryByMentorID,
        } = require("./controllers/mentorshipsController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getEvaluationsByMentorID, 
@@ -975,6 +976,25 @@ app.get("/getMentorEvaluations", async (req, res) => {
     }
 
     const result = await getEvaluationsMadeByMentor(mentor_id); // Fetch SEs from DB
+    if (!result || result.length === 0) {
+      return res.status(404).json({ message: "No evaluations found" });
+    }
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching social enterprises:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/mentorSchedulesByID", async (req, res) => {
+  try {
+    const { mentor_id } = req.query; // Extract mentor_id from query parameters
+
+    if (!mentor_id) {
+      return res.status(400).json({ message: "mentor_id is required" });
+    }
+
+    const result = await getSchedulingHistoryByMentorID(mentor_id); // Fetch SEs from DB
     if (!result || result.length === 0) {
       return res.status(404).json({ message: "No evaluations found" });
     }

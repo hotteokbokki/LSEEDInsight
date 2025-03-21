@@ -259,4 +259,43 @@ exports.getSchedulingHistory = async () => {
       return [];
     }
 };
+
+exports.getSchedulingHistoryByMentorID = async (mentor_id) => {
+    try {
+      const query = `
+          SELECT 
+              ms.mentoring_session_id,
+              m.mentorship_id, 
+              se.team_name, 
+              CONCAT(mt.mentor_firstname, ' ', mt.mentor_lastname) AS mentor_name,
+              p.name AS program_name,
+              TO_CHAR(ms.mentoring_session_date, 'FMMonth DD, YYYY') AS mentoring_session_date,  -- ✅ Proper month name without spaces
+              CONCAT(
+                  TO_CHAR(ms.start_time, 'HH24:MI'), ' - ', 
+                  TO_CHAR(ms.end_time, 'HH24:MI')
+              ) AS mentoring_session_time,
+              ms.status,
+              ms.zoom_link
+          FROM mentorships m
+          JOIN mentoring_session ms ON m.mentorship_id = ms.mentorship_id
+          JOIN mentors mt ON m.mentor_id = mt.mentor_id
+          JOIN socialenterprises se ON m.se_id = se.se_id
+          JOIN programs p ON p.program_id = se.program_id
+          WHERE ms.status <> 'Pending'  -- ❌ Exclude pending sessions
+          AND mt.mentor_id = $1
+          ORDER BY ms.mentoring_session_date, ms.start_time;
+      `;
+
+      const result = await pgDatabase.query(query, [mentor_id]);
+      if (!result.rows.length) {
+        console.log("No Pending Schedules found.");
+        return [];
+      }
+  
+      return result.rows;
+    } catch (error) {
+      console.error("❌ Error fetching mentor schedules:", error);
+      return [];
+    }
+};
   
