@@ -2508,21 +2508,44 @@ app.get("/api/notifications", async (req, res) => {
           return res.status(400).json({ message: "Receiver ID is required" });
       }
 
-      const query = `
-          SELECT n.notification_id, n.title, n.created_at, 
-                 u.first_name || ' ' || u.last_name AS sender_name,
-                 n.se_id, se.team_name AS se_name, ms.status
-          FROM notification n
-          JOIN users u ON n.receiver_id = u.user_id
-          JOIN socialenterprises se ON n.se_id = se.se_id
-          JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
-          WHERE n.receiver_id = $1
-          ORDER BY n.created_at DESC
-      `;
+      // ✅ Fetch the user role to determine which notifications to show
+      const userQuery = `SELECT roles FROM users WHERE user_id = $1`;
+      const userResult = await pgDatabase.query(userQuery, [receiver_id]);
+      if (userResult.rows.length === 0) {
+          return res.status(404).json({ message: "User not found" });
+      }
+
+      const userRole = userResult.rows[0].roles;
+
+      // ✅ Modify the query based on user role
+      let query;
+      if (userRole === "LSEED") {
+          // LSEED users only get scheduling notifications
+          query = `
+              SELECT n.notification_id, n.title, n.created_at, 
+                     u.first_name || ' ' || u.last_name AS sender_name,
+                     n.se_id, se.team_name AS se_name, ms.status
+              FROM notification n
+              JOIN users u ON n.sender_id = u.user_id
+              JOIN socialenterprises se ON n.se_id = se.se_id
+              JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
+              WHERE n.receiver_id = $1 AND n.title = 'Scheduling Approval Needed'
+              ORDER BY n.created_at DESC
+          `;
+      } else {
+          // Mentors only get status change notifications
+          query = `
+              SELECT n.notification_id, n.title, n.created_at, 
+                     n.se_id, se.team_name AS se_name, ms.status
+              FROM notification n
+              JOIN socialenterprises se ON n.se_id = se.se_id
+              JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
+              WHERE n.receiver_id = $1 AND n.title != 'Scheduling Approval Needed'
+              ORDER BY n.created_at DESC
+          `;
+      }
 
       const result = await pgDatabase.query(query, [receiver_id]);
-
-      console.log("📩 Notifications Fetched from DB:", result.rows); // ✅ Debugging line
 
       if (result.rows.length === 0) {
           return res.status(200).json([]); // Return empty array if no notifications
