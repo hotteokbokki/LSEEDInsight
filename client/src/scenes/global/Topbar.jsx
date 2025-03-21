@@ -21,7 +21,6 @@ import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import { useAuth } from "../../context/authContext";
 import axios from "axios";
 
-
 const Topbar = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
@@ -29,7 +28,7 @@ const Topbar = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [notifAnchorEl, setNotifAnchorEl] = useState(null);
   const navigate = useNavigate();
-  const { logout, user  } = useAuth();
+  const { logout, user } = useAuth();
   const [notifications, setNotifications] = useState([]);
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
@@ -42,38 +41,37 @@ const Topbar = () => {
 
   const fetchNotifications = async () => {
     try {
-        if (!user || !user.id) {
-            console.warn("⚠️ No user ID found, skipping notification fetch.");
-            return;
-        }
+      if (!user || !user.id) {
+        console.warn("⚠️ No user ID found, skipping notification fetch.");
+        return;
+      }
 
-        const requestUrl = `${API_BASE_URL}/api/notifications?receiver_id=${user.id}`;
-        console.log("🔍 Making request to:", requestUrl);
+      const requestUrl = `${API_BASE_URL}/api/notifications?receiver_id=${user.id}`;
+      console.log("🔍 Making request to:", requestUrl);
 
-        const response = await axios.get(requestUrl);
+      const response = await axios.get(requestUrl);
 
-        console.log("📩 Notifications received:", response.data); // ✅ Debugging API Response
-        setNotifications([...response.data]);  // ✅ Force React to detect state change
-        console.log("🔔 Updated notifications state:", notifications); // ✅ Check if state updates
+      console.log("📩 Notifications received:", response.data); // ✅ Debugging API Response
+      setNotifications([...response.data]); // ✅ Force React to detect state change
+      console.log("🔔 Updated notifications state:", notifications); // ✅ Check if state updates
     } catch (error) {
-        console.error("❌ Error fetching notifications:", error);
+      console.error("❌ Error fetching notifications:", error);
     }
-};
+  };
 
-
-useEffect(() => {
-  console.log("👤 User detected:", user); // ✅ Log user info
-  if (user && user.id) {
+  useEffect(() => {
+    console.log("👤 User detected:", user); // ✅ Log user info
+    if (user && user.id) {
       console.log("🔄 Fetching notifications for:", user.id);
       fetchNotifications();
       const interval = setInterval(fetchNotifications, 5000);
       return () => clearInterval(interval);
-  }
-}, [user]);
+    }
+  }, [user]);
 
-useEffect(() => {
-  console.log("🔥 Notifications state updated:", notifications);
-}, [notifications]);  // ✅ Ensure React tracks updates
+  useEffect(() => {
+    console.log("🔥 Notifications state updated:", notifications);
+  }, [notifications]); // ✅ Ensure React tracks updates
 
   // const notifications = [
   //   {
