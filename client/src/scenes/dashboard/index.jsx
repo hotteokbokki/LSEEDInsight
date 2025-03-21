@@ -896,7 +896,7 @@ const Dashboard = ({ userRole }) => {
                   color={colors.redAccent[500]}
                   marginBottom="15px" // Ensures a small gap between header & DataGrid
                 >
-                  SEs Requiring Immediate Attention 🚨
+                  SEs Requiring Immediate Attention
                 </Typography>
                 <Box
                   sx={{
@@ -940,7 +940,7 @@ const Dashboard = ({ userRole }) => {
                   color={colors.blueAccent[500]}
                   marginBottom="15px"
                 >
-                  Pending Mentoring Schedules 🕒
+                  Pending Mentoring Schedules
                 </Typography>
                 <Box
                   sx={{
@@ -1449,7 +1449,7 @@ const Dashboard = ({ userRole }) => {
               <Button
                 variant="contained"
                 startIcon={<AnalyticsOutlinedIcon />}
-                onClick={() => navigate("/analytics")}
+                onClick={() => navigate("/scheduling")}
                 sx={{
                   flexGrow: 1,
                   backgroundColor: colors.blueAccent[800], // Custom Background Color
@@ -1459,12 +1459,12 @@ const Dashboard = ({ userRole }) => {
                   },
                 }}
               >
-                View Analytics
+                Schedule Mentoring Session
               </Button>
               <Button
                 variant="contained"
                 startIcon={<Diversity2OutlinedIcon />}
-                onClick={() => navigate("/socialenterprise")}
+                onClick={() => navigate("/mentorships")}
                 sx={{
                   flexGrow: 1,
                   backgroundColor: colors.blueAccent[600], // Custom Background Color
@@ -1474,7 +1474,7 @@ const Dashboard = ({ userRole }) => {
                   },
                 }}
               >
-                Social Enterprises
+                Manage Mentorships
               </Button>
               <Button
                 variant="contained"
@@ -1489,7 +1489,7 @@ const Dashboard = ({ userRole }) => {
                   },
                 }}
               >
-                Evaluate Mentor
+                Evaluate SE
               </Button>
             </Box>
           </Box>

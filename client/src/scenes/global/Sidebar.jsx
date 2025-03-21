@@ -161,7 +161,7 @@ const Sidebar = () => {
                   alt="profile-user"
                   width="90px"
                   height="90px"
-                  src="/assets/user.png"
+                  src="/assets/picture.png"
                   style={{
                     borderRadius: "50%",
                     border: `2px solid ${colors.grey[100]}`,
