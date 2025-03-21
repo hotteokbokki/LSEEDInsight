@@ -17,6 +17,11 @@ import {
   MenuItem,
   Snackbar,
   Alert,
+  FormLabel, 
+  FormGroup, 
+  FormControlLabel, 
+  Checkbox, 
+  FormHelperText,
 } from "@mui/material";
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
 import { tokens } from "../../theme";
@@ -135,7 +140,7 @@ const SocialEnterprise = () => {
   useEffect(() => {
     const fetchPrograms = async () => {
       try {
-        const response = await fetch("http://localhost:4000/getPrograms"); // Call the API endpoint
+        const response = await fetch("http://localhost:4000/getAllPrograms"); // Call the API endpoint
         const data = await response.json();
         setPrograms(data); // Update the state with the fetched programs
       } catch (error) {
@@ -233,11 +238,11 @@ const SocialEnterprise = () => {
         alert("Name is required");
         return;
       }
-      if (!socialEnterpriseData.selectedSDG) {
-        alert("SDG is required");
+      if (!socialEnterpriseData.selectedSDGs || socialEnterpriseData.selectedSDGs.length === 0) {
+        alert("At least one SDG is required");
         return;
       }
-      if (!socialEnterpriseData.contact.trim()) {
+      if (!String(socialEnterpriseData.contact).trim()) {
         alert("Contact is required");
         return;
       }
@@ -249,48 +254,44 @@ const SocialEnterprise = () => {
         alert("Status is required");
         return;
       }
-
-      // Proceed with submission
+  
+      // Prepare submission data
       const newSocialEnterprise = {
         name: socialEnterpriseData.name,
-        sdg_name: socialEnterpriseData.selectedSDG, // Send SDG name
+        sdg_ids: socialEnterpriseData.selectedSDGs, // ✅ Directly use UUIDs
         contactnum: socialEnterpriseData.contact,
-        number_of_members: socialEnterpriseData.numberOfMembers || 0, // Default to 0 if not provided
-        program_name: socialEnterpriseData.selectedProgram, // Send program name
-        isactive: socialEnterpriseData.selectedStatus === "Active", // Convert to boolean
-        abbr: socialEnterpriseData.abbr || null, // Default to null if not provided
+        number_of_members: socialEnterpriseData.numberOfMembers || 0,
+        program_id: socialEnterpriseData.selectedProgram,
+        isactive: socialEnterpriseData.selectedStatus === "Active",
+        abbr: socialEnterpriseData.abbr || null,
       };
 
-      const response = await fetch(
-        "http://localhost:4000/api/social-enterprises",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newSocialEnterprise),
-        }
-      );
-
+      const response = await fetch("http://localhost:4000/api/social-enterprises", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newSocialEnterprise),
+      });
+  
       if (response.ok) {
         const data = await response.json();
-        console.log(
-          "Social Enterprise added successfully with SE ID:",
-          data.se_id
-        ); // Use se_id
+        console.log("Social Enterprise added successfully with SE ID:", data.se_id);
+  
         setIsSuccessSEPopupOpen(true);
         handleCloseAddSE(); // Close the dialog
+  
+        // Reset state
         setSocialEnterpriseData({
           name: "",
-          selectedSDG: "",
+          selectedSDGs: [], 
           contact: "",
           numberOfMembers: "",
           selectedProgram: "",
           selectedStatus: "",
           abbr: "",
         });
-
-        setTimeout(() => {
-          window.location.reload();
-        }, 500); // Adjust delay if needed
+  
+        // Instead of reloading the page, trigger data refetch (if applicable)
+        // fetchSocialEnterprises(); // Uncomment if you have a function to refresh the data
       } else {
         console.error("Error adding Social Enterprise");
       }
@@ -298,7 +299,7 @@ const SocialEnterprise = () => {
       console.error("Failed to add Social Enterprise:", error);
     }
   };
-
+  
   // Handle row click
   const handleRowClick = (params) => {
     if (isEditing) {
@@ -485,59 +486,51 @@ const SocialEnterprise = () => {
                 </Typography>
 
                 {/* Select Dropdown */}
-                <FormControl fullWidth margin="dense">
-                  <InputLabel
-                    id="sdg-label"
-                    sx={{
-                      backgroundColor: "#fff", // Prevent overlap with the border
-                      padding: "0 4px", // Add padding for readability
-                      "&.Mui-focused": {
-                        backgroundColor: "#fff", // Ensure the background remains white when focused
-                        color: "#000",
-                      },
-                    }}
-                  >
-                    Select SDG
-                  </InputLabel>
-                  <Select
-                    labelId="sdg-label"
-                    name="selectedSDG"
-                    value={socialEnterpriseData.selectedSDG || ""}
-                    onChange={handleInputChange}
-                    label="Select SDG"
-                    sx={{
-                      color: "#000",
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000",
-                        borderWidth: "1px",
-                      },
-                      "&:hover .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000",
-                      },
-                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000",
-                      },
-                    }}
-                  >
-                    {/* Placeholder Option */}
-                    <MenuItem value="" disabled>
-                      Select SDG
-                    </MenuItem>
-
-                    {/* Check if SDGs exist */}
+                <FormControl component="fieldset" fullWidth margin="dense">
+                  <FormLabel component="legend">Select SDGs</FormLabel>
+                    <FormGroup>
                     {sdgs.length > 0 ? (
-                      sdgs.map((sdg) => (
-                        <MenuItem key={sdg.id} value={sdg.id}>
-                          {sdg.name}
-                        </MenuItem>
-                      ))
+                      sdgs.map((sdg) => {
+                        const isChecked = socialEnterpriseData.selectedSDGs?.includes(sdg.id) || false;
+
+                        return (
+                          <FormControlLabel
+                            key={sdg.id}
+                            control={
+                              <Checkbox
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const selected = new Set(socialEnterpriseData.selectedSDGs || []);
+
+                                  if (e.target.checked) {
+                                    selected.add(sdg.id);
+                                  } else {
+                                    selected.delete(sdg.id);
+                                  }
+
+                                  const updatedSDGs = Array.from(selected);
+
+                                  console.log("Updated selected SDGs:", updatedSDGs);
+
+                                  handleInputChange({
+                                    target: {
+                                      name: "selectedSDGs",
+                                      value: updatedSDGs,
+                                    },
+                                  });
+                                }}
+                              />
+                            }
+                            label={sdg.name}
+                          />
+                        );
+                      })
                     ) : (
-                      <MenuItem value="" disabled>
-                        No SDGs available
-                      </MenuItem>
+                      <FormHelperText>No SDGs available</FormHelperText>
                     )}
-                  </Select>
+                    </FormGroup>
                 </FormControl>
+
               </Box>
 
               {/* Contact Field */}
@@ -791,7 +784,7 @@ const SocialEnterprise = () => {
               variant="contained"
               disabled={
                 !socialEnterpriseData.name ||
-                !socialEnterpriseData.selectedSDG ||
+                !socialEnterpriseData.selectedSDGs || socialEnterpriseData.selectedSDGs.length === 0 || 
                 !socialEnterpriseData.contact ||
                 !socialEnterpriseData.selectedProgram ||
                 !socialEnterpriseData.selectedStatus ||
@@ -800,7 +793,8 @@ const SocialEnterprise = () => {
               sx={{
                 backgroundColor:
                   socialEnterpriseData.name &&
-                  socialEnterpriseData.selectedSDG &&
+                  socialEnterpriseData.selectedSDGs &&
+                  socialEnterpriseData.selectedSDGs.length > 0 &&
                   socialEnterpriseData.contact &&
                   socialEnterpriseData.selectedProgram &&
                   socialEnterpriseData.selectedStatus
@@ -810,7 +804,8 @@ const SocialEnterprise = () => {
                 "&:hover": {
                   backgroundColor:
                     socialEnterpriseData.name &&
-                    socialEnterpriseData.selectedSDG &&
+                    socialEnterpriseData.selectedSDGs &&
+                    socialEnterpriseData.selectedSDGs.length > 0 &&
                     socialEnterpriseData.contact &&
                     socialEnterpriseData.selectedProgram &&
                     socialEnterpriseData.selectedStatus
@@ -821,6 +816,7 @@ const SocialEnterprise = () => {
             >
               Add
             </Button>
+
           </DialogActions>
         </Dialog>
 

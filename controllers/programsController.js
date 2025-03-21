@@ -40,6 +40,32 @@ exports.getPrograms = async () => {
   }
 };
 
+exports.getAllPrograms = async () => {
+  try {
+    const query = ` 
+      SELECT 
+          p.program_id, 
+          p.name AS program_name
+      FROM 
+          programs p
+    `;
+
+    const result = await pgDatabase.query(query);
+
+    if (!result.rows.length) {
+      return [];
+    }
+
+    return result.rows.map(program => ({
+      id: program.program_id, // Program ID
+      name: program.program_name, // Program Name
+    }));
+  } catch (error) {
+    console.error("Error fetching programs:", error);
+    return [];
+  }
+};
+
 exports.getProgramsForTelegram = async () => {
   try {
     // Query to get all programs

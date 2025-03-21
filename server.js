@@ -4,7 +4,7 @@ const cors = require("cors");
 const { router: authRoutes, requireAuth } = require("./routes/authRoutes");
 const axios = require("axios");
 const ngrok = require("ngrok"); // Exposes your local server to the internet
-const { getPrograms, getProgramNameByID, getProgramCount, getProgramsForTelegram } = require("./controllers/programsController");
+const { getPrograms, getProgramNameByID, getProgramCount, getProgramsForTelegram, getAllPrograms } = require("./controllers/programsController");
 const { getTelegramUsers, insertTelegramUser, getSocialEnterprisesUsersByProgram, countTelegramUsers } = require("./controllers/telegrambotController");
 const { getSocialEnterprisesByProgram, 
         getSocialEnterpriseByID, 
@@ -1360,7 +1360,16 @@ app.get("/getPreDefinedComments", async (req, res) => {
   }
 });
 
-
+// API endpoint to fetch all programs
+app.get("/getAllPrograms", async (req, res) => {
+  try {
+    const programs = await getAllPrograms(); // Fetch programs from the controller
+    res.json(programs); // Send the programs as JSON
+  } catch (error) {
+    console.error("Error fetching programs:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 // API endpoint to fetch all programs
 app.get("/getPrograms", async (req, res) => {
@@ -1449,6 +1458,7 @@ app.get("/getSocialEnterprisesByID", async (req, res) => {
 app.post("/api/social-enterprises", async (req, res) => {
   try {
     const socialEnterpriseData = req.body; // Extract data from the request body
+
     const newSocialEnterprise = await addSocialEnterprise(socialEnterpriseData); // Call the controller function
 
     res.status(201).json({

@@ -309,52 +309,54 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
   try {
     const {
       name, // team_name
-      sdg_name, // Expecting SDG name
+      sdg_ids, // ✅ Fixed from sdg_names
       contactnum,
-      program_name, // Expecting program name
-      isactive, // Expecting a boolean
+      program_id, // ✅ Fixed from program_name
+      isactive,
       abbr = null, // Default to null if not provided
       number_of_members = 0, // Default to 0 if not provided
     } = socialEnterpriseData;
 
-    if (!sdg_name) {
-      throw new Error("SDG ID is required but missing.");
+    // Check for missing fields
+    if (!sdg_ids || !Array.isArray(sdg_ids) || sdg_ids.length === 0) {
+      throw new Error("At least one SDG ID is required.");
     }
-    if (!program_name) {
+    if (!program_id) {
       throw new Error("Program ID is required but missing.");
     }
 
-    const program_id = Array.isArray(program_name) ? program_name[0] : program_name;
-    const sdg_id = Array.isArray(sdg_name) ? sdg_name[0] : sdg_name; // Ensure single UUID
+    // Convert `sdg_ids` to PostgreSQL array format
+    const formatted_sdg_ids = `{${sdg_ids.join(",")}}`;
 
-    // Insert into the socialenterprises table
+    // Insert into the database
     const query = `
       INSERT INTO socialenterprises (
         team_name,
-        sdg_id,
+        sdg_id, -- This column is an ARRAY[uuid]
         contactnum,
         program_id,
         isactive,
         abbr,
         numMember
       )
-      VALUES ($1, ARRAY[$2]::uuid[], $3, $4, $5, $6, $7)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING se_id;
     `;
+
     const values = [
       name,
-      sdg_id,
+      formatted_sdg_ids, // ✅ PostgreSQL array format
       contactnum,
       program_id,
-      isactive, 
+      isactive,
       abbr,
       number_of_members,
     ];
 
     const result = await pgDatabase.query(query, values);
-    const se_id = result.rows[0].se_id; // Extract the se_id from the result
+    const se_id = result.rows[0].se_id;
 
-    return { se_id }; // Return the se_id to the caller
+    return { se_id }; // Return the inserted SE ID
   } catch (error) {
     console.error("Error adding social enterprise:", error);
     throw error;
