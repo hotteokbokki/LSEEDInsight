@@ -2501,7 +2501,6 @@ async function updateUser(id, updatedUser) {
 }
 
 // Endpoint to fetch notifications
-// Endpoint to fetch notifications
 app.get("/api/notifications", async (req, res) => {
   try {
       const { receiver_id } = req.query;
@@ -2512,15 +2511,18 @@ app.get("/api/notifications", async (req, res) => {
       const query = `
           SELECT n.notification_id, n.title, n.created_at, 
                  u.first_name || ' ' || u.last_name AS sender_name,
-                 se.team_name AS se_name 
+                 n.se_id, se.team_name AS se_name, ms.status
           FROM notification n
-          JOIN users u ON n.sender_id = u.user_id  
-          JOIN socialenterprises se ON n.se_id = se.se_id 
-          WHERE n.receiver_id = $1  
+          JOIN users u ON n.receiver_id = u.user_id
+          JOIN socialenterprises se ON n.se_id = se.se_id
+          JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
+          WHERE n.receiver_id = $1
           ORDER BY n.created_at DESC
       `;
 
       const result = await pgDatabase.query(query, [receiver_id]);
+
+      console.log("📩 Notifications Fetched from DB:", result.rows); // ✅ Debugging line
 
       if (result.rows.length === 0) {
           return res.status(200).json([]); // Return empty array if no notifications

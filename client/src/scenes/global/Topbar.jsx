@@ -159,36 +159,43 @@ useEffect(() => {
 
           {/* Notification Items */}
           {notifications.length > 0 ? (
-            notifications.map((notif, index) => (
-              <Box key={notif.notification_id}>
-                <MenuItem
-                  onClick={handleNotifClose}
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    padding: "12px",
-                    "&:hover": { backgroundColor: "#f0f0f0" },
-                  }}
-                >
-                  <Typography sx={{ fontWeight: "bold" }}>
-                    {notif.title}
-                  </Typography>
-                  <Typography variant="body2">
-                    {notif.sender_name} created a schedule for {notif.se_name}.
-                  </Typography>
-                  <Typography variant="caption" color="gray">
-                    {new Date(notif.created_at).toLocaleString()}
-                  </Typography>
-                </MenuItem>
+              notifications.map((notif, index) => (
+                  <Box key={notif.notification_id}>
+                      <MenuItem
+                          onClick={handleNotifClose}
+                          sx={{
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "flex-start",
+                              padding: "12px",
+                              "&:hover": { backgroundColor: "#f0f0f0" },
+                          }}
+                      >
+                          <Typography sx={{ fontWeight: "bold" }}>
+                              {notif.title}
+                          </Typography>
 
-                {index < notifications.length - 1 && <Divider />}
-              </Box>
-            ))
+                          {/* ✅ Display different messages based on status */}
+                          <Typography variant="body2">
+                          {notif.status === "Pending SE"
+                              ? `Your desired schedule for ${notif.se_name} is already accepted by the LSEED.`
+                              : notif.status === "Accepted"
+                              ? `The ${notif.se_name} has agreed to your desired schedule.`
+                              : `${notif.sender_name} created a schedule for ${notif.se_name}.`}
+                          </Typography>
+
+                          <Typography variant="caption" color="gray">
+                              {new Date(notif.created_at).toLocaleString()}
+                          </Typography>
+                      </MenuItem>
+
+                      {index < notifications.length - 1 && <Divider />}
+                  </Box>
+              ))
           ) : (
-            <MenuItem sx={{ textAlign: "center", padding: "15px" }}>
-              No new notifications
-            </MenuItem>
+              <MenuItem sx={{ textAlign: "center", padding: "15px" }}>
+                  No new notifications
+              </MenuItem>
           )}
         </Menu>
 
