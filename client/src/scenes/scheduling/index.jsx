@@ -1088,6 +1088,49 @@ const Scheduling = ({ userRole }) => {
             {/* Date Selection */}
             {/* Date Selection Section */}
             <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DatePicker
+                label="Select Date"
+                value={selectedDate}
+                onChange={(newDate) => setSelectedDate(newDate)}
+                slotProps={{
+                  textField: {
+                    sx: {
+                      "& .MuiOutlinedInput-root": {
+                        "& fieldset": { borderColor: "#000" },
+                        "&:hover fieldset": { borderColor: "#000" },
+                        "&.Mui-focused fieldset": { borderColor: "#000" },
+                      },
+                      "& .MuiInputBase-input": { color: "#000" },
+                      "& .MuiInputLabel-root": { color: "#000" },
+                      "& .MuiInputLabel-root.Mui-focused": { color: "#000" },
+                    },
+                    InputProps: {
+                      sx: {
+                        "& .MuiSvgIcon-root": { color: "#000" },
+                      },
+                    },
+                  },
+                  popper: {
+                    sx: {
+                      "& .MuiPaper-root": {
+                        backgroundColor: "#1E4D2B", // Green background
+                        color: "#fff",
+                      },
+                      "& .MuiPickersDay-root": { color: "#fff" },
+                      "& .MuiPickersDay-root.Mui-selected": {
+                        backgroundColor: "#fff !important",
+                        color: "#1E4D2B",
+                      },
+                      "& .MuiIconButton-root": { color: "#fff" },
+                      "& .MuiTypography-root": { color: "#fff" },
+                      "& .MuiOutlinedInput-root": { borderColor: "#fff" },
+                    },
+                  },
+                }}
+              />
+            </LocalizationProvider>
+
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
               <Stack spacing={2}>
                 <Stack spacing={2} direction="row" sx={{ width: "100%" }}>
                   {/* Start Time Picker */}
