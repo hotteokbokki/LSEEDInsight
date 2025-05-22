@@ -141,20 +141,6 @@ const AdminPage = () => {
       ),
       editable: isEditing, // Make editable when in edit mode
     },
-    {
-      field: "password",
-      headerName: "Change Password",
-      flex: 1,
-      renderCell: (params) => (
-        <Button
-          variant="contained"
-          color="secondary"
-          // onClick={() => handleRoleChange(params.row.id)}
-        >
-          Change Password
-        </Button>
-      ),
-    },
   ];
 
   const toggleEditing = () => {

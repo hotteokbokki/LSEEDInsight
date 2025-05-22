@@ -63,97 +63,46 @@ const ProgramPage = () => {
     );
   }
 
-  // Define DataGrid columns
   const columns = [
     {
-      field: "first_name",
-      headerName: "First Name",
+      field: "coordinator_name",
+      headerName: "Program Coordinator",
       flex: 1,
-      renderCell: (params) => `${params.row.first_name}`,
-      editable: isEditing, // Make editable when in edit mode
+      editable: isEditing, // Allow editing only when editing mode is enabled
+      renderEditCell: (params) => {
+        return (
+          <Select
+            value={params.value}
+            onChange={(e) => {
+              params.api.setEditCellValue({
+                id: params.id,
+                field: params.field,
+                value: e.target.value,
+              });
+            }}
+            fullWidth
+          >
+            {users.map((user) => (
+              <MenuItem
+                key={user.user_id}
+                value={`${user.first_name} ${user.last_name}`}
+              >
+                {user.first_name} {user.last_name}
+              </MenuItem>
+            ))}
+          </Select>
+        );
+      },
     },
     {
-      field: "last_name",
-      headerName: "Last Name",
+      field: "program_name",
+      headerName: "Program",
       flex: 1,
-      renderCell: (params) => `${params.row.last_name}`,
-      editable: isEditing, // Make editable when in edit mode
     },
     {
-      field: "email",
-      headerName: "Email",
-      flex: 1,
-      editable: isEditing, // Make editable when in edit mode
-    },
-    {
-      field: "roles",
-      headerName: "Role",
-      flex: 1,
-      editable: isEditing,
-      renderEditCell: (params) => (
-        <Select
-          value={params.value || ""}
-          onChange={(e) =>
-            params.api.setEditCellValue({
-              id: params.id,
-              field: params.field,
-              value: e.target.value,
-            })
-          }
-          fullWidth
-        >
-          <MenuItem value="Guest User">Guest User</MenuItem>
-          <MenuItem value="Mentor">Mentor</MenuItem>
-          <MenuItem value="LSEED">LSEED</MenuItem>
-        </Select>
-      ),
-    },
-    {
-      field: "isactive",
-      headerName: "Active Status",
-      flex: 1,
-      renderCell: (params) => (
-        <span
-          style={{
-            color: params.value
-              ? colors.greenAccent[500]
-              : colors.redAccent[500],
-          }}
-        >
-          {params.value ? "Active" : "Inactive"}
-        </span>
-      ),
-      renderEditCell: (params) => (
-        <Select
-          value={params.value ? "Active" : "Inactive"}
-          onChange={(e) =>
-            params.api.setEditCellValue({
-              id: params.id,
-              field: params.field,
-              value: e.target.value === "Active",
-            })
-          }
-          fullWidth
-        >
-          <MenuItem value="Active">Active</MenuItem>
-          <MenuItem value="Inactive">Inactive</MenuItem>
-        </Select>
-      ),
-      editable: isEditing, // Make editable when in edit mode
-    },
-    {
-      field: "password",
-      headerName: "Change Password",
-      flex: 1,
-      renderCell: (params) => (
-        <Button
-          variant="contained"
-          color="secondary"
-          // onClick={() => handleRoleChange(params.row.id)}
-        >
-          Change Password
-        </Button>
-      ),
+      field: "program_description",
+      headerName: "Description",
+      flex: 2,
     },
   ];
 
@@ -212,7 +161,10 @@ const ProgramPage = () => {
     <Box m="20px">
       {/* HEADER */}
       <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Header title="PROGRAMS PAGE" subtitle="View and Manage program assignment" />
+        <Header
+          title="PROGRAMS PAGE"
+          subtitle="View and Manage program assignment"
+        />
       </Box>
 
       <Box display="flex" alignItems="center" gap={2} mb={2}>
@@ -300,7 +252,7 @@ const ProgramPage = () => {
           color={colors.greenAccent[500]}
           marginBottom="15px"
         >
-          Manage Users
+          Manage Programs
         </Typography>
 
         <Box
@@ -324,18 +276,19 @@ const ProgramPage = () => {
         >
           <DataGrid
             rows={users.map((user) => ({
-              ...user,
-              id: user.user_id, // Ensure `id` is assigned properly
+              id: user.user_id,
+              coordinator_name: `${user.first_name} ${user.last_name}`,
+              program_name: user.program_name || "—",
+              program_description: user.program_description || "—",
+              user_id: user.user_id,
             }))}
             columns={columns}
             pageSize={5}
             rowsPerPageOptions={[5, 10]}
-            getRowId={(row) => row.user_id} // Use `user_id` as row ID
-            processRowUpdate={handleRowUpdate}
-            onProcessRowUpdateError={(error) =>
-              console.error("Update failed:", error)
-            }
-            onRowClick={(params) => setSelectedUser(params.row)}
+            getRowId={(row) => row.id}
+            processRowUpdate={handleRowUpdate} // Enable inline save
+            experimentalFeatures={{ newEditingApi: true }} // Required for `processRowUpdate`
+            disableSelectionOnClick
           />
 
           {/* Snackbar for error messages */}

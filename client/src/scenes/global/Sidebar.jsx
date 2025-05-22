@@ -1,7 +1,16 @@
 import { useState } from "react";
 import { ProSidebar, Menu, MenuItem } from "react-pro-sidebar";
 import "react-pro-sidebar/dist/css/styles.css";
-import { Box, IconButton, Typography, useTheme, Dialog, DialogTitle, DialogActions, Button } from "@mui/material";
+import {
+  Box,
+  IconButton,
+  Typography,
+  useTheme,
+  Dialog,
+  DialogTitle,
+  DialogActions,
+  Button,
+} from "@mui/material";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { tokens } from "../../theme";
 import GridViewOutlinedIcon from "@mui/icons-material/GridViewOutlined";
@@ -15,6 +24,7 @@ import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
+import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import { useAuth } from "../../context/authContext";
 import { createCalendarEvents } from "../../components/googleCalendar";
 import { useGoogleLogin } from "@react-oauth/google";
@@ -62,6 +72,7 @@ const Sidebar = () => {
       "/admin": "Admin Page",
       "/mentorships": "Manage Mentorships",
       "/analytics-mentorship": "Show Analytics",
+      "/programs": "Manage Programs",
     };
     return routeMap[location.pathname] || "Dashboard";
   };
@@ -86,13 +97,13 @@ const Sidebar = () => {
       login(); // Prompt Google login if not logged in
     } else {
       await createCalendarEvents(googleUser, user); // ✅ Use googleUser for Calendar API
-	navigate("/scheduling");
+      navigate("/scheduling");
       handleCloseDialog();
     }
   };
 
   const confirmNavNoSync = async () => {
-  	navigate("/scheduling");
+    navigate("/scheduling");
     handleCloseDialog();
   };
 
@@ -212,7 +223,11 @@ const Sidebar = () => {
                   active={selected === "Scheduling Matrix"}
                   icon={<CalendarMonthOutlinedIcon />}
                   onClick={() => setOpenDialog(true)} // Open the pop-up
-                  style={{ color: colors.grey[100], fontWeight: selected === "Scheduling Matrix" ? "bold" : "normal" }}
+                  style={{
+                    color: colors.grey[100],
+                    fontWeight:
+                      selected === "Scheduling Matrix" ? "bold" : "normal",
+                  }}
                 >
                   <Typography variant="body1">Scheduling Matrix</Typography>
                 </MenuItem>
@@ -274,7 +289,7 @@ const Sidebar = () => {
                 <Item
                   title="Manage Programs"
                   to="/programs"
-                  icon={<CalendarMonthOutlinedIcon />}
+                  icon={<FactCheckOutlinedIcon />}
                   selected={selected}
                   setSelected={setSelected}
                 />
@@ -294,19 +309,40 @@ const Sidebar = () => {
       {/* MUI Dialog for Confirmation */}
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>
-          Logging in to google. 
-          This will sync mentorship schedules with your Google Calendar. Continue?
+          Logging in to google. This will sync mentorship schedules with your
+          Google Calendar. Continue?
         </DialogTitle>
         <DialogActions>
-        <Button onClick={handleCloseDialog} sx={{ color: "white", backgroundColor: "red", "&:hover": { backgroundColor: "darkred" } }}>
-          Cancel
-        </Button>
-        <Button onClick={confirmNavNoSync} sx={{ color: "white", backgroundColor: "green", "&:hover": { backgroundColor: "darkgreen" } }}>
-          Continue without Sync
-        </Button>
-        <Button onClick={handleConfirmNavigation} sx={{ color: "white", backgroundColor: "green", "&:hover": { backgroundColor: "darkgreen" } }}>
-          Continue
-        </Button>
+          <Button
+            onClick={handleCloseDialog}
+            sx={{
+              color: "white",
+              backgroundColor: "red",
+              "&:hover": { backgroundColor: "darkred" },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmNavNoSync}
+            sx={{
+              color: "white",
+              backgroundColor: "green",
+              "&:hover": { backgroundColor: "darkgreen" },
+            }}
+          >
+            Continue without Sync
+          </Button>
+          <Button
+            onClick={handleConfirmNavigation}
+            sx={{
+              color: "white",
+              backgroundColor: "green",
+              "&:hover": { backgroundColor: "darkgreen" },
+            }}
+          >
+            Continue
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
