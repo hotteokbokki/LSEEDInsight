@@ -8,6 +8,7 @@ import Dashboard from "./scenes/dashboard";
 import SocialEnterprise from "./scenes/socialenterprise";
 import Mentors from "./scenes/mentors";
 import Admin from "./scenes/admin";
+import ProgramPage from "./scenes/programs";
 import Analytics from "./scenes/analytics";
 import Reports from "./scenes/reports";
 import Scheduling from "./scenes/scheduling";
@@ -97,6 +98,7 @@ const MainContent = () => {
           <Route path="/mentorships" element={<Mentorships />} />
           <Route path="/analytics-mentorship" element={<MentorshipAnalytics />} />
           <Route path="/admin" element={user ? <Admin /> : <Navigate to="/" />} />
+          <Route path="/programs" element={user ? <ProgramPage /> : <Navigate to="/" />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute allowedRoles={["Administrator"]} />}>

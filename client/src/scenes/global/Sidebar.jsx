@@ -219,7 +219,7 @@ const Sidebar = () => {
               </>
             )}
 
-            {user?.role === "LSEED" && (
+            {user?.role?.startsWith("LSEED") && (
               <>
                 <Item
                   title="Dashboard"
@@ -266,6 +266,14 @@ const Sidebar = () => {
                 <Item
                   title="Scheduling Matrix"
                   to="/scheduling"
+                  icon={<CalendarMonthOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                {/* TODO*/}
+                <Item
+                  title="Manage Programs"
+                  to="/programs"
                   icon={<CalendarMonthOutlinedIcon />}
                   selected={selected}
                   setSelected={setSelected}

@@ -141,7 +141,7 @@ const EvaluatePage = ({ userRole }) => {
               params: { mentor_id: userSession.id },
             }
           );
-        } else if (userRole === "LSEED") {
+        } else if (userRole?.startsWith("LSEED")) {
           response = await axios.get("http://localhost:4000/getAllEvaluations");
         }
 
@@ -657,9 +657,9 @@ const EvaluatePage = ({ userRole }) => {
   return (
     <Box m="20px">
       <Header
-        title={userRole === "LSEED" ? "Evaluate Mentors" : "Evaluate SE"}
+        title={userRole?.startsWith("LSEED")  ? "Evaluate Mentors" : "Evaluate SE"}
         subtitle={
-          userRole === "LSEED"
+          userRole?.startsWith("LSEED") 
             ? "View and Manage mentor evaluations"
             : "Evaluate Social Enterprises based on key criteria"
         }
@@ -691,7 +691,7 @@ const EvaluatePage = ({ userRole }) => {
             </Button>
           )}
           {/* Show this button only if userRole is LSEED */}
-          {userRole === "LSEED" && (
+          {userRole?.startsWith("LSEED")  && (
             <Button
               onClick={handleOpenMentorshipDialog}
               variant="contained"
@@ -889,7 +889,7 @@ const EvaluatePage = ({ userRole }) => {
           </Box>
         )}
         {/* Show DataGrid only if userRole is LSEED */}
-        {userRole === "LSEED" && (
+        {userRole?.startsWith("LSEED")  && (
           <Box
             width="100%"
             backgroundColor={colors.primary[400]}
@@ -936,7 +936,7 @@ const EvaluatePage = ({ userRole }) => {
           </Box>
         )}
 
-        {userRole === "LSEED" && (
+        {userRole?.startsWith("LSEED")  && (
           <Box
             width="100%"
             backgroundColor={colors.primary[400]}

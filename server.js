@@ -2539,7 +2539,7 @@ app.get("/api/notifications", async (req, res) => {
 
       // ✅ Modify the query based on user role
       let query;
-      if (userRole === "LSEED") {
+      if (userRole?.startsWith("LSEED")) {
           // LSEED users only get scheduling notifications
           query = `
               SELECT n.notification_id, n.title, n.created_at, 

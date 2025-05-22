@@ -301,7 +301,7 @@ const Scheduling = ({ userRole }) => {
               params: { mentor_id: userSession.id },
             }
           );
-        } else if (userRole === "LSEED") {
+        } else if (userRole?.startsWith("LSEED") ) {
           response = await axios.get(
             "http://localhost:4000/api/mentorSchedules"
           );
@@ -527,7 +527,7 @@ const Scheduling = ({ userRole }) => {
       <Header
         title="Scheduling Matrix"
         subtitle={
-          userRole === "LSEED"
+          userRole?.startsWith("LSEED") 
             ? "View and Manage the schedule of the mentors"
             : "Find the Appropriate Schedule"
         }

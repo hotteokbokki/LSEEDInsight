@@ -657,14 +657,14 @@ const Dashboard = ({ userRole }) => {
         <Header
           title="Dashboard"
           subtitle={
-            userRole === "LSEED"
+            userRole?.startsWith("LSEED")
               ? "Welcome to LSEED Dashboard"
               : "Welcome to Mentor Dashboard"
           }
         />
       </Box>
 
-      {userRole === "LSEED" && (
+      {userRole?.startsWith("LSEED")  && (
         <>
           <Box
             display="grid"
