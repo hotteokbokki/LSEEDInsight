@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import "../../styles/Login.css";
 import { useAuth } from '../../context/authContext';
 import {
@@ -149,7 +150,7 @@ const Login = () => {
                     />
                   </div>
                   <div className="text">
-                    <a href="forgot-password.js">Forgot password?</a>
+                    <Link to="/forgot-password">Forgot password?</Link>
                   </div>
                   <div className="button input-box">
                     <input type="submit" value="Log-In" />

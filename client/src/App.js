@@ -25,6 +25,9 @@ import CssBaseline from "@mui/material/CssBaseline";
 import MentorshipAnalytics from "./scenes/analytics-mentorship";
 import MentorDashboard from "./scenes/mentordashboard";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import ForgotPassword from "./scenes/forgotpassword";
+import ResetPassword from "./scenes/resetpassword";
+
 
 const App = () => {
   const [theme, colorMode] = useMode();
@@ -83,6 +86,8 @@ const MainContent = () => {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           {/* User Routes */}
