@@ -19,6 +19,7 @@ import Mentorships from "./scenes/mentorships";
 import Sidebar from "./scenes/global/Sidebar";
 import Topbar from "./scenes/global/Topbar";
 import Unauthorized from "./scenes/unauthorized";
+import Signup from "./scenes/signup";
 import { ColorModeContext, useMode } from "./theme";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -89,6 +90,8 @@ const MainContent = () => {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
+          <Route path="/signup" element={<Signup />} />
+
 
           {/* User Routes */}
           <Route path="/dashboard" element={user ? <Dashboard userRole={user?.role}/> : <Navigate to="/" />} />

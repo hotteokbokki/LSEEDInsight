@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { tokens } from "../../theme";
+import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
 import GridViewOutlinedIcon from "@mui/icons-material/GridViewOutlined";
 import SupervisorAccountOutlinedIcon from "@mui/icons-material/SupervisorAccountOutlined";
 import Diversity2OutlinedIcon from "@mui/icons-material/Diversity2Outlined";
@@ -73,6 +74,7 @@ const Sidebar = () => {
       "/mentorships": "Manage Mentorships",
       "/analytics-mentorship": "Show Analytics",
       "/programs": "Manage Programs",
+      "/signup": "Register Mentor",
     };
     return routeMap[location.pathname] || "Dashboard";
   };
@@ -219,6 +221,7 @@ const Sidebar = () => {
                   selected={selected}
                   setSelected={setSelected}
                 />
+
                 <MenuItem
                   active={selected === "Scheduling Matrix"}
                   icon={<CalendarMonthOutlinedIcon />}
@@ -297,6 +300,14 @@ const Sidebar = () => {
                   title="Manage Users"
                   to="/admin"
                   icon={<AdminPanelSettingsOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+
+                <Item
+                  title="Mentor Sign up"
+                  to="/signup"
+                  icon={<HowToRegOutlinedIcon />} // Or any other icon
                   selected={selected}
                   setSelected={setSelected}
                 />
