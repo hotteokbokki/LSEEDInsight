@@ -243,8 +243,6 @@ const Dashboard = ({ userRole }) => {
           link: schedule.zoom_link, // Use evaluation_id as the unique ID
           status: schedule.status, // Use evaluation_id as the unique ID
         }));
-
-        console.log("✅ Formatted upcokming:", formattedData); // Debugging
         setupcomingSchedules(formattedData);
       } catch (error) {
         console.error("❌ Error fetching evaluations:", error);
@@ -794,7 +792,7 @@ const Dashboard = ({ userRole }) => {
               paddingLeft={2}
               paddingright={2}
             >
-              <SEPerformanceTrendChart />
+              <SEPerformanceTrendChart userRole={userRole}/>
             </Box>
 
             {/* Left Section (Stat Boxes) */}
@@ -1510,7 +1508,7 @@ const Dashboard = ({ userRole }) => {
               Upcoming Mentoring Sessions
             </Typography>
 
-            {mockSessions.length > 0 ? (
+            {upcomingSchedules.length > 0 ? (
               <Box
                 height="400px"
                 minHeight="400px"

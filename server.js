@@ -84,7 +84,7 @@ const { getMentorQuestions } = require("./controllers/mentorEvaluationsQuestions
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
 const { getUpcomingSchedulesForMentor } = require("./controllers/mentoringSessionController.js");
 const mentorshipRoutes = require("./routes/mentorships");
-const { getProgramCoordinators } = require("./controllers/programAssignmentController.js");
+const { getProgramCoordinators, getProgramAssignment } = require("./controllers/programAssignmentController.js");
 const app = express();
 
 
@@ -868,6 +868,27 @@ app.get("/api/get-programs", async (req, res) => {
   }
 });
 
+app.get("/api/get-program-coordinator", async (req, res) => {
+  try {
+    const userId = req.query.user_id; // Extract user_id from query string
+
+    if (!userId) {
+      return res.status(400).json({ message: "Missing user_id parameter" });
+    }
+
+    const programCoordinators = await getProgramAssignment(userId); // Pass userId to controller
+
+    if (!programCoordinators || programCoordinators.length === 0) {
+      return res.status(404).json({ message: "No programs found for this user" });
+    }
+
+    res.json(programCoordinators);
+  } catch (error) {
+    console.error("Error fetching program coordinator:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.put("/api/admin/users/:id", async (req, res) => {
   const { id } = req.params;
   const updatedUser = req.body;
@@ -1153,9 +1174,10 @@ app.get("/api/top-se-performance", async (req, res) => {
   try {
     // Capture the period from query params
     const period = req.query.period; 
+    const program = req.query.program || null; // Optional program param
 
     // Fetch the top SE performance based on the period
-    const result = await getTopSEPerformance(period);
+    const result = await getTopSEPerformance(period, program);
 
     // If no data is found
     if (result.length === 0) {

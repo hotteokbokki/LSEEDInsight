@@ -29,3 +29,24 @@ exports.getProgramCoordinators = async () => {
     return null;
   }
 };
+
+exports.getProgramAssignment = async (user_id) => {
+  try {
+    const query = `
+      SELECT p.name FROM program_assignment AS pa
+      JOIN users AS u ON u.user_id = pa.user_id
+      JOIN programs AS p ON pa.program_id = p.program_id
+      WHERE pa.user_id = $1;
+    `;
+    const result = await pgDatabase.query(query, [user_id]);
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return result.rows;
+  } catch (error) {
+    console.error("Error fetching program coordinators:", error);
+    return null;
+  }
+};

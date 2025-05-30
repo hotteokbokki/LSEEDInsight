@@ -4,19 +4,35 @@ import LineChart from "./LineChart";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
 
-const SEPerformanceTrendChart = () => {
+const SEPerformanceTrendChart = ({userRole}) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [topPerformers, setTopPerformers] = useState([]);
   const [period, setPeriod] = useState("overall");
   const [topPerformer, setTopPerformer] = useState(null);
+  const userSession = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
     const fetchTopPerformers = async () => {
       try {
-        const response = await fetch(
-          `http://localhost:4000/api/top-se-performance?period=${period}`
-        );
+        let response;
+
+        if (userRole === "LSEED-Coordinator") {
+          const res = await fetch(
+            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
+          );
+
+          const data = await res.json();
+          const program = data[0]?.name; // Get the program name, e.g., "KAYA"
+          response = await fetch(
+            `http://localhost:4000/api/top-se-performance?period=${period}&program=${program}`
+          );
+        } else {
+          response = await fetch(
+            `http://localhost:4000/api/top-se-performance?period=${period}`
+          );
+        }
+
         const data = await response.json();
         const formattedData = Array.isArray(data) ? data : [];
 
