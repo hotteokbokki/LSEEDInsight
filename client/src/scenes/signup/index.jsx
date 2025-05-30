@@ -25,11 +25,11 @@ const SignupPage = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
-  const [openDialog, setOpenDialog] = useState(false);
-  const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false); // Snackbar state
+  const [openMentorDialog, setOpenMentorDialog] = useState(false);
+  const [isMentorSuccessPopupOpen, setIsMentorSuccessPopupOpen] =
+    useState(false);
 
-  // Form state
-  const [form, setForm] = useState({
+  const [mentorForm, setMentorForm] = useState({
     agree: false,
     fullName: "",
     email: "",
@@ -42,58 +42,57 @@ const SignupPage = () => {
     communicationMode: [],
   });
 
-  const [error, setError] = useState("");
+  const [mentorFormError, setMentorFormError] = useState("");
 
-  const handleChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+  const handleMentorFormChange = (field, value) => {
+    setMentorForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleMentorshipSignup = () => {
-    setOpenDialog(true);
+  const handleMentorSignupClick = () => {
+    setOpenMentorDialog(true);
   };
 
-  const handleClose = () => {
-    setOpenDialog(false);
-    setError("");
-    window.location.reload(); // Refresh on cancel
+  const handleMentorFormClose = () => {
+    setOpenMentorDialog(false);
+    setMentorFormError("");
+    window.location.reload();
   };
 
-  const isFormValid = () => {
+  const isMentorFormValid = () => {
     const requiredFields = [
-      form.agree,
-      form.fullName,
-      form.email,
-      form.affiliation,
-      form.motivation,
-      form.expertise,
-      form.businessAreas.length > 0,
-      form.preferredTime,
-      form.communicationMode.length > 0,
+      mentorForm.agree,
+      mentorForm.fullName,
+      mentorForm.email,
+      mentorForm.affiliation,
+      mentorForm.motivation,
+      mentorForm.expertise,
+      mentorForm.businessAreas.length > 0,
+      mentorForm.preferredTime,
+      mentorForm.communicationMode.length > 0,
     ];
     return requiredFields.every(Boolean);
   };
 
-  const handleSubmit = () => {
-    if (!isFormValid()) {
-      setError("Please fill out all required fields.");
+  const handleMentorFormSubmit = () => {
+    if (!isMentorFormValid()) {
+      setMentorFormError("Please fill out all required fields.");
       return;
     }
 
-    console.log("Form submitted:", form);
-    setIsSuccessEditPopupOpen(true);
+    console.log("Mentor Form submitted:", mentorForm);
+    setIsMentorSuccessPopupOpen(true);
 
     setTimeout(() => {
-      window.location.reload(); // Refresh after success
-    }, 1000); // Match Snackbar duration
+      window.location.reload();
+    }, 1000);
   };
+
   return (
     <Box m="20px">
-      {/* HEADER */}
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Header title="Mentor Signup" subtitle="Sign up page for Mentors" />
       </Box>
 
-      {/* Signup Button Box */}
       <Box
         display="flex"
         flexDirection="column"
@@ -109,7 +108,7 @@ const SignupPage = () => {
           gap={2}
         >
           <Button
-            onClick={handleMentorshipSignup}
+            onClick={handleMentorSignupClick}
             variant="contained"
             color="secondary"
             sx={{ fontSize: "16px", py: "10px", flexGrow: 1 }}
@@ -119,10 +118,9 @@ const SignupPage = () => {
         </Box>
       </Box>
 
-      {/* Dialog Box */}
       <Dialog
-        open={openDialog}
-        onClose={handleClose}
+        open={openMentorDialog}
+        onClose={handleMentorFormClose}
         maxWidth="md"
         fullWidth
         PaperProps={{
@@ -148,12 +146,11 @@ const SignupPage = () => {
           sx={{
             display: "flex",
             flexDirection: "column",
-            gap: "24px", // Increased spacing between all elements
+            gap: "24px",
             py: 2,
             color: "#000",
           }}
         >
-          {/* Agreement Section */}
           <Box>
             <Typography
               variant="body2"
@@ -162,25 +159,15 @@ const SignupPage = () => {
             >
               Good day, Volunteer Mentors! Thank you once again for your
               interest in joining our panel of mentors for LSEED Mentoring. We
-              truly appreciate it! For an overview, LSEED Mentoring is a
-              three-phase online coaching & mentoring initiative of the
-              Lasallian Social Enterprise for Economic Development (LSEED)
-              Center, for Lasallian social entrepreneurs and partners. It also
-              serves as a strategy to help Lasallian social enterprises to
-              develop new mechanisms in order to adapt to the ever changing
-              landscape of SE in the country. In order to properly coordinate
-              mentoring session schedules, we would like to inquire of your
-              availability this Academic Year. Your response to this survey will
-              serve as options of our students/mentees when choosing a schedule
-              for the mentoring sessions. For questions and/or clarifications,
-              you may get in touch with us through email: lseed@dlsu.edu.ph
-              norby.salonga@dlsu.edu.ph
+              truly appreciate it! ...
             </Typography>
             <FormControlLabel
               control={
                 <Checkbox
-                  checked={form.agree}
-                  onChange={(e) => handleChange("agree", e.target.checked)}
+                  checked={mentorForm.agree}
+                  onChange={(e) =>
+                    handleMentorFormChange("agree", e.target.checked)
+                  }
                   sx={{ color: "#000", "&.Mui-checked": { color: "#000" } }}
                 />
               }
@@ -188,7 +175,6 @@ const SignupPage = () => {
             />
           </Box>
 
-          {/* Text Fields */}
           {[
             { label: "Full Name", key: "fullName" },
             { label: "Email", key: "email" },
@@ -210,8 +196,10 @@ const SignupPage = () => {
               required
               multiline={field.multiline}
               minRows={field.multiline ? 2 : undefined}
-              value={form[field.key]}
-              onChange={(e) => handleChange(field.key, e.target.value)}
+              value={mentorForm[field.key]}
+              onChange={(e) =>
+                handleMentorFormChange(field.key, e.target.value)
+              }
               InputProps={{ style: { color: "#000" } }}
               InputLabelProps={{ style: { color: "#000" } }}
               sx={{
@@ -224,15 +212,16 @@ const SignupPage = () => {
             />
           ))}
 
-          {/* Business Areas Multi-Select */}
           <FormControl fullWidth required>
             <InputLabel sx={{ color: "#000" }}>
               Business Areas (select multiple)
             </InputLabel>
             <Select
               multiple
-              value={form.businessAreas}
-              onChange={(e) => handleChange("businessAreas", e.target.value)}
+              value={mentorForm.businessAreas}
+              onChange={(e) =>
+                handleMentorFormChange("businessAreas", e.target.value)
+              }
               renderValue={(selected) => selected.join(", ")}
               sx={{
                 color: "#000",
@@ -265,19 +254,20 @@ const SignupPage = () => {
                 "Social Impact",
               ].map((area) => (
                 <MenuItem key={area} value={area}>
-                  <Checkbox checked={form.businessAreas.includes(area)} />
+                  <Checkbox checked={mentorForm.businessAreas.includes(area)} />
                   <Typography color="white">{area}</Typography>
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
 
-          {/* Preferred Time */}
           <FormControl fullWidth required>
             <InputLabel sx={{ color: "#000" }}>Preferred Time</InputLabel>
             <Select
-              value={form.preferredTime}
-              onChange={(e) => handleChange("preferredTime", e.target.value)}
+              value={mentorForm.preferredTime}
+              onChange={(e) =>
+                handleMentorFormChange("preferredTime", e.target.value)
+              }
               sx={{
                 color: "#000",
                 "& .MuiOutlinedInput-notchedOutline": { borderColor: "#000" },
@@ -299,13 +289,14 @@ const SignupPage = () => {
             </Select>
           </FormControl>
 
-          {/* Specific Time (conditional) */}
-          {form.preferredTime === "Other" && (
+          {mentorForm.preferredTime === "Other" && (
             <TextField
               label="Specify preferred time"
               fullWidth
-              value={form.specificTime}
-              onChange={(e) => handleChange("specificTime", e.target.value)}
+              value={mentorForm.specificTime}
+              onChange={(e) =>
+                handleMentorFormChange("specificTime", e.target.value)
+              }
               InputProps={{ style: { color: "#000" } }}
               InputLabelProps={{ style: { color: "#000" } }}
               sx={{
@@ -318,14 +309,13 @@ const SignupPage = () => {
             />
           )}
 
-          {/* Communication Modes */}
           <FormControl fullWidth required>
             <InputLabel sx={{ color: "#000" }}>Communication Modes</InputLabel>
             <Select
               multiple
-              value={form.communicationMode}
+              value={mentorForm.communicationMode}
               onChange={(e) =>
-                handleChange("communicationMode", e.target.value)
+                handleMentorFormChange("communicationMode", e.target.value)
               }
               renderValue={(selected) => selected.join(", ")}
               sx={{
@@ -347,43 +337,38 @@ const SignupPage = () => {
                 "Other",
               ].map((mode) => (
                 <MenuItem key={mode} value={mode}>
-                  <Checkbox checked={form.communicationMode.includes(mode)} />
+                  <Checkbox
+                    checked={mentorForm.communicationMode.includes(mode)}
+                  />
                   <Typography color="white">{mode}</Typography>
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
 
-          {error && <Alert severity="error">{error}</Alert>}
+          {mentorFormError && <Alert severity="error">{mentorFormError}</Alert>}
         </DialogContent>
 
-        <DialogActions
-          sx={{
-            padding: "16px",
-            borderTop: "1px solid #000",
-          }}
-        >
+        <DialogActions sx={{ padding: "16px", borderTop: "1px solid #000" }}>
           <Button
-            onClick={handleClose}
+            onClick={handleMentorFormClose}
             sx={{
               color: "#000",
               border: "1px solid #000",
-              "&:hover": {
-                backgroundColor: "#f0f0f0",
-              },
+              "&:hover": { backgroundColor: "#f0f0f0" },
             }}
           >
             Cancel
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={handleMentorFormSubmit}
             variant="contained"
-            disabled={!isFormValid()}
+            disabled={!isMentorFormValid()}
             sx={{
-              backgroundColor: isFormValid() ? "#1E4D2B" : "#A0A0A0",
+              backgroundColor: isMentorFormValid() ? "#1E4D2B" : "#A0A0A0",
               color: "#fff",
               "&:hover": {
-                backgroundColor: isFormValid() ? "#145A32" : "#A0A0A0",
+                backgroundColor: isMentorFormValid() ? "#145A32" : "#A0A0A0",
               },
             }}
           >
@@ -392,15 +377,14 @@ const SignupPage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar Success Message */}
       <Snackbar
-        open={isSuccessEditPopupOpen}
+        open={isMentorSuccessPopupOpen}
         autoHideDuration={3000}
-        onClose={() => setIsSuccessEditPopupOpen(false)}
+        onClose={() => setIsMentorSuccessPopupOpen(false)}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert
-          onClose={() => setIsSuccessEditPopupOpen(false)}
+          onClose={() => setIsMentorSuccessPopupOpen(false)}
           severity="success"
           sx={{ width: "100%" }}
         >

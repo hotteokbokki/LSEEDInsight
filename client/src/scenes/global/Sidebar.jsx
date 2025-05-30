@@ -303,14 +303,6 @@ const Sidebar = () => {
                   selected={selected}
                   setSelected={setSelected}
                 />
-
-                <Item
-                  title="Mentor Sign up"
-                  to="/signup"
-                  icon={<HowToRegOutlinedIcon />} // Or any other icon
-                  selected={selected}
-                  setSelected={setSelected}
-                />
               </>
             )}
           </Box>
