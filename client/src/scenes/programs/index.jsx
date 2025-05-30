@@ -13,7 +13,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import { Snackbar, Alert } from "@mui/material";
 
 const ProgramPage = () => {
-  const [users, setUsers] = useState([]);
+  const [coordinators, setCoordinators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false); // Toggle editing mode
@@ -26,85 +26,32 @@ const ProgramPage = () => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [selectedUser, setSelectedUser] = useState(null); // Track selected user
 
+    // Fetch coordinators and programs on mount
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchCoordinators = async () => {
       try {
-        setLoading(true);
-        const response = await fetch(`http://localhost:4000/api/admin/users`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch users");
-        }
+        const response = await fetch(`http://localhost:4000/api/get-programs`);
+        if (!response.ok) throw new Error("Failed to fetch coordinators");
+
         const data = await response.json();
-        setUsers(data);
-      } catch (err) {
-        setError(err.message || "An error occurred while fetching users.");
-      } finally {
-        setLoading(false);
+
+        // Map data to include a coordinator_name field used by DataGrid columns
+        const mappedData = data.map((item) => ({
+          ...item,
+          coordinator_name: item.program_coordinator?.trim() || "-- No Coordinator Assigned --",
+          program_description: item.description || "—", // normalize key for description
+          coordinator_email: item.coordinator_email || "—",
+        }));
+
+        setCoordinators(mappedData);
+      } catch (error) {
+        setSnackbarMessage(error.message || "Error fetching coordinators");
+        setSnackbarOpen(true);
       }
     };
-    fetchUsers();
+
+    fetchCoordinators();
   }, []);
-
-  if (loading) {
-    return (
-      <Box m="20px">
-        <Typography variant="h5">Loading users...</Typography>
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box m="20px">
-        <Typography variant="h5" color={colors.redAccent[500]}>
-          {error}
-        </Typography>
-      </Box>
-    );
-  }
-
-  const columns = [
-    {
-      field: "coordinator_name",
-      headerName: "Program Coordinator",
-      flex: 1,
-      editable: isEditing, // Allow editing only when editing mode is enabled
-      renderEditCell: (params) => {
-        return (
-          <Select
-            value={params.value}
-            onChange={(e) => {
-              params.api.setEditCellValue({
-                id: params.id,
-                field: params.field,
-                value: e.target.value,
-              });
-            }}
-            fullWidth
-          >
-            {users.map((user) => (
-              <MenuItem
-                key={user.user_id}
-                value={`${user.first_name} ${user.last_name}`}
-              >
-                {user.first_name} {user.last_name}
-              </MenuItem>
-            ))}
-          </Select>
-        );
-      },
-    },
-    {
-      field: "program_name",
-      headerName: "Program",
-      flex: 1,
-    },
-    {
-      field: "program_description",
-      headerName: "Description",
-      flex: 2,
-    },
-  ];
 
   const toggleEditing = () => {
     if (!selectedUser || selectedUser.isactive) {
@@ -116,18 +63,15 @@ const ProgramPage = () => {
     }
   };
 
-  // Close Snackbar Function
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
   };
 
-  // Handle row updates
+  // Handle inline editing update for a coordinator/program
   const handleRowUpdate = async (updatedRow, oldRow) => {
-    console.log("Updating user:", updatedRow);
-
     try {
       const response = await fetch(
-        `http://localhost:4000/api/admin/users/${updatedRow.user_id}`, // ✅ Use `user_id`
+        `http://localhost:4000/api/admin/users/${updatedRow.user_id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -136,35 +80,76 @@ const ProgramPage = () => {
       );
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to update user: ${response.status} ${response.statusText}`
-        );
+        throw new Error(`Failed to update user: ${response.status} ${response.statusText}`);
       }
 
       const { user: updatedUser } = await response.json();
-      console.log("User updated successfully:", updatedUser);
 
-      setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user.user_id === updatedUser.user_id ? updatedUser : user
-        )
+      setCoordinators((prev) =>
+        prev.map((item) => (item.user_id === updatedUser.user_id ? updatedUser : item))
       );
 
-      return updatedUser; // Ensure the DataGrid updates immediately
+      return updatedUser;
     } catch (error) {
       console.error("Error updating user:", error);
-      // return oldRow; // ❌ Revert changes if the update fails
+      // Optionally revert changes here
+      return oldRow;
     }
   };
+
+  // Define columns, note `coordinator_name` is the mapped field
+  const columns = [
+    {
+      field: "coordinator_name",
+      headerName: "Program Coordinator",
+      flex: 1,
+      editable: isEditing,
+      renderEditCell: (params) => (
+        <Select
+          value={params.value}
+          onChange={(e) => {
+            params.api.setEditCellValue({
+              id: params.id,
+              field: params.field,
+              value: e.target.value,
+            });
+          }}
+          fullWidth
+        >
+          {/* Use coordinators to populate dropdown options for example */}
+          {coordinators.map((user) => (
+            <MenuItem
+              key={user.coordinator_id || user.user_id}
+              value={user.coordinator_name}
+            >
+              {user.coordinator_name}
+            </MenuItem>
+          ))}
+        </Select>
+      ),
+    },
+    {
+      field: "program_name",
+      headerName: "Program",
+      flex: 1,
+    },
+    {
+      field: "program_description",
+      headerName: "Description",
+      flex: 2,
+    },
+    {
+      field: "coordinator_email",
+      headerName: "Email",
+      flex: 2,
+    },
+  ];
 
   return (
     <Box m="20px">
       {/* HEADER */}
       <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Header
-          title="PROGRAMS PAGE"
-          subtitle="View and Manage program assignment"
-        />
+        <Header title="PROGRAMS PAGE" subtitle="View and Manage program assignment" />
       </Box>
 
       <Box display="flex" alignItems="center" gap={2} mb={2}>
@@ -174,16 +159,14 @@ const ProgramPage = () => {
             sx={{
               backgroundColor: colors.blueAccent[500],
               color: "black",
-              "&:hover": {
-                backgroundColor: colors.blueAccent[800],
-              },
+              "&:hover": { backgroundColor: colors.blueAccent[800] },
             }}
             onClick={toggleEditing}
           >
             Enable Editing
           </Button>
         )}
-        {/* Cancel and Save Changes Buttons */}
+
         {showEditButtons && (
           <>
             <Button
@@ -191,16 +174,12 @@ const ProgramPage = () => {
               sx={{
                 backgroundColor: colors.redAccent[500],
                 color: "black",
-                "&:hover": {
-                  backgroundColor: colors.redAccent[600],
-                },
+                "&:hover": { backgroundColor: colors.redAccent[600] },
               }}
               onClick={() => {
-                setIsEditing(false); // Disable editing mode
+                setIsEditing(false);
                 setShowEditButtons(false);
-                setTimeout(() => {
-                  window.location.reload();
-                }, 500); // Adjust delay if needed
+                setTimeout(() => window.location.reload(), 500);
               }}
             >
               Cancel
@@ -211,17 +190,13 @@ const ProgramPage = () => {
               sx={{
                 backgroundColor: colors.blueAccent[500],
                 color: "black",
-                "&:hover": {
-                  backgroundColor: colors.blueAccent[600],
-                },
+                "&:hover": { backgroundColor: colors.blueAccent[600] },
               }}
               onClick={() => {
-                setIsEditing(false); // Disable editing mode
+                setIsEditing(false);
                 setShowEditButtons(false);
                 setIsSuccessEditPopupOpen(true);
-                setTimeout(() => {
-                  window.location.reload();
-                }, 500); // Adjust delay if needed
+                setTimeout(() => window.location.reload(), 500);
               }}
             >
               Save Changes
@@ -229,11 +204,12 @@ const ProgramPage = () => {
           </>
         )}
       </Box>
+
       <Snackbar
         open={isSuccessEditPopupOpen}
-        autoHideDuration={3000} // Automatically close after 3 seconds
-        onClose={() => setIsSuccessEditPopupOpen(false)} // Close on click or timeout
-        anchorOrigin={{ vertical: "top", horizontal: "center" }} // Position of the popup
+        autoHideDuration={3000}
+        onClose={() => setIsSuccessEditPopupOpen(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert
           onClose={() => setIsSuccessEditPopupOpen(false)}
@@ -244,7 +220,6 @@ const ProgramPage = () => {
         </Alert>
       </Snackbar>
 
-      {/* Manage Users */}
       <Box width="100%" backgroundColor={colors.primary[400]} padding="20px">
         <Typography
           variant="h3"
@@ -275,34 +250,31 @@ const ProgramPage = () => {
           }}
         >
           <DataGrid
-            rows={users.map((user) => ({
-              id: user.user_id,
-              coordinator_name: `${user.first_name} ${user.last_name}`,
-              program_name: user.program_name || "—",
-              program_description: user.program_description || "—",
-              user_id: user.user_id,
+            rows={coordinators.map((item) => ({
+              id: item.program_id, // Unique row id
+              user_id: item.coordinator_id, // For API calls
+              coordinator_name: item.coordinator_name,
+              program_name: item.program_name || "—",
+              program_description: item.program_description || "—",
+              coordinator_email: item.coordinator_email,
             }))}
             columns={columns}
             pageSize={5}
             rowsPerPageOptions={[5, 10]}
             getRowId={(row) => row.id}
-            processRowUpdate={handleRowUpdate} // Enable inline save
-            experimentalFeatures={{ newEditingApi: true }} // Required for `processRowUpdate`
+            processRowUpdate={handleRowUpdate}
+            experimentalFeatures={{ newEditingApi: true }}
             disableSelectionOnClick
           />
 
-          {/* Snackbar for error messages */}
+          {/* Snackbar for error */}
           <Snackbar
             open={snackbarOpen}
             autoHideDuration={3000}
             onClose={handleSnackbarClose}
             anchorOrigin={{ vertical: "top", horizontal: "center" }}
           >
-            <Alert
-              onClose={handleSnackbarClose}
-              severity="warning"
-              sx={{ width: "100%" }}
-            >
+            <Alert onClose={handleSnackbarClose} severity="warning" sx={{ width: "100%" }}>
               {snackbarMessage}
             </Alert>
           </Snackbar>

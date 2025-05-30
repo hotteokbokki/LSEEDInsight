@@ -84,6 +84,7 @@ const { getMentorQuestions } = require("./controllers/mentorEvaluationsQuestions
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
 const { getUpcomingSchedulesForMentor } = require("./controllers/mentoringSessionController.js");
 const mentorshipRoutes = require("./routes/mentorships");
+const { getProgramCoordinators } = require("./controllers/programAssignmentController.js");
 const app = express();
 
 
@@ -844,13 +845,25 @@ app.get("/api/mentorSchedules", async (req, res) => {
 app.get("/api/admin/users", async (req, res) => {
   try {
     const users = await getUsers(); // Fetch users from DB
-    // console.log("[server] Fetched users:", users); // Debug here
     if (!users || users.length === 0) {
       return res.status(404).json({ message: "No users found" });
     }
     res.json(users);
   } catch (error) {
     console.error("Error fetching users:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/get-programs", async (req, res) => {
+  try {
+    const programCoordinators = await getProgramCoordinators(); // Fetch users from DB
+    if (!programCoordinators || programCoordinators.length === 0) {
+      return res.status(404).json({ message: "No users found" });
+    }
+    res.json(programCoordinators);
+  } catch (error) {
+    console.error("Error fetching program coordinators:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
