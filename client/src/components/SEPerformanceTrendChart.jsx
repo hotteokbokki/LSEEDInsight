@@ -86,29 +86,52 @@ const SEPerformanceTrendChart = ({userRole}) => {
       colors.grey[500],
     ];
 
-    data.forEach(({ social_enterprise, month, avg_rating }) => {
-      const date = new Date(month);
-      const periodLabel = `${date.getFullYear()}-Q${
-        Math.floor(date.getMonth() / 3) + 1
-      }`;
-
-      if (!groupedData[social_enterprise]) {
-        groupedData[social_enterprise] = [];
-      }
-      groupedData[social_enterprise].push({
-        x: periodLabel,
-        y: parseFloat(avg_rating),
-      });
+    // 1. Extract all unique quarters (period labels) from data
+    const allPeriodsSet = new Set();
+    data.forEach(({ quarter_start }) => {
+      const date = new Date(quarter_start);
+      const periodLabel = `${date.getFullYear()}-Q${Math.floor(date.getMonth() / 3) + 1}`;
+      allPeriodsSet.add(periodLabel);
     });
 
-    return Object.keys(groupedData).map((seName, index) => ({
-      id: seName,
-      color: colorList[index % colorList.length],
-      data: groupedData[seName].sort((a, b) => a.x.localeCompare(b.x)),
-    }));
+    // 2. Sort quarters chronologically (by year and quarter number)
+    const allPeriods = Array.from(allPeriodsSet).sort((a, b) => {
+      const [aYear, aQ] = a.split('-Q').map(Number);
+      const [bYear, bQ] = b.split('-Q').map(Number);
+      if (aYear !== bYear) return aYear - bYear;
+      return aQ - bQ;
+    });
+
+    // 3. Group ratings by social_enterprise and quarter
+    data.forEach(({ social_enterprise, quarter_start, avg_rating }) => {
+      const date = new Date(quarter_start);
+      const periodLabel = `${date.getFullYear()}-Q${Math.floor(date.getMonth() / 3) + 1}`;
+
+      if (!groupedData[social_enterprise]) {
+        groupedData[social_enterprise] = {};
+      }
+      groupedData[social_enterprise][periodLabel] = parseFloat(avg_rating);
+    });
+
+    // 4. For each social enterprise, build data array with all quarters, filling missing with null
+    return Object.keys(groupedData).map((seName, index) => {
+      const seData = allPeriods.map((period) => ({
+        x: period,
+        y: groupedData[seName][period] ?? 0,
+      }));
+
+      return {
+        id: seName,
+        color: colorList[index % colorList.length],
+        data: seData,
+      };
+    });
   };
 
+
   const chartData = formatChartData(topPerformers);
+
+  console.log("Chart Data: ", chartData)
 
   return (
     <Box
