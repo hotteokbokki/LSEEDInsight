@@ -68,14 +68,17 @@ exports.getAllSocialEnterprises = async () => {
   }
 };
 
-exports.getAllSocialEnterprisesForComparison = async () => {
+exports.getAllSocialEnterprisesForComparison = async (program = null) => {
   try {
-
+    let programFilter = program ? `WHERE p.name = '${program}'` : '';
+    
     // Query to get a social enterprise by se_id
     const query = `
         SELECT DISTINCT se.*
         FROM socialenterprises se
-        JOIN evaluations e ON se.se_id = e.se_id;
+        JOIN evaluations e ON se.se_id = e.se_id
+        JOIN programs p ON p.program_id = se.program_id
+        ${programFilter};
         `;
     const res = await pgDatabase.query(query);
     
@@ -91,33 +94,40 @@ exports.getAllSocialEnterprisesForComparison = async () => {
   }
 };
 
-exports.getFlaggedSEs = async () => {
+exports.getFlaggedSEs = async (program = null) => {
   try {
+    let programFilter = program ? ` AND p.name = '${program}'` : '';
 
     // Query to get a social enterprise by se_id
     const query = `
-        WITH recent_evaluations AS (
-            SELECT 
-                e.se_id,  
-                AVG(ec.rating) AS avg_rating
-            FROM public.evaluation_categories ec
-            JOIN public.evaluations e ON ec.evaluation_id = e.evaluation_id
-            WHERE e.evaluation_type = 'Social Enterprise'
-            GROUP BY e.se_id
-        )
-        SELECT 
-            se.se_id,
-            TRIM(se.team_name) AS team_name,
-            TRIM(COALESCE(se.abbr, se.team_name)) AS abbr,  
-            COALESCE(ROUND(re.avg_rating, 2), 0) AS avg_rating,  -- Replace NULL with 0
-            CASE 
-                WHEN re.avg_rating IS NULL THEN 'No Evaluations'  
-                ELSE 'Evaluated'
-            END AS evaluation_status  -- Mark SEs without evaluations
-        FROM public.socialenterprises se
-        LEFT JOIN recent_evaluations re ON se.se_id = re.se_id
-        WHERE re.avg_rating < 1.5 OR re.avg_rating IS NULL  -- 🔥 Filter condition
-        ORDER BY avg_rating ASC, evaluation_status DESC;
+       WITH recent_evaluations AS (
+          SELECT 
+              e.se_id,  
+              AVG(ec.rating) AS avg_rating
+          FROM evaluation_categories ec
+          JOIN evaluations e ON ec.evaluation_id = e.evaluation_id
+          JOIN socialenterprises s ON s.se_id = e.se_id
+          JOIN programs p ON p.program_id = s.program_id
+          WHERE e.evaluation_type = 'Social Enterprise'
+           ${programFilter}
+          GROUP BY e.se_id
+      )
+
+      SELECT 
+          se.se_id,
+          TRIM(se.team_name) AS team_name,
+          TRIM(COALESCE(se.abbr, se.team_name)) AS abbr,
+          COALESCE(ROUND(re.avg_rating, 2), 0) AS avg_rating,
+          CASE 
+              WHEN re.avg_rating IS NULL THEN 'No Evaluations'
+              ELSE 'Evaluated'
+          END AS evaluation_status
+      FROM socialenterprises se
+      JOIN programs p ON p.program_id = se.program_id  -- ✅ Include programs in outer query
+      LEFT JOIN recent_evaluations re ON se.se_id = re.se_id
+      WHERE (re.avg_rating < 1.5 OR re.avg_rating IS NULL)
+        ${programFilter}  -- ✅ Ensure SEs belong to the same program
+      ORDER BY avg_rating ASC, evaluation_status DESC;
         `;
     const res = await pgDatabase.query(query);
     
@@ -170,8 +180,10 @@ exports.getAllSocialEnterpriseswithMentorID = async (mentor_id) => {
   }
 };
 
-exports.getAllSocialEnterprisesWithMentorship = async () => {
+exports.getAllSocialEnterprisesWithMentorship = async (program = null) => {
   try {
+      let programFilter = program ? `WHERE p.name = '${program}'` : '';
+
       const query = `
       SELECT 
           se.se_id, 
@@ -194,9 +206,10 @@ exports.getAllSocialEnterprisesWithMentorship = async () => {
       LEFT JOIN mentorships AS ms ON se.se_id = ms.se_id
       LEFT JOIN mentors AS m ON ms.mentor_id = m.mentor_id
       LEFT JOIN programs AS p ON se.program_id = p.program_id -- ✅ Join with programs table
-      GROUP BY se.se_id, se.team_name, p.name;
+      ${programFilter}
+      GROUP BY se.se_id, se.team_name, p.name
       `;
-
+      console.log("New Query: ", query)
       const result = await pgDatabase.query(query);
       return result.rows.length ? result.rows : [];
   } catch (error) {
@@ -292,10 +305,14 @@ exports.updateSocialEnterpriseStatus = async (se_id, isActive) => {
   }
 };
 
-exports.getTotalSECount = async () => {
+exports.getTotalSECount = async (program = null) => {
   try {
+      let programFilter = program ? `p.name = '${program}'` : '';
+
       const query = `
-        SELECT COUNT(*) FROM socialenterprises
+        SELECT COUNT(*) FROM socialenterprises AS s
+        JOIN programs AS p ON p.program_id = s.program_id
+        WHERE ${programFilter};
       `;
       const result = await pgDatabase.query(query);
       return result.rows;
@@ -363,12 +380,16 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
   }
 };
 
-exports.getPreviousTotalSECount = async () => {
+exports.getPreviousTotalSECount = async (program = null) => {
   try {
+      let programFilter = program ? `AND p.name = '${program}'` : '';
+
       const query = `
         SELECT COUNT(*) AS count 
-        FROM socialenterprises 
-        WHERE created_at < NOW() - INTERVAL '1 month';
+        FROM socialenterprises AS s
+        JOIN programs AS p ON p.program_id = s.program_id
+        WHERE s.created_at < NOW() - INTERVAL '1 month'
+        ${programFilter};
       `;
       const result = await pgDatabase.query(query);
       return result.rows;
@@ -378,14 +399,18 @@ exports.getPreviousTotalSECount = async () => {
   }
 };
 
-exports.getSEWithOutMentors = async () => {
+exports.getSEWithOutMentors = async (program = null) => {
   try {
+      let programFilter = program ? `AND p.name = '${program}'` : '';
+
       const query = `
           SELECT COUNT(*) AS total_se_without_mentors
-          FROM socialenterprises 
-          WHERE se_id NOT IN (
-              SELECT DISTINCT se_id FROM mentorships WHERE status = 'Active'
-          );
+          FROM socialenterprises AS s
+          JOIN programs AS p ON p.program_id = s.program_id
+              WHERE s.se_id NOT IN (
+                  SELECT DISTINCT se_id FROM mentorships WHERE status = 'Active'
+              )
+          ${programFilter};
       `;
 
       const result = await pgDatabase.query(query);

@@ -4,18 +4,34 @@ import { tokens } from "../theme";
 import { useState, useEffect } from "react";
 import { Box, Select, MenuItem, Typography } from "@mui/material";
 
-const HeatmapWrapper = () => {
+const HeatmapWrapper = ( {userRole} ) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [heatMapStats, setHeatMapStats] = useState([]);
   const [period, setPeriod] = useState("overall"); // Default to quarterly
+  const userSession = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
     const fetchHeatMapStats = async () => {
       try {
-        const response = await fetch(
-          `http://localhost:4000/heatmap-stats?period=${period}`
-        );
+        let response;
+
+        if (userRole === 'LSEED-Coordinator') {
+          const res = await fetch(
+            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
+          );
+
+          const data = await res.json();
+          const program = data[0]?.name; 
+
+          response = await fetch(
+            `http://localhost:4000/heatmap-stats?period=${period}&program=${program}`
+          );
+        } else {
+          response = await fetch(
+            `http://localhost:4000/heatmap-stats?period=${period}`
+          );
+        }
         const data = await response.json();
 
         console.log("Fetched Data:", data);

@@ -23,7 +23,7 @@ const SEPerformanceTrendChart = ({userRole}) => {
           );
 
           const data = await res.json();
-          const program = data[0]?.name; // Get the program name, e.g., "KAYA"
+          const program = data[0]?.name; 
           response = await fetch(
             `http://localhost:4000/api/top-se-performance?period=${period}&program=${program}`
           );

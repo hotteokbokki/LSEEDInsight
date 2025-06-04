@@ -413,7 +413,7 @@ exports.getTopSEPerformance = async (period = "overall", program = null) => {
                     JOIN programs p ON p.program_id = s.program_id
                     WHERE
                         e.evaluation_type = 'Social Enterprise'
-                        AND p.name = 'KAYA'
+                        ${programFilter}
                         AND DATE_TRUNC('quarter', e.created_at) IN (SELECT quarter_start FROM AllQuarters)
                 ),
                 QuarterlyRatings AS (
@@ -449,8 +449,6 @@ exports.getTopSEPerformance = async (period = "overall", program = null) => {
         } else {
             throw new Error("Invalid period specified.");
         }
-
-        console.log("This is the query: ", query);
         const result = await pgDatabase.query(query);
         return result.rows;
     } catch (error) {
@@ -458,7 +456,7 @@ exports.getTopSEPerformance = async (period = "overall", program = null) => {
         return [];
     }
 };
-
+// TO DO
 exports.getTopSEPerformanceByMentorships = async (mentor_id, period = "overall") => {
     try {
         let query;
@@ -634,7 +632,7 @@ exports.getTopSEPerformanceByMentorships = async (mentor_id, period = "overall")
         return [];
     }
 };
-
+// TO DO
 exports.getPerformanceTrendBySEID = async (se_id, period = "overall") => {
     try {
         let query;
@@ -868,9 +866,11 @@ exports.getCommonChallengesBySEID = async (se_id) => {
     }
 };
 
-exports.getStatsForHeatmap = async (period = "overall") => {
+exports.getStatsForHeatmap = async (period = "overall", program = null) => {
     try {
         let dateCondition = "";
+        let programFilter = program ? `WHERE p.name = '${program}'` : '';
+
 
         if (period === "quarterly") {
             dateCondition = `
@@ -907,10 +907,11 @@ exports.getStatsForHeatmap = async (period = "overall") => {
                 jsonb_object_agg(re.category_name, re.avg_rating) AS category_ratings  
             FROM recent_evaluations re
             INNER JOIN public.socialenterprises se ON re.se_id = se.se_id  -- 🔥 INNER JOIN ensures only SEs with data
+			JOIN public.programs p ON p.program_id = se.program_id
+			${programFilter}
             GROUP BY se.se_id, se.team_name, se.abbr
             ORDER BY se.team_name;
         `;
-
         const result = await pgDatabase.query(query);
 
         return result.rows.map(row => ({
@@ -948,15 +949,20 @@ exports.getPermanceScoreBySEID = async (se_id) => {
     }
 };
 
-exports.getAverageScoreForAllSEPerCategory = async () => {
+exports.getAverageScoreForAllSEPerCategory = async (program = null) => {
     try {
+        let programFilter = program ? `AND p.name = '${program}'` : '';
+
         const query = `
             SELECT 
                 ec.category_name AS category,
                 ROUND(AVG(ec.rating), 2) AS score
             FROM evaluations e
             JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+            JOIN socialenterprises AS s ON s.se_id = e.se_id
+            JOIN programs AS p ON p.program_id = s.program_id
             WHERE e.evaluation_type = 'Social Enterprise'
+            ${programFilter}
             GROUP BY ec.category_name
             ORDER BY category;
         `;
@@ -984,8 +990,10 @@ exports.getMentorEvaluationCount = async (mentor_id) => {
     }
 };
 
-exports.getAcknowledgementData = async () => {
+exports.getAcknowledgementData = async (program = null) => {
     try {
+        let programFilter = program ? ` AND p.name = '${program}'` : '';
+
         const query = `
             SELECT 
                 CONCAT(t.mentor_id, '-', t."se_ID") AS batch,  -- Grouping by mentor_id and se_ID
@@ -997,8 +1005,10 @@ exports.getAcknowledgementData = async () => {
                 ON e.mentor_id = t.mentor_id 
                 AND e.se_id = t."se_ID"  
             JOIN socialenterprises s 
-                ON t."se_ID" = s.se_id  -- Join with SE table to get the name
+                ON t."se_ID" = s.se_id  
+            JOIN programs AS p ON p.program_id = s.program_id
             WHERE e.evaluation_type = 'Social Enterprise'
+            ${programFilter}
             GROUP BY t.mentor_id, t."se_ID", s.team_name
             ORDER BY COUNT(CASE WHEN e."isAcknowledge" = true THEN 1 END) DESC  -- Sort by acknowledged evaluations
             LIMIT 10;
@@ -1006,13 +1016,15 @@ exports.getAcknowledgementData = async () => {
         const result = await pgDatabase.query(query);
         return result.rows;
     } catch (error) {
-        console.error("❌ Error fetching top SE performance:", error);
+        console.error("❌ Error fetching top ack data:", error);
         return [];
     }
 };
 
-exports.getImprovementScorePerMonthAnnually= async () => {
+exports.getImprovementScorePerMonthAnnually= async (program = null) => {
     try {
+        let programFilter = program ? `AND p.name = '${program}'` : '';
+
         const query = `
             WITH DateRange AS ( -- Dynamically finds the range of evaluations
                 SELECT 
@@ -1037,7 +1049,9 @@ exports.getImprovementScorePerMonthAnnually= async () => {
                 FROM evaluations e
                 JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                 JOIN socialenterprises s ON e.se_id = s.se_id
+                JOIN programs p ON p.program_id = s.program_id
                 WHERE e.evaluation_type = 'Social Enterprise'
+                ${programFilter}
                 GROUP BY e.se_id, s.abbr, month
             ),
             FilledMonths AS ( -- Ensures all months exist, even if no evaluations happened
@@ -1074,13 +1088,22 @@ exports.getImprovementScorePerMonthAnnually= async () => {
     }
 };
 
-exports.getAllEvaluationStats= async () => {
+exports.getAllEvaluationStats= async (program = null) => {
     try {
+        let programFilter = program ? `p.name = '${program}'` : '';
+
         const query = `
             SELECT 
                 COUNT(*) AS totalEvaluations,
                 COUNT(CASE WHEN "isAcknowledge" = true THEN 1 END) AS acknowledgedEvaluations
-            FROM evaluations;
+            FROM 
+                evaluations AS e
+            JOIN 
+                socialenterprises AS s ON e.se_id = s.se_id
+            JOIN 
+                programs AS p ON p.program_id = s.program_id
+            WHERE 
+                ${programFilter};
         `;
         const result = await pgDatabase.query(query);
         return result.rows;
@@ -1146,8 +1169,10 @@ exports.getAcknowledgedEvaluationCount= async (se_id) => {
     }
 };
 
-exports.getGrowthScoreOverallAnually= async () => {
+exports.getGrowthScoreOverallAnually= async (program = null) => {
     try {
+        let programFilter = program ? `AND p.name = '${program}'` : '';
+
         const query = `
             WITH MonthlyRatings AS (
                 SELECT 
@@ -1191,7 +1216,9 @@ exports.getGrowthScoreOverallAnually= async () => {
                 ROUND(g.cumulative_growth_percentage, 2) AS cumulative_growth  -- ✅ Correct column name
             FROM Growth g
             JOIN socialenterprises s ON g.se_id = s.se_id 
+            JOIN programs AS p ON p.program_id = s.program_id
             WHERE g.cumulative_growth_percentage IS NOT NULL
+            ${programFilter}
             ORDER BY g.cumulative_growth_percentage DESC  -- ✅ Correct column name
             LIMIT 1;  -- ✅ Return only 1 record
         `;
@@ -1266,62 +1293,66 @@ exports.getMonthlyGrowthDetails= async () => {
     }
 };
 // Commit
-exports.getSELeaderboards= async () => {
+exports.getSELeaderboards= async (program = null) => {
     try {
+        let programFilter = program ? `AND p.name = '${program}'` : '';
+
         const query = `
-WITH MonthlyRatings AS (
-    SELECT 
-        e.se_id,
-        s.abbr AS social_enterprise, 
-        s.team_name AS full_name,  -- Fetch full name for tooltip
-        DATE_TRUNC('month', e.created_at) AS month,
-        ROUND(AVG(ec.rating), 2) AS avg_rating,
-        COUNT(*) AS eval_count -- Count number of evaluations per SE per month
-    FROM evaluations e
-    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-    JOIN socialenterprises s ON e.se_id = s.se_id
-    WHERE e.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '12 months') -- Allow flexibility for time frame
-        AND e.evaluation_type = 'Social Enterprise'
-    GROUP BY e.se_id, s.abbr, s.team_name, month
-),
-WeightedRatings AS (
-    SELECT 
-        mr.se_id, 
-        mr.social_enterprise,
-        mr.full_name, -- Include full name
-        mr.month,
-        mr.avg_rating,
-        mr.eval_count,
-        CASE
-            WHEN mr.month = DATE_TRUNC('month', CURRENT_DATE) THEN 1.0
-            WHEN mr.month = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') THEN 0.75
-            WHEN mr.month = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '2 months') THEN 0.5
-            ELSE 0.25 -- Past months get decreasing weights
-        END AS weight
-    FROM MonthlyRatings mr
-),
-TopSEs AS (
-    SELECT 
-        wr.se_id,
-        wr.social_enterprise,
-        wr.full_name,
-        SUM(wr.avg_rating * wr.eval_count * wr.weight) / SUM(wr.eval_count * wr.weight) AS weighted_avg_rating,
-        AVG(wr.avg_rating) AS simple_avg_rating
-    FROM WeightedRatings wr
-    GROUP BY wr.se_id, wr.social_enterprise, wr.full_name
-    HAVING COUNT(wr.se_id) >= 3  -- Ensure sufficient evaluations per SE
-    ORDER BY weighted_avg_rating DESC, simple_avg_rating DESC
-    LIMIT 10
-)
-SELECT 
-    t.se_id, 
-    t.social_enterprise,  -- Abbreviated name for axis
-    t.full_name,          -- Full name for tooltip
-    ROUND(t.simple_avg_rating, 2) AS most_recent_avg_rating,
-    ROUND(t.weighted_avg_rating, 2) AS overall_weighted_avg_rating,
-    ROUND(t.simple_avg_rating - t.weighted_avg_rating, 2) AS performance_change -- Ensure 2 decimal places
-FROM TopSEs t
-ORDER BY t.weighted_avg_rating DESC;
+            WITH MonthlyRatings AS (
+                SELECT 
+                    e.se_id,
+                    s.abbr AS social_enterprise, 
+                    s.team_name AS full_name,  -- Fetch full name for tooltip
+                    DATE_TRUNC('month', e.created_at) AS month,
+                    ROUND(AVG(ec.rating), 2) AS avg_rating,
+                    COUNT(*) AS eval_count -- Count number of evaluations per SE per month
+                FROM evaluations e
+                JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
+                JOIN socialenterprises s ON e.se_id = s.se_id
+                JOIN programs AS p ON p.program_id = s.program_id
+                WHERE e.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '12 months') -- Allow flexibility for time frame
+                    AND e.evaluation_type = 'Social Enterprise'
+                    ${programFilter}
+                GROUP BY e.se_id, s.abbr, s.team_name, month
+            ),
+            WeightedRatings AS (
+                SELECT 
+                    mr.se_id, 
+                    mr.social_enterprise,
+                    mr.full_name, -- Include full name
+                    mr.month,
+                    mr.avg_rating,
+                    mr.eval_count,
+                    CASE
+                        WHEN mr.month = DATE_TRUNC('month', CURRENT_DATE) THEN 1.0
+                        WHEN mr.month = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') THEN 0.75
+                        WHEN mr.month = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '2 months') THEN 0.5
+                        ELSE 0.25 -- Past months get decreasing weights
+                    END AS weight
+                FROM MonthlyRatings mr
+            ),
+            TopSEs AS (
+                SELECT 
+                    wr.se_id,
+                    wr.social_enterprise,
+                    wr.full_name,
+                    SUM(wr.avg_rating * wr.eval_count * wr.weight) / SUM(wr.eval_count * wr.weight) AS weighted_avg_rating,
+                    AVG(wr.avg_rating) AS simple_avg_rating
+                FROM WeightedRatings wr
+                GROUP BY wr.se_id, wr.social_enterprise, wr.full_name
+                HAVING COUNT(wr.se_id) >= 3  -- Ensure sufficient evaluations per SE
+                ORDER BY weighted_avg_rating DESC, simple_avg_rating DESC
+                LIMIT 10
+            )
+            SELECT 
+                t.se_id, 
+                t.social_enterprise,  -- Abbreviated name for axis
+                t.full_name,          -- Full name for tooltip
+                ROUND(t.simple_avg_rating, 2) AS most_recent_avg_rating,
+                ROUND(t.weighted_avg_rating, 2) AS overall_weighted_avg_rating,
+                ROUND(t.simple_avg_rating - t.weighted_avg_rating, 2) AS performance_change -- Ensure 2 decimal places
+            FROM TopSEs t
+            ORDER BY t.weighted_avg_rating DESC;
         `;
         const result = await pgDatabase.query(query);
         return result.rows;

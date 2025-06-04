@@ -437,14 +437,15 @@ app.get("/api/mentors", async (req, res) => {
 
 app.get("/api/dashboard-stats", async (req, res) => {
   try {
-    const mentorshipCount = await getMentorCount();
-    const mentorsWithMentorshipCount = await getMentorshipCount();
-    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount();
-    // ✅ Fetch the number of assigned mentors (mentors with at least one active mentorship)
-    const assignedMentors = await getAssignedMentors();
+
+    const program = req.query.program || null; // Optional program param
+
+    const mentorshipCount = await getMentorCount(program);
+    const mentorsWithMentorshipCount = await getMentorshipCount(program);
+    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount(program);
 
     // ✅ Fetch the total number of social enterprises
-    const totalSocialEnterprises = await getTotalSECount();
+    const totalSocialEnterprises = await getTotalSECount(program);
 
     // ✅ Fetch the number of programs
     const totalPrograms = await getProgramCount();
@@ -453,7 +454,6 @@ app.get("/api/dashboard-stats", async (req, res) => {
       mentorCountTotal: mentorshipCount,
       mentorWithMentorshipCount: mentorsWithMentorshipCount,
       mentorWithoutMentorshipCount: mentorsWithoutMentorshipCount,
-      assignedMentors: parseInt(assignedMentors[0].count), // ✅ Fix here
       totalSocialEnterprises: parseInt(totalSocialEnterprises[0].count), // ✅ Fix here
       totalPrograms: parseInt(totalPrograms[0].count), // ✅ Fix here
     });
@@ -489,7 +489,9 @@ app.get("/api/mentor-stats", async (req, res) => {
 
 app.get("/api/pending-schedules", async (req, res) => {
   try {
-    const result = await getPendingSchedules();
+    const program = req.query.program || null; // Optional program param
+
+    const result = await getPendingSchedules(program);
 
     res.json(result);
   } catch (error) {
@@ -500,7 +502,9 @@ app.get("/api/pending-schedules", async (req, res) => {
 
 app.get("/api/flagged-ses", async (req, res) => {
   try {
-    const result = await getFlaggedSEs();
+    const program = req.query.program || null; // Optional program param
+
+    const result = await getFlaggedSEs(program);
 
     res.json(result);
   } catch (error) {
@@ -511,7 +515,9 @@ app.get("/api/flagged-ses", async (req, res) => {
 
 app.get("/ack-data", async (req, res) => {
   try {
-    const result = await getAcknowledgementData();
+    const program = req.query.program || null; // Optional program param
+
+    const result = await getAcknowledgementData(program);
 
     res.json(result);
   } catch (error) {
@@ -522,7 +528,9 @@ app.get("/ack-data", async (req, res) => {
 
 app.get("/api/evaluation-stats", async (req, res) => {
   try {
-    const result = await getAllEvaluationStats();
+    const program = req.query.program || null; // Optional program param
+
+    const result = await getAllEvaluationStats(program);
 
     res.json(result);
   } catch (error) {
@@ -533,12 +541,14 @@ app.get("/api/evaluation-stats", async (req, res) => {
 
 app.get("/api/analytics-stats", async (req, res) => {
   try {
+    const program = req.query.program || null; // Optional program param
+
     // ✅ Fetch data
-    const totalSocialEnterprises = await getTotalSECount();
-    const withMentorship = await getSEWithMentors();
-    const withoutMentorship = await getSEWithOutMentors();
-    const growthScore = await getGrowthScoreOverallAnually();
-    const previousTotalSocialEnterprises = await getPreviousTotalSECount();
+    const totalSocialEnterprises = await getTotalSECount(program);
+    const withMentorship = await getSEWithMentors(program);
+    const withoutMentorship = await getSEWithOutMentors(program);
+    const growthScore = await getGrowthScoreOverallAnually(program);
+    const previousTotalSocialEnterprises = await getPreviousTotalSECount(program);
 
     const currentWithMentorshipCount = parseInt(withMentorship[0]?.total_se_with_mentors || 0);
     const currentWithoutMentorshipCount = parseInt(withoutMentorship[0]?.total_se_without_mentors || 0);
@@ -549,10 +559,9 @@ app.get("/api/analytics-stats", async (req, res) => {
     // ✅ Get the latest cumulative growth value
     const cumulativeGrowthValue = growthScore.length > 0 ? parseFloat(growthScore[growthScore.length - 1].cumulative_growth || 0) : 0;
 
-    const heatmapStats = await getStatsForHeatmap();
-    const categoricalScoreForAllSE = await getAverageScoreForAllSEPerCategory();
-    const improvementScore = await getImprovementScorePerMonthAnnually();
-    const leaderboardData = await getSELeaderboards();
+    const categoricalScoreForAllSE = await getAverageScoreForAllSEPerCategory(program);
+    const improvementScore = await getImprovementScorePerMonthAnnually(program);
+    const leaderboardData = await getSELeaderboards(program);
 
     // ✅ Return Response
     res.json({
@@ -560,7 +569,6 @@ app.get("/api/analytics-stats", async (req, res) => {
       previousMonthSECount: parseInt(previousTotalSocialEnterprises[0].count),
       withMentorship: currentWithMentorshipCount,
       withoutMentorship: currentWithoutMentorshipCount,
-      heatmapStats,
       categoricalScoreForAllSE,
       improvementScore,
       growthScoreTotal: currentGrowthScoreValue.toFixed(2), 
@@ -834,7 +842,9 @@ app.get("/protected", requireAuth, (req, res) => {
 // Route to get all mentorship schedules
 app.get("/api/mentorSchedules", async (req, res) => {
   try {
-    const schedules = await getSchedulingHistory();
+    const program = req.query.program || null; // Optional program param
+
+    const schedules = await getSchedulingHistory(program);
     res.json(schedules);
   } catch (error) {
     console.error("❌ Error fetching mentor schedules:", error);
@@ -916,7 +926,9 @@ app.put("/api/admin/users/:id", async (req, res) => {
 
 app.get("/getAllSocialEnterprisesWithMentorship", async (req, res) => {
   try {
-    const result = await getAllSocialEnterprisesWithMentorship(); // Fetch SEs from DB
+    const program = req.query.program || null; // Optional program param
+
+    const result = await getAllSocialEnterprisesWithMentorship(program); // Fetch SEs from DB
     if (!result || result.length === 0) {
       return res.status(404).json({ message: "No social enterprises found" });
     }
@@ -990,7 +1002,9 @@ app.get("/getAllSocialEnterprises", async (req, res) => {
 
 app.get("/getAllSocialEnterprisesForComparison", async (req, res) => {
   try {
-    const result = await getAllSocialEnterprisesForComparison(); // Fetch SEs from DB
+    const program = req.query.program || null; // Optional program param
+
+    const result = await getAllSocialEnterprisesForComparison(program); // Fetch SEs from DB
     if (!result || result.length === 0) {
       return res.status(404).json({ message: "No social enterprises found" });
     }
@@ -1545,8 +1559,8 @@ app.put("/updateSocialEnterprise/:se_id", async (req, res) => {
 
 app.get("/heatmap-stats", async (req, res) => {
   try {
-    const { period } = req.query; // Get period from query params
-    const result = await getStatsForHeatmap(period);
+    const { period, program } = req.query; // Get period from query params
+    const result = await getStatsForHeatmap(period, program);
 
     res.json(result);
   } catch (error) {

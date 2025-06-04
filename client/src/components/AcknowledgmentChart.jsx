@@ -4,24 +4,40 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { tokens } from "../theme";
 
-const AcknowledgmentChart = () => {
+const AcknowledgmentChart = ({userRole}) => {
   const [ackData, setAckData] = useState([]);
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const userSession = JSON.parse(localStorage.getItem("user"));
+
   useEffect(() => {
     const fetchAckData = async () => {
       try {
-        const response = await axios.get("http://localhost:4000/ack-data");
-        console.log("✅ Raw Data:", response.data);
+        let response;
+        if (userRole === 'LSEED-Coordinator') {
+          const res = await fetch(
+            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
+          );
+          const data = await res.json();
+          const program = data[0]?.name;
 
-        const rawData = response.data;
+          response = await fetch(
+            `http://localhost:4000/ack-data?program=${program}`
+          );
+        }
+        else {
+          response = await fetch(
+            "http://localhost:4000/ack-data"
+          );
+        }
+
+        const rawData = await response.json();
         const formattedData = rawData.map((item) => ({
           batch: item.se_name, // 🔹 Using SE name for readability
           acknowledged: Number(item.acknowledged_percentage) || 0,
           pending: Number(item.pending_percentage) || 0,
         }));
 
-        console.log("✅ Formatted Data:", formattedData);
         setAckData(formattedData);
       } catch (error) {
         console.error("❌ Error fetching acknowledgment data:", error);

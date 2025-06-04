@@ -302,9 +302,24 @@ const Scheduling = ({ userRole }) => {
             }
           );
         } else if (userRole?.startsWith("LSEED") ) {
-          response = await axios.get(
-            "http://localhost:4000/api/mentorSchedules"
-          );
+          if (userRole === 'LSEED-Coordinator') {
+            const res = await axios.get(
+              `http://localhost:4000/api/get-program-coordinator`,
+              { params: { user_id: userSession.id } }
+            );
+
+           const program = res.data[0]?.name;
+           
+            response = await axios.get(
+              "http://localhost:4000/api/mentorSchedules",
+              { params: { program } }
+            );
+          }
+          else {
+            response = await axios.get(
+              "http://localhost:4000/api/mentorSchedules"
+            );
+          }
         }
 
         setMentorHistory(response.data || []);
@@ -497,9 +512,26 @@ const Scheduling = ({ userRole }) => {
   useEffect(() => {
     const fetchMentorSchedules = async () => {
       try {
-        const response = await axios.get(
-          "http://localhost:4000/api/pending-schedules"
-        );
+        let response;
+
+        if (userRole === 'LSEED-Coordinator') {
+          const res = await axios.get(
+            `http://localhost:4000/api/get-program-coordinator`,
+            { params: { user_id: userSession.id } }
+          );
+
+          const program = res.data[0]?.name;
+
+          response = await axios.get(
+            "http://localhost:4000/api/pending-schedules",
+            { params: { program } }
+          );
+        }
+        else {
+          response = await axios.get(
+            "http://localhost:4000/api/pending-schedules"
+          );
+        }
         const data = response.data; // no need for .json() when using axios
 
         console.log("📅 Mentor Schedules Data:", data); // ✅ Debugging log
@@ -515,11 +547,8 @@ const Scheduling = ({ userRole }) => {
       }
     };
 
-    if (user.role === "LSEED") {
-      console.log("✅ Fetching Mentor Schedules for LSEED User");
-      fetchMentorSchedules();
-    }
-  }, [user.role]);
+    fetchMentorSchedules();
+  }, []);
 
   return (
     <Box m="20px">
@@ -621,7 +650,7 @@ const Scheduling = ({ userRole }) => {
         <Calendar isDashboard={true} />
       </Box>
 
-      {user.role === "LSEED" && (
+      {user.role === "LSEED-Coordinator" && (
         <Box mt={4} display="flex" flexDirection="column" gap={2}>
           {/* Mentor Schedules */}
           <Box

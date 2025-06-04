@@ -19,23 +19,35 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { tokens } from "../../theme";
 import { useEffect, useState } from "react";
 
-const Analytics = () => {
+const Analytics = ( {userRole}) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [stats, setStats] = useState(null);
+  const userSession = JSON.parse(localStorage.getItem("user"));
+
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch(
-          `http://localhost:4000/api/analytics-stats`
-        );
-        const data = await response.json();
+        let response;
 
-        // Validate data structure
-        if (!data?.heatmapStats || !Array.isArray(data.heatmapStats)) {
-          throw new Error("Invalid heatmapStats format");
+        if (userRole === 'LSEED-Coordinator') {
+          const res = await fetch(
+            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
+          );
+
+          const data = await res.json();
+          const program = data[0]?.name;
+
+          response = await fetch(
+            `http://localhost:4000/api/analytics-stats?program=${program}`
+          );
+        } else {
+          response = await fetch(
+            `http://localhost:4000/api/analytics-stats`
+          );
         }
+        const data = await response.json();
 
         setStats(data);
       } catch (error) {
@@ -183,7 +195,7 @@ const Analytics = () => {
         paddingTop="5px"
         marginTop="20px"
       >
-        <SEPerformanceTrendChart />
+        <SEPerformanceTrendChart userRole={userRole}/>
       </Box>
 
       {/* Row 2 - Horizontal Bar Charts */}
@@ -251,7 +263,7 @@ const Analytics = () => {
           paddingleft="20px"
           paddingRight="20px"
         >
-          <HeatmapWrapper />
+          <HeatmapWrapper userRole={userRole}/>
         </Box>
 
         {/* Row 4 - Leaderboard */}
@@ -441,10 +453,14 @@ const Analytics = () => {
                 );
 
                 // Convert grouped data into chart format
-                const sortedQuarters = Object.keys(formattedData).sort((a, b) =>
-                  a.localeCompare(b)
-                );
-                console.log("Sorted quarters:", sortedQuarters);
+                const sortedQuarters = Object.keys(formattedData).sort((a, b) => {
+                  const [qa, ya] = a.split(" ");
+                  const [qb, yb] = b.split(" ");
+                  const quarterToMonth = { Q1: 1, Q2: 4, Q3: 7, Q4: 10 };
+                  const dateA = new Date(parseInt(ya), quarterToMonth[qa] - 1);
+                  const dateB = new Date(parseInt(yb), quarterToMonth[qb] - 1);
+                  return dateA - dateB;
+                });
 
                 const chartData = [
                   {
@@ -497,7 +513,7 @@ const Analytics = () => {
             justifyContent="center"
             alignItems="center"
           >
-            <BarChart />{" "}
+            <BarChart userRole={userRole}/>{" "}
             {/* No need for conditional rendering, BarChart fetches its own data */}
           </Box>
         </Box>

@@ -399,10 +399,24 @@ const Dashboard = ({ userRole }) => {
   useEffect(() => {
     const fetchFlaggedSE = async () => {
       try {
-        const response = await axios.get(
-          "http://localhost:4000/api/flagged-ses"
-        );
-        const data = response.data; // No need for .json() with axios
+        let response;
+
+        if (userRole === 'LSEED-Coordinator') {
+          const res = await fetch(
+            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
+          );
+          const data = await res.json();
+          const program = data[0]?.name;
+
+          response = await fetch(
+            `http://localhost:4000/api/flagged-ses?program=${program}`
+          );
+        } else {
+          response = await fetch(
+            "http://localhost:4000/api/flagged-ses"
+          );
+        }
+        const data = await response.json(); // No need for .json() with axios
 
         if (Array.isArray(data)) {
           const formattedSEs = data.map((se) => ({
@@ -428,10 +442,26 @@ const Dashboard = ({ userRole }) => {
   useEffect(() => {
     const fetchMentorSchedules = async () => {
       try {
-        const response = await axios.get(
-          "http://localhost:4000/api/pending-schedules"
-        );
-        const data = response.data; // No need for .json() with axios
+        let response;
+
+        if (userRole === 'LSEED-Coordinator') {
+          const res = await fetch(
+            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
+          );
+
+          const data = await res.json();
+          const program = data[0]?.name;
+
+          response = await fetch(
+            `http://localhost:4000/api/pending-schedules?program=${program}`
+          );
+        }
+        else {
+          response = await fetch(
+            "http://localhost:4000/api/pending-schedules"
+          );
+        }
+        const data = await response.json();
 
         console.log("📅 Mentor Schedules Data:", data); // ✅ Debugging log
 
@@ -529,9 +559,25 @@ const Dashboard = ({ userRole }) => {
   useEffect(() => {
     const fetchEvaluationStats = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:4000/api/evaluation-stats"
-        );
+        let response;
+        
+        if (userRole === 'LSEED-Coordinator') {
+          const res = await fetch(
+            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
+          );
+
+          const data = await res.json();
+          const program = data[0]?.name;
+
+          response = await fetch(
+            `http://localhost:4000/api/evaluation-stats?program=${program}`
+          );
+        }
+        else {
+          response = await fetch(
+            "http://localhost:4000/api/evaluation-stats"
+          );
+        }
         const data = await response.json();
 
         console.log("Evaluation Stats Data:", data); // Log API response
@@ -561,31 +607,29 @@ const Dashboard = ({ userRole }) => {
       try {
         setLoading(true); // ✅ Set loading state before fetching
 
-        const response = await fetch(
-          "http://localhost:4000/api/dashboard-stats"
-        );
+        let response;
+        if (userRole === 'LSEED-Coordinator') {
+          const res = await fetch(
+            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
+          );
+          const data = await res.json();
+          const program = data[0]?.name;
+
+          response = await fetch(
+          `http://localhost:4000/api/dashboard-stats?program=${program}`
+          );
+        }
+        else {
+          response = await fetch(
+            "http://localhost:4000/api/dashboard-stats"
+          );
+        }
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
 
         const data = await response.json();
         setStats(data);
-
-        // ✅ Calculate percentage increase for unassigned mentors safely
-        if (
-          data.previousUnassignedMentors !== undefined &&
-          data.previousUnassignedMentors > 0
-        ) {
-          const change =
-            ((data.unassignedMentors - data.previousUnassignedMentors) /
-              data.previousUnassignedMentors) *
-            100;
-          setPercentageIncrease(`${change.toFixed(1)}%`);
-        } else if (data.unassignedMentors > 0) {
-          setPercentageIncrease("100%"); // First-time assignments
-        } else {
-          setPercentageIncrease("0%");
-        }
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
       } finally {
@@ -871,6 +915,7 @@ const Dashboard = ({ userRole }) => {
                   maxHeight: "300px", // Adjust height to fit
                   objectFit: "contain",
                 }}
+                userRole={userRole}
               />
             </Box>
 

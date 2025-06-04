@@ -51,7 +51,7 @@ const CustomTooltip = ({ value, indexValue, id, data }) => {
   );
 };
 
-const BarChart = () => {
+const BarChart = ( {userRole} ) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
@@ -59,13 +59,31 @@ const BarChart = () => {
   const [selectedSEs, setSelectedSEs] = useState([]);
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const userSession = JSON.parse(localStorage.getItem("user"));
+
 
   useEffect(() => {
     const fetchSEs = async () => {
       try {
-        const response = await axios.get(
-          "http://localhost:4000/getAllSocialEnterprisesForComparison"
-        );
+        let response;
+
+        if (userRole === "LSEED-Coordinator") {
+          const res = await axios.get(
+            "http://localhost:4000/api/get-program-coordinator",
+            { params: { user_id: userSession.id } }
+          );
+          
+          const program = res.data[0]?.name;
+            
+          response = await axios.get(
+            "http://localhost:4000/getAllSocialEnterprisesForComparison",
+            { params: { program } }
+          );
+        } else {
+          response = await axios.get(
+            "http://localhost:4000/getAllSocialEnterprisesForComparison"
+          );
+        }
         setSeList(response.data);
       } catch (error) {
         console.error("Error fetching SE list:", error);

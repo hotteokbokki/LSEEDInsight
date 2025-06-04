@@ -30,7 +30,7 @@ import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import { useNavigate } from "react-router-dom"; // For navigation
 
-const SocialEnterprise = () => {
+const SocialEnterprise = ({ userRole }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const navigate = useNavigate(); // Initialize navigation
@@ -65,7 +65,7 @@ const SocialEnterprise = () => {
   // State for fetched data
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [loading, setLoading] = useState(true); // Loading state for API call
-
+  const userSession = JSON.parse(localStorage.getItem("user"));
   // Handle dialog open/close
   const handleOpenAddSE = () => setOpenAddSE(true);
   const handleCloseAddSE = () => setOpenAddSE(false);
@@ -89,10 +89,24 @@ const SocialEnterprise = () => {
   useEffect(() => {
     const fetchSocialEnterprise = async () => {
       try {
-        const response = await axios.get(
-          "http://localhost:4000/getAllSocialEnterprisesWithMentorship"
-        );
+        let response;
 
+        if (userRole === 'LSEED-Coordinator') {
+          const res = await axios.get(
+            `http://localhost:4000/api/get-program-coordinator`,
+            { params: { user_id: userSession.id } }
+          );
+
+          const program = res.data[0]?.name;
+
+          response = await axios.get(
+            `http://localhost:4000/getAllSocialEnterprisesWithMentorship`,
+            { params: { program } }
+          );
+        } else {
+          response = await axios.get("http://localhost:4000/getAllSocialEnterprisesWithMentorship");
+        }
+        
         const updatedSocialEnterprises = response.data.map((se) => ({
           id: se.se_id,
           name: se.team_name || "Unnamed SE",
@@ -101,6 +115,8 @@ const SocialEnterprise = () => {
           mentors:
             se.mentors.map((m) => m.mentor_name).join(", ") || "No mentors",
         }));
+
+        console.log("UPD DEBUG: ", updatedSocialEnterprises)
 
         setSocialEnterprises(updatedSocialEnterprises);
         setLoading(false);
@@ -388,7 +404,7 @@ const SocialEnterprise = () => {
         backgroundColor={colors.primary[400]}
         paddingTop="10px"
       >
-        <SEPerformanceTrendChart />{" "}
+        <SEPerformanceTrendChart userRole={userRole} />{" "}
         {/* ✅ Embed the SEPerformanceChart component here */}
       </Box>
       <Box display="flex" gap="10px" mt="20px">

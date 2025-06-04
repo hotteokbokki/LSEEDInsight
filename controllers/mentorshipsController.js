@@ -104,12 +104,18 @@ exports.getMentorBySEID = async (se_id) => {
     }
 };
 
-exports.getSEWithMentors = async () => {
+exports.getSEWithMentors = async (program = null) => {
     try {
+        let programFilter = program ? `AND p.name = '${program}'` : '';
+
+
         const query = `
-            SELECT COUNT(DISTINCT se_id) AS total_se_with_mentors 
-            FROM mentorships 
-            WHERE status = 'Active';
+            SELECT COUNT(DISTINCT ms.se_id) AS total_se_with_mentors 
+            FROM mentorships AS ms
+			JOIN socialenterprises AS s ON s.se_id = ms.se_id
+			JOIN programs AS p ON p.program_id = s.program_id
+            WHERE ms.status = 'Active'
+			${programFilter};
         `;
 
         const result = await pgDatabase.query(query);
@@ -140,12 +146,17 @@ exports.getHandledSEsCountByMentor = async (mentor_id) => {
   }
 };
 
-exports.getMentorshipCount = async () => {
+exports.getMentorshipCount = async (program = null) => {
     try {
+        let programFilter = program ? `AND p.name = '${program}'` : '';
+        
         const query = `
             SELECT COUNT(DISTINCT mentor_id) 
-            FROM mentorships
-            WHERE status != 'Inactive';  -- Optionally filter by active mentorships
+            FROM mentorships AS ms
+            JOIN socialenterprises AS s ON s.se_id = ms.se_id
+            JOIN programs AS p ON p.program_id = s.program_id
+            WHERE status != 'Inactive'
+            ${programFilter};  
         `;
 
         const result = await pgDatabase.query(query);
@@ -184,9 +195,11 @@ exports.getMentorSchedules = async () => {
     }
 };
 
-exports.getPendingSchedules = async () => {
+exports.getPendingSchedules = async (program = null) => {
     try {
-      const query = `
+        let programFilter = program ? ` AND p.name = '${program}'` : '';
+
+        const query = `
             SELECT 
                 ms.mentoring_session_id,
                 m.mentorship_id, 
@@ -206,16 +219,17 @@ exports.getPendingSchedules = async () => {
             JOIN socialenterprises se ON m.se_id = se.se_id
             JOIN programs p ON p.program_id = se.program_id
             WHERE ms.status = 'Pending'
+            ${programFilter}
             ORDER BY ms.mentoring_session_date, ms.start_time;
-      `;
-  
-      const result = await pgDatabase.query(query);
-      if (!result.rows.length) {
+        `;
+
+        const result = await pgDatabase.query(query);
+        if (!result.rows.length) {
         console.log("No Pending Schedules found.");
         return [];
-      }
-  
-      return result.rows;
+        }
+
+        return result.rows;
     } catch (error) {
       console.error("❌ Error fetching mentor schedules:", error);
       return [];
@@ -224,39 +238,43 @@ exports.getPendingSchedules = async () => {
   
 exports.getSchedulingHistory = async () => {
     try {
-      const query = `
-          SELECT 
-              ms.mentoring_session_id,
-              m.mentorship_id, 
-              se.team_name, 
-              CONCAT(mt.mentor_firstname, ' ', mt.mentor_lastname) AS mentor_name,
-              p.name AS program_name,
-              TO_CHAR(ms.mentoring_session_date, 'FMMonth DD, YYYY') AS mentoring_session_date,  -- ✅ Proper month name without spaces
-              CONCAT(
-                  TO_CHAR(ms.start_time, 'HH24:MI'), ' - ', 
-                  TO_CHAR(ms.end_time, 'HH24:MI')
-              ) AS mentoring_session_time,
-              ms.status,
-              ms.zoom_link
-          FROM mentorships m
-          JOIN mentoring_session ms ON m.mentorship_id = ms.mentorship_id
-          JOIN mentors mt ON m.mentor_id = mt.mentor_id
-          JOIN socialenterprises se ON m.se_id = se.se_id
-          JOIN programs p ON p.program_id = se.program_id
-          WHERE ms.status <> 'Pending'  -- ❌ Exclude pending sessions
-          ORDER BY ms.mentoring_session_date, ms.start_time;
-      `;
-  
-      const result = await pgDatabase.query(query);
-      if (!result.rows.length) {
+        
+        let programFilter = program ? `AND p.name = '${program}'` : '';
+
+        const query = `
+            SELECT 
+                ms.mentoring_session_id,
+                m.mentorship_id, 
+                se.team_name, 
+                CONCAT(mt.mentor_firstname, ' ', mt.mentor_lastname) AS mentor_name,
+                p.name AS program_name,
+                TO_CHAR(ms.mentoring_session_date, 'FMMonth DD, YYYY') AS mentoring_session_date,  -- ✅ Proper month name without spaces
+                CONCAT(
+                    TO_CHAR(ms.start_time, 'HH24:MI'), ' - ', 
+                    TO_CHAR(ms.end_time, 'HH24:MI')
+                ) AS mentoring_session_time,
+                ms.status,
+                ms.zoom_link
+            FROM mentorships m
+            JOIN mentoring_session ms ON m.mentorship_id = ms.mentorship_id
+            JOIN mentors mt ON m.mentor_id = mt.mentor_id
+            JOIN socialenterprises se ON m.se_id = se.se_id
+            JOIN programs p ON p.program_id = se.program_id
+            WHERE ms.status <> 'Pending'  -- ❌ Exclude pending sessions
+            ${programFilter}
+            ORDER BY ms.mentoring_session_date, ms.start_time;
+        `;
+
+        const result = await pgDatabase.query(query);
+        if (!result.rows.length) {
         console.log("No Pending Schedules found.");
         return [];
-      }
-  
-      return result.rows;
+        }
+
+        return result.rows;
     } catch (error) {
-      console.error("❌ Error fetching mentor schedules:", error);
-      return [];
+        console.error("❌ Error fetching mentor schedules:", error);
+        return [];
     }
 };
 

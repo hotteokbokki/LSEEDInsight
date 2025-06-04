@@ -137,13 +137,34 @@ exports.getPreviousUnassignedMentors = async () => {
   }
 };
 
-exports.getAssignedMentors = async () => {
+// exports.getAssignedMentors = async () => {
+//   try {
+//       const query = `
+//           SELECT COUNT(DISTINCT m.mentor_id) FROM mentors m
+//           JOIN mentorships ms ON m.mentor_id = ms.mentor_id 
+//           WHERE ms.status = 'Active' AND m.isactive = true
+//       `;
+//       const result = await pgDatabase.query(query);
+//       return result.rows;
+//   } catch (error) {
+//       console.error("❌ Error fetching assigned mentors:", error);
+//       return [];
+//   }
+// };
+
+exports.getMentorCount = async (program = null) => {
   try {
+      let programFilter = program ? `p.name = '${program}'` : '';
+
       const query = `
-          SELECT COUNT(DISTINCT m.mentor_id) FROM mentors m
-          JOIN mentorships ms ON m.mentor_id = ms.mentor_id 
-          WHERE ms.status = 'Active' AND m.isactive = true
+          SELECT COUNT(DISTINCT m.mentor_id)
+          FROM mentors AS m
+          JOIN mentorships AS ms ON ms.mentor_id = m.mentor_id
+          JOIN socialenterprises AS s ON s.se_id = ms.se_id
+          JOIN programs AS p ON p.program_id = s.program_id
+          WHERE ${programFilter};
       `;
+
       const result = await pgDatabase.query(query);
       return result.rows;
   } catch (error) {
@@ -152,26 +173,18 @@ exports.getAssignedMentors = async () => {
   }
 };
 
-exports.getMentorCount = async () => {
+exports.getWithoutMentorshipCount = async (program = null) => {
   try {
-      const query = `
-          SELECT COUNT(*) 
-          FROM mentors;
-      `;
-      const result = await pgDatabase.query(query);
-      return result.rows;
-  } catch (error) {
-      console.error("❌ Error fetching assigned mentors:", error);
-      return [];
-  }
-};
+      let programFilter = program ? `AND p.name = '${program}'` : '';
 
-exports.getWithoutMentorshipCount = async () => {
-  try {
       const query = `
           SELECT COUNT(*) 
-          FROM mentors
-          WHERE mentor_id NOT IN (SELECT DISTINCT mentor_id FROM public.mentorships);
+          FROM mentors AS m
+          JOIN mentorships AS ms ON ms.mentor_id = m.mentor_id
+          JOIN socialenterprises AS s ON s.se_id = ms.se_id
+          JOIN programs AS p ON p.program_id = s.program_id
+          WHERE m.mentor_id NOT IN (SELECT DISTINCT m.mentor_id FROM mentorships)          
+          ${programFilter};
       `;
       const result = await pgDatabase.query(query);
       return result.rows;
