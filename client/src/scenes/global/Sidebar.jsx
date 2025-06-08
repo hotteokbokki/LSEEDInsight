@@ -28,6 +28,7 @@ import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettin
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import { useAuth } from "../../context/authContext";
 import { createCalendarEvents } from "../../components/googleCalendar";
+import AccountBalanceOutlinedIcon from "@mui/icons-material/AccountBalanceOutlined";
 import { useGoogleLogin } from "@react-oauth/google";
 import axios from "axios";
 
@@ -75,6 +76,7 @@ const Sidebar = () => {
       "/analytics-mentorship": "Show Analytics",
       "/programs": "Manage Programs",
       "/signup": "Register Mentor",
+      "/financial-analytics": "Financial Analytics",
     };
     return routeMap[location.pathname] || "Dashboard";
   };
@@ -274,6 +276,14 @@ const Sidebar = () => {
                   selected={selected}
                   setSelected={setSelected}
                 />
+                <Item
+                  title="Financial Analytics"
+                  to="/financial-analytics"
+                  icon={<AccountBalanceOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+
                 {/* <Item
                   title="Show Reports"
                   to="/reports"

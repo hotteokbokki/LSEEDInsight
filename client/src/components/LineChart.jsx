@@ -10,8 +10,9 @@ const LineChart = ({ data, isDashboard = false, dateRange = 60 }) => {
   // ✅ Generate date range dynamically (default: today + 60 days)
   const generateDateRange = (numDays) => {
     const today = new Date();
-    return Array.from({ length: numDays }, (_, i) =>
-      format(addDays(today, i), "yyyy-MM") // Format as "YYYY-MM"
+    return Array.from(
+      { length: numDays },
+      (_, i) => format(addDays(today, i), "yyyy-MM") // Format as "YYYY-MM"
     );
   };
 
@@ -87,7 +88,7 @@ const LineChart = ({ data, isDashboard = false, dateRange = 60 }) => {
           anchor: "bottom-right", // ✅ Move legend to bottom-right
           direction: "column",
           justify: false,
-          translateX: 110,  // ✅ Adjust position horizontally
+          translateX: 110, // ✅ Adjust position horizontally
           translateY: -30, // ✅ Move down
           itemsSpacing: 4,
           itemDirection: "left-to-right",

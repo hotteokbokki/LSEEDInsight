@@ -28,6 +28,8 @@ import MentorDashboard from "./scenes/mentordashboard";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import ForgotPassword from "./scenes/forgotpassword";
 import ResetPassword from "./scenes/resetpassword";
+import FinancialAnalytics from "./scenes/financial-analytics";
+
 
 
 const App = () => {
@@ -107,6 +109,8 @@ const MainContent = () => {
           <Route path="/analytics-mentorship" element={<MentorshipAnalytics />} />
           <Route path="/admin" element={user ? <Admin /> : <Navigate to="/" />} />
           <Route path="/programs" element={user ? <ProgramPage /> : <Navigate to="/" />} />
+          <Route path="/financial-analytics" element={user ? <FinancialAnalytics /> : <Navigate to="/" />} />
+
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute allowedRoles={["Administrator"]} />}>
