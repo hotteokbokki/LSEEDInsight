@@ -209,7 +209,6 @@ exports.getAllSocialEnterprisesWithMentorship = async (program = null) => {
       ${programFilter}
       GROUP BY se.se_id, se.team_name, p.name
       `;
-      console.log("New Query: ", query)
       const result = await pgDatabase.query(query);
       return result.rows.length ? result.rows : [];
   } catch (error) {

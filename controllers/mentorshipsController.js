@@ -236,7 +236,7 @@ exports.getPendingSchedules = async (program = null) => {
     }
 };
   
-exports.getSchedulingHistory = async () => {
+exports.getSchedulingHistory = async (program = null) => {
     try {
         
         let programFilter = program ? `AND p.name = '${program}'` : '';

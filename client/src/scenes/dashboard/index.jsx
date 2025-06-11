@@ -65,7 +65,6 @@ const Dashboard = ({ userRole }) => {
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
   const [selectedEvaluation, setSelectedEvaluation] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
-  const userSession = JSON.parse(localStorage.getItem("user"));
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     mentorWithoutMentorshipCount: [{ count: "0" }], // Default structure to prevent undefined errors
@@ -192,12 +191,9 @@ const Dashboard = ({ userRole }) => {
 
         let response;
         if (userRole === "Mentor") {
-          response = await axios.get(
-            "http://localhost:4000/getRecentMentorEvaluations",
-            {
-              params: { mentor_id: userSession.id },
-            }
-          );
+          response = await axios.get("http://localhost:4000/getRecentMentorEvaluations", {
+            withCredentials: true,
+          });
         }
         // Ensure evaluation_id is included and set as `id`
         const formattedData = response.data.map((evaluation) => ({
@@ -219,7 +215,7 @@ const Dashboard = ({ userRole }) => {
     };
 
     fetchEvaluations();
-  }, [userSession.id]);
+  }, []);
 
   useEffect(() => {
     const fetchUpcomingSchedule = async () => {
@@ -227,13 +223,11 @@ const Dashboard = ({ userRole }) => {
         setIsLoadingEvaluations(true);
 
         let response;
+        
         if (userRole === "Mentor") {
-          response = await axios.get(
-            "http://localhost:4000/getUpcomingSchedulesForMentor",
-            {
-              params: { mentor_id: userSession.id },
-            }
-          );
+          response = await axios.get("http://localhost:4000/getUpcomingSchedulesForMentor", {
+            withCredentials: true,
+          });
         }
         // Ensure evaluation_id is included and set as `id`
         const formattedData = response.data.map((schedule) => ({
@@ -252,7 +246,7 @@ const Dashboard = ({ userRole }) => {
     };
 
     fetchUpcomingSchedule();
-  }, [userSession.id]);
+  }, []);
 
   const mentorColumns = [
     { field: "social_enterprise", headerName: "Social Enterprise", flex: 1 },
@@ -400,11 +394,12 @@ const Dashboard = ({ userRole }) => {
     const fetchFlaggedSE = async () => {
       try {
         let response;
-
+        
         if (userRole === 'LSEED-Coordinator') {
-          const res = await fetch(
-            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
-          );
+          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+            method: "GET",
+            credentials: "include", // Required to send session cookie
+          });
           const data = await res.json();
           const program = data[0]?.name;
 
@@ -445,9 +440,10 @@ const Dashboard = ({ userRole }) => {
         let response;
 
         if (userRole === 'LSEED-Coordinator') {
-          const res = await fetch(
-            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
-          );
+          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+            method: "GET",
+            credentials: "include", // Required to send session cookie
+          });
 
           const data = await res.json();
           const program = data[0]?.name;
@@ -562,9 +558,10 @@ const Dashboard = ({ userRole }) => {
         let response;
         
         if (userRole === 'LSEED-Coordinator') {
-          const res = await fetch(
-            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
-          );
+          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+            method: "GET",
+            credentials: "include", // Required to send session cookie
+          });
 
           const data = await res.json();
           const program = data[0]?.name;
@@ -609,9 +606,10 @@ const Dashboard = ({ userRole }) => {
 
         let response;
         if (userRole === 'LSEED-Coordinator') {
-          const res = await fetch(
-            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
-          );
+          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+            method: "GET",
+            credentials: "include", // Required to send session cookie
+          });
           const data = await res.json();
           const program = data[0]?.name;
 

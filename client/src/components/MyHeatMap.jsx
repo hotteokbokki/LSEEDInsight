@@ -9,7 +9,6 @@ const HeatmapWrapper = ( {userRole} ) => {
   const colors = tokens(theme.palette.mode);
   const [heatMapStats, setHeatMapStats] = useState([]);
   const [period, setPeriod] = useState("overall"); // Default to quarterly
-  const userSession = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
     const fetchHeatMapStats = async () => {
@@ -17,9 +16,10 @@ const HeatmapWrapper = ( {userRole} ) => {
         let response;
 
         if (userRole === 'LSEED-Coordinator') {
-          const res = await fetch(
-            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
-          );
+          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+            method: "GET",
+            credentials: "include", // Required to send session cookie
+          });
 
           const data = await res.json();
           const program = data[0]?.name; 

@@ -105,12 +105,14 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+
     try {
-      const response = await fetch("http://localhost:4000/auth/login", {
+      const response = await fetch("http://localhost:4000/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // 🔥 this enables sending/receiving cookies
         body: JSON.stringify({
           email,
           password,
@@ -118,6 +120,7 @@ const Login = () => {
       });
 
       const data = await response.json();
+
       if (response.ok) {
         login(data.user);
         window.location.href = data.redirect || "/dashboard";
@@ -137,7 +140,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:4000/auth/signup", {
+      const response = await fetch("http://localhost:4000/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

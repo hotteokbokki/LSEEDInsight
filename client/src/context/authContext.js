@@ -51,7 +51,7 @@ export const AuthContextProvider = ({ children }) => {
    const logout = async () => {
     try {
       // Make a request to the backend to log out
-      axios.post("http://localhost:3000/auth/logout", null, {
+      await axios.post("http://localhost:4000/logout", null, {
         withCredentials: true, // Ensure cookies are sent along with the request
       })
       .then(response => {

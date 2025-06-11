@@ -65,7 +65,6 @@ const SocialEnterprise = ({ userRole }) => {
   // State for fetched data
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [loading, setLoading] = useState(true); // Loading state for API call
-  const userSession = JSON.parse(localStorage.getItem("user"));
   // Handle dialog open/close
   const handleOpenAddSE = () => setOpenAddSE(true);
   const handleCloseAddSE = () => setOpenAddSE(false);
@@ -92,10 +91,9 @@ const SocialEnterprise = ({ userRole }) => {
         let response;
 
         if (userRole === 'LSEED-Coordinator') {
-          const res = await axios.get(
-            `http://localhost:4000/api/get-program-coordinator`,
-            { params: { user_id: userSession.id } }
-          );
+          const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
+            withCredentials: true, // Equivalent to credentials: "include"
+          });
 
           const program = res.data[0]?.name;
 
@@ -115,8 +113,6 @@ const SocialEnterprise = ({ userRole }) => {
           mentors:
             se.mentors.map((m) => m.mentor_name).join(", ") || "No mentors",
         }));
-
-        console.log("UPD DEBUG: ", updatedSocialEnterprises)
 
         setSocialEnterprises(updatedSocialEnterprises);
         setLoading(false);

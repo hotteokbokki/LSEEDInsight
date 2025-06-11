@@ -59,19 +59,19 @@ const BarChart = ( {userRole} ) => {
   const [selectedSEs, setSelectedSEs] = useState([]);
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const userSession = JSON.parse(localStorage.getItem("user"));
 
 
   useEffect(() => {
     const fetchSEs = async () => {
+      
+      let response;
+      
       try {
-        let response;
 
         if (userRole === "LSEED-Coordinator") {
-          const res = await axios.get(
-            "http://localhost:4000/api/get-program-coordinator",
-            { params: { user_id: userSession.id } }
-          );
+          const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
+            withCredentials: true, // Equivalent to credentials: "include"
+          });
           
           const program = res.data[0]?.name;
             

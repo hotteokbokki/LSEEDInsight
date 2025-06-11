@@ -119,72 +119,7 @@ router.get("/session-check", (req, res) => {
   }
 });
 
-router.post("/signup", async (req, res) => {
-  const { firstName, lastName, email, password, role } = req.body;
 
-  try {
-    // Validate input
-    if (!firstName || !lastName || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Assign "Guest User" as the default role if no role is provided
-    const userRole = role || "Guest User";
-
-    // Insert the new user into the Users table
-    const insertQuery = `
-      INSERT INTO users (first_name, last_name, email, password, roles)
-      VALUES ($1, $2, $3, $4, $5) RETURNING *;
-    `;
-    const values = [firstName, lastName, email, hashedPassword, userRole];
-
-    const result = await pgDatabase.query(insertQuery, values);
-    const newUser = result.rows[0];
-
-    // Check if user is created successfully
-    if (!newUser) {
-      return res.status(500).json({ message: "Failed to register user" });
-    }
-
-    res.status(201).json({ message: "User registered successfully", user: newUser });
-  } catch (err) {
-    console.error("Error during signup:", err);
-    res.status(500).json({ message: "An error occurred during signup" });
-  }
-});
-
-// Logout route
-router.post('/logout', async  (req, res) => {
-  console.log("[authRoutes] Logging Out");
-  try {
-    // Retrieve session ID from the cookie
-    // console.log('[authRoutes] Session ID:', sessionId);
-
-    if (sessionId === undefined) {
-        return res.status(400).json({ message: 'No session found' });
-    }
-
-    // Query to delete the session from active_sessions table
-    const deleteSessionQuery = `DELETE FROM active_sessions WHERE session_id = $1`;
-
-    // Execute the query
-    await pgDatabase.query(deleteSessionQuery, [sessionId]);
-    
-    console.log("[authRoutes] Session ID Deleted");
-
-    // Clear the session cookie
-    res.clearCookie('session_id');
-    
-    // Return success message
-    res.json({ message: 'Logout successful' });
-} catch (error) {
-    console.error('Error during logout:', error);
-    res.status(500).json({ message: 'An error occurred during logout' });
-}
-});
 
 router.get("/users", async (req, res) => {
   try {

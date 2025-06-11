@@ -8,18 +8,29 @@ const AcknowledgmentChart = ({userRole}) => {
   const [ackData, setAckData] = useState([]);
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-  const userSession = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
     const fetchAckData = async () => {
+      
+      let response;
+      
       try {
-        let response;
         if (userRole === 'LSEED-Coordinator') {
-          const res = await fetch(
-            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
-          );
+          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+            method: "GET",
+            credentials: "include", // Required to send session cookie
+          });
+
+          if (!res.ok) {
+            throw new Error("Failed to fetch program coordinator");
+          }
+
           const data = await res.json();
           const program = data[0]?.name;
+
+          if (!program) {
+            throw new Error("No program found for this coordinator");
+          }
 
           response = await fetch(
             `http://localhost:4000/ack-data?program=${program}`
@@ -29,6 +40,10 @@ const AcknowledgmentChart = ({userRole}) => {
           response = await fetch(
             "http://localhost:4000/ack-data"
           );
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch ack data");
         }
 
         const rawData = await response.json();

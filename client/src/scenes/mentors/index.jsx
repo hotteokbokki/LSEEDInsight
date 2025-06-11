@@ -50,7 +50,6 @@ const Mentors = ( {userRole} ) => {
   const [mentorSearch, setMentorSearch] = useState(""); // For autocomplete input
   const [selectedSE, setSelectedSE] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const userSession = JSON.parse(localStorage.getItem("user"));
   // Fetch mentors from the database
   const fetchMentors = async () => {
     try {
@@ -147,9 +146,10 @@ const Mentors = ( {userRole} ) => {
       try {
         let response;
         if (userRole === 'LSEED-Coordinator') {
-          const res = await fetch(
-            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
-          );
+          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+            method: "GET",
+            credentials: "include", // Required to send session cookie
+          });
           const data = await res.json();
           const program = data[0]?.name;
 

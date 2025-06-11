@@ -10,26 +10,12 @@ const SEPerformanceTrendChartByMentorship = () => {
   const [topPerformers, setTopPerformers] = useState([]);
   const [topPerformer, setTopPerformer] = useState(null);
   const [period, setPeriod] = useState("overall");
-  const [userSession, setUserSession] = useState(null);
-
-  useEffect(() => {
-    const session = JSON.parse(localStorage.getItem("user"));
-    if (session) {
-      setUserSession(session);
-    }
-  }, []);
 
   useEffect(() => {
     const fetchTopPerformers = async () => {
       try {
-        if (!userSession || !userSession.id) {
-          console.warn("User session not found.");
-          return;
-        }
-
-        const mentor_id = userSession.id;
         const response = await fetch(
-          `http://localhost:4000/api/top-se-performance-with-mentorships?mentor_id=${mentor_id}&period=${period}`
+          `http://localhost:4000/api/top-se-performance-with-mentorships?period=${period}`
         );
 
         if (!response.ok) {
@@ -74,10 +60,10 @@ const SEPerformanceTrendChartByMentorship = () => {
       }
     };
 
-    if (userSession) {
-      fetchTopPerformers();
-    }
-  }, [period, userSession]);
+    
+    fetchTopPerformers();
+    
+  }, [period]);
 
   const formatChartData = (data) => {
     if (!data.length) return [];

@@ -1,6 +1,7 @@
 const express = require("express");
 const session = require("express-session");
 const cors = require("cors");
+const bcrypt = require('bcrypt'); // For password hashing
 const { router: authRoutes, requireAuth } = require("./routes/authRoutes");
 const axios = require("axios");
 const ngrok = require("ngrok"); // Exposes your local server to the internet
@@ -95,28 +96,32 @@ app.use(express.json());
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 
+//MAYBE REMOVE
+app.set('trust proxy', 1); // 🔒 Required when behind reverse proxies like Nginx or Heroku
+
 // Configure session handling
 app.use(
   session({
     store: new pgSession({
       pool: pgDatabase,
-      tableName: "session", // Ensure this matches your actual session store table
+      tableName: "session",
     }),
-    
-    secret: process.env.SESSION_SECRET, // Use a secure key
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // Use HTTPS in production
+      secure: false,
       httpOnly: true,
-      sameSite: 'strict',
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60 * 24,
     },
   })
 );
 app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
 
 // Use authentication routes
+//TODO
 app.use("/auth", authRoutes);
 app.use("/api/mentorships", mentorshipRoutes);
 
@@ -424,6 +429,151 @@ async function sendMentorshipMessage(chatId, mentoring_session_id, mentorship_id
     console.error("❌ Failed to send mentorship message.");
   }
 }
+
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const result = await pgDatabase.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email]
+    );
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (!user.isactive) {
+      return res.status(403).json({
+        message:
+          "Your account is pending verification. Please wait for LSEED to verify your account.",
+      });
+    }
+
+    // ✅ Store user info in session (session is created automatically)
+    req.session.user = {
+      id: user.user_id,
+      email: user.email,
+      role: user.roles,
+      firstName: user.first_name,
+      lastName: user.last_name,
+    };
+    req.session.isAuth = true;
+
+    console.log("[authRoutes] Session ID:", req.session); // Use this for logs
+
+    // ✅ Use default session cookie — no need for manual `res.cookie()`
+
+    // Respond appropriately
+    if (user.roles === "Administrator") {
+      return res.json({
+        message: "Admin login successful",
+        user: {
+          id: user.user_id,
+          email: user.email,
+          role: user.roles,
+        },
+        session_id: req.sessionID,
+        redirect: "/admin",
+      });
+    } else {
+      return res.json({
+        message: "User login successful",
+        user: {
+          id: user.user_id,
+          email: user.email,
+          role: user.roles,
+          firstname: user.first_name,
+          lastname: user.last_name,
+        },
+        session_id: req.sessionID,
+        redirect: "/dashboard",
+      });
+    }
+  } catch (error) {
+    console.error("Login Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.post("/logout", (req, res) => {
+  console.log("[authRoutes] Logging Out");
+
+  const sessionId = req.sessionID;
+
+  if (!sessionId) {
+    return res.status(400).json({ message: "No session found" });
+  }
+
+  // Destroy express-session session
+  req.session.destroy(async (err) => {
+    if (err) {
+      console.error("Error destroying session:", err);
+      return res.status(500).json({ message: "Failed to logout" });
+    }
+
+    try {
+      // Optional: Clean up your custom active_sessions table
+      await pgDatabase.query(`DELETE FROM active_sessions WHERE session_id = $1`, [sessionId]);
+      console.log("[authRoutes] Session ID deleted from active_sessions");
+
+      // Clear session cookie
+      res.clearCookie("connect.sid", {
+        path: "/", // ensure it matches your cookie config
+        httpOnly: true,
+        sameSite: "strict", // or 'lax' if used in production
+        secure: false, // true if using HTTPS in production
+      });
+
+      res.json({ message: "Logout successful" });
+    } catch (dbErr) {
+      console.error("DB Error during logout:", dbErr);
+      res.status(500).json({ message: "Error deleting session from DB" });
+    }
+  });
+});
+
+app.post("/signup", async (req, res) => {
+  const { firstName, lastName, email, password, role } = req.body;
+
+  try {
+    // Validate input
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Assign "Guest User" as the default role if no role is provided
+    const userRole = role || "Guest User";
+
+    // Insert the new user into the Users table
+    const insertQuery = `
+      INSERT INTO users (first_name, last_name, email, password, roles)
+      VALUES ($1, $2, $3, $4, $5) RETURNING *;
+    `;
+    const values = [firstName, lastName, email, hashedPassword, userRole];
+
+    const result = await pgDatabase.query(insertQuery, values);
+    const newUser = result.rows[0];
+
+    // Check if user is created successfully
+    if (!newUser) {
+      return res.status(500).json({ message: "Failed to register user" });
+    }
+    res.status(201).json({ message: "User registered successfully in the new route", user: newUser });
+  } catch (err) {
+    console.error("Error during signup:", err);
+    res.status(500).json({ message: "An error occurred during signup" });
+  }
+});
 
 app.get("/api/mentors", async (req, res) => {
   try {
@@ -882,13 +1032,13 @@ app.get("/api/get-programs", async (req, res) => {
 
 app.get("/api/get-program-coordinator", async (req, res) => {
   try {
-    const userId = req.query.user_id; // Extract user_id from query string
+    const userId = req.session.user?.id; // Safely extract from session
 
     if (!userId) {
-      return res.status(400).json({ message: "Missing user_id parameter" });
+      return res.status(401).json({ message: "Unauthorized. No user session." });
     }
 
-    const programCoordinators = await getProgramAssignment(userId); // Pass userId to controller
+    const programCoordinators = await getProgramAssignment(userId);
 
     if (!programCoordinators || programCoordinators.length === 0) {
       return res.status(404).json({ message: "No programs found for this user" });
@@ -898,6 +1048,22 @@ app.get("/api/get-program-coordinator", async (req, res) => {
   } catch (error) {
     console.error("Error fetching program coordinator:", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/userDetails", (req, res) => {
+  // Check if the session is authenticated
+  if (req.session && req.session.isAuth && req.session.user) {
+    // Return only what's necessary
+    return res.json({
+      id: req.session.user.id,
+      email: req.session.user.email,
+      role: req.session.user.role,
+      firstName: req.session.user.firstName,
+      lastName: req.session.user.lastName,
+    });
+  } else {
+    return res.status(401).json({ message: "Unauthorized" });
   }
 });
 
@@ -1038,7 +1204,7 @@ app.get("/getMentorEvaluations", async (req, res) => {
 
 app.get("/api/mentorSchedulesByID", async (req, res) => {
   try {
-    const { mentor_id } = req.query; // Extract mentor_id from query parameters
+    const mentor_id = req.session.user?.id; // Safely extract from session
 
     if (!mentor_id) {
       return res.status(400).json({ message: "mentor_id is required" });
@@ -1057,7 +1223,7 @@ app.get("/api/mentorSchedulesByID", async (req, res) => {
 
 app.get("/getRecentMentorEvaluations", async (req, res) => {
   try {
-    const { mentor_id } = req.query; // Extract mentor_id from query parameters
+    const mentor_id = req.session.user?.id; // Safely extract from session
 
     if (!mentor_id) {
       return res.status(400).json({ message: "mentor_id is required" });
@@ -1076,7 +1242,8 @@ app.get("/getRecentMentorEvaluations", async (req, res) => {
 
 app.get("/getUpcomingSchedulesForMentor", async (req, res) => {
   try {
-    const { mentor_id } = req.query; // Extract mentor_id from query parameters
+    // DOUBLE CHECK
+    const mentor_id = req.session.user?.id; // Safely extract from session
 
     if (!mentor_id) {
       return res.status(400).json({ message: "mentor_id is required" });
@@ -1210,7 +1377,8 @@ app.get("/api/top-se-performance", async (req, res) => {
 
 app.get("/api/top-se-performance-with-mentorships", async (req, res) => {
   try {
-    const { mentor_id } = req.query; // Extract mentor_id from query parameters
+    // DOUBLE CHECK
+    const mentor_id = req.session.user?.id; // Safely extract from session
 
     // Capture the period from query params
     const period = req.query.period; 

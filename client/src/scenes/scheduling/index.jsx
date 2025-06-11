@@ -62,7 +62,6 @@ const Scheduling = ({ userRole }) => {
   const [startTime, setStartTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
   const [error, setError] = useState("");
-  const userSession = JSON.parse(localStorage.getItem("user"));
   const handleRedirect = () =>
     window.open("https://calendar.google.com", "_blank");
   const handleOpenModal = () => setOpenModal(true);
@@ -295,20 +294,16 @@ const Scheduling = ({ userRole }) => {
         
         let response;
         if (userRole === "Mentor") {
-          response = await axios.get(
-            "http://localhost:4000/api/mentorSchedulesByID",
-            {
-              params: { mentor_id: userSession.id },
-            }
-          );
+          response = await axios.get("http://localhost:4000/api/mentorSchedulesByID", {
+            withCredentials: true, // Equivalent to credentials: "include"
+          });
         } else if (userRole?.startsWith("LSEED") ) {
           if (userRole === 'LSEED-Coordinator') {
-            const res = await axios.get(
-              `http://localhost:4000/api/get-program-coordinator`,
-              { params: { user_id: userSession.id } }
-            );
+            const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
+              withCredentials: true, // Equivalent to credentials: "include"
+            });
 
-           const program = res.data[0]?.name;
+            const program = res.data[0]?.name;
            
             response = await axios.get(
               "http://localhost:4000/api/mentorSchedules",
@@ -515,10 +510,9 @@ const Scheduling = ({ userRole }) => {
         let response;
 
         if (userRole === 'LSEED-Coordinator') {
-          const res = await axios.get(
-            `http://localhost:4000/api/get-program-coordinator`,
-            { params: { user_id: userSession.id } }
-          );
+          const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
+            withCredentials: true, // Equivalent to credentials: "include"
+          });
 
           const program = res.data[0]?.name;
 
