@@ -5,12 +5,15 @@ import LineChart from "../../components/LineChart";
 import BarChart from "../../components/BarChart";
 import PieChart from "../../components/PieChart";
 import { tokens } from "../../theme";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 
 const FinancialAnalytics = ({ userRole }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const [financialData, setFinancialData] = useState([]);
 
-  // Mock data representing multiple Social Enterprises (SEs)
+  /* Mock data representing multiple Social Enterprises (SEs)
   const socialEnterprises = [
     {
       name: "SE A",
@@ -79,6 +82,120 @@ const FinancialAnalytics = ({ userRole }) => {
       ],
     },
   ];
+*/
+
+// Connect to the DB
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get("http://localhost:4000/api/financial-statements");
+        setFinancialData(response.data);
+      } catch (error) {
+        console.error("Failed to fetch financial data:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  /* Convert database rows into format compatible with your charts
+  const socialEnterprises = financialData.map((item, index) => {
+  const parsedDate = item.date ? new Date(item.date).toLocaleDateString() : `Unknown ${index + 1}`;
+
+  return {
+    name: item.se_abbr ?? `SE ${index + 1}`,
+    totalRevenue: item.total_revenue ?? 0,
+    totalExpenses: item.total_expenses ?? 0,
+    netIncome: item.net_income ?? 0,
+    totalAssets: item.total_assets ?? 0,
+    netProfitMargin: item.total_revenue ? ((item.net_income / item.total_revenue) * 100).toFixed(2) : "0.00",
+    grossProfitMargin: item.total_revenue
+      ? ((item.total_revenue - item.total_expenses) / item.total_revenue * 100).toFixed(2)
+      : "0.00",
+    debtToAssetRatio: item.total_assets ? (item.total_liabilities / item.total_assets).toFixed(2) : "0.00",
+    equityRatio: item.total_assets ? (item.owner_equity / item.total_assets).toFixed(2) : "0.00",
+    revenueVsExpenses: [
+      { x: parsedDate, revenue: item.total_revenue ?? 0, expenses: item.total_expenses ?? 0 },
+    ],
+    cashFlow: [
+      { x: parsedDate, inflow: item.total_revenue ?? 0, outflow: item.total_expenses ?? 0 },
+    ],
+    inventoryBreakdown: [],
+    equityTrend: [
+      { x: parsedDate, equity: item.owner_equity ?? 0 },
+    ],
+  };
+});
+*/
+
+const seMap = new Map();
+  financialData.forEach((item) => {
+    const abbr = item.se_abbr ?? "Unknown";
+    const parsedDate = item.date ? new Date(item.date).toLocaleDateString() : "Unknown Date";
+
+    const dataPoint = {
+      date: parsedDate,
+      totalRevenue: Number(item.total_revenue ?? 0),
+      totalExpenses: Number(item.total_expenses ?? 0),
+      netIncome: Number(item.net_income ?? 0),
+      totalAssets: Number(item.total_assets ?? 0),
+      totalLiabilities: Number(item.total_liabilities ?? 0),
+      ownerEquity: Number(item.owner_equity ?? 0),
+    };
+
+    if (!seMap.has(abbr)) {
+      seMap.set(abbr, {
+        name: abbr,
+        totalRevenue: 0,
+        totalExpenses: 0,
+        netIncome: 0,
+        totalAssets: 0,
+        revenueVsExpenses: [],
+        cashFlow: [],
+        equityTrend: [],
+        inventoryBreakdown: [],
+      });
+    }
+
+    const se = seMap.get(abbr);
+    se.totalRevenue += dataPoint.totalRevenue;
+    se.totalExpenses += dataPoint.totalExpenses;
+    se.netIncome += dataPoint.netIncome;
+    se.totalAssets += dataPoint.totalAssets;
+
+    se.revenueVsExpenses.push({
+      x: dataPoint.date,
+      revenue: dataPoint.totalRevenue,
+      expenses: dataPoint.totalExpenses,
+    });
+
+    se.cashFlow.push({
+      x: dataPoint.date,
+      inflow: dataPoint.totalRevenue,
+      outflow: dataPoint.totalExpenses,
+    });
+
+    se.equityTrend.push({
+      x: dataPoint.date,
+      equity: dataPoint.ownerEquity,
+    });
+
+    se.netProfitMargin = se.totalRevenue
+      ? ((se.netIncome / se.totalRevenue) * 100).toFixed(2)
+      : "0.00";
+    se.grossProfitMargin = se.totalRevenue
+      ? ((se.totalRevenue - se.totalExpenses) / se.totalRevenue * 100).toFixed(2)
+      : "0.00";
+    se.debtToAssetRatio = se.totalAssets
+      ? (dataPoint.totalLiabilities / dataPoint.totalAssets).toFixed(2)
+      : "0.00";
+    se.equityRatio = se.totalAssets
+      ? (dataPoint.ownerEquity / dataPoint.totalAssets).toFixed(2)
+      : "0.00";
+  });
+
+  const socialEnterprises = Array.from(seMap.values());
 
   // Helper to calculate averages for StatBoxes (or sums where applicable)
   const avg = (arr, key) =>
@@ -163,8 +280,8 @@ const FinancialAnalytics = ({ userRole }) => {
         >
           <StatBox
             title={`₱${socialEnterprises
-              .reduce((a, b) => a + b.totalRevenue, 0)
-              .toLocaleString()}`}
+              .reduce((sum, se) => sum + Number(se.totalRevenue || 0),
+              0).toLocaleString()}`}
             subtitle="Total Revenue (All SEs)"
             progress={1}
             increase="N/A"
@@ -181,8 +298,8 @@ const FinancialAnalytics = ({ userRole }) => {
         >
           <StatBox
             title={`₱${socialEnterprises
-              .reduce((a, b) => a + b.totalExpenses, 0)
-              .toLocaleString()}`}
+              .reduce((sum, se) => sum + Number(se.totalExpenses || 0),
+              0).toLocaleString()}`}
             subtitle="Total Expenses (All SEs)"
             progress={1}
             increase="N/A"
@@ -199,8 +316,8 @@ const FinancialAnalytics = ({ userRole }) => {
         >
           <StatBox
             title={`₱${socialEnterprises
-              .reduce((a, b) => a + b.netIncome, 0)
-              .toLocaleString()}`}
+              .reduce((sum, se) => sum + Number(se.netIncome || 0),
+              0).toLocaleString()}`}
             subtitle="Net Income (All SEs)"
             progress={1}
             increase="N/A"
@@ -217,8 +334,8 @@ const FinancialAnalytics = ({ userRole }) => {
         >
           <StatBox
             title={`₱${socialEnterprises
-              .reduce((a, b) => a + b.totalAssets, 0)
-              .toLocaleString()}`}
+              .reduce((sum, se) => sum + sum + Number(se.totalAssets || 0),
+              0).toLocaleString()}`}
             subtitle="Total Assets (All SEs)"
             progress={1}
             increase="N/A"

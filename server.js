@@ -2652,6 +2652,26 @@ app.get("/api/notifications", async (req, res) => {
 //   }
 // });
 
+
+// For Analytics Page
+
+app.get("/api/financial-statements", async (req, res) => {
+  try {
+    const result = await pgDatabase.query(`
+      SELECT fs.report_id, fs.date, fs.total_revenue, fs.total_expenses, fs.net_income,
+             fs.total_assets, fs.total_liabilities, fs.owner_equity, fs.se_id,
+             se.abbr AS se_abbr
+      FROM financial_statements fs
+      JOIN socialenterprises se ON fs.se_id = se.se_id
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching financial statements:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
 // ==========================
 // 📌 API: Check Pending Meetings (Telegram Notification)
 // ==========================
