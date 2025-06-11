@@ -29,7 +29,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Snackbar, Alert } from "@mui/material";
 
-const Mentors = () => {
+const Mentors = ( {userRole} ) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [rows, setRows] = useState();
@@ -50,6 +50,7 @@ const Mentors = () => {
   const [mentorSearch, setMentorSearch] = useState(""); // For autocomplete input
   const [selectedSE, setSelectedSE] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const userSession = JSON.parse(localStorage.getItem("user"));
   // Fetch mentors from the database
   const fetchMentors = async () => {
     try {
@@ -144,7 +145,18 @@ const Mentors = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch(`http://localhost:4000/api/mentor-stats`);
+        let response;
+        if (userRole === 'LSEED-Coordinator') {
+          const res = await fetch(
+            `http://localhost:4000/api/get-program-coordinator?user_id=${userSession.id}`
+          );
+          const data = await res.json();
+          const program = data[0]?.name;
+
+          response = await fetch(`http://localhost:4000/api/mentor-stats?program=${program}`);
+        } else {
+          response = await fetch(`http://localhost:4000/api/mentor-stats`);
+        }
         const data = await response.json();
         setStats(data);
       } catch (error) {

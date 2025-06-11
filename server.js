@@ -465,13 +465,15 @@ app.get("/api/dashboard-stats", async (req, res) => {
 
 app.get("/api/mentor-stats", async (req, res) => {
   try {
+    const program = req.query.program || null; // Optional program param
+
     // ✅ Fetch data
-    const mentorshipCount = await getMentorCount();
-    const mentorsWithMentorshipCount = await getMentorshipCount();
-    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount();
+    const mentorshipCount = await getMentorCount(program);
+    const mentorsWithMentorshipCount = await getMentorshipCount(program);
+    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount(program);
     const leastAssignedMentor = await getLeastAssignedMentor();
     const mostAssignedMentor = await getMostAssignedMentor();
-    const totalSECount = await getTotalSECount();
+    const totalSECount = await getTotalSECount(program);
 
     res.json({
       mentorCountTotal: mentorshipCount,

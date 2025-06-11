@@ -98,7 +98,7 @@ const MainContent = () => {
           {/* User Routes */}
           <Route path="/dashboard" element={user ? <Dashboard userRole={user?.role}/> : <Navigate to="/" />} />
           <Route path="/socialenterprise" element={user ? <SocialEnterprise userRole={user?.role} /> : <Navigate to="/" />} />
-          <Route path="/mentors" element={user ? <Mentors /> : <Navigate to="/" />} />
+          <Route path="/mentors" element={user ? <Mentors userRole={user?.role} /> : <Navigate to="/" />} />
           <Route path="/analytics" element={user ? <Analytics userRole={user?.role}/> : <Navigate to="/" />} />
           <Route path="/reports" element={user ? <Reports /> : <Navigate to="/" />} />
           <Route path="/scheduling" element={user ? <Scheduling userRole={user?.role}/> : <Navigate to="/" />} />
