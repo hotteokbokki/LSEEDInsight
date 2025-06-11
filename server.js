@@ -519,10 +519,6 @@ app.post("/logout", (req, res) => {
     }
 
     try {
-      // Optional: Clean up your custom active_sessions table
-      await pgDatabase.query(`DELETE FROM active_sessions WHERE session_id = $1`, [sessionId]);
-      console.log("[authRoutes] Session ID deleted from active_sessions");
-
       // Clear session cookie
       res.clearCookie("connect.sid", {
         path: "/", // ensure it matches your cookie config

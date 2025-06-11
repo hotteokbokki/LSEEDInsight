@@ -47,28 +47,24 @@ export const AuthContextProvider = ({ children }) => {
     
   };
 
-   // Logout function to clear session and user state
-   const logout = async () => {
+  // Logout function to clear session and user state
+  const logout = async () => {
     try {
       // Make a request to the backend to log out
-      await axios.post("http://localhost:4000/logout", null, {
-        withCredentials: true, // Ensure cookies are sent along with the request
-      })
-      .then(response => {
-        console.log("[authContext] Logout successful", response.data);
-      })
-      .catch(error => {
-        console.error("Error logging out:", error);
+      const response = await axios.post("http://localhost:4000/logout", null, {
+        withCredentials: true, // Ensure cookies are sent
       });
-  
-      // On successful logout, clear user data from local storage
-      localStorage.removeItem('user'); // Remove session from localStorage
-      setUser(null); // Clear user state
-  
-      navigate('/'); // Redirect to login page after logout
+
+      console.log("[authContext] Logout successful", response.data);
+
+      // Clear user data from local storage and state
+      localStorage.removeItem('user');
+      setUser(null);
+
+      navigate('/'); // Redirect to login
     } catch (error) {
-      console.error('Error logging out:', error);
-      // Optionally handle the error, like showing an error message
+      console.error("Error logging out:", error);
+      // Optionally, show a toast or alert to the user
     }
   };
 
