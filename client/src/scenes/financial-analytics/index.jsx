@@ -7,6 +7,7 @@ import PieChart from "../../components/PieChart";
 import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { DataGrid } from "@mui/x-data-grid";
 
 const FinancialAnalytics = ({ userRole }) => {
   const theme = useTheme();
@@ -84,12 +85,14 @@ const FinancialAnalytics = ({ userRole }) => {
   ];
 */
 
-// Connect to the DB
+  // Connect to the DB
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get("http://localhost:4000/api/financial-statements");
+        const response = await axios.get(
+          "http://localhost:4000/api/financial-statements"
+        );
         setFinancialData(response.data);
       } catch (error) {
         console.error("Failed to fetch financial data:", error);
@@ -129,10 +132,12 @@ const FinancialAnalytics = ({ userRole }) => {
 });
 */
 
-const seMap = new Map();
+  const seMap = new Map();
   financialData.forEach((item) => {
     const abbr = item.se_abbr ?? "Unknown";
-    const parsedDate = item.date ? new Date(item.date).toLocaleDateString() : "Unknown Date";
+    const parsedDate = item.date
+      ? new Date(item.date).toLocaleDateString()
+      : "Unknown Date";
 
     const dataPoint = {
       date: parsedDate,
@@ -185,7 +190,10 @@ const seMap = new Map();
       ? ((se.netIncome / se.totalRevenue) * 100).toFixed(2)
       : "0.00";
     se.grossProfitMargin = se.totalRevenue
-      ? ((se.totalRevenue - se.totalExpenses) / se.totalRevenue * 100).toFixed(2)
+      ? (
+          ((se.totalRevenue - se.totalExpenses) / se.totalRevenue) *
+          100
+        ).toFixed(2)
       : "0.00";
     se.debtToAssetRatio = se.totalAssets
       ? (dataPoint.totalLiabilities / dataPoint.totalAssets).toFixed(2)
@@ -253,6 +261,52 @@ const seMap = new Map();
     ([name, value]) => ({ name, value })
   );
 
+  const mockPrograms = [
+    { id: 1, name: "AgriBiz", mentor: "John Doe", status: "Active" },
+    { id: 2, name: "EcoCrafts", mentor: "Jane Smith", status: "Pending" },
+    // more mock entries...
+  ];
+
+  const mockProgramColumns = [
+    { field: "name", headerName: "Program Name", flex: 1 },
+    { field: "mentor", headerName: "Assigned Mentor", flex: 1 },
+    { field: "status", headerName: "Status", flex: 1 },
+  ];
+
+  const profitOverTimeData = [
+    { name: "Jan", profit: 50000 },
+    { name: "Feb", profit: 60000 },
+    { name: "Mar", profit: 45000 },
+    // ...more monthly data
+  ];
+
+  const topRevenueSEsData = [
+    { name: "SE A", revenue: 1200000 },
+    { name: "SE B", revenue: 1100000 },
+    { name: "SE C", revenue: 950000 },
+    { name: "SE D", revenue: 870000 },
+    { name: "SE E", revenue: 850000 },
+    { name: "SE F", revenue: 800000 },
+    { name: "SE G", revenue: 750000 },
+    { name: "SE H", revenue: 700000 },
+    { name: "SE I", revenue: 680000 },
+    { name: "SE J", revenue: 650000 },
+  ];
+
+  const individualInventoryData = [
+    { name: "Item A", value: 400 },
+    { name: "Item B", value: 300 },
+    { name: "Item C", value: 300 },
+    { name: "Item D", value: 200 },
+  ];
+
+  const mostProfitSEsData = [
+    { name: "SE X", profit: 500000 },
+    { name: "SE Y", profit: 450000 },
+    { name: "SE Z", profit: 400000 },
+    // Top 10 SEs
+  ];
+
   return (
     <Box m="20px">
       <Box display="flex" justifyContent="space-between" alignItems="center">
@@ -280,12 +334,11 @@ const seMap = new Map();
         >
           <StatBox
             title={`₱${socialEnterprises
-              .reduce((sum, se) => sum + Number(se.totalRevenue || 0),
-              0).toLocaleString()}`}
+              .reduce((sum, se) => sum + Number(se.totalRevenue || 0), 0)
+              .toLocaleString()}`}
             subtitle="Total Revenue (All SEs)"
             progress={1}
             increase="N/A"
-            icon={<></>}
           />
         </Box>
         <Box
@@ -298,12 +351,11 @@ const seMap = new Map();
         >
           <StatBox
             title={`₱${socialEnterprises
-              .reduce((sum, se) => sum + Number(se.totalExpenses || 0),
-              0).toLocaleString()}`}
+              .reduce((sum, se) => sum + Number(se.totalExpenses || 0), 0)
+              .toLocaleString()}`}
             subtitle="Total Expenses (All SEs)"
             progress={1}
             increase="N/A"
-            icon={<></>}
           />
         </Box>
         <Box
@@ -316,8 +368,8 @@ const seMap = new Map();
         >
           <StatBox
             title={`₱${socialEnterprises
-              .reduce((sum, se) => sum + Number(se.netIncome || 0),
-              0).toLocaleString()}`}
+              .reduce((sum, se) => sum + Number(se.netIncome || 0), 0)
+              .toLocaleString()}`}
             subtitle="Net Income (All SEs)"
             progress={1}
             increase="N/A"
@@ -334,31 +386,63 @@ const seMap = new Map();
         >
           <StatBox
             title={`₱${socialEnterprises
-              .reduce((sum, se) => sum + sum + Number(se.totalAssets || 0),
-              0).toLocaleString()}`}
+              .reduce((sum, se) => sum + sum + Number(se.totalAssets || 0), 0)
+              .toLocaleString()}`}
             subtitle="Total Assets (All SEs)"
             progress={1}
             increase="N/A"
             icon={<></>}
           />
         </Box>
+
+        <Box
+          flex="1 1 100%"
+          backgroundColor={colors.redAccent[400]}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          p="20px"
+          mt="20px"
+        >
+          <StatBox
+            title="₱1,500,000"
+            subtitle="Immediate Attention: Highest Expenses (SE Name)"
+            progress={0.9}
+            increase="↑ High"
+            icon={<></>}
+          />
+        </Box>
+      </Box>
+      {/* Row 2 - LSEED Programs DataGrid */}
+      <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
+        <Typography
+          variant="h3"
+          fontWeight="bold"
+          color={colors.greenAccent[500]}
+          mb="10px"
+        >
+          LSEED Programs Overview
+        </Typography>
+        <Box height="400px">
+          <DataGrid rows={mockPrograms} columns={mockProgramColumns} />
+        </Box>
       </Box>
 
-      {/* Row 2 - Revenue vs Expenses Over Time */}
+      {/* Row 3 - Profit Over Time */}
       <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
         <Typography
           variant="h3"
           fontWeight="bold"
           color={colors.greenAccent[500]}
         >
-          Revenue vs Expenses Over Time (by Social Enterprise)
+          Profit Over Time (by Social Enterprise)
         </Typography>
         <Box height="400px">
-          <LineChart data={revenueVsExpensesData} />
+          <LineChart data={profitOverTimeData} />
         </Box>
       </Box>
 
-      {/* Row 3 - Cash Flow Analysis */}
+      {/* Row 4 - Cash Flow Analysis */}
       <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
         <Typography
           variant="h3"
@@ -372,7 +456,7 @@ const seMap = new Map();
         </Box>
       </Box>
 
-      {/* Row 4 - Inventory Distribution (Aggregated) */}
+      {/* Row 5 - Inventory Distribution (Aggregated) */}
       <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
         <Typography
           variant="h3"
@@ -386,7 +470,21 @@ const seMap = new Map();
         </Box>
       </Box>
 
-      {/* Row 5 - Average Financial Ratios Across SEs */}
+      {/* Row 6 - Individual Inventory Reports */}
+      <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
+        <Typography
+          variant="h3"
+          fontWeight="bold"
+          color={colors.greenAccent[500]}
+        >
+          Individual Inventory Reports by Item
+        </Typography>
+        <Box height="400px">
+          <PieChart data={individualInventoryData} />
+        </Box>
+      </Box>
+
+      {/* Row 7 - Average Financial Ratios Across SEs */}
       <Box
         display="flex"
         flexWrap="wrap"
@@ -460,7 +558,7 @@ const seMap = new Map();
         </Box>
       </Box>
 
-      {/* Row 6 - Equity Trend Comparison */}
+      {/* Row 8 - Equity Trend Comparison */}
       <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
         <Typography
           variant="h3"
@@ -471,6 +569,34 @@ const seMap = new Map();
         </Typography>
         <Box height="400px">
           <LineChart data={equityTrendData} />
+        </Box>
+      </Box>
+
+      {/* Row 9 - Top 10 SE by Revenue */}
+      <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
+        <Typography
+          variant="h3"
+          fontWeight="bold"
+          color={colors.greenAccent[500]}
+        >
+          Top 10 Social Enterprises by Revenue
+        </Typography>
+        <Box height="400px">
+          <BarChart data={topRevenueSEsData} />
+        </Box>
+      </Box>
+
+      {/* Row 10 - Leaderboard: Most Profit */}
+      <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
+        <Typography
+          variant="h3"
+          fontWeight="bold"
+          color={colors.greenAccent[500]}
+        >
+          Leaderboard: Most Profitable Social Enterprises
+        </Typography>
+        <Box height="400px">
+          <BarChart data={mostProfitSEsData} />
         </Box>
       </Box>
     </Box>
