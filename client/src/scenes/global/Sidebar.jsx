@@ -284,13 +284,14 @@ const Sidebar = () => {
                   setSelected={setSelected}
                 />
 
-                {/* <Item
+                <Item
                   title="Show Reports"
                   to="/reports"
                   icon={<GradingOutlinedIcon />}
                   selected={selected}
                   setSelected={setSelected}
-                /> */}
+                />
+                
                 <Item
                   title="Scheduling Matrix"
                   to="/scheduling"
