@@ -23,7 +23,6 @@ const Reports = () => {
           gap={2}
         >
           <Button
-            onClick={handleMentorshipSignup}
             variant="contained"
             color="secondary"
             sx={{ fontSize: "16px", py: "10px", flexGrow: 1 }}
