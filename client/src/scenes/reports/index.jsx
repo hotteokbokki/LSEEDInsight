@@ -1,7 +1,11 @@
-import { Box } from "@mui/material";
+import { Box, Button, useTheme } from "@mui/material";
 import Header from "../../components/Header";
+import { tokens } from "../../theme";
 
 const Reports = () => {
+  const theme = useTheme(); // Access the theme
+  const colors = tokens(theme.palette.mode); // Get your color tokens based on the current theme mode
+  
   return (
     <Box m="20px">
       <Box display="flex" justifyContent="space-between" alignItems="center">

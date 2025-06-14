@@ -2,14 +2,19 @@ const express = require("express");
 const bcrypt = require('bcrypt'); // For password hashing
 const session = require("express-session");
 const cookieParser = require('cookie-parser');
-const { login, logout, protectedRoute } = require("../controllers/authController");
+const { login, logout, protectedRoute, forgotPassword } = require("../controllers/authController");
 const pgDatabase = require("../database.js"); // Import PostgreSQL client
 
 const router = express.Router();
 
+router.use(cookieParser()); // Middleware to parse cookies
+
 router.post("/", login);
+router.post('/forgot-password', forgotPassword);
 router.get("/logout", logout);
 router.get("/protected", protectedRoute);
+
+const saltRounds = 10;
 
 // const sessionId = crypto.randomUUID();
 
@@ -29,7 +34,55 @@ const requireAuth = (req, res, next) => {
   next();
 };
 
-router.use(cookieParser()); // Middleware to parse cookies
+
+
+router.post('/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  console.log('POST /reset-password hit with token:', token); // Logging
+
+  try {
+    // Check if token exists and is not expired
+    const result = await pgDatabase.query(
+      `SELECT * FROM password_reset_tokens WHERE token = $1`,
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      console.log('Invalid or expired token:', token); // Logging
+      return res.status(400).json({ message: 'Invalid or expired token' });
+    }
+
+    const tokenData = result.rows[0];
+    const today = new Date();
+    const tokenExpiry = new Date(tokenData.expires_at);
+
+    if (today > tokenExpiry) {
+      console.log('Token has expired for token:', token); // Logging
+      return res.status(400).json({ message: 'Token has expired' });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    console.log('New password hashed.'); // Logging
+
+    // Update user password
+    await pgDatabase.query(
+      `UPDATE users SET password = $1 WHERE user_id = $2`,
+      [hashedPassword, tokenData.user_id]
+    );
+    console.log('User password updated for user_id:', tokenData.user_id, ' password: ', hashedPassword); // Logging
+
+    // Delete token to prevent reuse
+    await pgDatabase.query(`DELETE FROM password_reset_tokens WHERE token = $1`, [token]);
+    console.log('Password reset token deleted.'); // Logging
+
+    return res.json({ message: 'Password has been reset successfully' });
+  } catch (err) {
+    console.error('Error resetting password:', err);
+    // console.error('Full Error Object:', err); // Log full error for detailed debugging
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
 
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;

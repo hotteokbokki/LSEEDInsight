@@ -1,6 +1,8 @@
 const bcrypt = require("bcryptjs");
 const pgDatabase = require("../database.js"); // Import PostgreSQL client
 const crypto = require("crypto"); // To generate session ID
+const nodemailer = require('nodemailer');
+const BASE_URL = 'http://localhost:3000';
 
   // ✅ Generate a unique session ID
   const sessionId = crypto.randomUUID();
@@ -58,6 +60,59 @@ exports.login = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
+   console.log('POST /api/auth/forgot-password hit for email:', email);
+  
+  try {
+    // 1. Find the user by email
+    const userQuery = await pgDatabase.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (userQuery.rows.length === 0) {
+      return res.status(404).json({ message: 'No user with that email found.' });
+    }
+
+    const user = userQuery.rows[0];
+    console.log('User found:', user.email); // Added for better logging
+
+    // 2. Generate a token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 1000 * 60 * 15); // 15 minutes
+
+    // 3. Save the token and expiry
+    await pgDatabase.query(
+      'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
+      [user.user_id, token, expires]
+    );
+
+    // 4. Send the email
+    const resetLink = `${BASE_URL}/reset-password?token=${token}`;
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"LSEED Support" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: 'Password Reset Request',
+      html: `
+        <p>Hi,</p>
+        <p>You requested a password reset. Click the link below to reset your password:</p>
+        <a href="${resetLink}">${resetLink}</a>
+        <p>This link will expire in 15 minutes. Do not reply this is an automated message.</p>
+      `,
+    });
+
+    return res.json({ message: 'Password reset link sent to your email.' });
+  } catch (err) {
+    console.error('Error in forgotPassword:', err);
+    return res.status(500).json({ message: 'Something went wrong.' });
   }
 };
 
