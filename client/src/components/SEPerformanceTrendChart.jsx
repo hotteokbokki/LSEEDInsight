@@ -4,7 +4,7 @@ import LineChart from "./LineChart";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
 
-const SEPerformanceTrendChart = ({userRole}) => {
+const SEPerformanceTrendChart = ({userRole, selectedSEId = null}) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [topPerformers, setTopPerformers] = useState([]);
@@ -29,8 +29,10 @@ const SEPerformanceTrendChart = ({userRole}) => {
           );
         } else {
           response = await fetch(
-            `http://localhost:4000/api/top-se-performance?period=${period}`
-          );
+            `http://localhost:4000/api/top-se-performance?period=${period}&se_id=${selectedSEId}`, {
+            method: "GET",
+            credentials: "include", // Required to send session cookie
+          });
         }
 
         const data = await response.json();

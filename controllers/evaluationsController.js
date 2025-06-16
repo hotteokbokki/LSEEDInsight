@@ -255,12 +255,44 @@ exports.getEvaluationDetailsForMentorEvaluation = async (evaluation_id) => {
     }
 };
 
-exports.getTopSEPerformance = async (period = "overall", program = null) => {
+exports.getTopSEPerformance = async (period = "overall", program = null, mentor_id = null, se_id = null) => {
     try {
         let query;
-        let programFilter = program ? `AND p.name = '${program}'` : '';
+        const values = [];
+        let idx = 1;
 
-        // Select query based on the period
+        // Dynamic filters
+        let programFilter = '';
+        let mentorFilter = '';
+        let mentorshipsJoin = '';
+        let seidFilter = '';
+
+        if (program && program !== "null") {
+            programFilter = `AND p.name = $${idx++}`;
+            values.push(program);
+        }
+
+        if (mentor_id && mentor_id !== "null") {
+            mentorshipsJoin = `LEFT JOIN mentorships m ON e.se_id = m.se_id`;
+            mentorFilter = `AND m.mentor_id = $${idx++}`;
+            values.push(mentor_id);
+        }
+
+        if (se_id && se_id !== "null") {
+            seidFilter = `AND e.se_id = $${idx++}`;
+            values.push(se_id);
+        }
+
+        const baseCTEs = `
+            ${mentorshipsJoin}
+            WHERE
+                e.evaluation_type = 'Social Enterprise'
+                ${programFilter}
+                ${mentorFilter}
+                ${seidFilter}
+        `;
+
+        // Main query based on period
         if (period === "quarterly") {
             query = `
                 WITH QuarterBounds AS (
@@ -279,10 +311,8 @@ exports.getTopSEPerformance = async (period = "overall", program = null) => {
                     JOIN socialenterprises s ON e.se_id = s.se_id
                     JOIN programs p ON p.program_id = s.program_id
                     CROSS JOIN QuarterBounds qb
-                    WHERE
-                        e.evaluation_type = 'Social Enterprise'
-                        ${programFilter}
-                        AND DATE_TRUNC('quarter', e.created_at) IN (qb.latest_quarter, qb.previous_quarter)
+                    ${baseCTEs}
+                    AND DATE_TRUNC('quarter', e.created_at) IN (qb.latest_quarter, qb.previous_quarter)
                 ),
                 QuarterlyRatings AS (
                     SELECT
@@ -344,10 +374,8 @@ exports.getTopSEPerformance = async (period = "overall", program = null) => {
                     JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                     JOIN socialenterprises s ON e.se_id = s.se_id
                     JOIN programs p ON p.program_id = s.program_id
-                    WHERE
-                        e.evaluation_type = 'Social Enterprise'
-                        ${programFilter}
-                        AND DATE_TRUNC('quarter', e.created_at) IN (SELECT quarter_start FROM LatestFourQuarters)
+                    ${baseCTEs}
+                    AND DATE_TRUNC('quarter', e.created_at) IN (SELECT quarter_start FROM LatestFourQuarters)
                 ),
                 QuarterlyRatings AS (
                     SELECT
@@ -411,10 +439,8 @@ exports.getTopSEPerformance = async (period = "overall", program = null) => {
                     JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
                     JOIN socialenterprises s ON e.se_id = s.se_id
                     JOIN programs p ON p.program_id = s.program_id
-                    WHERE
-                        e.evaluation_type = 'Social Enterprise'
-                        ${programFilter}
-                        AND DATE_TRUNC('quarter', e.created_at) IN (SELECT quarter_start FROM AllQuarters)
+                    ${baseCTEs}
+                    AND DATE_TRUNC('quarter', e.created_at) IN (SELECT quarter_start FROM AllQuarters)
                 ),
                 QuarterlyRatings AS (
                     SELECT
@@ -449,359 +475,11 @@ exports.getTopSEPerformance = async (period = "overall", program = null) => {
         } else {
             throw new Error("Invalid period specified.");
         }
-        const result = await pgDatabase.query(query);
-        return result.rows;
-    } catch (error) {
-        console.error("❌ Error fetching top SE performance:", error);
-        return [];
-    }
-};
-// TO DO
-exports.getTopSEPerformanceByMentorships = async (mentor_id, period = "overall") => {
-    try {
-        let query;
-
-        // Select query based on the period
-        if (period === "quarterly") {
-            query = `
-                WITH LatestEvaluation AS (
-                    -- Step 1: Determine the latest evaluation date (truncated to the start of the month)
-                    SELECT DATE_TRUNC('month', MAX(e.created_at)) AS latest_eval_date
-                    FROM evaluations e
-                    JOIN mentorships m ON e.se_id = m.se_id  -- Only SEs assigned to the mentor
-                    WHERE e.evaluation_type = 'Social Enterprise'
-                    AND m.mentor_id = $1  -- Filter by specific mentor
-                ),
-                MonthlyRatings AS (
-                    -- Step 2: Calculate monthly ratings for the latest 3 months
-                    SELECT 
-                        e.se_id,
-                        s.abbr AS social_enterprise, 
-                        DATE_TRUNC('month', e.created_at) AS month, -- Group by month
-                        ROUND(AVG(ec.rating), 2) AS avg_rating,
-                        COUNT(*) AS eval_count
-                    FROM evaluations e
-                    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                    JOIN socialenterprises s ON e.se_id = s.se_id
-                    JOIN mentorships m ON e.se_id = m.se_id  -- Only SEs assigned to the mentor
-                    CROSS JOIN LatestEvaluation le
-                    WHERE 
-                        DATE_TRUNC('month', e.created_at) >= (le.latest_eval_date - INTERVAL '3 months') -- Start date (3 months before latest eval)
-                        AND DATE_TRUNC('month', e.created_at) <= le.latest_eval_date -- End date (latest eval)
-                        AND e.evaluation_type = 'Social Enterprise'
-                        AND m.mentor_id = $1
-                    GROUP BY e.se_id, s.abbr, month
-                ),
-                TopSEsTrimester AS (
-                    -- Step 3: Identify the top 3 social enterprises by weighted average rating
-                    SELECT 
-                        se_id, 
-                        social_enterprise, 
-                        SUM(avg_rating * eval_count) / SUM(eval_count) AS weighted_avg_rating
-                    FROM MonthlyRatings
-                    GROUP BY se_id, social_enterprise
-                    ORDER BY weighted_avg_rating DESC
-                    LIMIT 3
-                )
-                -- Step 4: Retrieve the final results
-                SELECT 
-                    m.se_id, 
-                    m.social_enterprise, 
-                    m.month, 
-                    m.avg_rating,
-                    'trimester' AS period
-                FROM MonthlyRatings m
-                JOIN TopSEsTrimester t ON m.se_id = t.se_id
-                ORDER BY t.weighted_avg_rating DESC, m.social_enterprise, m.month;
-            `;
-        } else if (period === "yearly") {
-            query = `
-                WITH LatestEvaluation AS (
-                    -- Step 1: Determine the latest evaluation date (truncated to the start of the month)
-                    SELECT DATE_TRUNC('month', MAX(e.created_at)) AS latest_eval_date
-                    FROM evaluations e
-					JOIN mentorships m ON e.se_id = m.se_id  -- Only SEs assigned to the mentor
-                    WHERE e.evaluation_type = 'Social Enterprise'
-					AND m.mentor_id = $1  -- Filter by specific mentor
-                ),
-                MonthlyRatings AS (
-                    -- Step 2: Calculate monthly ratings for the latest 11 months
-                    SELECT 
-                        e.se_id,
-                        s.abbr AS social_enterprise, 
-                        DATE_TRUNC('month', e.created_at) AS month, -- Group by month
-                        ROUND(AVG(ec.rating), 2) AS avg_rating,
-                        COUNT(*) AS eval_count
-                    FROM evaluations e
-                    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                    JOIN socialenterprises s ON e.se_id = s.se_id
-					JOIN mentorships m ON e.se_id = m.se_id  -- Only SEs assigned to the mentor
-                    CROSS JOIN LatestEvaluation le
-                    WHERE 
-                        DATE_TRUNC('month', e.created_at) >= (le.latest_eval_date - INTERVAL '11 months') -- Start date (11 months before latest eval)
-                        AND DATE_TRUNC('month', e.created_at) <= le.latest_eval_date -- End date (latest eval)
-                        AND e.evaluation_type = 'Social Enterprise'
-						AND m.mentor_id = $1
-                    GROUP BY e.se_id, s.abbr, month
-                ),
-                TopSEsYearly AS (
-                    -- Step 3: Identify the top 3 social enterprises by weighted average rating
-                    SELECT 
-                        se_id, 
-                        social_enterprise, 
-                        SUM(avg_rating * eval_count) / SUM(eval_count) AS weighted_avg_rating
-                    FROM MonthlyRatings
-                    GROUP BY se_id, social_enterprise
-                    ORDER BY weighted_avg_rating DESC
-                    LIMIT 3
-                )
-                -- Step 4: Retrieve the final results
-                SELECT 
-                    m.se_id, 
-                    m.social_enterprise, 
-                    m.month, 
-                    m.avg_rating,
-                    'yearly' AS period
-                FROM MonthlyRatings m
-                JOIN TopSEsYearly t ON m.se_id = t.se_id
-                ORDER BY t.weighted_avg_rating DESC, m.social_enterprise, m.month;
-            `;
-        } else if (period === "overall") {
-            query = `
-                WITH EvaluationRange AS (
-                    -- Step 1: Determine the earliest and latest evaluation dates (truncated to the start of the month)
-                    SELECT 
-                        DATE_TRUNC('month', MIN(e.created_at)) AS earliest_eval_date,
-                        DATE_TRUNC('month', MAX(e.created_at)) AS latest_eval_date
-                    FROM evaluations e
-					JOIN mentorships m ON e.se_id = m.se_id  -- Only SEs assigned to the mentor
-                    WHERE evaluation_type = 'Social Enterprise'
-					AND m.mentor_id = $1  -- Filter by specific mentor
-                ),
-                MonthlyRatings AS (
-                    -- Step 2: Calculate monthly ratings for the overall date range
-                    SELECT 
-                        e.se_id,
-                        s.abbr AS social_enterprise, 
-                        DATE_TRUNC('month', e.created_at) AS month, -- Group by month
-                        ROUND(AVG(ec.rating), 2) AS avg_rating,
-                        COUNT(*) AS eval_count
-                    FROM evaluations e
-                    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                    JOIN socialenterprises s ON e.se_id = s.se_id
-					JOIN mentorships m ON e.se_id = m.se_id  -- Only SEs assigned to the mentor
-                    CROSS JOIN EvaluationRange er
-                    WHERE 
-                        DATE_TRUNC('month', e.created_at) >= er.earliest_eval_date -- Start date (earliest eval)
-                        AND DATE_TRUNC('month', e.created_at) <= er.latest_eval_date -- End date (latest eval)
-                        AND e.evaluation_type = 'Social Enterprise'
-						AND m.mentor_id = $1  -- Filter by specific mentor
-                    GROUP BY e.se_id, s.abbr, month
-                ),
-                TopSEsOverall AS (
-                    -- Step 3: Identify the top 3 social enterprises by weighted average rating
-                    SELECT 
-                        se_id, 
-                        social_enterprise, 
-                        SUM(avg_rating * eval_count) / SUM(eval_count) AS weighted_avg_rating
-                    FROM MonthlyRatings
-                    GROUP BY se_id, social_enterprise
-                    ORDER BY weighted_avg_rating DESC
-                    LIMIT 3
-                )
-                -- Step 4: Retrieve the final results
-                SELECT 
-                    m.se_id, 
-                    m.social_enterprise, 
-                    m.month, 
-                    m.avg_rating,
-                    'overall' AS period
-                FROM MonthlyRatings m
-                JOIN TopSEsOverall t ON m.se_id = t.se_id
-                ORDER BY t.weighted_avg_rating DESC, m.social_enterprise, m.month;
-            `;
-        } else {
-            throw new Error("Invalid period specified.");
-        }
-        const values = [mentor_id]
 
         const result = await pgDatabase.query(query, values);
         return result.rows;
     } catch (error) {
-        console.error("❌ Error fetching top SE performance:", error);
-        return [];
-    }
-};
-// TO DO
-exports.getPerformanceTrendBySEID = async (se_id, period = "overall") => {
-    try {
-        let query;
-
-        // Select query based on the period
-        if (period === "quarterly") {
-            query = `
-                WITH LatestEvaluation AS (
-                    -- Step 1: Determine the latest evaluation date (truncated to the start of the month)
-                    SELECT DATE_TRUNC('month', MAX(e.created_at)) AS latest_eval_date
-                    FROM evaluations e
-                    JOIN socialenterprises s ON e.se_id = s.se_id
-                    WHERE e.evaluation_type = 'Social Enterprise'
-                    AND e.se_id = $1  -- Filter by specific SE ID
-                ),
-                MonthlyRatings AS (
-                    -- Step 2: Calculate monthly ratings for the latest 3 months
-                    SELECT 
-                        e.se_id,
-                        s.abbr AS social_enterprise, 
-                        DATE_TRUNC('month', e.created_at) AS month, -- Group by month
-                        ROUND(AVG(ec.rating), 2) AS avg_rating,
-                        COUNT(*) AS eval_count
-                    FROM evaluations e
-                    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                    JOIN socialenterprises s ON e.se_id = s.se_id
-                    CROSS JOIN LatestEvaluation le
-                    WHERE 
-                        DATE_TRUNC('month', e.created_at) >= (le.latest_eval_date - INTERVAL '3 months') -- Start date (3 months before latest eval)
-                        AND DATE_TRUNC('month', e.created_at) <= le.latest_eval_date -- End date (latest eval)
-                        AND e.evaluation_type = 'Social Enterprise'
-                        AND e.se_id = $1  -- Filter by specific SE ID
-                    GROUP BY e.se_id, s.abbr, month
-                ),
-                TopSEsTrimester AS (
-                    -- Step 3: Identify the top 3 social enterprises by weighted average rating
-                    SELECT 
-                        se_id, 
-                        social_enterprise, 
-                        SUM(avg_rating * eval_count) / SUM(eval_count) AS weighted_avg_rating
-                    FROM MonthlyRatings
-                    GROUP BY se_id, social_enterprise
-                    ORDER BY weighted_avg_rating DESC
-                    LIMIT 3
-                )
-                -- Step 4: Retrieve the final results
-                SELECT 
-                    m.se_id, 
-                    m.social_enterprise, 
-                    m.month, 
-                    m.avg_rating,
-                    'trimester' AS period
-                FROM MonthlyRatings m
-                JOIN TopSEsTrimester t ON m.se_id = t.se_id
-                ORDER BY t.weighted_avg_rating DESC, m.social_enterprise, m.month;
-            `;
-        } else if (period === "yearly") {
-            query = `
-                WITH LatestEvaluation AS (
-                    -- Step 1: Determine the latest evaluation date (truncated to the start of the month)
-                    SELECT DATE_TRUNC('month', MAX(e.created_at)) AS latest_eval_date
-                    FROM evaluations e
-                    JOIN socialenterprises s ON e.se_id = s.se_id
-                    WHERE e.evaluation_type = 'Social Enterprise'
-                    AND e.se_id = $1  -- Filter by specific SE ID
-                ),
-                MonthlyRatings AS (
-                    -- Step 2: Calculate monthly ratings for the latest 11 months
-                    SELECT 
-                        e.se_id,
-                        s.abbr AS social_enterprise, 
-                        DATE_TRUNC('month', e.created_at) AS month, -- Group by month
-                        ROUND(AVG(ec.rating), 2) AS avg_rating,
-                        COUNT(*) AS eval_count
-                    FROM evaluations e
-                    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                    JOIN socialenterprises s ON e.se_id = s.se_id
-                    CROSS JOIN LatestEvaluation le
-                    WHERE 
-                        DATE_TRUNC('month', e.created_at) >= (le.latest_eval_date - INTERVAL '11 months') -- Start date (11 months before latest eval)
-                        AND DATE_TRUNC('month', e.created_at) <= le.latest_eval_date -- End date (latest eval)
-                        AND e.evaluation_type = 'Social Enterprise'
-						AND e.se_id = $1  -- Filter by specific SE ID
-                    GROUP BY e.se_id, s.abbr, month
-                ),
-                TopSEsYearly AS (
-                    -- Step 3: Identify the top 3 social enterprises by weighted average rating
-                    SELECT 
-                        se_id, 
-                        social_enterprise, 
-                        SUM(avg_rating * eval_count) / SUM(eval_count) AS weighted_avg_rating
-                    FROM MonthlyRatings
-                    GROUP BY se_id, social_enterprise
-                    ORDER BY weighted_avg_rating DESC
-                    LIMIT 3
-                )
-                -- Step 4: Retrieve the final results
-                SELECT 
-                    m.se_id, 
-                    m.social_enterprise, 
-                    m.month, 
-                    m.avg_rating,
-                    'yearly' AS period
-                FROM MonthlyRatings m
-                JOIN TopSEsYearly t ON m.se_id = t.se_id
-                ORDER BY t.weighted_avg_rating DESC, m.social_enterprise, m.month;
-            `;
-        } else if (period === "overall") {
-            query = `
-                WITH EvaluationRange AS (
-                    -- Step 1: Determine the earliest and latest evaluation dates (truncated to the start of the month)
-                    SELECT 
-                        DATE_TRUNC('month', MIN(e.created_at)) AS earliest_eval_date,
-                        DATE_TRUNC('month', MAX(e.created_at)) AS latest_eval_date
-                    FROM evaluations e
-					JOIN socialenterprises s ON e.se_id = s.se_id
-                    WHERE evaluation_type = 'Social Enterprise'
-					AND e.se_id = $1  -- Filter by specific SE ID
-                ),
-                MonthlyRatings AS (
-                    -- Step 2: Calculate monthly ratings for the overall date range
-                    SELECT 
-                        e.se_id,
-                        s.abbr AS social_enterprise, 
-                        DATE_TRUNC('month', e.created_at) AS month, -- Group by month
-                        ROUND(AVG(ec.rating), 2) AS avg_rating,
-                        COUNT(*) AS eval_count
-                    FROM evaluations e
-                    JOIN evaluation_categories ec ON e.evaluation_id = ec.evaluation_id
-                    JOIN socialenterprises s ON e.se_id = s.se_id
-                    CROSS JOIN EvaluationRange er
-                    WHERE 
-                        DATE_TRUNC('month', e.created_at) >= er.earliest_eval_date -- Start date (earliest eval)
-                        AND DATE_TRUNC('month', e.created_at) <= er.latest_eval_date -- End date (latest eval)
-                        AND e.evaluation_type = 'Social Enterprise'
-						AND e.se_id = $1  -- Filter by specific SE ID
-                    GROUP BY e.se_id, s.abbr, month
-                ),
-                TopSEsOverall AS (
-                    -- Step 3: Identify the top 3 social enterprises by weighted average rating
-                    SELECT 
-                        se_id, 
-                        social_enterprise, 
-                        SUM(avg_rating * eval_count) / SUM(eval_count) AS weighted_avg_rating
-                    FROM MonthlyRatings
-                    GROUP BY se_id, social_enterprise
-                    ORDER BY weighted_avg_rating DESC
-                    LIMIT 3
-                )
-                -- Step 4: Retrieve the final results
-                SELECT 
-                    m.se_id, 
-                    m.social_enterprise, 
-                    m.month, 
-                    m.avg_rating,
-                    'overall' AS period
-                FROM MonthlyRatings m
-                JOIN TopSEsOverall t ON m.se_id = t.se_id
-                ORDER BY t.weighted_avg_rating DESC, m.social_enterprise, m.month;
-            `;
-        } else {
-            throw new Error("Invalid period specified.");
-        }
-        const values = [se_id]
-
-        const result = await pgDatabase.query(query, values);
-        return result.rows;
-    } catch (error) {
-        console.error("❌ Error fetching top SE performance:", error);
+        console.error("❌ Error in getTopSEPerformance:", error);
         return [];
     }
 };
@@ -1090,7 +768,7 @@ exports.getImprovementScorePerMonthAnnually= async (program = null) => {
 
 exports.getAllEvaluationStats= async (program = null) => {
     try {
-        let programFilter = program ? `p.name = '${program}'` : '';
+        let programFilter = program ? `WHERE p.name = '${program}'` : '';
 
         const query = `
             SELECT 
@@ -1102,8 +780,8 @@ exports.getAllEvaluationStats= async (program = null) => {
                 socialenterprises AS s ON e.se_id = s.se_id
             JOIN 
                 programs AS p ON p.program_id = s.program_id
-            WHERE 
-                ${programFilter};
+            ${programFilter}
+            ;
         `;
         const result = await pgDatabase.query(query);
         return result.rows;

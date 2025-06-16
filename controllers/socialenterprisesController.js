@@ -306,13 +306,14 @@ exports.updateSocialEnterpriseStatus = async (se_id, isActive) => {
 
 exports.getTotalSECount = async (program = null) => {
   try {
-      let programFilter = program ? `p.name = '${program}'` : '';
+      let programFilter = program ? `WHERE p.name = '${program}'` : '';
 
       const query = `
         SELECT COUNT(*) FROM socialenterprises AS s
         JOIN programs AS p ON p.program_id = s.program_id
-        WHERE ${programFilter};
+        ${programFilter};
       `;
+
       const result = await pgDatabase.query(query);
       return result.rows;
   } catch (error) {

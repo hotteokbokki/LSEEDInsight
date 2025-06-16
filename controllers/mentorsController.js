@@ -154,7 +154,7 @@ exports.getPreviousUnassignedMentors = async () => {
 
 exports.getMentorCount = async (program = null) => {
   try {
-      let programFilter = program ? `p.name = '${program}'` : '';
+      let programFilter = program ? `WHERE p.name = '${program}'` : '';
 
       const query = `
           SELECT COUNT(DISTINCT m.mentor_id)
@@ -162,7 +162,7 @@ exports.getMentorCount = async (program = null) => {
           JOIN mentorships AS ms ON ms.mentor_id = m.mentor_id
           JOIN socialenterprises AS s ON s.se_id = ms.se_id
           JOIN programs AS p ON p.program_id = s.program_id
-          WHERE ${programFilter};
+          ${programFilter};
       `;
 
       const result = await pgDatabase.query(query);

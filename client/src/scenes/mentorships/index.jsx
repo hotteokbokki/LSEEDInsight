@@ -19,7 +19,7 @@ import {
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
-import SEPerformanceTrendChartByMentorship from "../../components/SEPerformanceTrendChartByMentorship";
+import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import { useNavigate } from "react-router-dom"; // For navigation
 import { Snackbar, Alert } from "@mui/material";
@@ -319,7 +319,7 @@ const Mentorships = () => {
         backgroundColor={colors.primary[400]}
         paddingTop="10px"
       >
-        <SEPerformanceTrendChartByMentorship />{" "}
+        <SEPerformanceTrendChart />{" "}
         {/* ✅ Embed the SEPerformanceChart component here */}
       </Box>
       <Box display="flex" gap="10px" mt="20px">

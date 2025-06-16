@@ -14,7 +14,6 @@ const { getSocialEnterprisesByProgram,
         getTotalSECount, 
         getSEWithOutMentors, 
         getPreviousTotalSECount, 
-        getPreviousMonthSEWithOutMentors, 
         getAllSocialEnterpriseswithMentorID, 
         updateSERowUpdate, 
         getAllSocialEnterprisesForComparison,
@@ -40,7 +39,6 @@ const { getAllSDG } = require("./controllers/sdgController.js");
 const { getMentorshipsByMentorId, 
         getMentorBySEID, 
         getSEWithMentors, 
-        getPreviousSEWithMentors, 
         getMentorshipCount,
         getPendingSchedules,
         getSchedulingHistory,
@@ -52,8 +50,6 @@ const { addSocialEnterprise } = require("./controllers/socialenterprisesControll
 const { getEvaluationsByMentorID, 
         getEvaluationDetails, 
         getTopSEPerformance, 
-        getSingleSEPerformanceTrend, 
-        getPerformanceTrendBySEID, 
         getCommonChallengesBySEID, 
         getPermanceScoreBySEID, 
         getAverageScoreForAllSEPerCategory, 
@@ -62,7 +58,6 @@ const { getEvaluationsByMentorID,
         getMonthlyGrowthDetails, 
         getSELeaderboards, 
         updateAcknowledgeEvaluation, 
-        getTopSEPerformanceByMentorships, 
         getEvaluationsBySEID, 
         getStatsForHeatmap, 
         getEvaluations,
@@ -1354,9 +1349,11 @@ app.get("/api/top-se-performance", async (req, res) => {
     // Capture the period from query params
     const period = req.query.period; 
     const program = req.query.program || null; // Optional program param
+    const mentor_id = req.session.user?.role === 'mentor' ? req.session.user.id : null;    
+    const se_id = req.query.se_id || null;
 
     // Fetch the top SE performance based on the period
-    const result = await getTopSEPerformance(period, program);
+    const result = await getTopSEPerformance(period, program, mentor_id, se_id);
 
     // If no data is found
     if (result.length === 0) {
@@ -1364,27 +1361,6 @@ app.get("/api/top-se-performance", async (req, res) => {
     }
 
     // Return the fetched data
-    res.json(result);
-  } catch (error) {
-    console.error("Error fetching top SE performance:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
-app.get("/api/top-se-performance-with-mentorships", async (req, res) => {
-  try {
-    // DOUBLE CHECK
-    const mentor_id = req.session.user?.id; // Safely extract from session
-
-    // Capture the period from query params
-    const period = req.query.period; 
-
-    const result = await getTopSEPerformanceByMentorships(mentor_id, period);
-
-    if (result.length === 0) {  // ✅ result is already an array
-      return res.json({ message: "No performance data available" });
-    }
-    
     res.json(result);
   } catch (error) {
     console.error("Error fetching top SE performance:", error);
@@ -1433,23 +1409,6 @@ app.get("/api/se-analytics-stats/:se_id", async (req, res) => {
     res.json({ registeredUsers, totalEvaluations, pendingEvaluations, avgRating, acknowledgedEvaluations });
   } catch (error) {
     console.error("Error fetching SE analytics stats:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
-app.get("/api/single-se-performance/:se_id", async (req, res) => {
-  try {
-    const { se_id } = req.params;
-    const period = req.query.period
-    const result = await getPerformanceTrendBySEID(se_id, period);
-    
-    if (!result || result.length === 0) {
-      return res.json({ message: "No performance trend data available" });
-    }
-
-    res.json(result);
-  } catch (error) {
-    console.error("Error fetching performance trend:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });

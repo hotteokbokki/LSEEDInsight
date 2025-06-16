@@ -17,7 +17,7 @@ import {
 import StarIcon from "@mui/icons-material/Star";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import { tokens } from "../../theme";
-import SSEPerformanceTrendChart from "../../components/SSEPerformanceTrendChart";
+import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
 import PieChart from "../../components/PieChart";
 import LikertChart from "../../components/LikertChart";
 import RadarChart from "../../components/RadarChart";
@@ -447,7 +447,7 @@ const SEAnalytics = () => {
         marginBottom={2}
         marginTop={2}
       >
-        <SSEPerformanceTrendChart selectedSEId={selectedSEId} />
+        <SEPerformanceTrendChart selectedSEId={selectedSEId} />
       </Box>
 
       {/* Evaluations Table */}
