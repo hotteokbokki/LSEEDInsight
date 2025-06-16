@@ -136,11 +136,9 @@ const EvaluatePage = ({ userRole }) => {
         let response;
         if (userRole === "Mentor") {
           response = await axios.get(
-            "http://localhost:4000/getMentorEvaluations",
-            {
-              params: { mentor_id: userSession.id },
-            }
-          );
+            "http://localhost:4000/getMentorEvaluations", {
+              withCredentials: true, // Equivalent to credentials: "include"
+          });
         } else if (userRole?.startsWith("LSEED")) {
           response = await axios.get("http://localhost:4000/getAllEvaluations");
         }
@@ -165,7 +163,7 @@ const EvaluatePage = ({ userRole }) => {
     };
 
     fetchEvaluations();
-  }, [userSession.id]);
+  }, []);
 
   const columns = [
     { field: "social_enterprise", headerName: "Social Enterprise", flex: 1 },
@@ -440,11 +438,9 @@ const EvaluatePage = ({ userRole }) => {
           setIsLoadingSocialEnterprises(true); // Start loading
 
           const mentorshipsResponse = await axios.get(
-            "http://localhost:4000/getAvailableEvaluations",
-            {
-              params: { mentor_id: userSession.id },
-            }
-          );
+            "http://localhost:4000/getAvailableEvaluations", {
+              withCredentials: true, // Equivalent to credentials: "include"
+            });
           console.log("📥 Mentorship Response:", mentorshipsResponse.data);
 
           const updatedSocialEnterprises = mentorshipsResponse.data.map(
@@ -471,7 +467,7 @@ const EvaluatePage = ({ userRole }) => {
       };
       fetchSocialEnterprises();
     }
-  }, [userSession.id]);
+  }, []);
 
   // Scroll to the top of the dialog when it opens
   useEffect(() => {

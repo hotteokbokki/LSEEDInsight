@@ -1176,7 +1176,7 @@ app.get("/getAllSocialEnterprisesForComparison", async (req, res) => {
 
 app.get("/getMentorEvaluations", async (req, res) => {
   try {
-    const { mentor_id } = req.query; // Extract mentor_id from query parameters
+    const mentor_id  = req.session.user?.id;
 
     if (!mentor_id) {
       return res.status(400).json({ message: "mentor_id is required" });
@@ -1519,7 +1519,7 @@ app.get("/getMentorshipsbyID", async (req, res) => {
 
 app.get("/getAvailableEvaluations", async (req, res) => {
   try {
-    const { mentor_id } = req.query; // Extract mentor_id from query parameters
+    const mentor_id = req.session.user?.id;
 
     if (!mentor_id) {
       return res.status(400).json({ message: "mentor_id is required" });

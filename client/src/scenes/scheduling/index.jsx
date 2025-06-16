@@ -644,7 +644,7 @@ const Scheduling = ({ userRole }) => {
         <Calendar isDashboard={true} />
       </Box>
 
-      {user.role === "LSEED-Coordinator" && (
+      {user.role?.startsWith("LSEED") && (
         <Box mt={4} display="flex" flexDirection="column" gap={2}>
           {/* Mentor Schedules */}
           <Box
