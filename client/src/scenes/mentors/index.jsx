@@ -15,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import { tokens } from "../../theme";
+import React from "react";
 import axios from "axios";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import PersonIcon from "@mui/icons-material/Person";
@@ -57,17 +58,17 @@ const Mentors = ( {userRole} ) => {
       console.log("📥 API Response:", response.data); // ✅ Debugging Log
 
       const formattedData = response.data.map((mentor) => ({
-        id: mentor.mentor_id, // ✅ Use actual UUID as ID
+        id: mentor.mentor_id,
         mentor_firstName: mentor.mentor_firstName,
         mentor_lastName: mentor.mentor_lastName,
         mentorName: `${mentor.mentor_firstName} ${mentor.mentor_lastName}`,
         email: mentor.email,
-        contactnum: mentor.contactNum || "N/A", // ✅ Handle null values
-        numberOfSEsAssigned: mentor.number_SE_assigned || 0, // ✅ Ensure it's a number
-        status: "Active", // Assuming active by default
+        contactnum: mentor.contactNum || "N/A",
+        numberOfSEsAssigned: mentor.number_SE_assigned || 0,
+        assigned_se_names: mentor.assigned_se_names || "", // ✅ Include this line
+        status: "Active",
       }));
 
-      console.log("✅ Formatted Data:", formattedData);
       setRows(formattedData); // ✅ Correctly setting state
     } catch (error) {
       console.error("❌ Error fetching mentors:", error);
@@ -195,6 +196,27 @@ const Mentors = ( {userRole} ) => {
   }, []);
   // State for dialogs and data
   const [openDialog, setOpenDialog] = useState(false);
+  const [openRelatedSEs, setOpenRelatedSEs] = useState(false);
+  const [selectedSEs, setSelectedSEs] = useState([]);
+
+  const SEHoverCell = ({ number, seNames, onClick }) => {
+    const [hover, setHover] = React.useState(false);
+
+    return (
+      <Box
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        onClick={onClick}
+        sx={{
+          cursor: "pointer",
+          textDecoration: "underline",
+        }}
+      >
+        {hover ? "View" : number}
+      </Box>
+    );
+  };
+
   const [mentorData, setMentorData] = useState({
     firstName: "",
     lastName: "",
@@ -322,35 +344,47 @@ const Mentors = ( {userRole} ) => {
   };
 
   const columns = [
-    {
-      field: "mentor_firstName",
-      headerName: "First Name",
-      flex: 1,
-      cellClassName: "name-column--cell",
-      renderCell: (params) => `${params.row.mentor_firstName}`,
-      editable: isEditing, // Make editable when in edit mode
-    },
-    {
-      field: "mentor_lastName",
-      headerName: "Last Name",
-      flex: 1,
-      cellClassName: "name-column--cell",
-      renderCell: (params) => `${params.row.mentor_lastName}`,
-      editable: isEditing, // Make editable when in edit mode
-    },
+    ...(isEditing
+      ? [
+          {
+            field: "mentor_firstName",
+            headerName: "First Name",
+            flex: 1,
+            cellClassName: "name-column--cell",
+            editable: true,
+          },
+          {
+            field: "mentor_lastName",
+            headerName: "Last Name",
+            flex: 1,
+            cellClassName: "name-column--cell",
+            editable: true,
+          },
+        ]
+      : [
+          {
+            field: "mentor_fullName",
+            headerName: "Mentor Name",
+            flex: 1,
+            cellClassName: "name-column--cell",
+            renderCell: (params) =>
+              `${params.row.mentor_firstName} ${params.row.mentor_lastName}`,
+          },
+        ]),
+
     {
       field: "email",
       headerName: "Email",
       flex: 1,
       renderCell: (params) => `${params.row.email}`,
-      editable: isEditing, // Make editable when in edit mode
+      editable: isEditing,
     },
     {
       field: "contactnum",
       headerName: "Contact Number",
       flex: 1,
       renderCell: (params) => `${params.row.contactnum}`,
-      editable: isEditing, // Make editable when in edit mode
+      editable: isEditing,
     },
     {
       field: "numberOfSEsAssigned",
@@ -358,14 +392,28 @@ const Mentors = ( {userRole} ) => {
       headerAlign: "left",
       align: "left",
       flex: 1,
-      type: "number",
-      editable: isEditing, // Make editable when in edit mode
+      renderCell: (params) => {
+        const seList = params.row.assigned_se_names
+          ? params.row.assigned_se_names.split("||").map((name) => name.trim())
+          : [];
+
+        return (
+          <SEHoverCell
+            number={params.row.numberOfSEsAssigned}
+            seNames={seList}
+            onClick={() => {
+              setSelectedSEs(seList);
+              setOpenRelatedSEs(true);
+            }}
+          />
+        );
+      },
     },
     {
       field: "status",
       headerName: "Status",
       flex: 1,
-      editable: isEditing, // Make editable when in edit mode
+      editable: isEditing,
       renderCell: (params) => <Box>{params.value}</Box>,
       renderEditCell: (params) => (
         <TextField
@@ -400,6 +448,7 @@ const Mentors = ( {userRole} ) => {
       ),
     },
   ];
+
 
   return (
     <Box m="20px">
@@ -850,6 +899,7 @@ const Mentors = ( {userRole} ) => {
           </Alert>
         </Snackbar>
       </Box>
+      
       {/* DIALOG BOX */}
       <Dialog
         open={openDialog}
@@ -1057,6 +1107,76 @@ const Mentors = ( {userRole} ) => {
             }}
           >
             Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* SE ASSIGNED Names */}
+      <Dialog
+        open={openRelatedSEs}
+        onClose={() => setOpenRelatedSEs(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          style: {
+            backgroundColor: "#fff",
+            color: "#000",
+            border: "1px solid #000",
+          },
+        }}
+      >
+        {/* Dialog Title */}
+        <DialogTitle
+          sx={{
+            backgroundColor: "#1E4D2B", // DLSU green
+            color: "#fff",
+            textAlign: "center",
+            fontSize: "1.5rem",
+            fontWeight: "bold",
+          }}
+        >
+          Assigned Social Enterprises
+        </DialogTitle>
+
+        {/* Dialog Content */}
+        <DialogContent
+          sx={{
+            padding: "24px",
+            maxHeight: "70vh",
+            overflowY: "auto",
+          }}
+        >
+          {selectedSEs.length > 0 ? (
+            <Box component="ul" sx={{ pl: 2 }}>
+              {selectedSEs.map((seName, index) => (
+                <li key={index}>
+                  <Typography variant="body1">{seName}</Typography>
+                </li>
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="body1">No SEs assigned to this mentor.</Typography>
+          )}
+        </DialogContent>
+
+        {/* Dialog Actions */}
+        <DialogActions
+          sx={{
+            padding: "16px",
+            borderTop: "1px solid #000",
+          }}
+        >
+          <Button
+            onClick={() => setOpenRelatedSEs(false)}
+            sx={{
+              color: "#000",
+              border: "1px solid #000",
+              "&:hover": {
+                backgroundColor: "#f0f0f0",
+              },
+            }}
+          >
+            Close
           </Button>
         </DialogActions>
       </Dialog>
