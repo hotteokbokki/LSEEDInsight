@@ -89,7 +89,9 @@ app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_BOT_TOKEN_2 = process.env.TELEGRAM_BOT_TOKEN_2;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+const TELEGRAM_API_URL_2 = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN_2}`;
 
 //MAYBE REMOVE
 app.set('trust proxy', 1); // 🔒 Required when behind reverse proxies like Nginx or Heroku
@@ -123,6 +125,7 @@ app.use("/api/mentorships", mentorshipRoutes);
 
 // Temporary storage for user states
 const userStates = {};
+const userStatesBot2 = {};
 // Timeout duration (in milliseconds) before clearing stale states
 const STATE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 const PASSWORD = 'q@P#3_4)V5vUw+LJ!F'; // Set a secure password for authentication
@@ -346,6 +349,95 @@ async function deleteMessage(chatId, messageId) {
   }
 }
 
+/**
+ * Send a plain text message using Bot 2
+ */
+async function sendMessageBot2(chatId, message) {
+  try {
+    const response = await axios.post(`${TELEGRAM_API_URL_2}/sendMessage`, {
+      chat_id: chatId,
+      text: message,
+      parse_mode: "Markdown",
+    });
+
+    return response.data.result; // Returns message metadata
+  } catch (error) {
+    console.error("❌ [Bot 2] Failed to send message:", error.response?.data || error.message);
+    throw new Error(`Bot 2 failed to send message: ${error.message}`);
+  }
+}
+
+TELEGRAM_API_URL_2
+
+/**
+ * Send a message with inline buttons using Bot 2
+ */
+async function sendMessageWithOptionsBot2(chatId, message, options) {
+  try {
+    const response = await axios.post(`${TELEGRAM_API_URL_2}/sendMessage`, {
+      chat_id: chatId,
+      text: message,
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: options, // Button structure must be a 2D array
+      },
+    });
+
+    return response.data.result; // Returns message metadata
+  } catch (error) {
+    console.error("❌ [Bot 2] Failed to send message with options:", error.response?.data || error.message);
+    return null;
+  }
+}
+
+/**
+ * Delete a message by ID using Bot 2
+ */
+async function deleteMessageBot2(chatId, messageId) {
+  try {
+    await axios.post(`${TELEGRAM_API_URL_2}/deleteMessage`, {
+      chat_id: chatId,
+      message_id: messageId,
+    });
+  } catch (error) {
+    console.warn("⚠️ [Bot 2] Failed to delete message:", error.response?.data || error.message);
+    // No rethrow: deletion failure shouldn't crash logic
+  }
+}
+
+/**
+ * Send a question message and track its message ID
+ */
+async function askQuestion(chatId, questionText, state) {
+  const sent = await sendMessageBot2(chatId, questionText);
+  if (sent) {
+    state.previousMessageId = sent.message_id;
+  }
+}
+
+async function sendMessageWithOptionsBot2(chatId, message, options) {
+  try {
+    const response = await axios.post(TELEGRAM_API_URL, {
+      chat_id: chatId,
+      text: message,
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: options, // Use directly without mapping
+      },
+    });
+
+    if (response.data && response.data.result) {
+      return response.data.result; // Ensure it returns the actual message object
+    } else {
+      console.error("⚠️ Failed to send message with options. Response:", response.data);
+      return null;
+    }
+  } catch (error) {
+    console.error("❌ Failed to send message:", error.response?.data || error.message);
+    return null;
+  }
+}
+
 async function sendMessageWithOptions(chatId, message, options) {
   try {
     const response = await axios.post(TELEGRAM_API_URL, {
@@ -372,6 +464,7 @@ async function sendMessageWithOptions(chatId, message, options) {
 async function sendMentorshipMessage(chatId, mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link) {
   console.log(`📩 Sending Mentorship Schedule Message to Chat ID: ${chatId}`);
 
+  // Ensure it's an array for consistent handling
   if (!Array.isArray(mentorship_date)) {
     mentorship_date = [mentorship_date];
   }
@@ -382,7 +475,7 @@ async function sendMentorshipMessage(chatId, mentoring_session_id, mentorship_id
      WHERE mentor_id = (SELECT mentor_id FROM mentorships WHERE mentorship_id = $1)`,
     [mentorship_id]
   );
-  
+
   if (mentorResult.rows.length === 0) {
     console.error(`❌ Mentor not found for mentorship ID ${mentorship_id}`);
     return;
@@ -390,14 +483,36 @@ async function sendMentorshipMessage(chatId, mentoring_session_id, mentorship_id
 
   const mentorName = `${mentorResult.rows[0].mentor_firstname} ${mentorResult.rows[0].mentor_lastname}`;
 
-  // Format mentorship date properly
-  const formattedDate = mentorship_date.map(dateStr => {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      month: "long",
-      day: "2-digit",
-      year: "numeric",
-    });
-  }).join(", ");
+  // ✅ Format mentorship date
+  let formattedDate;
+
+  try {
+    const rawString = mentorship_date[0];
+
+    // Extract only the part before the comma after the year (e.g. "June 17, 2025")
+    const match = rawString.match(/^([A-Za-z]+ \d{1,2}, \d{4})/);
+    const cleanDate = match ? match[1] : null;
+
+    if (!cleanDate) {
+      console.error("❌ Could not extract clean date from:", rawString);
+      formattedDate = "Invalid Date";
+    } else {
+      const date = new Date(cleanDate);
+      if (isNaN(date.getTime())) {
+        console.error("❌ Could not parse date:", cleanDate);
+        formattedDate = "Invalid Date";
+      } else {
+        formattedDate = date.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        });
+      }
+    }
+  } catch (err) {
+    console.error("❌ Date formatting error:", err);
+    formattedDate = "Invalid Date";
+  }
 
   const message = `📅 *New Mentorship Meeting Request*\n\n`
     + `🔹 *Mentor:* ${mentorName}\n`
@@ -406,7 +521,7 @@ async function sendMentorshipMessage(chatId, mentoring_session_id, mentorship_id
     + `🔹 *Zoom Link:* ${zoom_link || "N/A"}\n\n`
     + `📌 Please confirm your availability:`;
 
-  // ✅ Inline keyboard options for Accept/Decline
+  // Inline keyboard for Accept/Decline
   const options = [
     [
       { text: `✅ Accept`, callback_data: `acceptschedule_${mentoring_session_id}` },
@@ -414,10 +529,10 @@ async function sendMentorshipMessage(chatId, mentoring_session_id, mentorship_id
     ]
   ];
 
-  // ✅ Use sendMessageWithOptions to send the message with buttons
   const sentMessageSchedule = await sendMessageWithOptions(chatId, message, options);
 
-  userStates[chatId] = { sentMessageScheduleId: sentMessageSchedule.message_id };
+  userStates[chatId] = { sentMessageScheduleId: sentMessageSchedule?.message_id };
+
   if (sentMessageSchedule) {
     console.log("✅ Mentorship message sent with buttons:", sentMessageSchedule);
   } else {
@@ -1706,7 +1821,7 @@ app.get("/api-test", async (req, res) => {
   }
 });
 
-app.post("/webhook", async (req, res) => {
+app.post("/webhook-bot1", async (req, res) => {
   const message = req.body.message || req.body.edited_message;
   const callbackQuery = req.body.callback_query;
 
@@ -2371,6 +2486,97 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
+app.post("/webhook-bot2", async (req, res) => {
+  const body = req.body;
+  const chatId = body.message?.chat?.id || body.callback_query?.message?.chat?.id;
+
+  if (!chatId) return res.sendStatus(200); // Ignore if no chatId
+
+  let state = userStatesBot2[chatId] || { step: "enterprise_name", formData: {} };
+  userStatesBot2[chatId] = state;
+
+  // Handle text messages (answers)
+  if (body.message && body.message.text) {
+    const text = body.message.text.trim();
+
+    if (text.toLowerCase() === "/start" || text.toLowerCase() === "/reset") {
+      if (state.previousMessageId) {
+        await deleteMessageBot2(chatId, state.previousMessageId).catch(console.error);
+      }
+      delete userStatesBot2[chatId];
+      userStatesBot2[chatId] = { step: "enterprise_name", formData: {} };
+      await askQuestion(chatId, "🏢 *Welcome!* What is the name of your Social Enterprise?", userStatesBot2[chatId]);
+      return res.sendStatus(200);
+    }
+
+    // Delete previous message if exists (non-blocking)
+    if (state.previousMessageId) {
+      deleteMessageBot2(chatId, state.previousMessageId).catch(console.error);
+    }
+
+    switch (state.step) {
+      case "enterprise_name":
+        state.formData.name = text;
+        state.step = "founded_year";
+        return askQuestion(chatId, "📅 *What year was your enterprise founded?*", state);
+
+      case "founded_year":
+        state.formData.foundedYear = text;
+        state.step = "contact_email";
+        return askQuestion(chatId, "📧 *What is your contact email?*", state);
+
+      case "contact_email":
+        state.formData.email = text;
+        state.step = "industry";
+        return askQuestion(chatId, "🏭 *What industry or sector are you in?*", state);
+
+      case "industry":
+        state.formData.industry = text;
+        state.step = "confirm";
+
+        return sendMessageWithOptionsBot2(chatId,
+          `🔍 *Please confirm the following:*
+              *Enterprise Name:* ${state.formData.name}
+              *Founded Year:* ${state.formData.foundedYear}
+              *Email:* ${state.formData.email}
+              *Industry:* ${state.formData.industry}`,
+          [
+            [
+              { text: "✅ Confirm", callback_data: "confirm_application" },
+              { text: "❌ Cancel", callback_data: "cancel_application" }
+            ]
+          ]
+        ).then(msg => {
+          state.previousMessageId = msg.message_id;
+        });
+
+      default:
+        // Reset flow if step is invalid
+        state.step = "enterprise_name";
+        return askQuestion(chatId, "🏢 *What is the name of your Social Enterprise?*", state);
+    }
+  }
+
+  // Handle button clicks (callback_query)
+  if (body.callback_query) {
+    const data = body.callback_query.data;
+    const messageId = body.callback_query.message.message_id;
+
+    // Delete previous confirmation
+    deleteMessageBot2(chatId, messageId).catch(console.error);
+
+    if (data === "confirm_application") {
+      await sendMessage(chatId, "🎉 *Thank you! Your application has been submitted.*");
+    } else if (data === "cancel_application") {
+      await sendMessage(chatId, "❌ *Application cancelled.*");
+    }
+
+    delete userStatesBot2[chatId]; // Clean up state
+  }
+
+  res.sendStatus(200);
+});
+
 // Send Message to a User (using stored Telegram User ID)
 app.post("/send-message", async (req, res) => {
   try {
@@ -2844,23 +3050,43 @@ const PORT = process.env.BACKEND_PORT;
 // Start the server and ngrok tunnel
 const NGROK_DOMAIN = process.env.NGROK_DOMAIN; // Your predefined ngrok domain
 
-// Function to set the webhook
-async function setWebhook(ngrokUrl) {
-  const webhookUrl = `${ngrokUrl}/webhook`;
+// -- OLD WEBHOOK --
+// // Function to set the webhook
+// async function setWebhook(ngrokUrl) {
+//   const webhookUrl = `${ngrokUrl}/webhook`;
+
+//   try {
+//       const response = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook`, {
+//           url: webhookUrl,
+//       });
+
+//       if (response.data.ok) {
+//           console.log(`✅ Webhook successfully set to: ${webhookUrl}`);
+//       } else {
+//           console.log(`❌ Failed to set webhook:`, response.data);
+//       }
+//   } catch (error) {
+//     console.error(`❌ Error setting webhook:`, error.response?.data || error.message);
+
+//   }
+// }
+
+// Function to set the webhook for a specific bot
+async function setWebhook(botToken, webhookPath, ngrokUrl) {
+  const webhookUrl = `${ngrokUrl}${webhookPath}`;
 
   try {
-      const response = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook`, {
-          url: webhookUrl,
-      });
+    const response = await axios.post(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+      url: webhookUrl,
+    });
 
-      if (response.data.ok) {
-          console.log(`✅ Webhook successfully set to: ${webhookUrl}`);
-      } else {
-          console.log(`❌ Failed to set webhook:`, response.data);
-      }
+    if (response.data.ok) {
+      console.log(`✅ Webhook successfully set for ${botToken} to: ${webhookUrl}`);
+    } else {
+      console.log(`❌ Failed to set webhook for ${botToken}:`, response.data);
+    }
   } catch (error) {
-    console.error(`❌ Error setting webhook:`, error.response?.data || error.message);
-
+    console.error(`❌ Error setting webhook for ${botToken}:`, error.response?.data || error.message);
   }
 }
 
@@ -2872,8 +3098,13 @@ app.listen(PORT, async () => {
       const ngrokUrl = await ngrok.connect(PORT);
       console.log(`🌍 Ngrok tunnel running at: ${ngrokUrl}`);
 
-      // Set the webhook automatically
-      await setWebhook(ngrokUrl);
+      // -- OLD WEBHOOK --
+      // // Set the webhook automatically
+      // await setWebhook(ngrokUrl);
+
+      // Set webhooks for both bots
+      await setWebhook(TELEGRAM_BOT_TOKEN, '/webhook-bot1', ngrokUrl);
+      await setWebhook(TELEGRAM_BOT_TOKEN_2, '/webhook-bot2', ngrokUrl);
   } catch (error) {
       console.log(`❌ Couldn't tunnel ngrok: ${error.message}`);
   }
