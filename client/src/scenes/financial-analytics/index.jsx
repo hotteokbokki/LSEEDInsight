@@ -3,6 +3,7 @@ import Header from "../../components/Header";
 import StatBox from "../../components/StatBox";
 import LineChart from "../../components/LineChart";
 import BarChart from "../../components/BarChart";
+import FinancialBarChart from "../../components/FinancialBarChart";
 import PieChart from "../../components/PieChart";
 import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
@@ -211,16 +212,16 @@ const FinancialAnalytics = ({ userRole }) => {
   );
 
   const getExpenseLevel = (amount) => {
-  if (amount > 100000) return "High";
-  if (amount > 50000) return "Medium";
-  return "Low";
-};
+    if (amount > 100000) return "High";
+    if (amount > 50000) return "Medium";
+    return "Low";
+  };
 
-const getExpenseLevelColor = (amount) => {
-  if (amount > 100000) return colors?.redAccent?.[400] ?? "#ff5252";     // red
-  if (amount > 50000) return colors?.yellowAccent?.[400] ?? "#EDED00";   // yellow
-  return colors?.greenAccent?.[400] ?? "#4caf50";                        // green
-};
+  const getExpenseLevelColor = (amount) => {
+    if (amount > 100000) return colors?.redAccent?.[400] ?? "#ff5252"; // red
+    if (amount > 50000) return colors?.yellowAccent?.[400] ?? "#EDED00"; // yellow
+    return colors?.greenAccent?.[400] ?? "#4caf50"; // green
+  };
 
   // Helper to calculate averages for StatBoxes (or sums where applicable)
   const avg = (arr, key) =>
@@ -414,7 +415,9 @@ const getExpenseLevelColor = (amount) => {
 
         <Box
           flex="1 1 100%"
-          backgroundColor={getExpenseLevelColor(highestExpenseSE?.totalExpenses || 0)}
+          backgroundColor={getExpenseLevelColor(
+            highestExpenseSE?.totalExpenses || 0
+          )}
           display="flex"
           alignItems="center"
           justifyContent="center"
@@ -422,8 +425,12 @@ const getExpenseLevelColor = (amount) => {
           mt="20px"
         >
           <StatBox
-            title={`₱${Number(highestExpenseSE?.totalExpenses || 0).toLocaleString()}`}
-            subtitle={`Highest Expenses: ${highestExpenseSE?.name || "N/A"} (${getExpenseLevel(highestExpenseSE?.totalExpenses)})`}
+            title={`₱${Number(
+              highestExpenseSE?.totalExpenses || 0
+            ).toLocaleString()}`}
+            subtitle={`Highest Expenses: ${
+              highestExpenseSE?.name || "N/A"
+            } (${getExpenseLevel(highestExpenseSE?.totalExpenses)})`}
             progress={0.9}
             increase={`↑ ${getExpenseLevel(highestExpenseSE?.totalExpenses)}`}
             icon={<></>}
@@ -599,8 +606,8 @@ const getExpenseLevelColor = (amount) => {
         </Box>
       </Box>
 
-      {/* Row 9 - Top 10 SE by Revenue */}
-      <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
+      {/* Top 10 SEs by Revenue */}
+      <Box backgroundColor={colors.primary[400]} p="40px" mt="20px">
         <Typography
           variant="h3"
           fontWeight="bold"
@@ -609,12 +616,16 @@ const getExpenseLevelColor = (amount) => {
           Top 10 Social Enterprises by Revenue
         </Typography>
         <Box height="400px">
-          <BarChart data={topRevenueSEsData} />
+          <FinancialBarChart
+            data={topRevenueSEsData}
+            dataKey="revenue"
+            label="Top Revenue"
+          />
         </Box>
       </Box>
 
-      {/* Row 10 - Leaderboard: Most Profit */}
-      <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
+      {/* Most Profitable SEs */}
+      <Box backgroundColor={colors.primary[400]} p="40px" mt="20px">
         <Typography
           variant="h3"
           fontWeight="bold"
@@ -623,7 +634,11 @@ const getExpenseLevelColor = (amount) => {
           Leaderboard: Most Profitable Social Enterprises
         </Typography>
         <Box height="400px">
-          <BarChart data={mostProfitSEsData} />
+          <FinancialBarChart
+            data={mostProfitSEsData}
+            dataKey="profit"
+            label="Most Profit"
+          />
         </Box>
       </Box>
     </Box>
