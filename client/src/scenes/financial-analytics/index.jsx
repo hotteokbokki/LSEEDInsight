@@ -205,6 +205,23 @@ const FinancialAnalytics = ({ userRole }) => {
 
   const socialEnterprises = Array.from(seMap.values());
 
+  const highestExpenseSE = socialEnterprises.reduce(
+    (max, se) => (se.totalExpenses > (max?.totalExpenses || 0) ? se : max),
+    null
+  );
+
+  const getExpenseLevel = (amount) => {
+  if (amount > 100000) return "High";
+  if (amount > 50000) return "Medium";
+  return "Low";
+};
+
+const getExpenseLevelColor = (amount) => {
+  if (amount > 100000) return colors?.redAccent?.[400] ?? "#ff5252";     // red
+  if (amount > 50000) return colors?.yellowAccent?.[400] ?? "#EDED00";   // yellow
+  return colors?.greenAccent?.[400] ?? "#4caf50";                        // green
+};
+
   // Helper to calculate averages for StatBoxes (or sums where applicable)
   const avg = (arr, key) =>
     (arr.reduce((acc, item) => acc + item[key], 0) / arr.length).toFixed(2);
@@ -386,7 +403,7 @@ const FinancialAnalytics = ({ userRole }) => {
         >
           <StatBox
             title={`₱${socialEnterprises
-              .reduce((sum, se) => sum + sum + Number(se.totalAssets || 0), 0)
+              .reduce((sum, se) => sum + Number(se.totalAssets || 0), 0)
               .toLocaleString()}`}
             subtitle="Total Assets (All SEs)"
             progress={1}
@@ -397,7 +414,7 @@ const FinancialAnalytics = ({ userRole }) => {
 
         <Box
           flex="1 1 100%"
-          backgroundColor={colors.redAccent[400]}
+          backgroundColor={getExpenseLevelColor(highestExpenseSE?.totalExpenses || 0)}
           display="flex"
           alignItems="center"
           justifyContent="center"
@@ -405,10 +422,10 @@ const FinancialAnalytics = ({ userRole }) => {
           mt="20px"
         >
           <StatBox
-            title="₱1,500,000"
-            subtitle="Immediate Attention: Highest Expenses (SE Name)"
+            title={`₱${Number(highestExpenseSE?.totalExpenses || 0).toLocaleString()}`}
+            subtitle={`Highest Expenses: ${highestExpenseSE?.name || "N/A"} (${getExpenseLevel(highestExpenseSE?.totalExpenses)})`}
             progress={0.9}
-            increase="↑ High"
+            increase={`↑ ${getExpenseLevel(highestExpenseSE?.totalExpenses)}`}
             icon={<></>}
           />
         </Box>
