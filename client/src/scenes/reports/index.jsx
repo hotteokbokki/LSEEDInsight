@@ -1,24 +1,78 @@
-import { Box, Button, useTheme } from "@mui/material";
+import React, { useRef, useState } from "react";
+import { Box, Button, Typography, useTheme } from "@mui/material";
 import Header from "../../components/Header";
 import { tokens } from "../../theme";
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
 
 const Reports = () => {
-  const theme = useTheme(); // Access the theme
-  const colors = tokens(theme.palette.mode); // Get your color tokens based on the current theme mode
-  
+  const theme = useTheme();
+  const colors = tokens(theme.palette.mode);
+
+  const fileInputRef = useRef(null);
+  const [parsedData, setParsedData] = useState([]);
+  const [fileName, setFileName] = useState("");
+
+  const handleButtonClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setFileName(file.name);
+
+    const isCSV = file.name.endsWith(".csv");
+    const isXLSX = file.name.endsWith(".xlsx");
+
+    if (isCSV) {
+      Papa.parse(file, {
+        header: true,
+        complete: (results) => {
+          setParsedData(results.data);
+        },
+      });
+    } else if (isXLSX) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(worksheet);
+        setParsedData(json);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      alert("Please upload a .csv or .xlsx file.");
+    }
+  };
+
+  const handleImport = () => {
+    console.log("Importing to database:", parsedData);
+    alert("Imported successfully!");
+    setParsedData([]);
+    setFileName("");
+  };
+
+  const handleCancel = () => {
+    setParsedData([]);
+    setFileName("");
+  };
+
+  const handleGoogleDriveImport = () => {
+    alert("Google Drive import not yet implemented. Placeholder button.");
+    // TODO: Integrate Google Picker API
+  };
+
   return (
     <Box m="20px">
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Header title="Reports" subtitle="Generate Reports" />
       </Box>
-      {/* Add report */}
-      <Box
-        display="flex"
-        flexDirection="column"
-        alignItems="center"
-        gap={4}
-        mt={4}
-      >
+
+      {/* Upload Section */}
+      <Box display="flex" flexDirection="column" alignItems="center" gap={4} mt={4}>
         <Box
           width="100%"
           bgcolor={colors.primary[400]}
@@ -30,10 +84,95 @@ const Reports = () => {
             variant="contained"
             color="secondary"
             sx={{ fontSize: "16px", py: "10px", flexGrow: 1 }}
+            onClick={handleButtonClick}
           >
-            Add report
+            Upload from Device
           </Button>
+
+          <Button
+            variant="contained"
+            color="info"
+            sx={{ fontSize: "16px", py: "10px", flexGrow: 1 }}
+            onClick={handleGoogleDriveImport}
+          >
+            Choose from Google Drive
+          </Button>
+
+          <input
+            type="file"
+            accept=".xlsx, .csv"
+            ref={fileInputRef}
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+          />
         </Box>
+
+        {/* Preview Table */}
+        {parsedData.length > 0 && (
+          <Box mt={2} width="100%" bgcolor={colors.primary[400]} p={2}>
+            <Typography variant="h4" color={colors.greenAccent[500]} mb={2}>
+              Preview: {fileName}
+            </Typography>
+
+            <Box
+              sx={{
+                overflowX: "auto",
+                maxHeight: "300px",
+                border: "1px solid #ccc",
+                borderRadius: "8px",
+                padding: "10px",
+              }}
+            >
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    {Object.keys(parsedData[0]).map((key) => (
+                      <th
+                        key={key}
+                        style={{
+                          border: "1px solid #ddd",
+                          padding: "8px",
+                          background: "#222",
+                          color: "#fff",
+                        }}
+                      >
+                        {key}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {parsedData.slice(0, 5).map((row, index) => (
+                    <tr key={index}>
+                      {Object.values(row).map((val, i) => (
+                        <td
+                          key={i}
+                          style={{
+                            border: "1px solid #ddd",
+                            padding: "8px",
+                            color: "#eee",
+                          }}
+                        >
+                          {val}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+
+            {/* Action Buttons */}
+            <Box display="flex" gap={2} mt={2}>
+              <Button variant="contained" color="success" onClick={handleImport}>
+                Import to Database
+              </Button>
+              <Button variant="outlined" color="error" onClick={handleCancel}>
+                Cancel
+              </Button>
+            </Box>
+          </Box>
+        )}
       </Box>
     </Box>
   );

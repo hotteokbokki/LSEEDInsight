@@ -32,7 +32,9 @@
     "ngrok": "^5.0.0-beta.2",
     "node-telegram-bot-api": "^0.66.0",
     "nodemailer": "^7.0.3",
-    "pg": "^8.13.1"
+    "papaparse": "^5.5.3",
+    "pg": "^8.13.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
