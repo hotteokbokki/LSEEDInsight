@@ -438,7 +438,17 @@ const FinancialAnalytics = ({ userRole }) => {
           Profit Over Time (by Social Enterprise)
         </Typography>
         <Box height="400px">
-          <LineChart data={profitOverTimeData} />
+          <LineChart
+            data={[
+              {
+                id: "Profit",
+                data: profitOverTimeData.map((item) => ({
+                  x: item.name,
+                  y: item.profit,
+                })),
+              },
+            ]}
+          />
         </Box>
       </Box>
 
