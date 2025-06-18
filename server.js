@@ -126,6 +126,8 @@ app.use("/api/mentorships", mentorshipRoutes);
 // Temporary storage for user states
 const userStates = {};
 const userStatesBot2 = {};
+const rateLimitsBot2 = {};
+const debounceTimeoutsBot2 = {};
 // Timeout duration (in milliseconds) before clearing stale states
 const STATE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 const PASSWORD = 'q@P#3_4)V5vUw+LJ!F'; // Set a secure password for authentication
@@ -349,6 +351,8 @@ async function deleteMessage(chatId, messageId) {
   }
 }
 
+// Bot 2 Logic
+
 /**
  * Send a plain text message using Bot 2
  */
@@ -366,8 +370,6 @@ async function sendMessageBot2(chatId, message) {
     throw new Error(`Bot 2 failed to send message: ${error.message}`);
   }
 }
-
-TELEGRAM_API_URL_2
 
 /**
  * Send a message with inline buttons using Bot 2
@@ -405,38 +407,51 @@ async function deleteMessageBot2(chatId, messageId) {
   }
 }
 
-/**
- * Send a question message and track its message ID
- */
-async function askQuestion(chatId, questionText, state) {
-  const sent = await sendMessageBot2(chatId, questionText);
-  if (sent) {
-    state.previousMessageId = sent.message_id;
+function setUserStateBot2(chatId, state) {
+  if (userStatesBot2[chatId]?.timeoutId) {
+    clearTimeout(userStatesBot2[chatId].timeoutId);
   }
+
+  userStatesBot2[chatId] = { ...userStatesBot2[chatId], state };
+  userStatesBot2[chatId].timeoutId = setTimeout(() => {
+    delete userStatesBot2[chatId];
+    console.log(`🧹 [Bot 2] Cleared state for ${chatId}`);
+  }, STATE_TIMEOUT);
 }
 
-async function sendMessageWithOptionsBot2(chatId, message, options) {
-  try {
-    const response = await axios.post(TELEGRAM_API_URL, {
-      chat_id: chatId,
-      text: message,
-      parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: options, // Use directly without mapping
-      },
-    });
-
-    if (response.data && response.data.result) {
-      return response.data.result; // Ensure it returns the actual message object
-    } else {
-      console.error("⚠️ Failed to send message with options. Response:", response.data);
-      return null;
-    }
-  } catch (error) {
-    console.error("❌ Failed to send message:", error.response?.data || error.message);
-    return null;
+function isRateLimitedBot2(chatId) {
+  const now = Date.now();
+  if (rateLimitsBot2[chatId] && now - rateLimitsBot2[chatId] < 2000) {
+    console.log(`⏳ [Bot 2] Rate limit hit for ${chatId}`);
+    return true;
   }
+  rateLimitsBot2[chatId] = now;
+  return false;
 }
+
+function debounceRequestBot2(chatId, callback, res) {
+  if (debounceTimeoutsBot2[chatId]) {
+    console.log(`⚠️ [Bot 2] Debounced request from ${chatId}`);
+    return res.sendStatus(200);
+  }
+
+  debounceTimeoutsBot2[chatId] = setTimeout(() => {
+    delete debounceTimeoutsBot2[chatId];
+  }, 2000);
+
+  callback();
+}
+
+const applicationQuestions = [
+  "1️⃣ What is the name of your Social Enterprise?",
+  "2️⃣ What problem does your SE aim to solve?",
+  "3️⃣ What is your current business model?",
+  "4️⃣ Who are the team members involved?",
+  "5️⃣ Do you have existing customers or partners?",
+  "6️⃣ What are your goals for the next 6 months?",
+];
+
+// Bot 2 Logic
 
 async function sendMessageWithOptions(chatId, message, options) {
   try {
@@ -2487,159 +2502,151 @@ app.post("/webhook-bot1", async (req, res) => {
 });
 
 app.post("/webhook-bot2", async (req, res) => {
-  const body = req.body;
-  const chatId = body.message?.chat?.id || body.callback_query?.message?.chat?.id;
+  const message = req.body.message || req.body.edited_message;
+  const callbackQuery = req.body.callback_query;
 
-  if (!chatId) return res.sendStatus(200); // Ignore if no chatId
+  // Handle callback query for submit/cancel
+  if (callbackQuery) {
+    const chatId = callbackQuery.message.chat.id;
+    const data = callbackQuery.data;
 
-  let state = userStatesBot2[chatId] || { step: "enterprise_name", formData: {} };
-  userStatesBot2[chatId] = state;
+    if (data === "submit_application") {
+      const appData = userStatesBot2[chatId]?.applicationData;
+      console.log("📨 Submitted application:", appData);
 
-  // Handle text messages (answers)
-  if (body.message && body.message.text) {
-    const text = body.message.text.trim();
-
-    if (text.toLowerCase() === "/start" || text.toLowerCase() === "/reset") {
-      if (state.previousMessageId) {
-        await deleteMessageBot2(chatId, state.previousMessageId).catch(console.error);
-      }
+      await deleteMessageBot2(chatId, callbackQuery.message.message_id);
+      await sendMessageBot2(chatId, "✅ Thank you! Your application has been submitted.");
       delete userStatesBot2[chatId];
-      userStatesBot2[chatId] = { step: "enterprise_name", formData: {} };
-      await askQuestion(chatId, "🏢 *Welcome!* What is the name of your Social Enterprise?", userStatesBot2[chatId]);
+    }
+
+    if (data === "cancel_application") {
+      await deleteMessageBot2(chatId, callbackQuery.message.message_id);
+      await sendMessageBot2(chatId, "❌ Application canceled. You may restart with /joinLSEED.");
+      delete userStatesBot2[chatId];
+    }
+
+    if (data === "accept_privacy") {
+      setUserStateBot2(chatId, "applying_question_1");
+      const sent = await sendMessageBot2(chatId, applicationQuestions[0]);
+      userStatesBot2[chatId] = {
+        state: "applying_question_1",
+        previousMessageId: sent.message_id,
+        currentQuestionIndex: 0,
+        applicationData: {},
+      };
       return res.sendStatus(200);
     }
 
-    // Delete previous message if exists (non-blocking)
-    if (state.previousMessageId) {
-      deleteMessageBot2(chatId, state.previousMessageId).catch(console.error);
-    }
+    await axios.post(`${TELEGRAM_API_URL_2}/answerCallbackQuery`, {
+      callback_query_id: callbackQuery.id,
+      text: "✅ Choice received!",
+      show_alert: false,
+    });
 
-    switch (state.step) {
-      case "enterprise_name":
-        state.formData.name = text;
-        state.step = "founded_year";
-        return askQuestion(chatId, "📅 *What year was your enterprise founded?*", state);
+    return res.sendStatus(200);
+  }
 
-      case "founded_year":
-        state.formData.foundedYear = text;
-        state.step = "contact_email";
-        return askQuestion(chatId, "📧 *What is your contact email?*", state);
+  // Handle incoming text messages
+  const chatId = message?.chat?.id;
+  if (!chatId) return res.sendStatus(200);
 
-      case "contact_email":
-        state.formData.email = text;
-        state.step = "industry";
-        return askQuestion(chatId, "🏭 *What industry or sector are you in?*", state);
+  if (isRateLimitedBot2(chatId)) return res.sendStatus(200);
 
-      case "industry":
-        state.formData.industry = text;
-        state.step = "confirm";
+  debounceRequestBot2(chatId, async () => {
+    try {
+      const text = message.text?.trim();
 
-        return sendMessageWithOptionsBot2(chatId,
-          `🔍 *Please confirm the following:*
-              *Enterprise Name:* ${state.formData.name}
-              *Founded Year:* ${state.formData.foundedYear}
-              *Email:* ${state.formData.email}
-              *Industry:* ${state.formData.industry}`,
-          [
-            [
-              { text: "✅ Confirm", callback_data: "confirm_application" },
+      // Step 1: Force /joinLSEED as entry point
+      if (!userStatesBot2[chatId]) {
+        if (text === "/joinLSEED") {
+          userStatesBot2[chatId] = { state: "awaiting_privacy_acceptance" };
+
+          await sendMessageWithOptionsBot2(
+            chatId,
+            `👋 *Good day!*
+
+Thank you for your interest in *LSEED Online Mentoring*! We hope this initiative helps sustain your team's passion for social entrepreneurship and build on your SE's accomplishments.
+
+👥 *Team Representatives:*  
+Please *discuss with your team members first* before filling out the form. Your answers will help mentors design strategies for a more effective and engaging mentoring process.
+
+🙏 *God bless!*  
+— *Your LSEED Family*
+
+---
+
+🔐 *Data Privacy Consent*
+
+To ensure the safe and transparent use of your personal information, we require that you read and understand the following provisions:
+
+In compliance with the *Data Privacy Act of 2012 (DPA)* and its IRR (effective since Sept 9, 2016), I consent to the *Lasallian Social Enterprise for Economic Development (LSEED) Center* to collect and use my data for the stated purpose.
+
+By submitting this form, I agree to the following:
+
+1️⃣ My data will be used *only* for purposes authorized by *De La Salle University*.  
+2️⃣ I may request cancellation of my data usage at any time.  
+3️⃣ My personal data will be securely stored (both online & physical copies).  
+4️⃣ I may request a report on how my data is used via written request to LSEED.  
+5️⃣ LSEED commits to protecting my personal information at all times.
+
+✅ I confirm I have also secured consent from all parties involved.
+
+Thank you!
+`,
+            [[{ text: "✅ I Accept", callback_data: "accept_privacy" }]]
+          );
+        } else {
+          await sendMessageBot2(chatId, "⚠️ Please send /joinLSEED to begin your application.");
+        }
+        return res.sendStatus(200);
+      }
+
+      // Step 2: Handle application questions
+      const userState = userStatesBot2[chatId];
+      if (userState?.state?.startsWith("applying_question_")) {
+        const index = userState.currentQuestionIndex;
+        userStatesBot2[chatId].applicationData[`q${index + 1}`] = text;
+
+        if (userState.previousMessageId) {
+          await deleteMessageBot2(chatId, userState.previousMessageId);
+        }
+
+        if (index + 1 < applicationQuestions.length) {
+          const nextIndex = index + 1;
+          setUserStateBot2(chatId, `applying_question_${nextIndex + 1}`);
+          const sent = await sendMessageBot2(chatId, applicationQuestions[nextIndex]);
+          userStatesBot2[chatId] = {
+            ...userStatesBot2[chatId],
+            state: `applying_question_${nextIndex + 1}`,
+            previousMessageId: sent.message_id,
+            currentQuestionIndex: nextIndex,
+          };
+        } else {
+          setUserStateBot2(chatId, "awaiting_confirmation");
+          const summary = Object.values(userStatesBot2[chatId].applicationData)
+            .map((ans, i) => `*Q${i + 1}:* ${ans}`)
+            .join("\n\n");
+
+          const sent = await sendMessageWithOptionsBot2(
+            chatId,
+            `✅ You have completed the application!\n\nPlease review your answers:\n\n${summary}\n\nDo you want to *submit*?`,
+            [[
+              { text: "✅ Submit", callback_data: "submit_application" },
               { text: "❌ Cancel", callback_data: "cancel_application" }
-            ]
-          ]
-        ).then(msg => {
-          state.previousMessageId = msg.message_id;
-        });
+            ]]
+          );
+          userStatesBot2[chatId].previousMessageId = sent?.message_id;
+        }
 
-      default:
-        // Reset flow if step is invalid
-        state.step = "enterprise_name";
-        return askQuestion(chatId, "🏢 *What is the name of your Social Enterprise?*", state);
+        return res.sendStatus(200);
+      }
+
+    } catch (err) {
+      console.error("❌ [Bot 2] Error:", err);
+      return res.sendStatus(500);
     }
-  }
+  }, res);
 
-  // Handle button clicks (callback_query)
-  if (body.callback_query) {
-    const data = body.callback_query.data;
-    const messageId = body.callback_query.message.message_id;
-
-    // Delete previous confirmation
-    deleteMessageBot2(chatId, messageId).catch(console.error);
-
-    if (data === "confirm_application") {
-      await sendMessage(chatId, "🎉 *Thank you! Your application has been submitted.*");
-    } else if (data === "cancel_application") {
-      await sendMessage(chatId, "❌ *Application cancelled.*");
-    }
-
-    delete userStatesBot2[chatId]; // Clean up state
-  }
-
-  res.sendStatus(200);
-});
-
-// Send Message to a User (using stored Telegram User ID)
-app.post("/send-message", async (req, res) => {
-  try {
-    console.log(`🔍 Fetching user details for: ${email}`);
-
-    // Query PostgreSQL for user details
-    const query = 'SELECT * FROM "Users" WHERE email = $1';
-    const values = [email];
-    
-    const result = await pgDatabase.query(query, values);
-
-    if (result.rows.length === 0) {
-      console.log(`⚠️ No user found for email: ${email}`);
-      return res.status(404).json({ error: "User not found." });
-    }
-
-    const user = result.rows[0];
-
-    console.log("✅ User found:", user);
-
-    // Extract user details
-    const { first_name, last_name, telegramChatId } = user;
-
-    console.log(`📌 User Details:
-      - First Name: ${first_name}
-      - Last Name: ${last_name}
-      - Email: ${email}
-      - Telegram Chat ID: ${telegramChatId}
-    `);
-
-    if (!telegramChatId) {
-      console.log("⚠️ User does not have a Telegram chat ID linked.");
-      return res.status(400).json({ error: "User has not linked their Telegram account." });
-    }
-
-    const message = `
-    *📢 Mentor Feedback Notification*
-
-    🌟 *Mentor Feedback Summary*
-    - **Mentor**: John Doe
-    - **Rating**: ⭐⭐⭐⭐⭐ (5/5)
-    - **Comments**:
-    \`\`\`
-    This mentor is fantastic! Keep up the great work.
-    \`\`\`
-
-    ✅ *Acknowledge Feedback*
-    Please click the link below to acknowledge that you have received this feedback:
-
-    [✅ Acknowledge Feedback](http://example.com/acknowledge)
-    `;
-
-    console.log(`🚀 Sending message to ${first_name} ${last_name} (${email}) on Telegram...`);
-
-    const response = await sendMessage(telegramChatId, message);
-
-    console.log("✅ Message sent successfully:", response);
-    res.json({ success: true, response });
-    
-  } catch (error) {
-    console.error("❌ Error in /send-feedback route:", error.message);
-    res.status(500).json({ error: error.message });
-  }
 });
 
 // API endpoint to add a new program
