@@ -9,28 +9,33 @@ import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { DataGrid } from "@mui/x-data-grid";
+import { FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 
 const FinancialAnalytics = ({ userRole }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [financialData, setFinancialData] = useState([]);
+  const [cashFlowRaw, setCashFlowRaw] = useState([]);
 
   // Connect to the DB
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get(
-          "http://localhost:4000/api/financial-statements"
-        );
-        setFinancialData(response.data);
-      } catch (error) {
-        console.error("Failed to fetch financial data:", error);
-      }
-    };
+  const fetchData = async () => {
+    try {
+      const [financialResponse, cashFlowResponse] = await Promise.all([
+        axios.get("http://localhost:4000/api/financial-statements"),
+        axios.get("http://localhost:4000/api/cashflow"),
+      ]);
+      setFinancialData(financialResponse.data);
+      setCashFlowRaw(cashFlowResponse.data);
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    }
+  };
 
-    fetchData();
-  }, []);
+  fetchData();
+}, []);
+
 
   /* Convert database rows into format compatible with charts
   const socialEnterprises = financialData.map((item, index) => {
@@ -186,16 +191,44 @@ const FinancialAnalytics = ({ userRole }) => {
 
   // For cash flow bar chart, similar approach:
   // Create two series: inflow and outflow per SE, combine as grouped bar chart
-  const cashFlowData = socialEnterprises.flatMap((se) => [
-    {
-      id: `${se.name} Inflow`,
-      data: se.cashFlow.map((point) => ({ x: point.x, y: point.inflow })),
-    },
-    {
-      id: `${se.name} Outflow`,
-      data: se.cashFlow.map((point) => ({ x: point.x, y: point.outflow })),
-    },
-  ]);
+  const cashFlowMap = new Map();
+  const [selectedSE1, setSelectedSE1] = useState("");
+  const [selectedSE2, setSelectedSE2] = useState("");
+
+
+cashFlowRaw.forEach(item => {
+  const name = item.se_abbr ?? item.se_id;
+  const date = new Date(item.date).toLocaleDateString();
+
+  if (!cashFlowMap.has(name)) {
+    cashFlowMap.set(name, {
+      inflow: [],
+      outflow: [],
+    });
+  }
+
+  const entry = cashFlowMap.get(name);
+  entry.inflow.push({ x: date, y: Number(item.inflow) });
+  entry.outflow.push({ x: date, y: Number(item.outflow) });
+});
+
+const cashFlowData = [];
+
+if (selectedSE1 && cashFlowMap.has(selectedSE1)) {
+  const value = cashFlowMap.get(selectedSE1);
+  cashFlowData.push(
+    { id: `${selectedSE1} Inflow`, data: value.inflow },
+    { id: `${selectedSE1} Outflow`, data: value.outflow }
+  );
+}
+
+if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) {
+  const value = cashFlowMap.get(selectedSE2);
+  cashFlowData.push(
+    { id: `${selectedSE2} Inflow`, data: value.inflow },
+    { id: `${selectedSE2} Outflow`, data: value.outflow }
+  );
+}
 
   // For inventory pie chart, aggregate all SEs' inventories for overall breakdown
   const aggregateInventory = {};
