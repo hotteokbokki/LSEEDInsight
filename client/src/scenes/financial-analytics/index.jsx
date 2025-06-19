@@ -37,35 +37,7 @@ const FinancialAnalytics = ({ userRole }) => {
 }, []);
 
 
-  /* Convert database rows into format compatible with charts
-  const socialEnterprises = financialData.map((item, index) => {
-  const parsedDate = item.date ? new Date(item.date).toLocaleDateString() : `Unknown ${index + 1}`;
 
-  return {
-    name: item.se_abbr ?? `SE ${index + 1}`,
-    totalRevenue: item.total_revenue ?? 0,
-    totalExpenses: item.total_expenses ?? 0,
-    netIncome: item.net_income ?? 0,
-    totalAssets: item.total_assets ?? 0,
-    netProfitMargin: item.total_revenue ? ((item.net_income / item.total_revenue) * 100).toFixed(2) : "0.00",
-    grossProfitMargin: item.total_revenue
-      ? ((item.total_revenue - item.total_expenses) / item.total_revenue * 100).toFixed(2)
-      : "0.00",
-    debtToAssetRatio: item.total_assets ? (item.total_liabilities / item.total_assets).toFixed(2) : "0.00",
-    equityRatio: item.total_assets ? (item.owner_equity / item.total_assets).toFixed(2) : "0.00",
-    revenueVsExpenses: [
-      { x: parsedDate, revenue: item.total_revenue ?? 0, expenses: item.total_expenses ?? 0 },
-    ],
-    cashFlow: [
-      { x: parsedDate, inflow: item.total_revenue ?? 0, outflow: item.total_expenses ?? 0 },
-    ],
-    inventoryBreakdown: [],
-    equityTrend: [
-      { x: parsedDate, equity: item.owner_equity ?? 0 },
-    ],
-  };
-});
-*/
 
   const seMap = new Map();
   financialData.forEach((item) => {
@@ -139,6 +111,39 @@ const FinancialAnalytics = ({ userRole }) => {
   });
 
   const socialEnterprises = Array.from(seMap.values());
+
+  const profitOverTimeSeries = socialEnterprises.map((se) => {
+  const seenMonths = new Map();
+
+  se.revenueVsExpenses.forEach(point => {
+    const date = new Date(point.x);
+    const monthKey = date.toLocaleString('default', { month: 'long' }); // e.g., "July"
+    const year = date.getFullYear();
+    const key = `${monthKey} ${year}`;
+
+    const profit = point.revenue - point.expenses;
+
+    // Keep only the latest profit for the month or aggregate if needed
+    if (!seenMonths.has(key)) {
+      seenMonths.set(key, { x: key, y: profit });
+    } else {
+      const existing = seenMonths.get(key);
+      existing.y += profit; // accumulate profit if duplicate month exists
+    }
+  });
+
+  // Sort by month chronologically
+  const sortedData = Array.from(seenMonths.values()).sort((a, b) => {
+    const dateA = new Date(`1 ${a.x}`); // "1 July 2024"
+    const dateB = new Date(`1 ${b.x}`);
+    return dateA - dateB;
+  });
+
+  return {
+    id: se.name,
+    data: sortedData,
+  };
+});
 
   const highestExpenseSE = socialEnterprises.reduce(
     (max, se) => (se.totalExpenses > (max?.totalExpenses || 0) ? se : max),
@@ -306,7 +311,7 @@ if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) 
   ];
 
   const mockProgramColumns = [
-    { field: "name", headerName: "Program Name", flex: 1 },
+    { field: "name", headerName: "Program", flex: 1 },
     { field: "mentor", headerName: "Assigned Mentor", flex: 1 },
     { field: "status", headerName: "Status", flex: 1 },
   ];
@@ -452,7 +457,6 @@ if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) 
           <DataGrid rows={mockPrograms} columns={mockProgramColumns} />
         </Box>
       </Box>
-
       {/* Row 3 - Profit Over Time */}
       <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
         <Typography
@@ -463,17 +467,7 @@ if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) 
           Profit Over Time (by Social Enterprise)
         </Typography>
         <Box height="400px">
-          <LineChart
-            data={[
-              {
-                id: "Profit",
-                data: profitOverTimeData.map((item) => ({
-                  x: item.name,
-                  y: item.profit,
-                })),
-              },
-            ]}
-          />
+          <LineChart data={profitOverTimeSeries} />
         </Box>
       </Box>
 
