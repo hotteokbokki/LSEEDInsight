@@ -1,5 +1,14 @@
 import React, { useRef, useState } from "react";
-import { Box, Button, Typography, useTheme } from "@mui/material";
+import {
+  Box,
+  Button,
+  Typography,
+  useTheme,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+} from "@mui/material";
 import Header from "../../components/Header";
 import { tokens } from "../../theme";
 import Papa from "papaparse";
@@ -64,6 +73,19 @@ const Reports = () => {
     alert("Google Drive import not yet implemented. Placeholder button.");
     // TODO: Integrate Google Picker API
   };
+  const [selectedSE, setSelectedSE] = useState("");
+
+  const handleSEChange = (event) => {
+    setSelectedSE(event.target.value);
+  };
+
+  // Sample list of SEs — replace with actual data
+  const socialEnterprises = [
+    "Galing LNC",
+    "Green Earth",
+    "Agos ng Buhay",
+    "Bayanihan Builders",
+  ];
 
   return (
     <Box m="20px">
@@ -71,8 +93,60 @@ const Reports = () => {
         <Header title="Reports" subtitle="Generate Reports" />
       </Box>
 
+      {/* Dropdown on top */}
+      <Box
+        display="flex"
+        flexDirection="column"
+        alignItems="left"
+        gap={4}
+        mt={4}
+      >
+        <Box
+          width="27%"
+          bgcolor={colors.primary[400]}
+          display="flex"
+          padding={2}
+          gap={2}
+        >
+          <FormControl
+            fullWidth
+            sx={{
+              maxWidth: "500px",
+              backgroundColor: colors.blueAccent[500],
+            }}
+          >
+            <InputLabel id="se-select-label" sx={{ color: "white" }}>
+              Select Social Enterprise
+            </InputLabel>
+            <Select
+              labelId="se-select-label"
+              value={selectedSE}
+              label="Select Social Enterprise"
+              onChange={handleSEChange}
+              sx={{
+                color: "black",
+                ".MuiOutlinedInput-notchedOutline": { border: 0 },
+                "& .MuiSvgIcon-root": { color: "white" },
+              }}
+            >
+              {socialEnterprises.map((se, index) => (
+                <MenuItem key={index} value={se} sx={{ color: "white" }}>
+                  {se}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      </Box>
+
       {/* Upload Section */}
-      <Box display="flex" flexDirection="column" alignItems="center" gap={4} mt={4}>
+      <Box
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        gap={4}
+        mt={4}
+      >
         <Box
           width="100%"
           bgcolor={colors.primary[400]}
@@ -164,7 +238,11 @@ const Reports = () => {
 
             {/* Action Buttons */}
             <Box display="flex" gap={2} mt={2}>
-              <Button variant="contained" color="success" onClick={handleImport}>
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleImport}
+              >
                 Import to Database
               </Button>
               <Button variant="outlined" color="error" onClick={handleCancel}>

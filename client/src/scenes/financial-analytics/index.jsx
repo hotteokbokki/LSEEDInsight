@@ -4,12 +4,14 @@ import StatBox from "../../components/StatBox";
 import LineChart from "../../components/LineChart";
 import BarChart from "../../components/BarChart";
 import FinancialBarChart from "../../components/FinancialBarChart";
+import CashFlowBarChart from "../../components/CashflowBarChart";
 import PieChart from "../../components/PieChart";
 import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { DataGrid } from "@mui/x-data-grid";
 import { FormControl, InputLabel, Select, MenuItem } from "@mui/material";
+import MoneyOffOutlinedIcon from "@mui/icons-material/MoneyOffOutlined";
 
 const FinancialAnalytics = ({ userRole }) => {
   const theme = useTheme();
@@ -20,24 +22,21 @@ const FinancialAnalytics = ({ userRole }) => {
   // Connect to the DB
 
   useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const [financialResponse, cashFlowResponse] = await Promise.all([
-        axios.get("http://localhost:4000/api/financial-statements"),
-        axios.get("http://localhost:4000/api/cashflow"),
-      ]);
-      setFinancialData(financialResponse.data);
-      setCashFlowRaw(cashFlowResponse.data);
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
-    }
-  };
+    const fetchData = async () => {
+      try {
+        const [financialResponse, cashFlowResponse] = await Promise.all([
+          axios.get("http://localhost:4000/api/financial-statements"),
+          axios.get("http://localhost:4000/api/cashflow"),
+        ]);
+        setFinancialData(financialResponse.data);
+        setCashFlowRaw(cashFlowResponse.data);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      }
+    };
 
-  fetchData();
-}, []);
-
-
-
+    fetchData();
+  }, []);
 
   const seMap = new Map();
   financialData.forEach((item) => {
@@ -113,37 +112,37 @@ const FinancialAnalytics = ({ userRole }) => {
   const socialEnterprises = Array.from(seMap.values());
 
   const profitOverTimeSeries = socialEnterprises.map((se) => {
-  const seenMonths = new Map();
+    const seenMonths = new Map();
 
-  se.revenueVsExpenses.forEach(point => {
-    const date = new Date(point.x);
-    const monthKey = date.toLocaleString('default', { month: 'long' }); // e.g., "July"
-    const year = date.getFullYear();
-    const key = `${monthKey} ${year}`;
+    se.revenueVsExpenses.forEach((point) => {
+      const date = new Date(point.x);
+      const monthKey = date.toLocaleString("default", { month: "long" }); // e.g., "July"
+      const year = date.getFullYear();
+      const key = `${monthKey} ${year}`;
 
-    const profit = point.revenue - point.expenses;
+      const profit = point.revenue - point.expenses;
 
-    // Keep only the latest profit for the month or aggregate if needed
-    if (!seenMonths.has(key)) {
-      seenMonths.set(key, { x: key, y: profit });
-    } else {
-      const existing = seenMonths.get(key);
-      existing.y += profit; // accumulate profit if duplicate month exists
-    }
+      // Keep only the latest profit for the month or aggregate if needed
+      if (!seenMonths.has(key)) {
+        seenMonths.set(key, { x: key, y: profit });
+      } else {
+        const existing = seenMonths.get(key);
+        existing.y += profit; // accumulate profit if duplicate month exists
+      }
+    });
+
+    // Sort by month chronologically
+    const sortedData = Array.from(seenMonths.values()).sort((a, b) => {
+      const dateA = new Date(`1 ${a.x}`); // "1 July 2024"
+      const dateB = new Date(`1 ${b.x}`);
+      return dateA - dateB;
+    });
+
+    return {
+      id: se.name,
+      data: sortedData,
+    };
   });
-
-  // Sort by month chronologically
-  const sortedData = Array.from(seenMonths.values()).sort((a, b) => {
-    const dateA = new Date(`1 ${a.x}`); // "1 July 2024"
-    const dateB = new Date(`1 ${b.x}`);
-    return dateA - dateB;
-  });
-
-  return {
-    id: se.name,
-    data: sortedData,
-  };
-});
 
   const highestExpenseSE = socialEnterprises.reduce(
     (max, se) => (se.totalExpenses > (max?.totalExpenses || 0) ? se : max),
@@ -200,40 +199,43 @@ const FinancialAnalytics = ({ userRole }) => {
   const [selectedSE1, setSelectedSE1] = useState("");
   const [selectedSE2, setSelectedSE2] = useState("");
 
+  cashFlowRaw.forEach((item) => {
+    const name = item.se_abbr ?? item.se_id;
+    const date = new Date(item.date).toLocaleDateString();
 
-cashFlowRaw.forEach(item => {
-  const name = item.se_abbr ?? item.se_id;
-  const date = new Date(item.date).toLocaleDateString();
+    if (!cashFlowMap.has(name)) {
+      cashFlowMap.set(name, {
+        inflow: [],
+        outflow: [],
+      });
+    }
 
-  if (!cashFlowMap.has(name)) {
-    cashFlowMap.set(name, {
-      inflow: [],
-      outflow: [],
-    });
+    const entry = cashFlowMap.get(name);
+    entry.inflow.push({ x: date, y: Number(item.inflow) });
+    entry.outflow.push({ x: date, y: Number(item.outflow) });
+  });
+
+  const cashFlowData = [];
+
+  if (selectedSE1 && cashFlowMap.has(selectedSE1)) {
+    const value = cashFlowMap.get(selectedSE1);
+    cashFlowData.push(
+      { id: `${selectedSE1} Inflow`, data: value.inflow },
+      { id: `${selectedSE1} Outflow`, data: value.outflow }
+    );
   }
 
-  const entry = cashFlowMap.get(name);
-  entry.inflow.push({ x: date, y: Number(item.inflow) });
-  entry.outflow.push({ x: date, y: Number(item.outflow) });
-});
-
-const cashFlowData = [];
-
-if (selectedSE1 && cashFlowMap.has(selectedSE1)) {
-  const value = cashFlowMap.get(selectedSE1);
-  cashFlowData.push(
-    { id: `${selectedSE1} Inflow`, data: value.inflow },
-    { id: `${selectedSE1} Outflow`, data: value.outflow }
-  );
-}
-
-if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) {
-  const value = cashFlowMap.get(selectedSE2);
-  cashFlowData.push(
-    { id: `${selectedSE2} Inflow`, data: value.inflow },
-    { id: `${selectedSE2} Outflow`, data: value.outflow }
-  );
-}
+  if (
+    selectedSE2 &&
+    cashFlowMap.has(selectedSE2) &&
+    selectedSE2 !== selectedSE1
+  ) {
+    const value = cashFlowMap.get(selectedSE2);
+    cashFlowData.push(
+      { id: `${selectedSE2} Inflow`, data: value.inflow },
+      { id: `${selectedSE2} Outflow`, data: value.outflow }
+    );
+  }
 
   // For inventory pie chart, aggregate all SEs' inventories for overall breakdown
   const aggregateInventory = {};
@@ -248,42 +250,50 @@ if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) 
 
   // Safely compute the latest valid date in YYYY-MM-DD format
   const validDates = financialData
-    .map(item => item.date)
-    .filter(date => date != null)
-    .map(date => new Date(date).toISOString().split("T")[0]);
+    .map((item) => item.date)
+    .filter((date) => date != null)
+    .map((date) => new Date(date).toISOString().split("T")[0]);
 
-  const latestDateOnly = validDates.length > 0
-    ? validDates.sort().reverse()[0] // latest date in YYYY-MM-DD format
-    : null;
+  const latestDateOnly =
+    validDates.length > 0
+      ? validDates.sort().reverse()[0] // latest date in YYYY-MM-DD format
+      : null;
 
   // Get all records from latest date (ignoring time)
   const latestRecordsMap = new Map();
 
-  financialData.forEach(item => {
+  financialData.forEach((item) => {
     const name = item.se_abbr ?? item.se_id;
     const date = new Date(item.date);
 
-    if (!latestRecordsMap.has(name) || date > new Date(latestRecordsMap.get(name).date)) {
+    if (
+      !latestRecordsMap.has(name) ||
+      date > new Date(latestRecordsMap.get(name).date)
+    ) {
       latestRecordsMap.set(name, item);
     }
   });
 
   const latestRecords = Array.from(latestRecordsMap.values());
 
-  const latestRevenueRecords = latestRecords.map(item => ({
+  const latestRevenueRecords = latestRecords.map((item) => ({
     name: item.se_abbr ?? item.se_id,
     revenue: Number(item.total_revenue || 0),
   }));
 
   const aggregatedLatestSEs = new Map();
 
-  latestRecords.forEach(item => {
+  latestRecords.forEach((item) => {
     const name = item.se_abbr ?? item.se_id;
     const revenue = Number(item.total_revenue || 0);
     const expenses = Number(item.total_expenses || 0);
 
     if (!aggregatedLatestSEs.has(name)) {
-      aggregatedLatestSEs.set(name, { name, revenue, profit: revenue - expenses });
+      aggregatedLatestSEs.set(name, {
+        name,
+        revenue,
+        profit: revenue - expenses,
+      });
     } else {
       const existing = aggregatedLatestSEs.get(name);
       existing.revenue += revenue;
@@ -295,7 +305,7 @@ if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) 
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 10);
 
-    const latestProfitRecords = latestRecords.map(item => ({
+  const latestProfitRecords = latestRecords.map((item) => ({
     name: item.se_abbr ?? item.se_id,
     profit: Number(item.total_revenue || 0) - Number(item.total_expenses || 0),
   }));
@@ -321,7 +331,7 @@ if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) 
     { name: "Feb", profit: 60000 },
     { name: "Mar", profit: 45000 },
     // ...more monthly data
-  ]
+  ];
 
   const individualInventoryData = [
     { name: "Item A", value: 400 },
@@ -329,7 +339,6 @@ if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) 
     { name: "Item C", value: 300 },
     { name: "Item D", value: 200 },
   ];
-
 
   return (
     <Box m="20px">
@@ -420,15 +429,12 @@ if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) 
         </Box>
 
         <Box
-          flex="1 1 100%"
-          backgroundColor={getExpenseLevelColor(
-            highestExpenseSE?.totalExpenses || 0
-          )}
+          flex="1 1 22%"
+          backgroundColor={colors.primary[400]}
           display="flex"
           alignItems="center"
           justifyContent="center"
           p="20px"
-          mt="20px"
         >
           <StatBox
             title={`₱${Number(
@@ -438,8 +444,28 @@ if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) 
               highestExpenseSE?.name || "N/A"
             } (${getExpenseLevel(highestExpenseSE?.totalExpenses)})`}
             progress={0.9}
-            increase={`↑ ${getExpenseLevel(highestExpenseSE?.totalExpenses)}`}
-            icon={<></>}
+            increase={
+              <Typography
+                sx={{
+                  color: getExpenseLevelColor(
+                    highestExpenseSE?.totalExpenses || 0
+                  ),
+                  fontWeight: "bold",
+                }}
+              >
+                ↑ {getExpenseLevel(highestExpenseSE?.totalExpenses)}
+              </Typography>
+            }
+            icon={
+              <MoneyOffOutlinedIcon
+                sx={{
+                  fontSize: "32px",
+                  color: getExpenseLevelColor(
+                    highestExpenseSE?.totalExpenses || 0
+                  ),
+                }}
+              />
+            }
           />
         </Box>
       </Box>
@@ -472,7 +498,12 @@ if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) 
       </Box>
 
       {/* Row 4 - Cash Flow Analysis */}
-      <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
+      <Box
+        backgroundColor={colors.primary[400]}
+        p="20px"
+        paddingBottom={8}
+        mt="20px"
+      >
         <Typography
           variant="h3"
           fontWeight="bold"
@@ -481,7 +512,7 @@ if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) 
           Cash Flow Comparison (Inflow vs Outflow)
         </Typography>
         <Box height="400px">
-          <BarChart data={cashFlowData} />
+          <CashFlowBarChart data={cashFlowData} />
         </Box>
       </Box>
 
@@ -510,80 +541,6 @@ if (selectedSE2 && cashFlowMap.has(selectedSE2) && selectedSE2 !== selectedSE1) 
         </Typography>
         <Box height="400px">
           <PieChart data={individualInventoryData} />
-        </Box>
-      </Box>
-
-      {/* Row 7 - Average Financial Ratios Across SEs */}
-      <Box
-        display="flex"
-        flexWrap="wrap"
-        gap="20px"
-        justifyContent="space-between"
-        mt="20px"
-      >
-        <Box
-          flex="1 1 22%"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          p="20px"
-        >
-          <StatBox
-            title={`${avg(socialEnterprises, "netProfitMargin")}%`}
-            subtitle="Avg Net Profit Margin"
-            progress={1}
-            increase="N/A"
-            icon={<></>}
-          />
-        </Box>
-        <Box
-          flex="1 1 22%"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          p="20px"
-        >
-          <StatBox
-            title={`${avg(socialEnterprises, "grossProfitMargin")}%`}
-            subtitle="Avg Gross Profit Margin"
-            progress={1}
-            increase="N/A"
-            icon={<></>}
-          />
-        </Box>
-        <Box
-          flex="1 1 22%"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          p="20px"
-        >
-          <StatBox
-            title={`${avg(socialEnterprises, "debtToAssetRatio")}`}
-            subtitle="Avg Debt to Asset Ratio"
-            progress={1}
-            increase="N/A"
-            icon={<></>}
-          />
-        </Box>
-        <Box
-          flex="1 1 22%"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          p="20px"
-        >
-          <StatBox
-            title={`${avg(socialEnterprises, "equityRatio")}`}
-            subtitle="Avg Equity Ratio"
-            progress={1}
-            increase="N/A"
-            icon={<></>}
-          />
         </Box>
       </Box>
 
