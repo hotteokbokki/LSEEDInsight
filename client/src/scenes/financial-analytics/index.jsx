@@ -15,77 +15,6 @@ const FinancialAnalytics = ({ userRole }) => {
   const colors = tokens(theme.palette.mode);
   const [financialData, setFinancialData] = useState([]);
 
-  /* Mock data representing multiple Social Enterprises (SEs)
-  const socialEnterprises = [
-    {
-      name: "SE A",
-      totalRevenue: 1250000,
-      totalExpenses: 850000,
-      netIncome: 400000,
-      totalAssets: 2000000,
-      netProfitMargin: 32,
-      grossProfitMargin: 45,
-      debtToAssetRatio: 0.35,
-      equityRatio: 0.65,
-      revenueVsExpenses: [
-        { x: "Jan", revenue: 100000, expenses: 70000 },
-        { x: "Feb", revenue: 120000, expenses: 80000 },
-        { x: "Mar", revenue: 110000, expenses: 75000 },
-        { x: "Apr", revenue: 130000, expenses: 90000 },
-      ],
-      cashFlow: [
-        { x: "Jan", inflow: 90000, outflow: 60000 },
-        { x: "Feb", inflow: 95000, outflow: 65000 },
-        { x: "Mar", inflow: 100000, outflow: 70000 },
-      ],
-      inventoryBreakdown: [
-        { name: "Raw Materials", value: 400 },
-        { name: "Work-in-Progress", value: 300 },
-        { name: "Finished Goods", value: 300 },
-      ],
-      equityTrend: [
-        { x: "Q1", equity: 500000 },
-        { x: "Q2", equity: 600000 },
-        { x: "Q3", equity: 700000 },
-        { x: "Q4", equity: 800000 },
-      ],
-    },
-    {
-      name: "SE B",
-      totalRevenue: 950000,
-      totalExpenses: 700000,
-      netIncome: 250000,
-      totalAssets: 1500000,
-      netProfitMargin: 26,
-      grossProfitMargin: 40,
-      debtToAssetRatio: 0.4,
-      equityRatio: 0.6,
-      revenueVsExpenses: [
-        { x: "Jan", revenue: 80000, expenses: 60000 },
-        { x: "Feb", revenue: 90000, expenses: 65000 },
-        { x: "Mar", revenue: 85000, expenses: 62000 },
-        { x: "Apr", revenue: 90000, expenses: 70000 },
-      ],
-      cashFlow: [
-        { x: "Jan", inflow: 70000, outflow: 50000 },
-        { x: "Feb", inflow: 75000, outflow: 55000 },
-        { x: "Mar", inflow: 72000, outflow: 53000 },
-      ],
-      inventoryBreakdown: [
-        { name: "Raw Materials", value: 300 },
-        { name: "Work-in-Progress", value: 250 },
-        { name: "Finished Goods", value: 450 },
-      ],
-      equityTrend: [
-        { x: "Q1", equity: 400000 },
-        { x: "Q2", equity: 450000 },
-        { x: "Q3", equity: 480000 },
-        { x: "Q4", equity: 520000 },
-      ],
-    },
-  ];
-*/
-
   // Connect to the DB
 
   useEffect(() => {
@@ -103,7 +32,7 @@ const FinancialAnalytics = ({ userRole }) => {
     fetchData();
   }, []);
 
-  /* Convert database rows into format compatible with your charts
+  /* Convert database rows into format compatible with charts
   const socialEnterprises = financialData.map((item, index) => {
   const parsedDate = item.date ? new Date(item.date).toLocaleDateString() : `Unknown ${index + 1}`;
 
@@ -279,6 +208,64 @@ const FinancialAnalytics = ({ userRole }) => {
     ([name, value]) => ({ name, value })
   );
 
+  // Safely compute the latest valid date in YYYY-MM-DD format
+  const validDates = financialData
+    .map(item => item.date)
+    .filter(date => date != null)
+    .map(date => new Date(date).toISOString().split("T")[0]);
+
+  const latestDateOnly = validDates.length > 0
+    ? validDates.sort().reverse()[0] // latest date in YYYY-MM-DD format
+    : null;
+
+  // Get all records from latest date (ignoring time)
+  const latestRecordsMap = new Map();
+
+  financialData.forEach(item => {
+    const name = item.se_abbr ?? item.se_id;
+    const date = new Date(item.date);
+
+    if (!latestRecordsMap.has(name) || date > new Date(latestRecordsMap.get(name).date)) {
+      latestRecordsMap.set(name, item);
+    }
+  });
+
+  const latestRecords = Array.from(latestRecordsMap.values());
+
+  const latestRevenueRecords = latestRecords.map(item => ({
+    name: item.se_abbr ?? item.se_id,
+    revenue: Number(item.total_revenue || 0),
+  }));
+
+  const aggregatedLatestSEs = new Map();
+
+  latestRecords.forEach(item => {
+    const name = item.se_abbr ?? item.se_id;
+    const revenue = Number(item.total_revenue || 0);
+    const expenses = Number(item.total_expenses || 0);
+
+    if (!aggregatedLatestSEs.has(name)) {
+      aggregatedLatestSEs.set(name, { name, revenue, profit: revenue - expenses });
+    } else {
+      const existing = aggregatedLatestSEs.get(name);
+      existing.revenue += revenue;
+      existing.profit += revenue - expenses;
+    }
+  });
+
+  const topRevenueSEsData = [...aggregatedLatestSEs.values()]
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+
+    const latestProfitRecords = latestRecords.map(item => ({
+    name: item.se_abbr ?? item.se_id,
+    profit: Number(item.total_revenue || 0) - Number(item.total_expenses || 0),
+  }));
+
+  const mostProfitSEsData = latestProfitRecords
+    .sort((a, b) => b.profit - a.profit)
+    .slice(0, 3);
+
   const mockPrograms = [
     { id: 1, name: "AgriBiz", mentor: "John Doe", status: "Active" },
     { id: 2, name: "EcoCrafts", mentor: "Jane Smith", status: "Pending" },
@@ -296,20 +283,7 @@ const FinancialAnalytics = ({ userRole }) => {
     { name: "Feb", profit: 60000 },
     { name: "Mar", profit: 45000 },
     // ...more monthly data
-  ];
-
-  const topRevenueSEsData = [
-    { name: "SE A", revenue: 1200000 },
-    { name: "SE B", revenue: 1100000 },
-    { name: "SE C", revenue: 950000 },
-    { name: "SE D", revenue: 870000 },
-    { name: "SE E", revenue: 850000 },
-    { name: "SE F", revenue: 800000 },
-    { name: "SE G", revenue: 750000 },
-    { name: "SE H", revenue: 700000 },
-    { name: "SE I", revenue: 680000 },
-    { name: "SE J", revenue: 650000 },
-  ];
+  ]
 
   const individualInventoryData = [
     { name: "Item A", value: 400 },
@@ -318,12 +292,6 @@ const FinancialAnalytics = ({ userRole }) => {
     { name: "Item D", value: 200 },
   ];
 
-  const mostProfitSEsData = [
-    { name: "SE X", profit: 500000 },
-    { name: "SE Y", profit: 450000 },
-    { name: "SE Z", profit: 400000 },
-    // Top 10 SEs
-  ];
 
   return (
     <Box m="20px">

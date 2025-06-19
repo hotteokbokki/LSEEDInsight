@@ -80,6 +80,7 @@ const { getMentorQuestions } = require("./controllers/mentorEvaluationsQuestions
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
 const { getUpcomingSchedulesForMentor } = require("./controllers/mentoringSessionController.js");
 const mentorshipRoutes = require("./routes/mentorships");
+const cashflowRoutes = require("./routes/cashflowRoutes");
 const { getProgramCoordinators, getProgramAssignment } = require("./controllers/programAssignmentController.js");
 const app = express();
 
