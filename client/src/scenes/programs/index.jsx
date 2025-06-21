@@ -13,7 +13,8 @@ import { DataGrid } from "@mui/x-data-grid";
 import { Snackbar, Alert } from "@mui/material";
 
 const ProgramPage = () => {
-  const [coordinators, setCoordinators] = useState([]);
+  const [programs, setPrograms] = useState([]); 
+  const [availableLSEEDCoordinators, setAvailableLSEEDCoordinators] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false); // Toggle editing mode
@@ -24,33 +25,45 @@ const ProgramPage = () => {
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [selectedUser, setSelectedUser] = useState(null); // Track selected user
+  const [selectedUser, setSelectedUser] = useState(null); // Track selected user (not directly used for row update, but good to keep if needed elsewhere)
 
-    // Fetch coordinators and programs on mount
+  // Fetch programs and available LSEED coordinators on mount
   useEffect(() => {
-    const fetchCoordinators = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`http://localhost:4000/api/get-programs`);
-        if (!response.ok) throw new Error("Failed to fetch coordinators");
+        setLoading(true);
+        setError(null);
 
-        const data = await response.json();
+        // 1. Fetch Programs with their current assigned coordinators
+        const programsResponse = await fetch(`http://localhost:4000/api/get-programs`);
+        if (!programsResponse.ok) throw new Error("Failed to fetch programs");
+        const programsData = await programsResponse.json();
 
-        // Map data to include a coordinator_name field used by DataGrid columns
-        const mappedData = data.map((item) => ({
+        const mappedPrograms = programsData.map((item) => ({
           ...item,
           coordinator_name: item.program_coordinator?.trim() || "-- No Coordinator Assigned --",
-          program_description: item.description || "—", // normalize key for description
+          program_description: item.description || "—",
           coordinator_email: item.coordinator_email || "—",
+          current_coordinator_id: item.coordinator_id,
         }));
+        setPrograms(mappedPrograms);
 
-        setCoordinators(mappedData);
+        // 2. Fetch all available LSEED Coordinators
+        const lseedCoordinatorsResponse = await fetch(`http://localhost:4000/api/get-lseed-coordinators`);
+        if (!lseedCoordinatorsResponse.ok) throw new Error("Failed to fetch LSEED coordinators");
+        const lseedCoordinatorsData = await lseedCoordinatorsResponse.json();
+        setAvailableLSEEDCoordinators(lseedCoordinatorsData);
+
       } catch (error) {
-        setSnackbarMessage(error.message || "Error fetching coordinators");
+        setSnackbarMessage(error.message || "Error fetching data");
         setSnackbarOpen(true);
+        setError(error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchCoordinators();
+    fetchData();
   }, []);
 
   const toggleEditing = () => {
@@ -60,53 +73,80 @@ const ProgramPage = () => {
     } else {
       setSnackbarMessage("Account needs to be activated first.");
       setSnackbarOpen(true);
-    }
+      }
   };
 
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
   };
 
-  // Handle inline editing update for a coordinator/program
-  const handleRowUpdate = async (updatedRow, oldRow) => {
+  // Handle inline editing update for a program's assigned coordinator
+  const handleRowUpdate = async (newRow) => { // 'oldRow' is often not needed if you revert on error
+    const oldRow = programs.find(p => p.program_id === newRow.id); // Find the original row
+
     try {
+      const selectedCoordinator = availableLSEEDCoordinators.find(
+        (coord) => `${coord.first_name} ${coord.last_name}` === newRow.coordinator_name
+      );
+
+      // If no coordinator is selected (e.g., "-- No Coordinator Assigned --" is picked)
+      const coordinatorIdToAssign = selectedCoordinator ? selectedCoordinator.user_id : null;
+
+      // Construct the payload for the backend API
+      const payload = {
+        program_id: newRow.id,
+        user_id: coordinatorIdToAssign, 
+      };
+
       const response = await fetch(
-        `http://localhost:4000/api/admin/users/${updatedRow.user_id}`,
+        `http://localhost:4000/api/assign-program-coordinator`,
         {
-          method: "PUT",
+          method: "POST", 
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updatedRow),
+          body: JSON.stringify(payload),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to update user: ${response.status} ${response.statusText}`);
+        const errorData = await response.json(); 
+        throw new Error(errorData.message || `Failed to update program assignment: ${response.status} ${response.statusText}`);
       }
 
-      const { user: updatedUser } = await response.json();
-
-      setCoordinators((prev) =>
-        prev.map((item) => (item.user_id === updatedUser.user_id ? updatedUser : item))
+      setPrograms((prevPrograms) =>
+        prevPrograms.map((program) =>
+          program.program_id === newRow.id
+            ? {
+                ...program,
+                coordinator_name: newRow.coordinator_name,
+                coordinator_id: coordinatorIdToAssign,
+                coordinator_email: selectedCoordinator ? selectedCoordinator.email : '—',
+              }
+            : program
+        )
       );
 
-      return updatedUser;
+      setSnackbarMessage("Program assignment updated successfully!");
+      setSnackbarOpen(true);
+
+      return newRow; 
     } catch (error) {
-      console.error("Error updating user:", error);
-      // Optionally revert changes here
-      return oldRow;
+      console.error("Error updating program assignment:", error);
+      setSnackbarMessage(error.message || "Error updating program assignment");
+      setSnackbarOpen(true);
+      return oldRow; 
     }
   };
 
-  // Define columns, note `coordinator_name` is the mapped field
+  
   const columns = [
     {
       field: "coordinator_name",
       headerName: "Program Coordinator",
-      flex: 1,
+      flex: 1.5, 
       editable: isEditing,
       renderEditCell: (params) => (
         <Select
-          value={params.value}
+          value={params.value || "-- No Coordinator Assigned --"} // Ensure value is handled if initially null
           onChange={(e) => {
             params.api.setEditCellValue({
               id: params.id,
@@ -115,14 +155,21 @@ const ProgramPage = () => {
             });
           }}
           fullWidth
+          // Apply some styling to make the select visible
+          sx={{
+            "& .MuiOutlinedInput-notchedOutline": { border: 'none' }, // Remove default border
+            "& .MuiSelect-select": { padding: '8px 14px' }, // Adjust padding
+          }}
         >
-          {/* Use coordinators to populate dropdown options for example */}
-          {coordinators.map((user) => (
+          <MenuItem value="-- No Coordinator Assigned --">
+            -- No Coordinator Assigned --
+          </MenuItem>
+          {availableLSEEDCoordinators.map((user) => (
             <MenuItem
-              key={user.coordinator_id || user.user_id}
-              value={user.coordinator_name}
+              key={user.user_id} // Use user_id as key
+              value={`${user.first_name} ${user.last_name}`} // Value is the full name
             >
-              {user.coordinator_name}
+              {`${user.first_name} ${user.last_name}`}
             </MenuItem>
           ))}
         </Select>
@@ -144,6 +191,24 @@ const ProgramPage = () => {
       flex: 2,
     },
   ];
+
+  if (loading) {
+    return (
+      <Box m="20px">
+        <Header title="PROGRAMS PAGE" subtitle="Loading..." />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box m="20px">
+        <Header title="PROGRAMS PAGE" subtitle="Error loading data!" />
+        <Alert severity="error">{error.message}</Alert>
+      </Box>
+    );
+  }
+
 
   return (
     <Box m="20px">
@@ -179,12 +244,20 @@ const ProgramPage = () => {
               onClick={() => {
                 setIsEditing(false);
                 setShowEditButtons(false);
-                setTimeout(() => window.location.reload(), 500);
+                // Optionally re-fetch data or revert local state changes
+                // setTimeout(() => window.location.reload(), 500); // Only if a full refresh is desired
               }}
             >
               Cancel
             </Button>
 
+            {/* The "Save Changes" button is not directly saving the DataGrid edits.
+                DataGrid saves row by row when you leave the cell.
+                This button could trigger a final save if you accumulate changes,
+                or confirm success message after individual row updates.
+                For now, I'll keep the direct reload as it was, but ideally
+                you'd remove it if using `processRowUpdate` for saving.
+             */}
             <Button
               variant="contained"
               sx={{
@@ -196,7 +269,7 @@ const ProgramPage = () => {
                 setIsEditing(false);
                 setShowEditButtons(false);
                 setIsSuccessEditPopupOpen(true);
-                setTimeout(() => window.location.reload(), 500);
+                // setTimeout(() => window.location.reload(), 500); // Only if a full refresh is desired
               }}
             >
               Save Changes
@@ -250,9 +323,9 @@ const ProgramPage = () => {
           }}
         >
           <DataGrid
-            rows={coordinators.map((item) => ({
+            rows={programs.map((item) => ({ // Use 'programs' state
               id: item.program_id, // Unique row id
-              user_id: item.coordinator_id, // For API calls
+              user_id: item.coordinator_id, // This is the *currently assigned* coordinator's ID
               coordinator_name: item.coordinator_name,
               program_name: item.program_name || "—",
               program_description: item.program_description || "—",

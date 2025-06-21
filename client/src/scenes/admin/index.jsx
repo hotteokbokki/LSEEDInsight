@@ -104,7 +104,7 @@ const AdminPage = () => {
         >
           <MenuItem value="Guest User">Guest User</MenuItem>
           <MenuItem value="Mentor">Mentor</MenuItem>
-          <MenuItem value="LSEED">LSEED</MenuItem>
+          <MenuItem value="LSEED">LSEED-Coordinator</MenuItem>
         </Select>
       ),
     },

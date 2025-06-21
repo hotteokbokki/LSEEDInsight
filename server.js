@@ -81,7 +81,10 @@ const { getPreDefinedComments } = require("./controllers/predefinedcommentsContr
 const { getUpcomingSchedulesForMentor } = require("./controllers/mentoringSessionController.js");
 const mentorshipRoutes = require("./routes/mentorships");
 const cashflowRoutes = require("./routes/cashflowRoutes");
-const { getProgramCoordinators, getProgramAssignment } = require("./controllers/programAssignmentController.js");
+const { getProgramCoordinators, 
+        getProgramAssignment, 
+        getLSEEDCoordinators,
+        assignProgramCoordinator } = require("./controllers/programAssignmentController.js");
 const app = express();
 
 
@@ -1152,6 +1155,40 @@ app.get("/api/get-programs", async (req, res) => {
   } catch (error) {
     console.error("Error fetching program coordinators:", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/get-lseed-coordinators", async (req, res) => {
+  try {
+    const lseedCoordinators = await getLSEEDCoordinators();
+    if (!lseedCoordinators || lseedCoordinators.length === 0) {
+      return res.json([]); // Return an empty array if no LSEED coordinators are found
+    }
+    res.json(lseedCoordinators);
+  } catch (error) {
+    console.error("Error fetching LSEED coordinators:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.post("/api/assign-program-coordinator", async (req, res) => {
+  const { program_id, user_id } = req.body; // Expect program_id and user_id (can be null)
+
+  // Basic validation
+  if (!program_id) {
+    return res.status(400).json({ message: "Program ID is required." });
+  }
+
+  try {
+    // Call the function from your controller to handle the database logic
+    const result = await assignProgramCoordinator(program_id, user_id);
+
+    // Send a success response
+    res.json({ message: "Program assignment updated successfully", assignment: result });
+  } catch (error) {
+    // Log the error and send an appropriate error response
+    console.error("API Error assigning program coordinator:", error);
+    res.status(500).json({ message: "Failed to update program assignment.", error: error.message });
   }
 });
 

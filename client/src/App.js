@@ -113,25 +113,25 @@ const MainContent = () => {
 
 
           {/* Protected Routes */}
-          <Route element={<ProtectedRoute allowedRoles={["Administrator"]} />}>
+          <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director"]} />}>
             <Route path="/admin" element={<Admin />} />
           </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={["LSEED", "Mentor"]} />}>
+          <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator", "Mentor"]} />}>
             <Route path="/socialenterprise" element={<SocialEnterprise />} />
           </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={["LSEED"]} />}>
+          <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator"]} />}>
             <Route path="/mentors" element={<Mentors />} />
             <Route path="/seanalytics" element={<SEAnalytics />} />
           </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={["LSEED", "Guest User"]} />}>
+          <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator", "Guest User"]} />}>
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/reports" element={<Reports />} />
           </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={["LSEED", "Mentor"]} />}>
+          <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator", "Mentor"]} />}>
             <Route path="/scheduling" element={<Scheduling />} />
             <Route path="/assess" element={<EvaluatePage />} />
           </Route>
