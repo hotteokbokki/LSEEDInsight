@@ -96,9 +96,7 @@ app.use("/api/cashflow", cashflowRoutes);
 
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_BOT_TOKEN_2 = process.env.TELEGRAM_BOT_TOKEN_2;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-const TELEGRAM_API_URL_2 = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN_2}`;
 
 //MAYBE REMOVE
 app.set('trust proxy', 1); // 🔒 Required when behind reverse proxies like Nginx or Heroku
@@ -132,9 +130,6 @@ app.use("/api/mentorships", mentorshipRoutes);
 
 // Temporary storage for user states
 const userStates = {};
-const userStatesBot2 = {};
-const rateLimitsBot2 = {};
-const debounceTimeoutsBot2 = {};
 // Timeout duration (in milliseconds) before clearing stale states
 const STATE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 const PASSWORD = 'q@P#3_4)V5vUw+LJ!F'; // Set a secure password for authentication
@@ -206,55 +201,6 @@ async function submitMentorEvaluation(chatId, responses) {
   }
 }
 
-async function sendNextMentorQuestion(chatId) {
-  const userState = userStates[chatId];
-
-  // Fetch questions if not already loaded
-  if (!userState.questions || userState.questions.length === 0) {
-    userState.questions = await getMentorQuestions();
-  }
-
-  // Ensure index is within range
-  if (userState.currentQuestionIndex >= userState.questions.length) {
-    console.error(`⚠️ Invalid question index for chat ${chatId}`);
-    return;
-  }
-
-  const question = userState.questions[userState.currentQuestionIndex];
-
-  const options = [
-    [
-      { text: "1️⃣ - Strongly Disagree", callback_data: "mentorans_1" },
-      { text: "2️⃣ - Disagree", callback_data: "mentorans_2" },
-    ],
-    [
-      { text: "3️⃣ - Neutral", callback_data: "mentorans_3" },
-      { text: "4️⃣ - Agree", callback_data: "mentorans_4" },
-    ],
-    [
-      { text: "5️⃣ - Strongly Agree", callback_data: "mentorans_5" },
-    ],
-  ];
-
-  // ✅ Delete previous question messages before sending the new one
-  if (userState.mentorQuestionsMessageIds && userState.mentorQuestionsMessageIds.length > 0) {
-    await deletePreviousMessages(chatId, userState.mentorQuestionsMessageIds);
-  }
-
-  // ✅ Send the new question
-  const mentorQuestionsMessage = await sendMessageWithOptions(
-    chatId,
-    `📢 *Question ${userState.currentQuestionIndex + 1}:* ${question.question_text}\n\n(Select a rating from 1 to 5)`,
-    options
-  );
-
-  // ✅ Store the message ID in an array
-  if (!userState.mentorQuestionsMessageIds) {
-    userState.mentorQuestionsMessageIds = [];
-  }
-  userState.mentorQuestionsMessageIds.push(mentorQuestionsMessage.message_id);
-}
-
 // Function to send message with "Acknowledge" button
 async function sendAcknowledgeButton(chatId, message, evaluationId) {
   try {
@@ -299,14 +245,6 @@ async function sendStartMentorButton(chatId, message, mentorId) {
     console.error("❌ Failed to send acknowledgment button:", error.response?.data || error.message);
     throw new Error(`Failed to send acknowledgment button: ${error.message}`);
   }
-}
-
-async function acknowledgeCallback(callbackQueryId) {
-  await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-      callback_query_id: callbackQueryId,
-      text: "✅ Choice received!",
-      show_alert: false,
-  });
 }
 
 async function deletePreviousMessages(chatId, keys) {
@@ -357,108 +295,6 @@ async function deleteMessage(chatId, messageId) {
     throw error; // Re-throw the error for upstream handling
   }
 }
-
-// Bot 2 Logic
-
-/**
- * Send a plain text message using Bot 2
- */
-async function sendMessageBot2(chatId, message) {
-  try {
-    const response = await axios.post(`${TELEGRAM_API_URL_2}/sendMessage`, {
-      chat_id: chatId,
-      text: message,
-      parse_mode: "Markdown",
-    });
-
-    return response.data.result; // Returns message metadata
-  } catch (error) {
-    console.error("❌ [Bot 2] Failed to send message:", error.response?.data || error.message);
-    throw new Error(`Bot 2 failed to send message: ${error.message}`);
-  }
-}
-
-/**
- * Send a message with inline buttons using Bot 2
- */
-async function sendMessageWithOptionsBot2(chatId, message, options) {
-  try {
-    const response = await axios.post(`${TELEGRAM_API_URL_2}/sendMessage`, {
-      chat_id: chatId,
-      text: message,
-      parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: options, // Button structure must be a 2D array
-      },
-    });
-
-    return response.data.result; // Returns message metadata
-  } catch (error) {
-    console.error("❌ [Bot 2] Failed to send message with options:", error.response?.data || error.message);
-    return null;
-  }
-}
-
-/**
- * Delete a message by ID using Bot 2
- */
-async function deleteMessageBot2(chatId, messageId) {
-  try {
-    await axios.post(`${TELEGRAM_API_URL_2}/deleteMessage`, {
-      chat_id: chatId,
-      message_id: messageId,
-    });
-  } catch (error) {
-    console.warn("⚠️ [Bot 2] Failed to delete message:", error.response?.data || error.message);
-    // No rethrow: deletion failure shouldn't crash logic
-  }
-}
-
-function setUserStateBot2(chatId, state) {
-  if (userStatesBot2[chatId]?.timeoutId) {
-    clearTimeout(userStatesBot2[chatId].timeoutId);
-  }
-
-  userStatesBot2[chatId] = { ...userStatesBot2[chatId], state };
-  userStatesBot2[chatId].timeoutId = setTimeout(() => {
-    delete userStatesBot2[chatId];
-    console.log(`🧹 [Bot 2] Cleared state for ${chatId}`);
-  }, STATE_TIMEOUT);
-}
-
-function isRateLimitedBot2(chatId) {
-  const now = Date.now();
-  if (rateLimitsBot2[chatId] && now - rateLimitsBot2[chatId] < 2000) {
-    console.log(`⏳ [Bot 2] Rate limit hit for ${chatId}`);
-    return true;
-  }
-  rateLimitsBot2[chatId] = now;
-  return false;
-}
-
-function debounceRequestBot2(chatId, callback, res) {
-  if (debounceTimeoutsBot2[chatId]) {
-    console.log(`⚠️ [Bot 2] Debounced request from ${chatId}`);
-    return res.sendStatus(200);
-  }
-
-  debounceTimeoutsBot2[chatId] = setTimeout(() => {
-    delete debounceTimeoutsBot2[chatId];
-  }, 2000);
-
-  callback();
-}
-
-const applicationQuestions = [
-  "1️⃣ What is the name of your Social Enterprise?",
-  "2️⃣ What problem does your SE aim to solve?",
-  "3️⃣ What is your current business model?",
-  "4️⃣ Who are the team members involved?",
-  "5️⃣ Do you have existing customers or partners?",
-  "6️⃣ What are your goals for the next 6 months?",
-];
-
-// Bot 2 Logic
 
 async function sendMessageWithOptions(chatId, message, options) {
   try {
@@ -2542,152 +2378,93 @@ app.post("/webhook-bot1", async (req, res) => {
   }
 });
 
-app.post("/webhook-bot2", async (req, res) => {
-  const message = req.body.message || req.body.edited_message;
-  const callbackQuery = req.body.callback_query;
+app.post("/api/googleform-webhook", async (req, res) => {
+  const formData = req.body;
 
-  // Handle callback query for submit/cancel
-  if (callbackQuery) {
-    const chatId = callbackQuery.message.chat.id;
-    const data = callbackQuery.data;
+  console.log("📩 New form submission:", formData);
 
-    if (data === "submit_application") {
-      const appData = userStatesBot2[chatId]?.applicationData;
-      console.log("📨 Submitted application:", appData);
+  // Mapping fields
+  const {
+    Timestamp,
+    'Do you consent?': consent,
+    'What is the name of you social enterprise?': team_name,
+    'When did you start working on your social enterprise/social enterprise idea?': enterprise_idea_start,
+    'How many people are directly involved in your social enterprise / social enterprise idea?': involved_people,
+    'Kindly indicate the current phase of your social enterprise': current_phase,
+    'What is the social problem that you are trying to address?': social_problem,
+    'What is the nature of your social enterprise? Indicate your solution statement': se_nature,
+    'What do you think are the unique characteristics of your SE/Team?': team_characteristics,
+    'What are the challenges that you face as a team?': team_challenges,
+    'What area/s of business is/are the most critical for your SE/Team at present?  Please select all that apply.': critical_areas,
+    'What are your action plans to address your current challenges?': action_plans,
+    'How frequent do you meet as a team?': meeting_frequency,
+    'What mode/s of communication is/are the most effective and readily available for majority of your team members?': communication_modes,
+    'Indicate your official social media account (if available)': social_media_link,
+    'Indicate the name of focal person/team leader with contact details (email and mobile)': focal_person_contact,
+    'Indicate the names and email address of the team members joining the mentoring sessions': mentoring_team_members,
+    "What is your team's most preferred time for mentoring sessions?": preferred_mentoring_time,
+    'Please specify your preferred time if possible.': mentoring_time_note,
+    'Please upload your pitch deck or your business one-pager': pitch_deck_url,
+  } = formData;
 
-      await deleteMessageBot2(chatId, callbackQuery.message.message_id);
-      await sendMessageBot2(chatId, "✅ Thank you! Your application has been submitted.");
-      delete userStatesBot2[chatId];
-    }
+  try {
+    await pgDatabase.query(
+      `INSERT INTO mentees_form_submissions (
+        timestamp,
+        consent,
+        team_name,
+        enterprise_idea_start,
+        involved_people,
+        current_phase,
+        social_problem,
+        se_nature,
+        team_characteristics,
+        team_challenges,
+        critical_areas,
+        action_plans,
+        meeting_frequency,
+        communication_modes,
+        social_media_link,
+        focal_person_contact,
+        mentoring_team_members,
+        preferred_mentoring_time,
+        mentoring_time_note,
+        pitch_deck_url
+      ) VALUES (
+        $1, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15,
+        $16, $17, $18, $19, $20
+      )`,
+      [
+        new Date(Timestamp),
+        consent?.toLowerCase() === "yes",
+        team_name,
+        enterprise_idea_start,
+        involved_people,
+        current_phase,
+        social_problem,
+        se_nature,
+        team_characteristics,
+        team_challenges,
+        critical_areas.split(',').map((v) => v.trim()),
+        action_plans,
+        meeting_frequency,
+        communication_modes.split(',').map((v) => v.trim()),
+        social_media_link,
+        focal_person_contact,
+        mentoring_team_members,
+        preferred_mentoring_time,
+        mentoring_time_note,
+        pitch_deck_url,
+      ]
+    );
 
-    if (data === "cancel_application") {
-      await deleteMessageBot2(chatId, callbackQuery.message.message_id);
-      await sendMessageBot2(chatId, "❌ Application canceled. You may restart with /joinLSEED.");
-      delete userStatesBot2[chatId];
-    }
-
-    if (data === "accept_privacy") {
-      setUserStateBot2(chatId, "applying_question_1");
-      const sent = await sendMessageBot2(chatId, applicationQuestions[0]);
-      userStatesBot2[chatId] = {
-        state: "applying_question_1",
-        previousMessageId: sent.message_id,
-        currentQuestionIndex: 0,
-        applicationData: {},
-      };
-      return res.sendStatus(200);
-    }
-
-    await axios.post(`${TELEGRAM_API_URL_2}/answerCallbackQuery`, {
-      callback_query_id: callbackQuery.id,
-      text: "✅ Choice received!",
-      show_alert: false,
-    });
-
-    return res.sendStatus(200);
+    res.sendStatus(200);
+  } catch (error) {
+    console.error("❌ Insert error:", error);
+    res.sendStatus(500);
   }
-
-  // Handle incoming text messages
-  const chatId = message?.chat?.id;
-  if (!chatId) return res.sendStatus(200);
-
-  if (isRateLimitedBot2(chatId)) return res.sendStatus(200);
-
-  debounceRequestBot2(chatId, async () => {
-    try {
-      const text = message.text?.trim();
-
-      // Step 1: Force /joinLSEED as entry point
-      if (!userStatesBot2[chatId]) {
-        if (text === "/joinLSEED") {
-          userStatesBot2[chatId] = { state: "awaiting_privacy_acceptance" };
-
-          await sendMessageWithOptionsBot2(
-            chatId,
-            `👋 *Good day!*
-
-Thank you for your interest in *LSEED Online Mentoring*! We hope this initiative helps sustain your team's passion for social entrepreneurship and build on your SE's accomplishments.
-
-👥 *Team Representatives:*  
-Please *discuss with your team members first* before filling out the form. Your answers will help mentors design strategies for a more effective and engaging mentoring process.
-
-🙏 *God bless!*  
-— *Your LSEED Family*
-
----
-
-🔐 *Data Privacy Consent*
-
-To ensure the safe and transparent use of your personal information, we require that you read and understand the following provisions:
-
-In compliance with the *Data Privacy Act of 2012 (DPA)* and its IRR (effective since Sept 9, 2016), I consent to the *Lasallian Social Enterprise for Economic Development (LSEED) Center* to collect and use my data for the stated purpose.
-
-By submitting this form, I agree to the following:
-
-1️⃣ My data will be used *only* for purposes authorized by *De La Salle University*.  
-2️⃣ I may request cancellation of my data usage at any time.  
-3️⃣ My personal data will be securely stored (both online & physical copies).  
-4️⃣ I may request a report on how my data is used via written request to LSEED.  
-5️⃣ LSEED commits to protecting my personal information at all times.
-
-✅ I confirm I have also secured consent from all parties involved.
-
-Thank you!
-`,
-            [[{ text: "✅ I Accept", callback_data: "accept_privacy" }]]
-          );
-        } else {
-          await sendMessageBot2(chatId, "⚠️ Please send /joinLSEED to begin your application.");
-        }
-        return res.sendStatus(200);
-      }
-
-      // Step 2: Handle application questions
-      const userState = userStatesBot2[chatId];
-      if (userState?.state?.startsWith("applying_question_")) {
-        const index = userState.currentQuestionIndex;
-        userStatesBot2[chatId].applicationData[`q${index + 1}`] = text;
-
-        if (userState.previousMessageId) {
-          await deleteMessageBot2(chatId, userState.previousMessageId);
-        }
-
-        if (index + 1 < applicationQuestions.length) {
-          const nextIndex = index + 1;
-          setUserStateBot2(chatId, `applying_question_${nextIndex + 1}`);
-          const sent = await sendMessageBot2(chatId, applicationQuestions[nextIndex]);
-          userStatesBot2[chatId] = {
-            ...userStatesBot2[chatId],
-            state: `applying_question_${nextIndex + 1}`,
-            previousMessageId: sent.message_id,
-            currentQuestionIndex: nextIndex,
-          };
-        } else {
-          setUserStateBot2(chatId, "awaiting_confirmation");
-          const summary = Object.values(userStatesBot2[chatId].applicationData)
-            .map((ans, i) => `*Q${i + 1}:* ${ans}`)
-            .join("\n\n");
-
-          const sent = await sendMessageWithOptionsBot2(
-            chatId,
-            `✅ You have completed the application!\n\nPlease review your answers:\n\n${summary}\n\nDo you want to *submit*?`,
-            [[
-              { text: "✅ Submit", callback_data: "submit_application" },
-              { text: "❌ Cancel", callback_data: "cancel_application" }
-            ]]
-          );
-          userStatesBot2[chatId].previousMessageId = sent?.message_id;
-        }
-
-        return res.sendStatus(200);
-      }
-
-    } catch (err) {
-      console.error("❌ [Bot 2] Error:", err);
-      return res.sendStatus(500);
-    }
-  }, res);
-
 });
 
 // API endpoint to add a new program
@@ -3095,29 +2872,6 @@ app.get("/checkPendingMeetings", async (req, res) => {
 
 // Start the server
 const PORT = process.env.BACKEND_PORT;
-// Start the server and ngrok tunnel
-const NGROK_DOMAIN = process.env.NGROK_DOMAIN; // Your predefined ngrok domain
-
-// -- OLD WEBHOOK --
-// // Function to set the webhook
-// async function setWebhook(ngrokUrl) {
-//   const webhookUrl = `${ngrokUrl}/webhook`;
-
-//   try {
-//       const response = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook`, {
-//           url: webhookUrl,
-//       });
-
-//       if (response.data.ok) {
-//           console.log(`✅ Webhook successfully set to: ${webhookUrl}`);
-//       } else {
-//           console.log(`❌ Failed to set webhook:`, response.data);
-//       }
-//   } catch (error) {
-//     console.error(`❌ Error setting webhook:`, error.response?.data || error.message);
-
-//   }
-// }
 
 // Function to set the webhook for a specific bot
 async function setWebhook(botToken, webhookPath, ngrokUrl) {
@@ -3143,16 +2897,12 @@ app.listen(PORT, async () => {
   console.log(`🚀 Localhost running on: http://localhost:${PORT}`);
 
   try {
-      const ngrokUrl = await ngrok.connect(PORT);
+      //const ngrokUrl = await ngrok.connect(PORT);
+      const ngrokUrl = process.env.NGROK_DOMAIN;
       console.log(`🌍 Ngrok tunnel running at: ${ngrokUrl}`);
-
-      // -- OLD WEBHOOK --
-      // // Set the webhook automatically
-      // await setWebhook(ngrokUrl);
 
       // Set webhooks for both bots
       await setWebhook(TELEGRAM_BOT_TOKEN, '/webhook-bot1', ngrokUrl);
-      await setWebhook(TELEGRAM_BOT_TOKEN_2, '/webhook-bot2', ngrokUrl);
   } catch (error) {
       console.log(`❌ Couldn't tunnel ngrok: ${error.message}`);
   }

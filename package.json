@@ -5,7 +5,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server",
-    "dev": "nodemon server"
+    "dev": "concurrently \"ngrok start lseed\" \"nodemon server\""
   },
   "keywords": [],
   "author": "",
@@ -37,6 +37,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "concurrently": "^9.1.2",
     "nodemon": "^3.1.9"
   }
 }
