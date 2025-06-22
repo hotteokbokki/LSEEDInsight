@@ -85,6 +85,7 @@ const { getProgramCoordinators,
         getProgramAssignment, 
         getLSEEDCoordinators,
         assignProgramCoordinator } = require("./controllers/programAssignmentController.js");
+const { getApplicationList } = require("./controllers/menteesFormSubmissionsController.js");
 const app = express();
 
 
@@ -1572,6 +1573,17 @@ app.get("/getAllPrograms", async (req, res) => {
   }
 });
 
+
+app.get("/list-se-applications", async (req, res) => {
+  try {
+    const applicationList = await getApplicationList(); 
+    res.json(applicationList);
+  } catch (error) {
+    console.error("Error fetching application list:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 // API endpoint to fetch all programs
 app.get("/getPrograms", async (req, res) => {
   try {
@@ -2388,6 +2400,7 @@ app.post("/api/googleform-webhook", async (req, res) => {
     Timestamp,
     'Do you consent?': consent,
     'What is the name of you social enterprise?': team_name,
+    'Do you have an existing abbreviation for your social enterprise?': se_abbreviation,
     'When did you start working on your social enterprise/social enterprise idea?': enterprise_idea_start,
     'How many people are directly involved in your social enterprise / social enterprise idea?': involved_people,
     'Kindly indicate the current phase of your social enterprise': current_phase,
@@ -2413,6 +2426,7 @@ app.post("/api/googleform-webhook", async (req, res) => {
         timestamp,
         consent,
         team_name,
+        se_abbreviation,
         enterprise_idea_start,
         involved_people,
         current_phase,
@@ -2434,12 +2448,13 @@ app.post("/api/googleform-webhook", async (req, res) => {
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15,
-        $16, $17, $18, $19, $20
+        $16, $17, $18, $19, $20, $21
       )`,
       [
         new Date(Timestamp),
         consent?.toLowerCase() === "yes",
         team_name,
+        se_abbreviation,
         enterprise_idea_start,
         involved_people,
         current_phase,
@@ -2454,7 +2469,7 @@ app.post("/api/googleform-webhook", async (req, res) => {
         social_media_link,
         focal_person_contact,
         mentoring_team_members,
-        preferred_mentoring_time,
+        preferred_mentoring_time?.split(',').map((v) => v.trim()),
         mentoring_time_note,
         pitch_deck_url,
       ]

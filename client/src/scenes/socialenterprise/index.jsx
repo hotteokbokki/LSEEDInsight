@@ -22,7 +22,9 @@ import {
   FormControlLabel,
   Checkbox,
   FormHelperText,
+  Menu
 } from "@mui/material";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
@@ -61,7 +63,8 @@ const SocialEnterprise = ({ userRole }) => {
   const [mentors, setMentors] = useState([]);
   const [sdgs, setSdgs] = useState([]);
   const [programs, setPrograms] = useState([]);
-  const [topPerformers, setTopPerformers] = useState([]);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [menuRowId, setMenuRowId] = useState(null); 
   // State for fetched data
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [loading, setLoading] = useState(true); // Loading state for API call
@@ -70,13 +73,29 @@ const SocialEnterprise = ({ userRole }) => {
   const handleCloseAddSE = () => setOpenAddSE(false);
   const handleOpenAddProgram = () => setOpenAddProgram(true);
   const handleCloseAddProgram = () => setOpenAddProgram(false);
-
+  const [applications, setApplications] = useState([]);
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setSocialEnterpriseData((prevData) => ({
       ...prevData,
       [name]: value,
     }));
+  };
+
+  const handleOpenMenu = (event, rowId) => {
+    setAnchorEl(event.currentTarget);
+    setMenuRowId(rowId);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+    setMenuRowId(null);
+  };
+
+  const handleMenuAction = (action, row) => {
+    console.log(`Action: ${action}`, row);
+    // TODO: Add logic for Accept, Decline, or View
+    handleCloseMenu();
   };
 
   const toggleEditing = () => {
@@ -147,6 +166,32 @@ const SocialEnterprise = ({ userRole }) => {
       }
     };
     fetchSDGs();
+  }, []);
+
+  useEffect(() => {
+    const fetchApplications = async () => {
+      try {
+        const response = await fetch("http://localhost:4000/list-se-applications"); // adjust endpoint as needed
+        const data = await response.json()
+        
+        // Format date_applied in all items
+        const formatted = data.map((item) => ({
+          ...item,
+          date_applied: new Date(item.date_applied).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+        }));
+        setApplications(formatted);
+      } catch (error) {
+        console.error("Error fetching SE applications:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchApplications();
   }, []);
 
   useEffect(() => {
@@ -341,22 +386,68 @@ const SocialEnterprise = ({ userRole }) => {
       headerName: "Social Enterprise",
       flex: 1,
       editable: isEditing,
-      renderCell: (params) => `${params.row.name}`,
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          sx={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+          }}
+        >
+          {params.row.name}
+        </Typography>
+      ),
     },
-    { field: "program", headerName: "Program", flex: 1, editable: isEditing }, // ✅ Added Program Name
+    {
+      field: "program",
+      headerName: "Program",
+      flex: 1,
+      editable: isEditing,
+      renderCell: (params) => (
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="body2">{params.row.program}</Typography>
+        </Box>
+      ),
+    },
     {
       field: "mentorshipStatus",
       headerName: "Mentorship Status",
       flex: 1,
       editable: false,
-      renderCell: (params) => `${params.row.mentorshipStatus}`,
+      renderCell: (params) => (
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="body2">{params.row.mentorshipStatus}</Typography>
+        </Box>
+      ),
     },
     {
       field: "mentors",
       headerName: "Mentors",
       flex: 1,
       editable: isEditing,
-      renderCell: (params) => `${params.row.mentors}`,
+      renderCell: (params) => (
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="body2">{params.row.mentors}</Typography>
+        </Box>
+      ),
       renderEditCell: (params) => (
         <MentorDropdown
           value={params.value}
@@ -367,7 +458,7 @@ const SocialEnterprise = ({ userRole }) => {
               value: newValue,
             })
           }
-          mentors={mentors} // Pass the fetched mentors
+          mentors={mentors}
         />
       ),
     },
@@ -376,16 +467,25 @@ const SocialEnterprise = ({ userRole }) => {
       headerName: "Actions",
       width: 150,
       renderCell: (params) => (
-        <Button
-          onClick={() => navigate(`/se-analytics/${params.row.id}`)}
+        <Box
           sx={{
-            color: "#fff",
-            backgroundColor: colors.primary[700],
-            "&:hover": { backgroundColor: colors.primary[800] },
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
-          View SE
-        </Button>
+          <Button
+            onClick={() => navigate(`/se-analytics/${params.row.id}`)}
+            sx={{
+              color: "#fff",
+              backgroundColor: colors.primary[700],
+              "&:hover": { backgroundColor: colors.primary[800] },
+            }}
+          >
+            View SE
+          </Button>
+        </Box>
       ),
     },
   ];
@@ -1139,55 +1239,216 @@ const SocialEnterprise = ({ userRole }) => {
         </Snackbar>
       </Box>
 
-      <Box
-        width="100%"
-        backgroundColor={colors.primary[400]}
-        padding="20px"
-        marginTop="20px"
-      >
-        <Typography
-          variant="h3"
-          fontWeight="bold"
-          color={colors.greenAccent[500]}
-          marginBottom="15px" // Ensures a small gap between header & DataGrid
-        >
-          Social Enterprises
-        </Typography>
+      <Box display="flex" gap="20px" width="100%" mt="20px">
+        {/* SOCIAL ENTERPRISES TABLE */}
         <Box
-          width="100%"
-          height="400px"
-          minHeight="400px"
-          sx={{
-            "& .MuiDataGrid-root": { border: "none" },
-            "& .MuiDataGrid-cell": { borderBottom: "none" },
-            "& .name-column--cell": { color: colors.greenAccent[300] },
-            "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-              backgroundColor: colors.blueAccent[700] + " !important",
-            },
-            "& .MuiDataGrid-virtualScroller": {
-              backgroundColor: colors.primary[400],
-            },
-            "& .MuiDataGrid-footerContainer": {
-              borderTop: "none",
-              backgroundColor: colors.blueAccent[700],
-            },
-          }}
+          flex="2"
+          backgroundColor={colors.primary[400]}
+          padding="20px"
         >
-          {loading ? (
-            <Typography>Loading...</Typography>
-          ) : (
-            <DataGrid
-              rows={socialEnterprises}
-              columns={columns}
-              getRowId={(row) => row.id} // Use `id` as the unique identifier
-              processRowUpdate={(params) => {
-                handleSERowUpdate(params);
-                return params;
-              }}
-              onRowClick={handleRowClick}
-              editMode="row" // Enable row editing
-            />
-          )}
+          <Typography
+            variant="h3"
+            fontWeight="bold"
+            color={colors.greenAccent[500]}
+            marginBottom="15px"
+          >
+            Social Enterprises
+          </Typography>
+          <Box
+            width="100%"
+            height="600px"
+            minHeight="400px"
+            sx={{
+              "& .MuiDataGrid-root": { border: "none" },
+              "& .MuiDataGrid-cell": { borderBottom: "none" },
+              "& .name-column--cell": { color: colors.greenAccent[300] },
+              "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                backgroundColor: colors.blueAccent[700] + " !important",
+              },
+              "& .MuiDataGrid-virtualScroller": {
+                backgroundColor: colors.primary[400],
+              },
+              "& .MuiDataGrid-footerContainer": {
+                borderTop: "none",
+                backgroundColor: colors.blueAccent[700],
+              },
+            }}
+          >
+            {loading ? (
+              <Typography>Loading...</Typography>
+            ) : (
+              <DataGrid
+                rows={socialEnterprises}
+                columns={columns}
+                getRowId={(row) => row.id}
+                getRowHeight={() => 'auto'}
+                processRowUpdate={(params) => {
+                  handleSERowUpdate(params);
+                  return params;
+                }}
+                onRowClick={handleRowClick}
+                editMode="row"
+                sx={{
+                  "& .MuiDataGrid-cell": {
+                    display: "flex",
+                    alignItems: "center", // vertical centering
+                  },
+                  "& .MuiDataGrid-columnHeader": {
+                    alignItems: "center", // optional: center header label vertically
+                  },
+                  "& .MuiDataGrid-cellContent": {
+                    whiteSpace: "normal", // allow line wrap
+                    wordBreak: "break-word",
+                  },
+                }}
+              />
+            )}
+          </Box>
+        </Box>
+
+        {/* APPLICATIONS TABLE */}
+        <Box
+          flex="1"
+          backgroundColor={colors.primary[400]}
+          overflow="auto"
+        >
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+            borderBottom={`4px solid ${colors.primary[500]}`}
+            p="15px"
+          >
+            <Typography color={colors.greenAccent[500]} variant="h5" fontWeight="600">
+              Social Enterprise Applications
+            </Typography>
+          </Box>
+
+          {applications.map((list, i) => (
+            <Box
+              key={`${list.txId}-${i}`}
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              borderBottom={`4px solid ${colors.primary[500]}`}
+              p="15px"
+              sx={{ minHeight: "72px" }} // Ensures enough vertical space
+            >
+              {/* Left: Team Name & Abbreviation */}
+              <Box
+                sx={{
+                  flex: 1,
+                  overflowWrap: "break-word",
+                  whiteSpace: "normal",
+                }}
+              >
+                <Typography
+                  color={colors.greenAccent[500]}
+                  variant="h5"
+                  fontWeight="600"
+                  sx={{
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {list.team_name}
+                </Typography>
+                <Typography
+                  color={colors.grey[100]}
+                  sx={{
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {list.se_abbreviation}
+                </Typography>
+              </Box>
+
+              {/* Middle: Date */}
+              <Box
+                sx={{
+                  flexShrink: 0,
+                  color: colors.grey[100],
+                  paddingLeft: "20px",
+                  paddingRight: "20px",
+                }}
+              >
+                {list.date_applied}
+              </Box>
+
+              {/* Right: Button */}
+              <Button
+                onClick={(e) => handleOpenMenu(e, list.id)}
+                endIcon={<KeyboardArrowDownIcon />}
+                sx={{
+                  backgroundColor: colors.greenAccent[500],
+                  color: "#fff",
+                  border: `2px solid ${colors.greenAccent[500]}`,
+                  borderRadius: "4px",
+                  textTransform: "none",
+                  padding: "6px 12px",
+                  "&:hover": {
+                    backgroundColor: colors.greenAccent[600],
+                    borderColor: colors.greenAccent[600],
+                  },
+                }}
+              >
+                Action
+              </Button>
+
+              {menuRowId === list.id && (
+              <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleCloseMenu}
+                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                transformOrigin={{ vertical: "top", horizontal: "right" }}
+              >
+                <MenuItem
+                  onClick={() => handleMenuAction("View", list)}
+                  sx={{
+                    color: colors.grey[100],
+                    fontWeight: 500,
+                    "&:hover": {
+                      backgroundColor: colors.blueAccent[700],
+                      color: "#fff",
+                    },
+                  }}
+                >
+                  View
+                </MenuItem>
+
+                <MenuItem
+                  onClick={() => handleMenuAction("Accept", list)}
+                  sx={{
+                    color: colors.greenAccent[500],
+                    fontWeight: 500,
+                    "&:hover": {
+                      backgroundColor: colors.greenAccent[500],
+                      color: "#fff",
+                    },
+                  }}
+                >
+                  Accept
+                </MenuItem>
+
+                <MenuItem
+                  onClick={() => handleMenuAction("Decline", list)}
+                  sx={{
+                    color: "#f44336", // red
+                    fontWeight: 500,
+                    "&:hover": {
+                      backgroundColor: "#f44336",
+                      color: "#fff",
+                    },
+                  }}
+                >
+                  Decline
+                </MenuItem>
+              </Menu>
+              )}
+            </Box>
+          ))}
         </Box>
       </Box>
     </Box>
