@@ -22,7 +22,8 @@ import {
   FormControlLabel,
   Checkbox,
   FormHelperText,
-  Menu
+  Menu,
+  Grid
 } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
@@ -65,6 +66,8 @@ const SocialEnterprise = ({ userRole }) => {
   const [programs, setPrograms] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
   const [menuRowId, setMenuRowId] = useState(null); 
+  const [openApplicationDialog, setOpenApplicationDialog] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState(null);
   // State for fetched data
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [loading, setLoading] = useState(true); // Loading state for API call
@@ -92,10 +95,57 @@ const SocialEnterprise = ({ userRole }) => {
     setMenuRowId(null);
   };
 
-  const handleMenuAction = (action, row) => {
+  const handleMenuAction = async (action, row) => {
     console.log(`Action: ${action}`, row);
-    // TODO: Add logic for Accept, Decline, or View
+
+    if (action === "Accept") {
+      setSocialEnterpriseData((prev) => ({
+        ...prev,
+        name: row.team_name || "",
+        abbr: row.se_abbreviation || "",
+        selectedStatus: "Active",
+        contact: [row.focal_email, row.focal_phone].filter(Boolean).join(" / ")
+      }));
+      setOpenAddSE(true); // Open the dialog
+    }
+
+    if (action === "Decline") {
+      const applicationId = row.id; // Ensure `row.id` is defined
+
+      try {
+        const response = await fetch(`http://localhost:4000/api/application/${applicationId}/status`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: "Declined" }),
+        });
+
+        if (response.ok) {
+          console.log("Status updated to Declined.");
+          // Optional: show toast, refresh table, etc.
+        } else {
+          console.error("❌ Failed to decline the application. Response not ok.");
+        }
+      } catch (error) {
+        console.error("❌ Network or server error:", error);
+      }
+
+      handleCloseMenu(); // Close the dropdown
+    }
+
+    if (action === "View") {
+      // Open the application view dialog
+      setSelectedApplication(row); // set the clicked application details
+      setOpenApplicationDialog(true); // show the dialog
+    }
+
     handleCloseMenu();
+  };
+
+  const handleViewApplication = (application) => {
+    setSelectedApplication(application);
+    setOpenApplicationDialog(true);
   };
 
   const toggleEditing = () => {
@@ -127,10 +177,10 @@ const SocialEnterprise = ({ userRole }) => {
         const updatedSocialEnterprises = response.data.map((se) => ({
           id: se.se_id,
           name: se.team_name || "Unnamed SE",
-          program: se.program_name || "No Program", // ✅ Include program name
-          mentorshipStatus: se.mentors.length > 0 ? "Has Mentor" : "No Mentor",
+          program: se.program_name || "No Program", 
+          contact: se.contactnum || "No Contact",
           mentors:
-            se.mentors.map((m) => m.mentor_name).join(", ") || "No mentors",
+            se.mentors.map((m) => m.mentor_name).join(", ") || "No mentor",
         }));
 
         setSocialEnterprises(updatedSocialEnterprises);
@@ -416,8 +466,8 @@ const SocialEnterprise = ({ userRole }) => {
       ),
     },
     {
-      field: "mentorshipStatus",
-      headerName: "Mentorship Status",
+      field: "contact",
+      headerName: "Contact Person",
       flex: 1,
       editable: false,
       renderCell: (params) => (
@@ -428,7 +478,7 @@ const SocialEnterprise = ({ userRole }) => {
             alignItems: "center",
           }}
         >
-          <Typography variant="body2">{params.row.mentorshipStatus}</Typography>
+          <Typography variant="body2">{params.row.contact}</Typography>
         </Box>
       ),
     },
@@ -504,13 +554,6 @@ const SocialEnterprise = ({ userRole }) => {
         {/* ✅ Embed the SEPerformanceChart component here */}
       </Box>
       <Box display="flex" gap="10px" mt="20px">
-        <Button
-          variant="contained"
-          sx={{ backgroundColor: colors.greenAccent[500], color: "black" }}
-          onClick={handleOpenAddSE}
-        >
-          Add SE
-        </Button>
         <Dialog
           open={openAddSE}
           onClose={handleCloseAddSE}
@@ -1146,6 +1189,110 @@ const SocialEnterprise = ({ userRole }) => {
           </DialogActions>
         </Dialog>
 
+        <Dialog
+          open={openApplicationDialog}
+          onClose={() => setOpenApplicationDialog(false)}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            style: {
+              backgroundColor: "#fff",
+              color: "#000",
+              border: "1px solid #000",
+            },
+          }}
+        >
+          <DialogTitle
+            sx={{
+              backgroundColor: "#1E4D2B",
+              color: "#fff",
+              textAlign: "center",
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+            }}
+          >
+            Application Details
+          </DialogTitle>
+
+          <DialogContent sx={{ padding: 3, maxHeight: "70vh", overflowY: "auto" }}>
+            {selectedApplication ? (
+              <Grid container spacing={2}>
+                {/* Team Information */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" fontWeight="bold" gutterBottom>
+                    About the Team
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}><strong>Team Name:</strong> {selectedApplication.team_name}</Grid>
+                <Grid item xs={6}><strong>Abbreviation:</strong> {selectedApplication.se_abbreviation}</Grid>
+                <Grid item xs={6}><strong>Started:</strong> {selectedApplication.enterprise_idea_start}</Grid>
+                <Grid item xs={6}><strong>People Involved:</strong> {selectedApplication.involved_people}</Grid>
+                <Grid item xs={6}><strong>Current Phase:</strong> {selectedApplication.current_phase}</Grid>
+                <Grid item xs={6}><strong>Meeting Frequency:</strong> {selectedApplication.meeting_frequency}</Grid>
+                <Grid item xs={12}><strong>Social Problem:</strong> {selectedApplication.social_problem || <i>Not provided</i>}</Grid>
+                <Grid item xs={12}><strong>Nature:</strong> {selectedApplication.se_nature}</Grid>
+                <Grid item xs={12}><strong>Team Characteristics:</strong> {selectedApplication.team_characteristics}</Grid>
+                <Grid item xs={12}><strong>Challenges:</strong> {selectedApplication.team_challenges}</Grid>
+                <Grid item xs={12}><strong>Critical Areas:</strong> {(selectedApplication.critical_areas || []).join(", ")}</Grid>
+                <Grid item xs={12}><strong>Action Plans:</strong> {selectedApplication.action_plans}</Grid>
+                <Grid item xs={12}><strong>Communication Modes:</strong> {(selectedApplication.communication_modes || []).join(", ")}</Grid>
+                <Grid item xs={12}><strong>Social Media:</strong> {selectedApplication.social_media_link}</Grid>
+
+                {/* Focal Person */}
+                <Grid item xs={12} mt={2}>
+                  <Typography variant="h6" fontWeight="bold" gutterBottom>
+                    Focal Person
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}><strong>Email:</strong> {selectedApplication.focal_email || <i>Not provided</i>}</Grid>
+                <Grid item xs={6}><strong>Phone:</strong> {selectedApplication.focal_phone || <i>Not provided</i>}</Grid>
+
+                {/* Mentoring Preferences */}
+                <Grid item xs={12} mt={2}>
+                  <Typography variant="h6" fontWeight="bold" gutterBottom>
+                    Mentoring Details
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}><strong>Team Members:</strong> {selectedApplication.mentoring_team_members}</Grid>
+                <Grid item xs={6}><strong>Preferred Time:</strong> {(selectedApplication.preferred_mentoring_time || []).join(", ")}</Grid>
+                <Grid item xs={6}><strong>Time Notes:</strong> {selectedApplication.mentoring_time_note}</Grid>
+
+                {/* Pitch Deck */}
+                <Grid item xs={12}>
+                  <strong>Pitch Deck:</strong>{" "}
+                  {selectedApplication.pitch_deck_url ? (
+                    <a
+                      href={selectedApplication.pitch_deck_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: "#1E4D2B", fontWeight: "bold" }}
+                    >
+                      View Document
+                    </a>
+                  ) : (
+                    <i>No pitch deck provided</i>
+                  )}
+                </Grid>
+              </Grid>
+            ) : (
+              <Typography>Loading...</Typography>
+            )}
+          </DialogContent>
+
+          <DialogActions sx={{ padding: "16px", borderTop: "1px solid #000" }}>
+            <Button
+              onClick={() => setOpenApplicationDialog(false)}
+              sx={{
+                color: "#000",
+                border: "1px solid #000",
+                "&:hover": { backgroundColor: "#f0f0f0" },
+              }}
+            >
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         <Snackbar
           open={isSuccessPopupOpen} // Controlled by state
           autoHideDuration={3000} // Automatically close after 3 seconds
@@ -1252,7 +1399,7 @@ const SocialEnterprise = ({ userRole }) => {
             color={colors.greenAccent[500]}
             marginBottom="15px"
           >
-            Social Enterprises
+            Social Enterprise List
           </Typography>
           <Box
             width="100%"
@@ -1319,8 +1466,8 @@ const SocialEnterprise = ({ userRole }) => {
             borderBottom={`4px solid ${colors.primary[500]}`}
             p="15px"
           >
-            <Typography color={colors.greenAccent[500]} variant="h5" fontWeight="600">
-              Social Enterprise Applications
+            <Typography color={colors.greenAccent[500]} variant="h3" fontWeight="600">
+              Applications
             </Typography>
           </Box>
 

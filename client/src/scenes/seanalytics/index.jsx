@@ -253,9 +253,6 @@ const SEAnalytics = () => {
         }
       );
 
-      console.log("📥 Raw API Response:", response); // Log raw response
-      console.log("📥 API Response Data:", response.data); // Log parsed response
-
       if (!response.data || response.data.length === 0) {
         console.warn("⚠️ No evaluation details found.");
         return;
@@ -299,20 +296,6 @@ const SEAnalytics = () => {
     } catch (error) {
       console.error("❌ Error fetching evaluation details:", error);
     }
-  };
-
-  const handleChangeSE = (event) => {
-    const newSEId = event.target.value;
-    setSelectedSEId(newSEId);
-
-    // Find the new selected SE using strict string comparison
-    const newSE = socialEnterprises.find((se) => se.id === newSEId);
-    console.log("Selected SE:", newSE);
-
-    setSelectedSE(newSE);
-
-    // 🔥 Update the URL to reflect the selected SE
-    navigate(`/se-analytics/${newSEId}`);
   };
 
   // If no social enterprise is found, show an error message

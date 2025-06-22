@@ -136,6 +136,15 @@ const STATE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 const PASSWORD = 'q@P#3_4)V5vUw+LJ!F'; // Set a secure password for authentication
 const userSelections = {}; // Store selections temporarily before final save
 
+const extractEmails = (text) => {
+  return text?.match(/[\w.-]+@[\w.-]+\.\w+/g) || [];
+};
+
+const extractPhoneNumbers = (text) => {
+  return text?.match(/(?:\+?\d{1,4}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?)?\d{3,4}[\s-]?\d{3,4}/g) || [];
+};
+
+
 // Helper function to send plain messages (without buttons)
 async function sendMessage(chatId, message) {
   try {
@@ -1584,6 +1593,23 @@ app.get("/list-se-applications", async (req, res) => {
   }
 });
 
+// PUT route to update application status
+app.put("/api/application/:id/status", async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  try {
+    await pgDatabase.query(
+      `UPDATE mentees_form_submissions SET status = $1 WHERE id = $2`,
+      [status, id]
+    );
+    res.sendStatus(200);
+  } catch (error) {
+    console.error("❌ Failed to update status:", error);
+    res.sendStatus(500);
+  }
+});
+
 // API endpoint to fetch all programs
 app.get("/getPrograms", async (req, res) => {
   try {
@@ -2393,9 +2419,7 @@ app.post("/webhook-bot1", async (req, res) => {
 app.post("/api/googleform-webhook", async (req, res) => {
   const formData = req.body;
 
-  console.log("📩 New form submission:", formData);
-
-  // Mapping fields
+  // Destructure fields from formData
   const {
     Timestamp,
     'Do you consent?': consent,
@@ -2420,6 +2444,13 @@ app.post("/api/googleform-webhook", async (req, res) => {
     'Please upload your pitch deck or your business one-pager': pitch_deck_url,
   } = formData;
 
+  // Extract email and phone from focal_person_contact
+  const focalEmails = extractEmails(focal_person_contact);
+  const focalPhones = extractPhoneNumbers(focal_person_contact);
+
+  const focal_email = focalEmails[0] || null;
+  const focal_phone = focalPhones[0] || null;
+
   try {
     await pgDatabase.query(
       `INSERT INTO mentees_form_submissions (
@@ -2439,16 +2470,19 @@ app.post("/api/googleform-webhook", async (req, res) => {
         meeting_frequency,
         communication_modes,
         social_media_link,
-        focal_person_contact,
+        focal_person_contact,      
         mentoring_team_members,
         preferred_mentoring_time,
         mentoring_time_note,
-        pitch_deck_url
+        pitch_deck_url,
+        focal_email,               
+        focal_phone                
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15,
-        $16, $17, $18, $19, $20, $21
+        $16, $17, $18, $19, $20,
+        $21, $22, $23
       )`,
       [
         new Date(Timestamp),
@@ -2462,18 +2496,21 @@ app.post("/api/googleform-webhook", async (req, res) => {
         se_nature,
         team_characteristics,
         team_challenges,
-        critical_areas.split(',').map((v) => v.trim()),
+        critical_areas?.split(',').map((v) => v.trim()) || [],
         action_plans,
         meeting_frequency,
-        communication_modes.split(',').map((v) => v.trim()),
+        communication_modes?.split(',').map((v) => v.trim()) || [],
         social_media_link,
-        focal_person_contact,
+        focal_person_contact,                
         mentoring_team_members,
-        preferred_mentoring_time?.split(',').map((v) => v.trim()),
+        preferred_mentoring_time?.split(',').map((v) => v.trim()) || [],
         mentoring_time_note,
         pitch_deck_url,
+        focal_email,
+        focal_phone
       ]
     );
+
 
     res.sendStatus(200);
   } catch (error) {

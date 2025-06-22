@@ -97,9 +97,9 @@ const Mentorships = () => {
           id: se.se_id,
           name: se.team_name || "Unnamed SE",
           program: se.program_name || "No Program", // ✅ Include program name
-          mentorshipStatus: se.mentors.length > 0 ? "Has Mentor" : "No Mentor",
+          contact: se.contactnum || "No Contact",
           mentors:
-            se.mentors.map((m) => m.mentor_name).join(", ") || "No mentors",
+            se.mentors.map((m) => m.mentor_name).join(", ") || "No mentor",
         }));
 
         setSocialEnterprises(updatedSocialEnterprises);
@@ -263,8 +263,8 @@ const Mentorships = () => {
     },
     { field: "program", headerName: "Program", flex: 1, editable: isEditing },
     {
-      field: "mentorshipStatus",
-      headerName: "Mentorship Status",
+      field: "contact",
+      headerName: "Contact Person",
       flex: 1,
       editable: isEditing,
     },

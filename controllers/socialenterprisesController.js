@@ -149,7 +149,8 @@ exports.getAllSocialEnterpriseswithMentorID = async (mentor_id) => {
         SELECT 
             se.se_id, 
             se.team_name, 
-            p.name AS program_name, -- ✅ Fetch program name
+            p.name AS program_name, 
+            se.contactnum,
             COALESCE(
                 JSON_AGG(
                     CASE 
@@ -188,7 +189,8 @@ exports.getAllSocialEnterprisesWithMentorship = async (program = null) => {
       SELECT 
           se.se_id, 
           se.team_name, 
-          p.name AS program_name, -- ✅ Fetch program name
+          p.name AS program_name,
+          se.contactnum,
           COALESCE(
               JSON_AGG(
                   CASE 

@@ -4,12 +4,32 @@ exports.getApplicationList = async () => {
     try {
         const query = `
             SELECT
-                id,                                -- Auto-generated ID (e.g. SE-APPLICATION-0001)
-                team_name,                         -- Name of the SE/team
-                se_abbreviation,                   -- Short name for UI display
-                "timestamp" AS date_applied     -- When the form was submitted
+                id,
+                "timestamp" AS date_applied,
+                team_name,
+                se_abbreviation,
+                enterprise_idea_start,
+                involved_people,
+                current_phase,
+                social_problem,
+                se_nature,
+                team_characteristics,
+                team_challenges,
+                critical_areas,
+                action_plans,
+                meeting_frequency,
+                communication_modes,
+                social_media_link,
+                mentoring_team_members,
+                preferred_mentoring_time,
+                mentoring_time_note,
+                pitch_deck_url,
+                focal_email,
+                focal_phone
             FROM
-                public.mentees_form_submissions
+                mentees_form_submissions
+            WHERE
+                status = 'Pending'
             ORDER BY
                 "timestamp" DESC;
         `;
