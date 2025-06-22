@@ -25,6 +25,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
 import { DataGrid } from "@mui/x-data-grid";
 import StatBox from "../../components/StatBox";
+import DualAxisLineChart from "../../components/DualAxisLineChart";
+import ScatterPlot from "../../components/ScatterPlot";
 import PeopleIcon from "@mui/icons-material/People";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
@@ -698,6 +700,246 @@ const SEAnalytics = () => {
           ) : (
             <RadarChart radarData={radarData} />
           )}
+        </Box>
+      </Box>
+      {/* Financial Analytics Section for Single SE */}
+      <Box mt="40px" display="flex" flexDirection="column" gap="20px">
+        {/* Section Header */}
+        <Typography
+          variant="h2"
+          fontWeight="bold"
+          color={colors.greenAccent[500]}
+        >
+          Financial Analytics
+        </Typography>
+
+        {/* Stat Boxes */}
+        <Box
+          display="flex"
+          flexWrap="wrap"
+          gap="20px"
+          justifyContent="space-between"
+        >
+          <Box
+            flex="1 1 22%"
+            backgroundColor={colors.primary[400]}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            p="20px"
+          >
+            <StatBox
+              title="₱120,000"
+              subtitle="Total Revenue"
+              progress={1}
+              increase="↑ 8%"
+            />
+          </Box>
+          <Box
+            flex="1 1 22%"
+            backgroundColor={colors.primary[400]}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            p="20px"
+          >
+            <StatBox
+              title="₱80,000"
+              subtitle="Total Expenses"
+              progress={0.7}
+              increase="↑ 5%"
+            />
+          </Box>
+          <Box
+            flex="1 1 22%"
+            backgroundColor={colors.primary[400]}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            p="20px"
+          >
+            <StatBox
+              title="₱40,000"
+              subtitle="Net Income"
+              progress={0.33}
+              increase="↑ 15%"
+            />
+          </Box>
+          <Box
+            flex="1 1 22%"
+            backgroundColor={colors.primary[400]}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            p="20px"
+          >
+            <StatBox
+              title="₱250,000"
+              subtitle="Total Assets"
+              progress={1}
+              increase="↑ 10%"
+            />
+          </Box>
+        </Box>
+
+        {/* Revenue vs Expenses Line Chart */}
+        <Box backgroundColor={colors.primary[400]} p="20px">
+          <Typography
+            variant="h3"
+            fontWeight="bold"
+            color={colors.greenAccent[500]}
+            mb={2}
+          >
+            Revenue vs Expenses Over Time
+          </Typography>
+          <Box height="400px">
+            <DualAxisLineChart
+              data={[
+                {
+                  id: "Revenue",
+                  color: colors.greenAccent[500],
+                  data: [
+                    { x: "Jan", y: 15000 },
+                    { x: "Feb", y: 20000 },
+                    { x: "Mar", y: 18000 },
+                    { x: "Apr", y: 22000 },
+                  ],
+                },
+                {
+                  id: "Expenses",
+                  color: colors.redAccent[500],
+                  data: [
+                    { x: "Jan", y: 10000 },
+                    { x: "Feb", y: 15000 },
+                    { x: "Mar", y: 12000 },
+                    { x: "Apr", y: 16000 },
+                  ],
+                },
+              ]}
+            />
+          </Box>
+        </Box>
+
+        {/* Cash Flow Scatter Plot */}
+        <Box backgroundColor={colors.primary[400]} p="20px">
+          <Typography
+            variant="h3"
+            fontWeight="bold"
+            color={colors.greenAccent[500]}
+            mb={2}
+          >
+            Cash Flow (Inflow vs Outflow)
+          </Typography>
+          <Box height="400px">
+            <ScatterPlot
+              data={[
+                {
+                  id: "Inflow",
+                  data: [
+                    { x: "Jan", y: 15000 },
+                    { x: "Feb", y: 20000 },
+                    { x: "Mar", y: 18000 },
+                    { x: "Apr", y: 22000 },
+                  ],
+                },
+                {
+                  id: "Outflow",
+                  data: [
+                    { x: "Jan", y: 12000 },
+                    { x: "Feb", y: 17000 },
+                    { x: "Mar", y: 14000 },
+                    { x: "Apr", y: 18000 },
+                  ],
+                },
+              ]}
+            />
+          </Box>
+        </Box>
+
+        {/* Owner’s Equity Trend */}
+        <Box backgroundColor={colors.primary[400]} p="20px">
+          <Typography
+            variant="h3"
+            fontWeight="bold"
+            color={colors.greenAccent[500]}
+            mb={2}
+          >
+            Owner's Equity Over Time
+          </Typography>
+          <Box height="400px">
+            <DualAxisLineChart
+              data={[
+                {
+                  id: "Owner's Equity",
+                  color: colors.blueAccent[500],
+                  data: [
+                    { x: "Jan", y: 80000 },
+                    { x: "Feb", y: 90000 },
+                    { x: "Mar", y: 95000 },
+                    { x: "Apr", y: 100000 },
+                  ],
+                },
+              ]}
+            />
+          </Box>
+        </Box>
+
+        {/* Financial Ratios */}
+        <Box display="flex" flexWrap="wrap" gap="20px">
+          <Box
+            flex="1 1 30%"
+            backgroundColor={colors.primary[400]}
+            p="20px"
+            display="flex"
+            flexDirection="column"
+          >
+            <Typography
+              variant="h4"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+            >
+              Net Profit Margin
+            </Typography>
+            <Typography variant="h3" color={colors.grey[100]}>
+              33.33%
+            </Typography>
+          </Box>
+          <Box
+            flex="1 1 30%"
+            backgroundColor={colors.primary[400]}
+            p="20px"
+            display="flex"
+            flexDirection="column"
+          >
+            <Typography
+              variant="h4"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+            >
+              Gross Profit Margin
+            </Typography>
+            <Typography variant="h3" color={colors.grey[100]}>
+              40.00%
+            </Typography>
+          </Box>
+          <Box
+            flex="1 1 30%"
+            backgroundColor={colors.primary[400]}
+            p="20px"
+            display="flex"
+            flexDirection="column"
+          >
+            <Typography
+              variant="h4"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+            >
+              Debt-to-Asset Ratio
+            </Typography>
+            <Typography variant="h3" color={colors.grey[100]}>
+              0.32
+            </Typography>
+          </Box>
         </Box>
       </Box>
 

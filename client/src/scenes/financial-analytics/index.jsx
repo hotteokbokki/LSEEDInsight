@@ -4,7 +4,7 @@ import StatBox from "../../components/StatBox";
 import LineChart from "../../components/LineChart";
 import BarChart from "../../components/BarChart";
 import FinancialBarChart from "../../components/FinancialBarChart";
-import CashFlowBarChart from "../../components/CashflowBarChart";
+import CashFlowBarChart from "../../components/CashflowBarChart.jsx";
 import PieChart from "../../components/PieChart";
 import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
