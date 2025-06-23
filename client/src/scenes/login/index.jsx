@@ -246,51 +246,293 @@ const Login = () => {
                 </div>
                 <form onSubmit={handleSubmit}>
                   <div className="input-boxes">
-                    <div className="input-box">
-                      <i className="fas fa-user"></i>
-                      <input
-                        type="text"
-                        name="firstName"
-                        placeholder="Enter your first name"
+                    {/* Sign Up Fields */}
+                    <TextField
+                      label="First Name"
+                      name="firstName"
+                      fullWidth
+                      required
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      InputProps={{ style: { color: "#000" } }}
+                      InputLabelProps={{ style: { color: "#000" } }}
+                      sx={{
+                        mt: 2,
+                        "& .MuiOutlinedInput-root": {
+                          "& fieldset": { borderColor: "#000" },
+                          "&:hover fieldset": { borderColor: "#000" },
+                          "&.Mui-focused fieldset": { borderColor: "#000" },
+                        },
+                      }}
+                    />
+
+                    <TextField
+                      label="Last Name"
+                      name="lastName"
+                      fullWidth
+                      required
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                      InputProps={{ style: { color: "#000" } }}
+                      InputLabelProps={{ style: { color: "#000" } }}
+                      sx={{
+                        mt: 2,
+                        "& .MuiOutlinedInput-root": {
+                          "& fieldset": { borderColor: "#000" },
+                          "&:hover fieldset": { borderColor: "#000" },
+                          "&.Mui-focused fieldset": { borderColor: "#000" },
+                        },
+                      }}
+                    />
+
+                    <TextField
+                      label="Email"
+                      name="email"
+                      type="email"
+                      fullWidth
+                      required
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      InputProps={{ style: { color: "#000" } }}
+                      InputLabelProps={{ style: { color: "#000" } }}
+                      sx={{
+                        mt: 2,
+                        "& .MuiOutlinedInput-root": {
+                          "& fieldset": { borderColor: "#000" },
+                          "&:hover fieldset": { borderColor: "#000" },
+                          "&.Mui-focused fieldset": { borderColor: "#000" },
+                        },
+                      }}
+                    />
+
+                    <TextField
+                      label="Password"
+                      name="password"
+                      type="password"
+                      fullWidth
+                      required
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      InputProps={{ style: { color: "#000" } }}
+                      InputLabelProps={{ style: { color: "#000" } }}
+                      sx={{
+                        mt: 2,
+                        "& .MuiOutlinedInput-root": {
+                          "& fieldset": { borderColor: "#000" },
+                          "&:hover fieldset": { borderColor: "#000" },
+                          "&.Mui-focused fieldset": { borderColor: "#000" },
+                        },
+                      }}
+                    />
+
+                    {/* Mentor Fields (START) */}
+
+                    {[
+                      {
+                        label: "Affiliation (Position/Organization)",
+                        key: "affiliation",
+                      },
+                      {
+                        label: "Reason/Motivation to volunteer",
+                        key: "motivation",
+                        multiline: true,
+                      },
+                      { label: "Areas of Expertise", key: "expertise" },
+                    ].map((field) => (
+                      <TextField
+                        key={field.key}
+                        label={field.label}
+                        fullWidth
                         required
-                        value={formData.firstName}
-                        onChange={handleInputChange}
+                        multiline={field.multiline}
+                        minRows={field.multiline ? 2 : undefined}
+                        value={mentorForm[field.key]}
+                        onChange={(e) =>
+                          handleMentorFormChange(field.key, e.target.value)
+                        }
+                        InputProps={{ style: { color: "#000" } }}
+                        InputLabelProps={{ style: { color: "#000" } }}
+                        sx={{
+                          mt: 2,
+                          "& .MuiOutlinedInput-root": {
+                            "& fieldset": { borderColor: "gray" },
+                            "&:hover fieldset": { borderColor: "#000" },
+                            "&.Mui-focused fieldset": { borderColor: "#000" },
+                          },
+                        }}
                       />
-                    </div>
-                    <div className="input-box">
-                      <i className="fas fa-user"></i>
-                      <input
-                        type="text"
-                        name="lastName"
-                        placeholder="Enter your last name"
-                        required
-                        value={formData.lastName}
-                        onChange={handleInputChange}
+                    ))}
+
+                    <FormControl fullWidth required sx={{ mt: 2 }}>
+                      <InputLabel sx={{ color: "#000" }}>
+                        Business Areas (select multiple)
+                      </InputLabel>
+                      <Select
+                        multiple
+                        value={mentorForm.businessAreas}
+                        onChange={(e) =>
+                          handleMentorFormChange(
+                            "businessAreas",
+                            e.target.value
+                          )
+                        }
+                        renderValue={(selected) => selected.join(", ")}
+                        sx={{
+                          color: "#000",
+                          "& .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#000",
+                          },
+                          "&:hover .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#000",
+                          },
+                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#000",
+                          },
+                        }}
+                      >
+                        {[
+                          "Application Development",
+                          "Business Registration Process",
+                          "Community Development",
+                          "Expansion/Acceleration",
+                          "Finance",
+                          "Human Resource",
+                          "Intellectual Property",
+                          "Legal Aspects and Compliance",
+                          "Management",
+                          "Marketing",
+                          "Online engagement",
+                          "Operations",
+                          "Product Development",
+                          "Sales",
+                          "Supply Chain and Logistics",
+                          "Technology Development",
+                          "Social Impact",
+                        ].map((area) => (
+                          <MenuItem key={area} value={area}>
+                            <Checkbox
+                              checked={mentorForm.businessAreas.includes(area)}
+                            />
+                            <Typography color="white">{area}</Typography>
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl fullWidth required sx={{ mt: 2 }}>
+                      <InputLabel sx={{ color: "#000" }}>
+                        Preferred Time
+                      </InputLabel>
+                      <Select
+                        value={mentorForm.preferredTime}
+                        onChange={(e) =>
+                          handleMentorFormChange(
+                            "preferredTime",
+                            e.target.value
+                          )
+                        }
+                        sx={{
+                          color: "#000",
+                          "& .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#000",
+                          },
+                          "&:hover .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#000",
+                          },
+                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#000",
+                          },
+                        }}
+                      >
+                        <MenuItem value="Weekday (Morning)">
+                          Weekday (Morning) 8AM - 12NN
+                        </MenuItem>
+                        <MenuItem value="Weekday (Afternoon)">
+                          Weekday (Afternoon) 1PM - 5PM
+                        </MenuItem>
+                        <MenuItem value="Other">Other</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    {mentorForm.preferredTime === "Other" && (
+                      <TextField
+                        label="Specify preferred time"
+                        fullWidth
+                        value={mentorForm.specificTime}
+                        onChange={(e) =>
+                          handleMentorFormChange("specificTime", e.target.value)
+                        }
+                        InputProps={{ style: { color: "#000" } }}
+                        InputLabelProps={{ style: { color: "#000" } }}
+                        sx={{
+                          mt: 2,
+                          "& .MuiOutlinedInput-root": {
+                            "& fieldset": { borderColor: "#000" },
+                            "&:hover fieldset": { borderColor: "#000" },
+                            "&.Mui-focused fieldset": { borderColor: "#000" },
+                          },
+                        }}
                       />
-                    </div>
-                    <div className="input-box">
-                      <i className="fas fa-envelope"></i>
-                      <input
-                        type="email"
-                        name="email"
-                        placeholder="Enter your email"
-                        required
-                        value={formData.email}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="input-box">
-                      <i className="fas fa-lock"></i>
-                      <input
-                        type="password"
-                        name="password"
-                        placeholder="Enter your password"
-                        required
-                        value={formData.password}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="checkbox-wrapper terms-checkbox">
+                    )}
+
+                    <FormControl fullWidth required sx={{ mt: 2 }}>
+                      <InputLabel sx={{ color: "#000" }}>
+                        Communication Modes
+                      </InputLabel>
+                      <Select
+                        multiple
+                        value={mentorForm.communicationMode}
+                        onChange={(e) =>
+                          handleMentorFormChange(
+                            "communicationMode",
+                            e.target.value
+                          )
+                        }
+                        renderValue={(selected) => selected.join(", ")}
+                        sx={{
+                          color: "#000",
+                          "& .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#000",
+                          },
+                          "&:hover .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#000",
+                          },
+                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#000",
+                          },
+                        }}
+                      >
+                        {[
+                          "Face to Face",
+                          "Facebook Messenger",
+                          "Google Meet",
+                          "Zoom",
+                          "Other",
+                        ].map((mode) => (
+                          <MenuItem key={mode} value={mode}>
+                            <Checkbox
+                              checked={mentorForm.communicationMode.includes(
+                                mode
+                              )}
+                            />
+                            <Typography color="white">{mode}</Typography>
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    {mentorFormError && (
+                      <Alert severity="error" sx={{ mt: 2 }}>
+                        {mentorFormError}
+                      </Alert>
+                    )}
+                    {/* Mentor Fields (END) */}
+
+                    {/* Terms and Register Button — at the bottom of the full form */}
+                    <div
+                      className="checkbox-wrapper terms-checkbox"
+                      style={{ marginTop: "30px" }}
+                    >
                       <input type="checkbox" id="terms" name="terms" required />
                       <label
                         htmlFor="terms"
@@ -299,6 +541,7 @@ const Login = () => {
                         Terms and Conditions
                       </label>
                     </div>
+
                     <div className="button input-box">
                       <input type="submit" value="Register" />
                     </div>
@@ -306,6 +549,7 @@ const Login = () => {
                     {errorMessage && (
                       <div className="error-message">{errorMessage}</div>
                     )}
+
                     <div className="separator">OR</div>
                     <div
                       className="text sign-up-text"
@@ -316,273 +560,6 @@ const Login = () => {
                     </div>
                   </div>
                 </form>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    backgroundColor: "#1E4D2B",
-                    color: "#fff",
-                    textAlign: "center",
-                    fontWeight: "bold",
-                    py: 1,
-                    mb: 2,
-                    mt: 4,
-                  }}
-                >
-                  LSEED Mentoring Signup Form
-                </Typography>
-
-                <Typography
-                  variant="body2"
-                  color="black"
-                  sx={{ mb: 2, textAlign: "justify" }}
-                >
-                  Good day, Volunteer Mentors! Thank you once again for your
-                  interest in joining our panel of mentors for LSEED Mentoring.
-                  We truly appreciate it!
-                </Typography>
-
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={mentorForm.agree}
-                      onChange={(e) =>
-                        handleMentorFormChange("agree", e.target.checked)
-                      }
-                      sx={{
-                        color: "#000",
-                        "&.Mui-checked": { color: "#000" },
-                      }}
-                    />
-                  }
-                  label={<Typography color="#000">I agree</Typography>}
-                />
-
-                {[
-                  { label: "Full Name", key: "fullName" },
-                  { label: "Email", key: "email" },
-                  {
-                    label: "Affiliation (Position/Organization)",
-                    key: "affiliation",
-                  },
-                  {
-                    label: "Reason/Motivation to volunteer",
-                    key: "motivation",
-                    multiline: true,
-                  },
-                  { label: "Areas of Expertise", key: "expertise" },
-                ].map((field) => (
-                  <TextField
-                    key={field.key}
-                    label={field.label}
-                    fullWidth
-                    required
-                    multiline={field.multiline}
-                    minRows={field.multiline ? 2 : undefined}
-                    value={mentorForm[field.key]}
-                    onChange={(e) =>
-                      handleMentorFormChange(field.key, e.target.value)
-                    }
-                    InputProps={{ style: { color: "#000" } }}
-                    InputLabelProps={{ style: { color: "#000" } }}
-                    sx={{
-                      mt: 2,
-                      "& .MuiOutlinedInput-root": {
-                        "& fieldset": { borderColor: "#000" },
-                        "&:hover fieldset": { borderColor: "#000" },
-                        "&.Mui-focused fieldset": { borderColor: "#000" },
-                      },
-                    }}
-                  />
-                ))}
-
-                <FormControl fullWidth required sx={{ mt: 2 }}>
-                  <InputLabel sx={{ color: "#000" }}>
-                    Business Areas (select multiple)
-                  </InputLabel>
-                  <Select
-                    multiple
-                    value={mentorForm.businessAreas}
-                    onChange={(e) =>
-                      handleMentorFormChange("businessAreas", e.target.value)
-                    }
-                    renderValue={(selected) => selected.join(", ")}
-                    sx={{
-                      color: "#000",
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000",
-                      },
-                      "&:hover .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000",
-                      },
-                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000",
-                      },
-                    }}
-                  >
-                    {[
-                      "Application Development",
-                      "Business Registration Process",
-                      "Community Development",
-                      "Expansion/Acceleration",
-                      "Finance",
-                      "Human Resource",
-                      "Intellectual Property",
-                      "Legal Aspects and Compliance",
-                      "Management",
-                      "Marketing",
-                      "Online engagement",
-                      "Operations",
-                      "Product Development",
-                      "Sales",
-                      "Supply Chain and Logistics",
-                      "Technology Development",
-                      "Social Impact",
-                    ].map((area) => (
-                      <MenuItem key={area} value={area}>
-                        <Checkbox
-                          checked={mentorForm.businessAreas.includes(area)}
-                        />
-                        <Typography color="black">{area}</Typography>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <FormControl fullWidth required sx={{ mt: 2 }}>
-                  <InputLabel sx={{ color: "#000" }}>Preferred Time</InputLabel>
-                  <Select
-                    value={mentorForm.preferredTime}
-                    onChange={(e) =>
-                      handleMentorFormChange("preferredTime", e.target.value)
-                    }
-                    sx={{
-                      color: "#000",
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000",
-                      },
-                      "&:hover .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000",
-                      },
-                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000",
-                      },
-                    }}
-                  >
-                    <MenuItem value="Weekday (Morning)">
-                      Weekday (Morning) 8AM - 12NN
-                    </MenuItem>
-                    <MenuItem value="Weekday (Afternoon)">
-                      Weekday (Afternoon) 1PM - 5PM
-                    </MenuItem>
-                    <MenuItem value="Other">Other</MenuItem>
-                  </Select>
-                </FormControl>
-
-                {mentorForm.preferredTime === "Other" && (
-                  <TextField
-                    label="Specify preferred time"
-                    fullWidth
-                    value={mentorForm.specificTime}
-                    onChange={(e) =>
-                      handleMentorFormChange("specificTime", e.target.value)
-                    }
-                    InputProps={{ style: { color: "#000" } }}
-                    InputLabelProps={{ style: { color: "#000" } }}
-                    sx={{
-                      mt: 2,
-                      "& .MuiOutlinedInput-root": {
-                        "& fieldset": { borderColor: "#000" },
-                        "&:hover fieldset": { borderColor: "#000" },
-                        "&.Mui-focused fieldset": { borderColor: "#000" },
-                      },
-                    }}
-                  />
-                )}
-
-                <FormControl fullWidth required sx={{ mt: 2 }}>
-                  <InputLabel sx={{ color: "#000" }}>
-                    Communication Modes
-                  </InputLabel>
-                  <Select
-                    multiple
-                    value={mentorForm.communicationMode}
-                    onChange={(e) =>
-                      handleMentorFormChange(
-                        "communicationMode",
-                        e.target.value
-                      )
-                    }
-                    renderValue={(selected) => selected.join(", ")}
-                    sx={{
-                      color: "#000",
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000",
-                      },
-                      "&:hover .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000",
-                      },
-                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000",
-                      },
-                    }}
-                  >
-                    {[
-                      "Face to Face",
-                      "Facebook Messenger",
-                      "Google Meet",
-                      "Zoom",
-                      "Other",
-                    ].map((mode) => (
-                      <MenuItem key={mode} value={mode}>
-                        <Checkbox
-                          checked={mentorForm.communicationMode.includes(mode)}
-                        />
-                        <Typography color="black">{mode}</Typography>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                {mentorFormError && (
-                  <Alert severity="error" sx={{ mt: 2 }}>
-                    {mentorFormError}
-                  </Alert>
-                )}
-
-                <Button
-                  onClick={handleMentorFormSubmit}
-                  variant="contained"
-                  disabled={!isMentorFormValid()}
-                  sx={{
-                    mt: 3,
-                    backgroundColor: isMentorFormValid()
-                      ? "#1E4D2B"
-                      : "#A0A0A0",
-                    color: "#fff",
-                    "&:hover": {
-                      backgroundColor: isMentorFormValid()
-                        ? "#145A32"
-                        : "#A0A0A0",
-                    },
-                  }}
-                >
-                  Submit
-                </Button>
-
-                <Snackbar
-                  open={isMentorSuccessPopupOpen}
-                  autoHideDuration={3000}
-                  onClose={() => setIsMentorSuccessPopupOpen(false)}
-                  anchorOrigin={{ vertical: "top", horizontal: "center" }}
-                >
-                  <Alert
-                    onClose={() => setIsMentorSuccessPopupOpen(false)}
-                    severity="success"
-                    sx={{ width: "100%" }}
-                  >
-                    Successfully submitted!
-                  </Alert>
-                </Snackbar>
               </div>{" "}
               {/* end of .signup-scroll */}
             </div>
