@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Box, Typography, Select, MenuItem } from "@mui/material";
+import { Box, Typography, Select, MenuItem, Tooltip, IconButton } from "@mui/material";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import LineChart from "./LineChart";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
@@ -149,26 +150,83 @@ const SEPerformanceTrendChart = ({userRole, selectedSEId = null}) => {
         alignItems="center"
         mb={2}
       >
-        {/* Left side - Chart Title and Top Performer */}
-        <Box>
-          <Typography
-            variant="h3"
-            fontWeight="bold"
-            color={colors.greenAccent[500]}
-          >
-            {chartData.length === 0 ? "No Data" : "SE Performance Trend"}
-          </Typography>
-
-          {topPerformer && (
+        {/* Left: Chart Title + Top Performer + Tooltip */}
+        <Box display="flex" alignItems="center">
+          <Box>
             <Typography
-              variant="h5"
+              variant="h3"
               fontWeight="bold"
-              color={colors.blueAccent[500]}
-              mt={1}
+              color={colors.greenAccent[500]}
             >
-              Top Performer ({period}): {topPerformer}
+              {chartData.length === 0 ? "No Data" : "SE Performance Trend"}
             </Typography>
-          )}
+
+            {topPerformer && (
+              <Typography
+                variant="h5"
+                fontWeight="bold"
+                color={colors.blueAccent[500]}
+                mt={1}
+              >
+                Top Performer ({period}): {topPerformer}
+              </Typography>
+            )}
+          </Box>
+
+          {/* Tooltip Icon */}
+          <Tooltip
+            title={
+              <Box sx={{ maxWidth: 320, p: 1 }}>
+                <Typography variant="body1" fontWeight="bold">
+                  How to Read the SE Performance Trend 📈
+                </Typography>
+
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  This chart visualizes how <strong>Social Enterprises (SEs)</strong> perform across quarters based on their mentor evaluation ratings.
+                </Typography>
+
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2">
+                    🔹 <strong style={{ color: colors.greenAccent[500] }}>Rising Line</strong> – The SE's average ratings have improved over time.
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    ⏸️ <strong style={{ color: colors.grey[300] }}>Flat Line</strong> – Performance remained stable across periods.
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    🔻 <strong style={{ color: "#f44336" }}>Falling Line</strong> – Ratings have declined, indicating challenges or lack of progress.
+                  </Typography>
+                </Box>
+
+                <Typography variant="body2" sx={{ mt: 2 }}>
+                  The performance is based on <strong>average star ratings</strong> from mentor evaluations across key categories
+                  like Finance, Marketing, Logistics, and others.
+                </Typography>
+
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  For each SE:
+                </Typography>
+                <Box sx={{ pl: 1 }}>
+                  <Typography variant="body2">
+                    • A <strong>weighted average score</strong> is calculated using <em>average × number of evaluations</em>.
+                  </Typography>
+                  <Typography variant="body2">
+                    • Only the <strong>Top 3 SEs</strong> (highest weighted average) are shown.
+                  </Typography>
+                </Box>
+
+                <Typography variant="body2" sx={{ mt: 2 }}>
+                  Switch between <strong>Overall</strong>, <strong>Quarterly</strong>, and <strong>Yearly</strong> to compare performance over different time periods.
+                </Typography>
+              </Box>
+            }
+            arrow
+            placement="top"
+          >
+            <IconButton sx={{ ml: 1, color: colors.grey[300] }}>
+              <HelpOutlineIcon />
+            </IconButton>
+          </Tooltip>
+
         </Box>
 
         {/* Right side - Period Select Dropdown */}

@@ -17,7 +17,8 @@ const { getSocialEnterprisesByProgram,
         getAllSocialEnterpriseswithMentorID, 
         updateSERowUpdate, 
         getAllSocialEnterprisesForComparison,
-        getFlaggedSEs} = require("./controllers/socialenterprisesController");
+        getFlaggedSEs,
+        getAreasOfFocus} = require("./controllers/socialenterprisesController");
 require("dotenv").config();
 const { getUsers, getUserName } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
@@ -1408,6 +1409,20 @@ app.get("/api/mentor-analytics/:mentor_id", async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error fetching mentor analytics stats:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/critical-areas/:se_id", async (req, res) => {
+  try {
+    const { se_id } = req.params;
+    if (!se_id) return res.status(400).json({ message: "SE ID is required" });
+
+    const areasOfFocus = await getAreasOfFocus(se_id);
+    
+    res.json(areasOfFocus)
+  } catch (error) {
+    console.error("Error fetching SE analytics stats:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
