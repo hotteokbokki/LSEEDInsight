@@ -44,7 +44,8 @@ const SocialEnterprise = ({ userRole }) => {
     numberOfMembers: "",
     selectedProgram: "",
     selectedStatus: "",
-    abbr: "", // Add abbreviation field
+    abbr: "", 
+    criticalAreas: [],
   });
 
   const [programFormData, setProgramFormData] = useState({
@@ -104,7 +105,9 @@ const SocialEnterprise = ({ userRole }) => {
         name: row.team_name || "",
         abbr: row.se_abbreviation || "",
         selectedStatus: "Active",
-        contact: [row.focal_email, row.focal_phone].filter(Boolean).join(" / ")
+        contact: [row.focal_email, row.focal_phone].filter(Boolean).join(" / "),
+        applicationId: row.id,
+        criticalAreas: row.critical_areas
       }));
       setOpenAddSE(true); // Open the dialog
     }
@@ -368,12 +371,13 @@ const SocialEnterprise = ({ userRole }) => {
       // Prepare submission data
       const newSocialEnterprise = {
         name: socialEnterpriseData.name,
-        sdg_ids: socialEnterpriseData.selectedSDGs, // ✅ Directly use UUIDs
+        sdg_ids: socialEnterpriseData.selectedSDGs,
         contactnum: socialEnterpriseData.contact,
         number_of_members: socialEnterpriseData.numberOfMembers || 0,
         program_id: socialEnterpriseData.selectedProgram,
         isactive: socialEnterpriseData.selectedStatus === "Active",
         abbr: socialEnterpriseData.abbr || null,
+        criticalAreas: socialEnterpriseData.criticalAreas || [],
       };
 
       const response = await fetch(
@@ -392,6 +396,19 @@ const SocialEnterprise = ({ userRole }) => {
           data.se_id
         );
 
+        // 🔄 Update the application status to "Accepted"
+        if (socialEnterpriseData.applicationId) {
+          await fetch(
+            `http://localhost:4000/api/application/${socialEnterpriseData.applicationId}/status`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: "Accepted" }),
+            }
+          );
+          console.log("✅ Application status updated to Accepted");
+        }
+
         setIsSuccessSEPopupOpen(true);
         handleCloseAddSE(); // Close the dialog
 
@@ -404,10 +421,10 @@ const SocialEnterprise = ({ userRole }) => {
           selectedProgram: "",
           selectedStatus: "",
           abbr: "",
+          applicationId: "", // Clear after submission
         });
 
-        // Instead of reloading the page, trigger data refetch (if applicable)
-        // fetchSocialEnterprises(); // Uncomment if you have a function to refresh the data
+        // fetchSocialEnterprises(); // Optional: refresh list if applicable
       } else {
         console.error("Error adding Social Enterprise");
       }
@@ -1454,149 +1471,151 @@ const SocialEnterprise = ({ userRole }) => {
         </Box>
 
         {/* APPLICATIONS TABLE */}
-        <Box
-          flex="1"
-          backgroundColor={colors.primary[400]}
-          overflow="auto"
-        >
+        {userRole === "LSEED-Director" && (
           <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-            borderBottom={`4px solid ${colors.primary[500]}`}
-            p="15px"
+            flex="1"
+            backgroundColor={colors.primary[400]}
+            overflow="auto"
           >
-            <Typography color={colors.greenAccent[500]} variant="h3" fontWeight="600">
-              Applications
-            </Typography>
-          </Box>
-
-          {applications.map((list, i) => (
             <Box
-              key={`${list.txId}-${i}`}
               display="flex"
               justifyContent="space-between"
               alignItems="center"
               borderBottom={`4px solid ${colors.primary[500]}`}
               p="15px"
-              sx={{ minHeight: "72px" }} // Ensures enough vertical space
             >
-              {/* Left: Team Name & Abbreviation */}
-              <Box
-                sx={{
-                  flex: 1,
-                  overflowWrap: "break-word",
-                  whiteSpace: "normal",
-                }}
-              >
-                <Typography
-                  color={colors.greenAccent[500]}
-                  variant="h5"
-                  fontWeight="600"
-                  sx={{
-                    whiteSpace: "normal",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {list.team_name}
-                </Typography>
-                <Typography
-                  color={colors.grey[100]}
-                  sx={{
-                    whiteSpace: "normal",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {list.se_abbreviation}
-                </Typography>
-              </Box>
-
-              {/* Middle: Date */}
-              <Box
-                sx={{
-                  flexShrink: 0,
-                  color: colors.grey[100],
-                  paddingLeft: "20px",
-                  paddingRight: "20px",
-                }}
-              >
-                {list.date_applied}
-              </Box>
-
-              {/* Right: Button */}
-              <Button
-                onClick={(e) => handleOpenMenu(e, list.id)}
-                endIcon={<KeyboardArrowDownIcon />}
-                sx={{
-                  backgroundColor: colors.greenAccent[500],
-                  color: "#fff",
-                  border: `2px solid ${colors.greenAccent[500]}`,
-                  borderRadius: "4px",
-                  textTransform: "none",
-                  padding: "6px 12px",
-                  "&:hover": {
-                    backgroundColor: colors.greenAccent[600],
-                    borderColor: colors.greenAccent[600],
-                  },
-                }}
-              >
-                Action
-              </Button>
-
-              {menuRowId === list.id && (
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleCloseMenu}
-                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                transformOrigin={{ vertical: "top", horizontal: "right" }}
-              >
-                <MenuItem
-                  onClick={() => handleMenuAction("View", list)}
-                  sx={{
-                    color: colors.grey[100],
-                    fontWeight: 500,
-                    "&:hover": {
-                      backgroundColor: colors.blueAccent[700],
-                      color: "#fff",
-                    },
-                  }}
-                >
-                  View
-                </MenuItem>
-
-                <MenuItem
-                  onClick={() => handleMenuAction("Accept", list)}
-                  sx={{
-                    color: colors.greenAccent[500],
-                    fontWeight: 500,
-                    "&:hover": {
-                      backgroundColor: colors.greenAccent[500],
-                      color: "#fff",
-                    },
-                  }}
-                >
-                  Accept
-                </MenuItem>
-
-                <MenuItem
-                  onClick={() => handleMenuAction("Decline", list)}
-                  sx={{
-                    color: "#f44336", // red
-                    fontWeight: 500,
-                    "&:hover": {
-                      backgroundColor: "#f44336",
-                      color: "#fff",
-                    },
-                  }}
-                >
-                  Decline
-                </MenuItem>
-              </Menu>
-              )}
+              <Typography color={colors.greenAccent[500]} variant="h3" fontWeight="600">
+                Applications
+              </Typography>
             </Box>
-          ))}
-        </Box>
+
+            {applications.map((list, i) => (
+              <Box
+                key={`${list.txId}-${i}`}
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                borderBottom={`4px solid ${colors.primary[500]}`}
+                p="15px"
+                sx={{ minHeight: "72px" }} // Ensures enough vertical space
+              >
+                {/* Left: Team Name & Abbreviation */}
+                <Box
+                  sx={{
+                    flex: 1,
+                    overflowWrap: "break-word",
+                    whiteSpace: "normal",
+                  }}
+                >
+                  <Typography
+                    color={colors.greenAccent[500]}
+                    variant="h5"
+                    fontWeight="600"
+                    sx={{
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {list.team_name}
+                  </Typography>
+                  <Typography
+                    color={colors.grey[100]}
+                    sx={{
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {list.se_abbreviation}
+                  </Typography>
+                </Box>
+
+                {/* Middle: Date */}
+                <Box
+                  sx={{
+                    flexShrink: 0,
+                    color: colors.grey[100],
+                    paddingLeft: "20px",
+                    paddingRight: "20px",
+                  }}
+                >
+                  {list.date_applied}
+                </Box>
+
+                {/* Right: Button */}
+                <Button
+                  onClick={(e) => handleOpenMenu(e, list.id)}
+                  endIcon={<KeyboardArrowDownIcon />}
+                  sx={{
+                    backgroundColor: colors.greenAccent[500],
+                    color: "#fff",
+                    border: `2px solid ${colors.greenAccent[500]}`,
+                    borderRadius: "4px",
+                    textTransform: "none",
+                    padding: "6px 12px",
+                    "&:hover": {
+                      backgroundColor: colors.greenAccent[600],
+                      borderColor: colors.greenAccent[600],
+                    },
+                  }}
+                >
+                  Action
+                </Button>
+
+                {menuRowId === list.id && (
+                <Menu
+                  anchorEl={anchorEl}
+                  open={Boolean(anchorEl)}
+                  onClose={handleCloseMenu}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                  transformOrigin={{ vertical: "top", horizontal: "right" }}
+                >
+                  <MenuItem
+                    onClick={() => handleMenuAction("View", list)}
+                    sx={{
+                      color: colors.grey[100],
+                      fontWeight: 500,
+                      "&:hover": {
+                        backgroundColor: colors.blueAccent[700],
+                        color: "#fff",
+                      },
+                    }}
+                  >
+                    View
+                  </MenuItem>
+
+                  <MenuItem
+                    onClick={() => handleMenuAction("Accept", list)}
+                    sx={{
+                      color: colors.greenAccent[500],
+                      fontWeight: 500,
+                      "&:hover": {
+                        backgroundColor: colors.greenAccent[500],
+                        color: "#fff",
+                      },
+                    }}
+                  >
+                    Accept
+                  </MenuItem>
+
+                  <MenuItem
+                    onClick={() => handleMenuAction("Decline", list)}
+                    sx={{
+                      color: "#f44336", // red
+                      fontWeight: 500,
+                      "&:hover": {
+                        backgroundColor: "#f44336",
+                        color: "#fff",
+                      },
+                    }}
+                  >
+                    Decline
+                  </MenuItem>
+                </Menu>
+                )}
+              </Box>
+            ))}
+          </Box>
+        )}
       </Box>
     </Box>
   );

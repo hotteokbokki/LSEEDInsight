@@ -327,16 +327,16 @@ exports.getTotalSECount = async (program = null) => {
 exports.addSocialEnterprise = async (socialEnterpriseData) => {
   try {
     const {
-      name, // team_name
-      sdg_ids, // ✅ Fixed from sdg_names
+      name,
+      sdg_ids,
       contactnum,
-      program_id, // ✅ Fixed from program_name
+      program_id,
       isactive,
-      abbr = null, // Default to null if not provided
-      number_of_members = 0, // Default to 0 if not provided
+      abbr = null,
+      number_of_members = 0,
+      criticalAreas = [],
     } = socialEnterpriseData;
 
-    // Check for missing fields
     if (!sdg_ids || !Array.isArray(sdg_ids) || sdg_ids.length === 0) {
       throw new Error("At least one SDG ID is required.");
     }
@@ -344,38 +344,40 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
       throw new Error("Program ID is required but missing.");
     }
 
-    // Convert `sdg_ids` to PostgreSQL array format
+    console.log("Passed data to controller", socialEnterpriseData)
+
     const formatted_sdg_ids = `{${sdg_ids.join(",")}}`;
 
-    // Insert into the database
     const query = `
       INSERT INTO socialenterprises (
         team_name,
-        sdg_id, -- This column is an ARRAY[uuid]
+        sdg_id,
         contactnum,
         program_id,
         isactive,
         abbr,
-        numMember
+        numMember,
+        critical_areas
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING se_id;
     `;
 
     const values = [
       name,
-      formatted_sdg_ids, // ✅ PostgreSQL array format
+      formatted_sdg_ids,
       contactnum,
       program_id,
       isactive,
       abbr,
       number_of_members,
+      criticalAreas,
     ];
 
     const result = await pgDatabase.query(query, values);
     const se_id = result.rows[0].se_id;
 
-    return { se_id }; // Return the inserted SE ID
+    return { se_id };
   } catch (error) {
     console.error("Error adding social enterprise:", error);
     throw error;

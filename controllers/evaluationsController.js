@@ -691,7 +691,6 @@ exports.getAcknowledgementData = async (program = null) => {
             ORDER BY COUNT(CASE WHEN e."isAcknowledge" = true THEN 1 END) DESC  -- Sort by acknowledged evaluations
             LIMIT 10;
         `;
-        console.log(query);
         const result = await pgDatabase.query(query);
         return result.rows;
     } catch (error) {
