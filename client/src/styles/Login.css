@@ -10,9 +10,23 @@
 .container {
     margin-top: 80px; /* Adjust this value based on your header height */
 }
+.signup-form {
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.signup-scroll {
+  overflow-y: auto;
+  padding-right: 10px;
+  padding-left: 10px;
+  padding-bottom: 20px;
+  flex: 1;
+}
 
 body {
-  min-height: 100vh;
+  min-height: 100vh;    
   display: flex;
   align-items: center;
   justify-content: center;
@@ -27,7 +41,7 @@ body {
   background: #fff;
   padding: 40px 30px;
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-  perspective: 2700px;
+  
   margin: 20px auto;
 }
 
@@ -152,10 +166,13 @@ body {
 }
 
 .form-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between; /* Ensures the login and signup forms are aligned properly */
-  }
+  max-height: 600px; 
+  
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+
   
   .signup-form {
     margin-left: auto; /* Push the signup form to the right */
@@ -454,11 +471,11 @@ body {
   }
 
   .container {
-    padding: 20px;
-    margin: 15px;
-    max-height: 90vh;
-    overflow-y: auto;
-  }
+  height: 600px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 
   body {
     padding: 10px;
@@ -1618,11 +1635,13 @@ body {
   
   .container .form-content {
     flex-direction: column;
+    overflow-y: auto;
   }
   
   .form-content .login-form,
   .form-content .signup-form {
     width: 100%;
+    overflow-y: auto;
   }
   
   .container .cover {
@@ -1642,6 +1661,7 @@ body {
 .container .forms {
     height: 600px; /* Set a fixed height, adjust as needed */
     max-height: 100vh;
+    
 }
 
 .error-message {
