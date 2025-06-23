@@ -424,3 +424,20 @@ exports.getSEWithOutMentors = async (program = null) => {
       return []; // Return an empty array in case of an error
   }
 };
+
+exports.getAreasOfFocus = async (se_id) => {
+  try {
+    const query = `
+      SELECT unnest(critical_areas) AS area
+      FROM socialenterprises
+      WHERE se_id = $1;
+    `;
+    const values = [se_id];
+
+    const result = await pgDatabase.query(query, values);
+    return result.rows.map(row => row.area);
+  } catch (error) {
+    console.error("Error fetching areas of focus:", error);
+    return null;
+  }
+};

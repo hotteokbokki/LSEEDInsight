@@ -54,6 +54,7 @@ const SEAnalytics = () => {
     avgRating: 0,
     acknowledgedEvaluations: 0,
   });
+  const [criticalAreas, setCriticalAreas] = useState([]);
 
   useEffect(() => {
     const fetchSocialEnterprises = async () => {
@@ -86,6 +87,21 @@ const SEAnalytics = () => {
 
     fetchSocialEnterprises();
   }, [id]);
+
+  
+  useEffect(() => {
+    const fetchCriticalAreas = async () => {
+      try {
+        const response = await fetch(`http://localhost:4000/api/critical-areas/${selectedSEId}`);
+        const data = await response.json();
+        setCriticalAreas(data);
+      } catch (error) {
+        console.error("Failed to fetch critical areas:", error);
+      }
+    };
+
+    fetchCriticalAreas();
+  }, [selectedSEId]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -435,46 +451,94 @@ const SEAnalytics = () => {
         <SEPerformanceTrendChart selectedSEId={selectedSEId} />
       </Box>
 
-      {/* Evaluations Table */}
-      <Box
-        sx={{
-          backgroundColor: colors.primary[400],
-          padding: "20px",
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-          minHeight: "400px", // Ensures DataGrid has enough space
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          "& .MuiDataGrid-root": { border: "none" },
-          "& .MuiDataGrid-cell": { borderBottom: "none" },
-          "& .name-column--cell": { color: colors.greenAccent[300] },
-          "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-            backgroundColor: colors.blueAccent[700] + " !important",
-          },
-          "& .MuiDataGrid-virtualScroller": {
+      <Box display="flex" gap="20px" width="100%" mt="20px">
+        {/* Evaluations Table */}
+        <Box
+          sx={{
             backgroundColor: colors.primary[400],
-          },
-          "& .MuiDataGrid-footerContainer": {
-            borderTop: "none",
-            backgroundColor: colors.blueAccent[700],
-          },
-        }}
-      >
-        <Typography
-          variant="h5"
-          fontWeight="bold"
-          color={colors.grey[100]}
-          mb={2}
+            padding: "20px",
+            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+            minHeight: "400px", // Ensures DataGrid has enough space
+            flex: "2",
+            flexDirection: "column",
+            overflow: "hidden",
+            "& .MuiDataGrid-root": { border: "none" },
+            "& .MuiDataGrid-cell": { borderBottom: "none" },
+            "& .name-column--cell": { color: colors.greenAccent[300] },
+            "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+              backgroundColor: colors.blueAccent[700] + " !important",
+            },
+            "& .MuiDataGrid-virtualScroller": {
+              backgroundColor: colors.primary[400],
+            },
+            "& .MuiDataGrid-footerContainer": {
+              borderTop: "none",
+              backgroundColor: colors.blueAccent[700],
+            },
+          }}
         >
-          Evaluations
-        </Typography>
-        <DataGrid
-          rows={evaluationsData}
-          columns={columns}
-          getRowId={(row) => row.id}
-        />
-      </Box>
+          <Typography
+            variant="h5"
+            fontWeight="bold"
+            color={colors.grey[100]}
+            mb={2}
+          >
+            Evaluations
+          </Typography>
+          <DataGrid
+            rows={evaluationsData}
+            columns={columns}
+            getRowId={(row) => row.id}
+          />
+        </Box>
+        {/* AREAS OF FOCUS TABLE */}
+        <Box
+          flex="1"
+          backgroundColor={colors.primary[400]}
+          overflow="auto"
+        >
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+            borderBottom={`4px solid ${colors.primary[500]}`}
+            p="15px"
+          >
+            <Typography color={colors.greenAccent[500]} variant="h3" fontWeight="600">
+              Critical Areas of Focus
+            </Typography>
+          </Box>
 
+          {criticalAreas.map((area, i) => (
+            <Box
+              key={i}
+              display="flex"
+              alignItems="center"
+              borderBottom={`4px solid ${colors.primary[500]}`}
+              p="15px"
+            >
+              {/* Icon */}
+              <Box sx={{ pr: 2, fontSize: "24px" }}>
+                📌
+              </Box>
+
+              {/* Area Name */}
+              <Typography
+                color={colors.grey[100]}
+                variant="h5"
+                fontWeight="500"
+                sx={{
+                  whiteSpace: "normal",
+                  wordBreak: "break-word",
+                }}
+              >
+                {area}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+
+      </Box>
       {/* Evaluation Details Dialog - Read-Only */}
       <Dialog
         open={openDialog}

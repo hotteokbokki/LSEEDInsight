@@ -2,7 +2,8 @@ import { ResponsiveHeatMap } from "@nivo/heatmap";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
 import { useState, useEffect } from "react";
-import { Box, Select, MenuItem, Typography } from "@mui/material";
+import { Box, Select, MenuItem, Typography, Tooltip, IconButton } from "@mui/material";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 
 const HeatmapWrapper = ( {userRole} ) => {
   const theme = useTheme();
@@ -74,7 +75,7 @@ const HeatmapWrapper = ( {userRole} ) => {
         alignItems="center"
         mb={2}
       >
-        <Box>
+        <Box display="flex" alignItems="center">
           <Typography
             variant="h3"
             fontWeight="bold"
@@ -82,6 +83,43 @@ const HeatmapWrapper = ( {userRole} ) => {
           >
             Heat Map
           </Typography>
+
+          {/* Tooltip for Heat Map explanation */}
+          <Tooltip
+            title={
+              <Box sx={{ maxWidth: 300, p: 1 }}>
+                <Typography variant="body1" fontWeight="bold">
+                  Understanding the Heat Map 🔥
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  This heat map visualizes the <strong>average evaluation scores</strong> across different business categories for each Social Enterprise (SE).
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  It uses <strong>mentor evaluations</strong> to show how well each SE performs in areas such as:
+                </Typography>
+                <Box sx={{ pl: 2, mt: 1 }}>
+                  <Typography variant="body2">• Teamwork</Typography>
+                  <Typography variant="body2">• Logistics</Typography>
+                  <Typography variant="body2">• Marketing Plan/Execution</Typography>
+                  <Typography variant="body2">• Human Resource Management</Typography>
+                  <Typography variant="body2">• Financial Planning/Management</Typography>
+                  <Typography variant="body2">• Product/Service Design/Planning</Typography>
+                </Box>
+                <Typography variant="body2" sx={{ mt: 2 }}>
+                  Each cell represents the <strong>average score</strong> of an SE in a specific category.
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 2 }}>
+                  Switch between <strong>Overall</strong>, <strong>Quarterly</strong>, and <strong>Yearly</strong> to compare performance over different time periods.
+                </Typography>
+              </Box>
+            }
+            arrow
+            placement="top"
+          >
+            <IconButton sx={{ ml: 1, color: colors.grey[300] }}>
+              <HelpOutlineIcon />
+            </IconButton>
+          </Tooltip>
         </Box>
         {/* Period Selector */}
         <Box

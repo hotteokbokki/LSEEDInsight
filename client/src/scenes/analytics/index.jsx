@@ -213,15 +213,54 @@ const Analytics = ( {userRole}) => {
           backgroundColor={colors.primary[400]}
           p="20px"
         >
-          <Typography
-            variant="h3"
-            fontWeight="bold"
-            color={colors.greenAccent[500]}
+          <Box 
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
           >
-            {stats.categoricalScoreForAllSE?.length > 0
-              ? "Evaluation Score Distribution"
-              : ""}
-          </Typography>
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+            >
+              {stats.categoricalScoreForAllSE?.length > 0
+                ? "Evaluation Score Distribution"
+                : ""}
+            </Typography>
+
+            {/* Tooltip Icon */}
+            <Tooltip
+              title={
+                <Box sx={{ maxWidth: 300, p: 1 }}>
+                  <Typography variant="body1" fontWeight="bold">
+                    What does this chart show? 📊
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    This bar chart displays the <strong>average scores</strong> given to Social Enterprises (SEs) across various evaluation categories.
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    The scores are based on <strong>mentor evaluations</strong>, reflecting SE performance in specific business areas such as:
+                  </Typography>
+                  <Box sx={{ pl: 2, mt: 1 }}>
+                    <Typography variant="body2">• Finance</Typography>
+                    <Typography variant="body2">• Marketing</Typography>
+                    <Typography variant="body2">• Product Design</Typography>
+                    <Typography variant="body2">• Logistics</Typography>
+                    <Typography variant="body2">• HR, etc.</Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ mt: 2 }}>
+                    Higher scores indicate stronger performance in that area. Use this chart to <strong>compare strengths and weaknesses</strong> across all SEs.
+                  </Typography>
+                </Box>
+              }
+              arrow
+              placement="top"
+            >
+              <IconButton sx={{ ml: 1, color: colors.grey[300] }}>
+                <HelpOutlineIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
           <Box
             height="90%"
             display="flex"
@@ -274,15 +313,67 @@ const Analytics = ( {userRole}) => {
             backgroundColor={colors.primary[400]}
             p="20px"
           >
-            <Typography
-              variant="h4"
-              fontWeight="bold"
-              color={colors.greenAccent[500]}
-            >
-              {stats?.leaderboardData?.length > 0
-                ? "Leaderboard - Ratings"
-                : ""}
-            </Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Typography
+                variant="h4"
+                fontWeight="bold"
+                color={colors.greenAccent[500]}
+              >
+                {stats?.leaderboardData?.length > 0
+                  ? "Leaderboard - Ratings"
+                  : ""}
+              </Typography>
+
+              {/* Tooltip Icon */}
+              <Tooltip
+                title={
+                  <Box sx={{ maxWidth: 300, p: 1 }}>
+                    <Typography variant="body1" fontWeight="bold">
+                      What is this leaderboard? 🏆
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      This chart ranks Social Enterprises (SEs) based on their{" "}
+                      <strong>evaluation performance</strong> over the last 12 months.
+                    </Typography>
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="body2">
+                        🔹 <strong>Weighted Average Rating</strong> – Recent months are given more weight.
+                      </Typography>
+                      <Typography variant="body2" sx={{ mt: 0.5 }}>
+                        🔹 <strong>Simple Average Rating</strong> – Plain average across months.
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ mt: 2 }}>
+                      Color indicators:
+                    </Typography>
+                    <Box sx={{ mt: 1, pl: 1 }}>
+                      <Typography variant="body2" sx={{ color: colors.greenAccent[500] }}>
+                        🟩 Green – SE is improving (recent &gt; past)
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: colors.redAccent[500], mt: 0.5 }}>
+                        🟥 Red – SE's recent performance declined
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: colors.grey[400], mt: 0.5 }}>
+                        ◻️ Grey – No significant change
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ mt: 2 }}>
+                      Only SEs with <strong>at least 3 evaluations</strong> in the past year are shown.
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      Use this leaderboard to spot <strong>high performers</strong> and recent trends.
+                    </Typography>
+                  </Box>
+                }
+                arrow
+                placement="top"
+              >
+                <IconButton sx={{ color: colors.grey[300] }}>
+                  <HelpOutlineIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+
             <Box height="100%">
               {stats?.leaderboardData ? (
                 stats.leaderboardData.length > 0 ? (

@@ -970,7 +970,7 @@ exports.getMonthlyGrowthDetails= async () => {
         return [];
     }
 };
-// Commit
+
 exports.getSELeaderboards= async (program = null) => {
     try {
         let programFilter = program ? `AND p.name = '${program}'` : '';
@@ -1035,7 +1035,7 @@ exports.getSELeaderboards= async (program = null) => {
         const result = await pgDatabase.query(query);
         return result.rows;
     } catch (error) {
-        console.error("❌ Error fetching top SE performance:", error);
+        console.error("❌ Error fetching leaderboards:", error);
         return [];
     }
 };
