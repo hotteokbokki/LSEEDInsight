@@ -73,7 +73,6 @@ const SocialEnterprise = ({ userRole }) => {
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [loading, setLoading] = useState(true); // Loading state for API call
   // Handle dialog open/close
-  const handleOpenAddSE = () => setOpenAddSE(true);
   const handleCloseAddSE = () => setOpenAddSE(false);
   const handleOpenAddProgram = () => setOpenAddProgram(true);
   const handleCloseAddProgram = () => setOpenAddProgram(false);
@@ -144,11 +143,6 @@ const SocialEnterprise = ({ userRole }) => {
     }
 
     handleCloseMenu();
-  };
-
-  const handleViewApplication = (application) => {
-    setSelectedApplication(application);
-    setOpenApplicationDialog(true);
   };
 
   const toggleEditing = () => {

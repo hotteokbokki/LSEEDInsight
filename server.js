@@ -87,6 +87,7 @@ const { getProgramCoordinators,
         getLSEEDCoordinators,
         assignProgramCoordinator } = require("./controllers/programAssignmentController.js");
 const { getApplicationList } = require("./controllers/menteesFormSubmissionsController.js");
+const { getMentorFormApplications } = require("./controllers/mentorFormApplicationController.js");
 const app = express();
 
 
@@ -515,38 +516,88 @@ app.post("/logout", (req, res) => {
 });
 
 app.post("/signup", async (req, res) => {
-  const { firstName, lastName, email, password, role } = req.body;
+  const {
+    firstName,
+    lastName,
+    email,
+    password,
+    affiliation,
+    motivation,
+    expertise,
+    businessAreas,
+    preferredTime,
+    specificTime, // optional field for "Other"
+    communicationMode
+  } = req.body;
 
   try {
-    // Validate input
-    if (!firstName || !lastName || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+    // ✅ Validate required fields
+    if (
+      !firstName || !lastName || !email || !password ||
+      !affiliation || !motivation || !expertise ||
+      !Array.isArray(businessAreas) || businessAreas.length === 0 ||
+      !Array.isArray(preferredTime) || preferredTime.length === 0 ||
+      !Array.isArray(communicationMode) || communicationMode.length === 0
+    ) {
+      return res.status(400).json({ message: "All required fields must be provided." });
     }
 
-    // Hash the password
+    // ✅ Merge "Other" input into preferredTime array
+    let updatedPreferredTime = preferredTime.filter(Boolean); // Remove any undefined
+    if (updatedPreferredTime.includes("Other") && specificTime?.trim()) {
+      updatedPreferredTime = updatedPreferredTime.filter(t => t !== "Other");
+      updatedPreferredTime.push(`${specificTime.trim()}`);
+    }
+
+    // ✅ Hash the password securely
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Assign "Guest User" as the default role if no role is provided
-    const userRole = role || "Guest User";
-
-    // Insert the new user into the Users table
+    // ✅ Insert mentor application
     const insertQuery = `
-      INSERT INTO users (first_name, last_name, email, password, roles)
-      VALUES ($1, $2, $3, $4, $5) RETURNING *;
+      INSERT INTO mentor_form_application (
+        first_name,
+        last_name,
+        email,
+        password,
+        affiliation,
+        motivation,
+        expertise,
+        business_areas,
+        preferred_time,
+        communication_mode,
+        status
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'Pending')
+      RETURNING *;
     `;
-    const values = [firstName, lastName, email, hashedPassword, userRole];
+
+    const values = [
+      firstName,
+      lastName,
+      email,
+      hashedPassword,
+      affiliation,
+      motivation,
+      expertise,
+      businessAreas,
+      updatedPreferredTime,
+      communicationMode
+    ];
 
     const result = await pgDatabase.query(insertQuery, values);
-    const newUser = result.rows[0];
+    const newApplication = result.rows[0];
 
-    // Check if user is created successfully
-    if (!newUser) {
-      return res.status(500).json({ message: "Failed to register user" });
+    if (!newApplication) {
+      return res.status(500).json({ message: "Failed to submit mentor application." });
     }
-    res.status(201).json({ message: "User registered successfully in the new route", user: newUser });
+
+    res.status(201).json({
+      message: "Mentor application submitted successfully.",
+      application: newApplication,
+    });
+
   } catch (err) {
-    console.error("Error during signup:", err);
-    res.status(500).json({ message: "An error occurred during signup" });
+    console.error("Error during mentor signup:", err);
+    res.status(500).json({ message: "An error occurred during mentor signup." });
   }
 });
 
@@ -1601,6 +1652,16 @@ app.get("/getAllPrograms", async (req, res) => {
 app.get("/list-se-applications", async (req, res) => {
   try {
     const applicationList = await getApplicationList(); 
+    res.json(applicationList);
+  } catch (error) {
+    console.error("Error fetching application list:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/list-mentor-applications", async (req, res) => {
+  try {
+    const applicationList = await getMentorFormApplications(); 
     res.json(applicationList);
   } catch (error) {
     console.error("Error fetching application list:", error);

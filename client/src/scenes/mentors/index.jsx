@@ -13,11 +13,13 @@ import {
   TextField,
   useTheme,
   Typography,
+  Menu,
 } from "@mui/material";
 import { tokens } from "../../theme";
 import React from "react";
 import axios from "axios";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import PersonIcon from "@mui/icons-material/Person";
 import { DataGrid } from "@mui/x-data-grid";
 import Header from "../../components/Header";
@@ -40,6 +42,23 @@ const Mentors = ( {userRole} ) => {
     selectedSocialEnterprise: "",
   });
   const [mentorships, setMentorships] = useState([]);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [menuRowId, setMenuRowId] = useState(null); 
+  const [mentorApplications, setMentorApplications] = useState([]);
+  const [mentorApplicationData, setMentorApplicationData] = useState({
+    name: "",
+    selectedSDG: "",
+    contact: "",
+    numberOfMembers: "",
+    selectedProgram: "",
+    selectedStatus: "",
+    abbr: "", 
+    criticalAreas: [],
+  });
+  const [openAddMentor, setOpenAddMentor] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [openApplicationDialog, setOpenApplicationDialog] = useState(false);
+  const [loading, setLoading] = useState(true); // Loading state for API call
   const [mentors, setMentors] = useState([]);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
@@ -77,6 +96,95 @@ const Mentors = ( {userRole} ) => {
 
   useEffect(() => {
     fetchMentors();
+  }, []);
+
+    // Application View Open
+  const handleOpenMenu = (event, rowId) => {
+    setAnchorEl(event.currentTarget);
+    setMenuRowId(rowId);
+  };
+  // Application View Close
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+    setMenuRowId(null);
+  };
+
+    const handleMenuAction = async (action, row) => {
+    console.log(`Action: ${action}`, row);
+
+    if (action === "Accept") {
+      setMentorApplicationData((prev) => ({
+        ...prev,
+        name: row.team_name || "",
+        abbr: row.se_abbreviation || "",
+        selectedStatus: "Active",
+        contact: [row.focal_email, row.focal_phone].filter(Boolean).join(" / "),
+        applicationId: row.id,
+        criticalAreas: row.critical_areas
+      }));
+      setOpenAddMentor(true); // Open the dialog
+    }
+
+    if (action === "Decline") {
+      const applicationId = row.id; // Ensure `row.id` is defined
+
+      try {
+        const response = await fetch(`http://localhost:4000/api/application/${applicationId}/status`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: "Declined" }),
+        });
+
+        if (response.ok) {
+          console.log("Status updated to Declined.");
+          // Optional: show toast, refresh table, etc.
+        } else {
+          console.error("❌ Failed to decline the application. Response not ok.");
+        }
+      } catch (error) {
+        console.error("❌ Network or server error:", error);
+      }
+
+      handleCloseMenu(); // Close the dropdown
+    }
+
+    if (action === "View") {
+      // Open the application view dialog
+      setSelectedApplication(row); // set the clicked application details
+      setOpenApplicationDialog(true); // show the dialog
+    }
+
+    handleCloseMenu();
+  };
+
+  useEffect(() => {
+    const fetchMentorApplications = async () => {
+      try {
+        const response = await fetch("http://localhost:4000/list-mentor-applications"); // adjust endpoint as needed
+        const data = await response.json()
+
+        console.log("Raw date_applied:", data[0]?.date_applied);
+
+        // Format date_applied in all items
+        const formatted = data.map((item) => ({
+          ...item,
+          date_applied: new Date(item.date_applied).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+        }));
+        setMentorApplications(formatted);
+      } catch (error) {
+        console.error("Error fetching SE applications:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMentorApplications();
   }, []);
 
   useEffect(() => {
@@ -689,59 +797,6 @@ const Mentors = ( {userRole} ) => {
                     )}
                   />
                 </FormControl>
-
-                <Typography
-                  variant="subtitle1"
-                  sx={{
-                    color: "#000", // Black text
-                    fontWeight: "bold",
-                    marginBottom: "8px", // Space between label and field
-                  }}
-                >
-                  Social Enterprise
-                </Typography>
-                {/* Social Enterprise Selection */}
-                <FormControl fullWidth margin="normal">
-                  <TextField
-                    select
-                    label="Select Social Enterprise"
-                    fullWidth
-                    value={selectedSE}
-                    onChange={(event) => setSelectedSE(event.target.value)}
-                    disabled={!selectedMentor || socialEnterprises.length === 0}
-                    sx={{
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000 !important", // Keeps border black
-                      },
-                      "&:hover .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000 !important",
-                      },
-                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000 !important",
-                      },
-                      "& .Mui-disabled .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#000 !important", // Ensures black border when disabled
-                      },
-                      "& .MuiInputBase-input": {
-                        color: "#000 !important", // Keeps text black when enabled
-                      },
-                      "& .Mui-disabled .MuiInputBase-input": {
-                        color: "#000 !important", // Ensures text stays black when disabled
-                        WebkitTextFillColor: "#000 !important", // Fixes opacity issue in some browsers
-                      },
-                    }}
-                  >
-                    {socialEnterprises.length > 0 ? (
-                      socialEnterprises.map((se) => (
-                        <MenuItem key={se.se_id} value={se.se_id}>
-                          {se.team_name}
-                        </MenuItem>
-                      ))
-                    ) : (
-                      <MenuItem disabled>No SEs assigned</MenuItem>
-                    )}
-                  </TextField>
-                </FormControl>
               </Box>
             </DialogContent>
 
@@ -1195,54 +1250,214 @@ const Mentors = ( {userRole} ) => {
           Mentorship added successfully!
         </Alert>
       </Snackbar>
-      {/* ROW 2: DATA GRID */}
-      <Box
-        width="100%"
-        backgroundColor={colors.primary[400]}
-        padding="20px"
-        marginTop="20px"
-      >
-        <Typography
-          variant="h3"
-          fontWeight="bold"
-          color={colors.greenAccent[500]}
-          marginBottom="15px" // Ensures a small gap between header & DataGrid
-        >
-          Mentors
-        </Typography>
+
+      <Box display="flex" gap="20px" width="100%" mt="20px">
+        {/* MENTORS TABLE */}
         <Box
-          width="100%"
-          height="400px"
-          minHeight="400px"
-          sx={{
-            "& .MuiDataGrid-root": { border: "none" },
-            "& .MuiDataGrid-cell": { borderBottom: "none" },
-            "& .name-column--cell": { color: colors.greenAccent[300] },
-            "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-              backgroundColor: colors.blueAccent[700] + " !important",
-            },
-            "& .MuiDataGrid-virtualScroller": {
-              backgroundColor: colors.primary[400],
-            },
-            "& .MuiDataGrid-footerContainer": {
-              borderTop: "none",
-              backgroundColor: colors.blueAccent[700],
-              color: colors.grey[100],
-            },
-          }}
+          flex="2"
+          backgroundColor={colors.primary[400]}
+          padding="20px"
         >
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            getRowId={(row) => row.id} // Use `id` as the unique identifier
-            processRowUpdate={(params) => {
-              handleMentorRowUpdate(params);
-              return params;
+          <Typography
+            variant="h3"
+            fontWeight="bold"
+            color={colors.greenAccent[500]}
+            marginBottom="15px"
+          >
+            Mentors
+          </Typography>
+          <Box
+            width="100%"
+            height="600px"
+            minHeight="400px"
+            sx={{
+              "& .MuiDataGrid-root": { border: "none" },
+              "& .MuiDataGrid-cell": { borderBottom: "none" },
+              "& .name-column--cell": { color: colors.greenAccent[300] },
+              "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                backgroundColor: colors.blueAccent[700] + " !important",
+              },
+              "& .MuiDataGrid-virtualScroller": {
+                backgroundColor: colors.primary[400],
+              },
+              "& .MuiDataGrid-footerContainer": {
+                borderTop: "none",
+                backgroundColor: colors.blueAccent[700],
+              },
             }}
-            editMode="row"
-          />
+          >
+              <DataGrid
+                rows={rows}
+                columns={columns}
+                getRowId={(row) => row.id}
+                getRowHeight={() => 'auto'}
+                processRowUpdate={(params) => {
+                  handleMentorRowUpdate(params);
+                  return params;
+                }}
+                editMode="row"
+                sx={{
+                  "& .MuiDataGrid-cell": {
+                    display: "flex",
+                    alignItems: "center",
+                  },
+                  "& .MuiDataGrid-cellContent": {
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                  },
+                }}
+              />
+          </Box>
         </Box>
+
+        {/* MENTOR APPLICATIONS TABLE */}
+        {userRole === "LSEED-Director" && (
+          <Box
+            flex="1"
+            backgroundColor={colors.primary[400]}
+            overflow="auto"
+          >
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              borderBottom={`4px solid ${colors.primary[500]}`}
+              p="15px"
+            >
+              <Typography color={colors.greenAccent[500]} variant="h3" fontWeight="600">
+                Applications
+              </Typography>
+            </Box>
+
+            {mentorApplications.map((list, i) => (
+              <Box
+                key={`mentorApp-${list.id}`}
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                borderBottom={`4px solid ${colors.primary[500]}`}
+                p="15px"
+                sx={{ minHeight: "72px" }}
+              >
+                {/* Left: Name & Email */}
+                <Box
+                  sx={{
+                    flex: 1,
+                    overflowWrap: "break-word",
+                    whiteSpace: "normal",
+                  }}
+                >
+                  <Typography
+                    color={colors.greenAccent[500]}
+                    variant="h5"
+                    fontWeight="600"
+                    sx={{
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {list.first_name} {list.last_name}
+                  </Typography>
+                  <Typography
+                    color={colors.grey[100]}
+                    sx={{
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {list.email}
+                  </Typography>
+                </Box>
+
+                {/* Middle: Date */}
+                <Box
+                  sx={{
+                    flexShrink: 0,
+                    color: colors.grey[100],
+                    paddingLeft: "20px",
+                    paddingRight: "20px",
+                  }}
+                >
+                  {list.date_applied}
+                </Box>
+
+                {/* Right: Action Button */}
+                <Button
+                  onClick={(e) => handleOpenMenu(e, list.id)}
+                  endIcon={<KeyboardArrowDownIcon />}
+                  sx={{
+                    backgroundColor: colors.greenAccent[500],
+                    color: "#fff",
+                    border: `2px solid ${colors.greenAccent[500]}`,
+                    borderRadius: "4px",
+                    textTransform: "none",
+                    padding: "6px 12px",
+                    "&:hover": {
+                      backgroundColor: colors.greenAccent[600],
+                      borderColor: colors.greenAccent[600],
+                    },
+                  }}
+                >
+                  Action
+                </Button>
+
+                {menuRowId === list.id && (
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleCloseMenu}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                    transformOrigin={{ vertical: "top", horizontal: "right" }}
+                  >
+                    <MenuItem
+                      onClick={() => handleMenuAction("View", list)}
+                      sx={{
+                        color: colors.grey[100],
+                        fontWeight: 500,
+                        "&:hover": {
+                          backgroundColor: colors.blueAccent[700],
+                          color: "#fff",
+                        },
+                      }}
+                    >
+                      View
+                    </MenuItem>
+
+                    <MenuItem
+                      onClick={() => handleMenuAction("Accept", list)}
+                      sx={{
+                        color: colors.greenAccent[500],
+                        fontWeight: 500,
+                        "&:hover": {
+                          backgroundColor: colors.greenAccent[500],
+                          color: "#fff",
+                        },
+                      }}
+                    >
+                      Accept
+                    </MenuItem>
+
+                    <MenuItem
+                      onClick={() => handleMenuAction("Decline", list)}
+                      sx={{
+                        color: "#f44336",
+                        fontWeight: 500,
+                        "&:hover": {
+                          backgroundColor: "#f44336",
+                          color: "#fff",
+                        },
+                      }}
+                    >
+                      Decline
+                    </MenuItem>
+                  </Menu>
+                )}
+              </Box>
+            ))}
+          </Box>
+        )}
       </Box>
+
     </Box>
   );
 };
