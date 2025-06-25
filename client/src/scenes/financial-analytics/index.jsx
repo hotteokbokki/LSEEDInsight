@@ -261,13 +261,13 @@ useEffect(() => {
     inventoryPerSE[se_abbr] += qty;
   });
 
-  const inventoryBreakdownData = Object.entries(inventoryPerSE).map(
-  ([abbr, qty]) => ({
-    id: abbr,
-    label: abbr,
+  const inventoryBreakdownData = Object.entries(inventoryPerSE)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 10) // Take top 10
+  .map(([se_abbr, qty]) => ({
+    name: se_abbr,
     value: qty,
-  })
-);
+  }));
 
   // Safely compute the latest valid date in YYYY-MM-DD format
   const validDates = financialData
