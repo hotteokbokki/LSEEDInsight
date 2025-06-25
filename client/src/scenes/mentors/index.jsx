@@ -14,6 +14,7 @@ import {
   useTheme,
   Typography,
   Menu,
+  Grid,
 } from "@mui/material";
 import { tokens } from "../../theme";
 import React from "react";
@@ -24,10 +25,7 @@ import PersonIcon from "@mui/icons-material/Person";
 import { DataGrid } from "@mui/x-data-grid";
 import Header from "../../components/Header";
 import StatBox from "../../components/StatBox";
-import EmailIcon from "@mui/icons-material/Email";
-import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import TrafficIcon from "@mui/icons-material/Traffic";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Snackbar, Alert } from "@mui/material";
@@ -109,20 +107,33 @@ const Mentors = ( {userRole} ) => {
     setMenuRowId(null);
   };
 
-    const handleMenuAction = async (action, row) => {
+  const handleAcceptMentor = async (row) => {
+    try {
+      const res = await fetch("http://localhost:4000/accept-mentor-application", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId: row.id, // only send the ID
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to accept mentor application");
+
+      const data = await res.json();
+      console.log("✅ Mentor accepted:", data);
+
+      setOpenAddMentor(true);
+    } catch (err) {
+      console.error("❌ Error accepting mentor:", err);
+      alert("Something went wrong while accepting the mentor.");
+    }
+  };
+
+  const handleMenuAction = async (action, row) => {
     console.log(`Action: ${action}`, row);
 
     if (action === "Accept") {
-      setMentorApplicationData((prev) => ({
-        ...prev,
-        name: row.team_name || "",
-        abbr: row.se_abbreviation || "",
-        selectedStatus: "Active",
-        contact: [row.focal_email, row.focal_phone].filter(Boolean).join(" / "),
-        applicationId: row.id,
-        criticalAreas: row.critical_areas
-      }));
-      setOpenAddMentor(true); // Open the dialog
+      handleAcceptMentor(row);
     }
 
     if (action === "Decline") {
@@ -797,6 +808,59 @@ const Mentors = ( {userRole} ) => {
                     )}
                   />
                 </FormControl>
+
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    color: "#000", // Black text
+                    fontWeight: "bold",
+                    marginBottom: "8px", // Space between label and field
+                  }}
+                >
+                  Social Enterprise
+                </Typography>
+                {/* Social Enterprise Selection */}
+                <FormControl fullWidth margin="normal">
+                  <TextField
+                    select
+                    label="Select Social Enterprise"
+                    fullWidth
+                    value={selectedSE}
+                    onChange={(event) => setSelectedSE(event.target.value)}
+                    disabled={!selectedMentor || socialEnterprises.length === 0}
+                    sx={{
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000 !important", // Keeps border black
+                      },
+                      "&:hover .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000 !important",
+                      },
+                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000 !important",
+                      },
+                      "& .Mui-disabled .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000 !important", // Ensures black border when disabled
+                      },
+                      "& .MuiInputBase-input": {
+                        color: "#000 !important", // Keeps text black when enabled
+                      },
+                      "& .Mui-disabled .MuiInputBase-input": {
+                        color: "#000 !important", // Ensures text stays black when disabled
+                        WebkitTextFillColor: "#000 !important", // Fixes opacity issue in some browsers
+                      },
+                    }}
+                  >
+                    {socialEnterprises.length > 0 ? (
+                      socialEnterprises.map((se) => (
+                        <MenuItem key={se.se_id} value={se.se_id}>
+                          {se.team_name}
+                        </MenuItem>
+                      ))
+                    ) : (
+                      <MenuItem disabled>No SEs assigned</MenuItem>
+                    )}
+                  </TextField>
+                </FormControl>
               </Box>
             </DialogContent>
 
@@ -1457,7 +1521,99 @@ const Mentors = ( {userRole} ) => {
           </Box>
         )}
       </Box>
+      {/* MENTOR APPLICATIONS VIEW BOX */}
+      <Dialog
+        open={openApplicationDialog}
+        onClose={() => setOpenApplicationDialog(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          style: {
+            backgroundColor: "#fff",
+            color: "#000",
+            border: "1px solid #000",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            backgroundColor: "#1E4D2B",
+            color: "#fff",
+            textAlign: "center",
+            fontSize: "1.5rem",
+            fontWeight: "bold",
+          }}
+        >
+          Mentor Application Details
+        </DialogTitle>
 
+        <DialogContent sx={{ padding: 3, maxHeight: "70vh", overflowY: "auto" }}>
+          {selectedApplication ? (
+            <Grid container spacing={2}>
+              {/* Basic Info */}
+              <Grid item xs={12}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                  Basic Information
+                </Typography>
+              </Grid>
+              <Grid item xs={6}><strong>Name:</strong> {selectedApplication.first_name} {selectedApplication.last_name}</Grid>
+              <Grid item xs={6}><strong>Expertise:</strong> {selectedApplication.expertise}</Grid>
+              <Grid item xs={6}><strong>Email:</strong> {selectedApplication.email}</Grid>
+              <Grid item xs={6}><strong>Contact No. :</strong> {selectedApplication.contact_no}</Grid>
+              <Grid item xs={6}><strong>Affiliation:</strong> {selectedApplication.affiliation}</Grid>
+
+              {/* Motivation & Areas */}
+              <Grid item xs={12}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom mt={2}>
+                  Mentor Motivation & Focus
+                </Typography>
+              </Grid>
+              <Grid item xs={12}><strong>Motivation:</strong> {selectedApplication.motivation}</Grid>
+              <Grid item xs={12}>
+                <strong>Interested Critical Areas:</strong>{" "}
+                {(selectedApplication.business_areas || []).join(", ")}
+              </Grid>
+
+              {/* Schedule & Platforms */}
+              <Grid item xs={12}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom mt={2}>
+                  Mentoring Preferences
+                </Typography>
+              </Grid>
+              <Grid item xs={12}>
+                <strong>Available Schedules:</strong>{" "}
+                {(selectedApplication.preferred_time || []).join(", ")}
+              </Grid>
+              <Grid item xs={12}>
+                <strong>Preferred Platforms:</strong>{" "}
+                {(selectedApplication.communication_mode || []).join(", ")}
+              </Grid>
+
+              {/* Status & Submission */}
+              <Grid item xs={6}><strong>Status:</strong> {selectedApplication.status}</Grid>
+              <Grid item xs={6}>
+                <strong>Date Applied:</strong>{" "}
+                {selectedApplication.date_applied}
+              </Grid>
+            </Grid>
+          ) : (
+            <Typography>Loading...</Typography>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ padding: "16px", borderTop: "1px solid #000" }}>
+          <Button
+            onClick={() => setOpenApplicationDialog(false)}
+            sx={{
+              color: "#000",
+              border: "1px solid #000",
+              "&:hover": { backgroundColor: "#f0f0f0" },
+            }}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

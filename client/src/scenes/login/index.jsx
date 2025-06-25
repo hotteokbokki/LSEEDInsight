@@ -32,6 +32,7 @@ const Login = () => {
     lastName: "",
     email: "",
     password: "",
+    contactno: "",
 
     // Mentor-Specific Info
     affiliation: "",           // Position/Organization
@@ -256,6 +257,7 @@ const Login = () => {
                       { label: "First Name", name: "firstName", type: "text" },
                       { label: "Last Name", name: "lastName", type: "text" },
                       { label: "Email", name: "email", type: "email" },
+                      { label: "Contact No.", name: "contactno", type: "text" },
                       { label: "Password", name: "password", type: "password" },
                     ].map(({ label, name, type }) => (
                       <TextField

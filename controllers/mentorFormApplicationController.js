@@ -8,6 +8,7 @@ exports.getMentorFormApplications = async () => {
         submitted_at AS date_applied,
         first_name,
         last_name,
+        password,
         email,
         affiliation,
         motivation,
@@ -15,7 +16,8 @@ exports.getMentorFormApplications = async () => {
         business_areas,
         preferred_time,
         communication_mode,
-        status
+        status,
+        contact_no
       FROM
         mentor_form_application
       WHERE

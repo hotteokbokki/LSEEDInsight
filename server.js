@@ -523,6 +523,7 @@ app.post("/signup", async (req, res) => {
     firstName,
     lastName,
     email,
+    contactno,
     password,
     affiliation,
     motivation,
@@ -536,7 +537,7 @@ app.post("/signup", async (req, res) => {
   try {
     // ✅ Validate required fields
     if (
-      !firstName || !lastName || !email || !password ||
+      !firstName || !lastName || !email || !contactno || !password ||
       !affiliation || !motivation || !expertise ||
       !Array.isArray(businessAreas) || businessAreas.length === 0 ||
       !Array.isArray(preferredTime) || preferredTime.length === 0 ||
@@ -568,8 +569,9 @@ app.post("/signup", async (req, res) => {
         business_areas,
         preferred_time,
         communication_mode,
-        status
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'Pending')
+        status,
+        contact_no
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'Pending',$11)
       RETURNING *;
     `;
 
@@ -583,7 +585,8 @@ app.post("/signup", async (req, res) => {
       expertise,
       businessAreas,
       updatedPreferredTime,
-      communicationMode
+      communicationMode,
+      contactno,
     ];
 
     const result = await pgDatabase.query(insertQuery, values);
@@ -601,6 +604,51 @@ app.post("/signup", async (req, res) => {
   } catch (err) {
     console.error("Error during mentor signup:", err);
     res.status(500).json({ message: "An error occurred during mentor signup." });
+  }
+});
+
+app.post("/accept-mentor-application", async (req, res) => {
+  const { applicationId } = req.body;
+
+  try {
+    // 1. Get application
+    const result = await pgDatabase.query(
+      `SELECT * FROM mentor_form_application WHERE id = $1`,
+      [applicationId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Application not found." });
+    }
+
+    const app = result.rows[0];
+
+    // 3. Insert into users
+    const userResult = await pgDatabase.query(
+      `INSERT INTO users (first_name, last_name, email, password, contactnum, roles, isactive)
+       VALUES ($1, $2, $3, $4, $5, 'Mentor', true) RETURNING user_id`,
+      [app.first_name, app.last_name, app.email, app.password, app.contact_no]
+    );
+
+    const userId = userResult.rows[0].user_id;
+
+    // 4. Insert into mentors
+    await pgDatabase.query(
+      `INSERT INTO mentors (mentor_id, mentor_firstname, mentor_lastname, email, contactnum, critical_areas)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [userId, app.first_name, app.last_name, app.email, app.contact_no, app.business_areas]
+    );
+
+    // 5. Update application status
+    await pgDatabase.query(
+      `UPDATE mentor_form_application SET status = 'Accepted' WHERE id = $1`,
+      [applicationId]
+    );
+
+    res.status(201).json({ message: "Mentor successfully accepted and account created." });
+  } catch (err) {
+    console.error("❌ Error processing mentor application:", err);
+    res.status(500).json({ message: "Failed to create mentor account." });
   }
 });
 
