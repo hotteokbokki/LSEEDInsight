@@ -38,6 +38,21 @@ const FinancialAnalytics = ({ userRole }) => {
     fetchData();
   }, []);
 
+  const [inventoryData, setInventoryData] = useState([]);
+
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const response = await axios.get("http://localhost:4000/api/inventory-distribution");
+      setInventoryData(response.data);
+    } catch (error) {
+      console.error("Error fetching inventory data:", error);
+    }
+  };
+
+  fetchData();
+}, []);
+
   const seMap = new Map();
   financialData.forEach((item) => {
     const abbr = item.se_abbr ?? "Unknown";
@@ -238,15 +253,21 @@ const FinancialAnalytics = ({ userRole }) => {
   }
 
   // For inventory pie chart, aggregate all SEs' inventories for overall breakdown
-  const aggregateInventory = {};
-  socialEnterprises.forEach((se) => {
-    se.inventoryBreakdown.forEach(({ name, value }) => {
-      aggregateInventory[name] = (aggregateInventory[name] || 0) + value;
-    });
+  const inventoryPerSE = {};
+  inventoryData.forEach(({ se_abbr, item_name, qty }) => {
+    if (!inventoryPerSE[se_abbr]) {
+      inventoryPerSE[se_abbr] = 0;
+    }
+    inventoryPerSE[se_abbr] += qty;
   });
-  const inventoryBreakdownData = Object.entries(aggregateInventory).map(
-    ([name, value]) => ({ name, value })
-  );
+
+  const inventoryBreakdownData = Object.entries(inventoryPerSE).map(
+  ([abbr, qty]) => ({
+    id: abbr,
+    label: abbr,
+    value: qty,
+  })
+);
 
   // Safely compute the latest valid date in YYYY-MM-DD format
   const validDates = financialData
@@ -339,6 +360,8 @@ const FinancialAnalytics = ({ userRole }) => {
     { name: "Item C", value: 300 },
     { name: "Item D", value: 200 },
   ];
+
+  console.log("Inventory Pie Chart Data:", inventoryBreakdownData);
 
   return (
     <Box m="20px">

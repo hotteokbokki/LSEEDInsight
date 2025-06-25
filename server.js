@@ -82,6 +82,7 @@ const { getPreDefinedComments } = require("./controllers/predefinedcommentsContr
 const { getUpcomingSchedulesForMentor } = require("./controllers/mentoringSessionController.js");
 const mentorshipRoutes = require("./routes/mentorships");
 const cashflowRoutes = require("./routes/cashflowRoutes");
+const inventoryRoutes = require("./routes/inventoryRoutes");
 const { getProgramCoordinators, 
         getProgramAssignment, 
         getLSEEDCoordinators,
@@ -96,6 +97,8 @@ app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
 
 app.use("/api/cashflow", cashflowRoutes);
+
+app.use("/api/inventory-distribution", inventoryRoutes);
 
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
