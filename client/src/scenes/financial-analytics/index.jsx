@@ -262,13 +262,13 @@ useEffect(() => {
   });
 
   const inventoryBreakdownData = Object.entries(inventoryPerSE)
-  .sort((a, b) => b[1] - a[1])
+  .sort((a, b) => b[1] - a[1]) // Sort descending by quantity
   .slice(0, 10) // Take top 10
   .map(([se_abbr, qty]) => ({
-    name: se_abbr,
+    id: se_abbr,   // ✅ Change from name → id
     value: qty,
   }));
-
+  
   // Safely compute the latest valid date in YYYY-MM-DD format
   const validDates = financialData
     .map((item) => item.date)
