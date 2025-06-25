@@ -46,12 +46,34 @@ const SocialEnterprise = ({ userRole }) => {
     selectedStatus: "",
     abbr: "", 
     criticalAreas: [],
+    description: "",
+    preferred_mentoring_time: [],
   });
 
   const [programFormData, setProgramFormData] = useState({
     name: "",
     description: "",
   });
+
+  const predefinedTimes = [
+    "Weekday (Morning) 8AM - 12NN",
+    "Weekday (Afternoon) 1PM - 5PM",
+  ];
+
+  const selectedTimes = socialEnterpriseData.preferred_mentoring_time || [];
+
+  // Extract predefined and custom
+  const selectedPredefined = selectedTimes.filter((time) =>
+    predefinedTimes.includes(time)
+  );
+  const customTimes = selectedTimes.filter(
+    (time) => !predefinedTimes.includes(time) && time !== "Other"
+  );
+  const customTimeValue = customTimes.join(", "); // handle multiple custom values if needed
+
+
+  const isOtherChecked =
+    selectedTimes.includes("Other") || customTimes.length > 0;
 
   const [openAddSE, setOpenAddSE] = useState(false);
   const [openAddProgram, setOpenAddProgram] = useState(false);
@@ -106,7 +128,9 @@ const SocialEnterprise = ({ userRole }) => {
         selectedStatus: "Active",
         contact: [row.focal_email, row.focal_phone].filter(Boolean).join(" / "),
         applicationId: row.id,
-        criticalAreas: row.critical_areas
+        criticalAreas: row.critical_areas,
+        description: row.se_description,
+        preferred_mentoring_time: row.preferred_mentoring_time,
       }));
       setOpenAddSE(true); // Open the dialog
     }
@@ -372,6 +396,8 @@ const SocialEnterprise = ({ userRole }) => {
         isactive: socialEnterpriseData.selectedStatus === "Active",
         abbr: socialEnterpriseData.abbr || null,
         criticalAreas: socialEnterpriseData.criticalAreas || [],
+        description: socialEnterpriseData.description,
+        preferred_mentoring_time: socialEnterpriseData.preferred_mentoring_time || [],
       };
 
       const response = await fetch(
@@ -647,6 +673,55 @@ const SocialEnterprise = ({ userRole }) => {
                 />
               </Box>
 
+              {/* Description Field */}
+              <Box>
+                {/* Label */}
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: "bold",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Description of Social Enterprise
+                </Typography>
+
+                {/* Multiline TextField */}
+                <TextField
+                  label="Enter Description"
+                  name="description"
+                  value={socialEnterpriseData.description}
+                  onChange={handleInputChange}
+                  fullWidth
+                  margin="dense"
+                  multiline
+                  rows={6} // ⬅️ You can adjust this as needed
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      border: "1px solid #000",
+                      borderRadius: "4px",
+                      alignItems: "start", // Ensures text starts from top
+                      "&:hover": {
+                        borderColor: "#000",
+                      },
+                      "&.Mui-focused": {
+                        borderColor: "#000",
+                      },
+                    },
+                    "& .MuiInputLabel-root": {
+                      backgroundColor: "#fff",
+                      padding: "0 4px",
+                      "&.Mui-focused": {
+                        backgroundColor: "#fff",
+                      },
+                    },
+                    "& .MuiInputBase-input": {
+                      color: "#000",
+                    },
+                  }}
+                />
+              </Box>
+
               {/* SDG Dropdown */}
               <Box>
                 {/* SDG Label */}
@@ -841,6 +916,152 @@ const SocialEnterprise = ({ userRole }) => {
                     </Select>
                   </FormControl>
                 )}
+              </Box>
+
+              {/* Preferred Time Box */}
+              <Box>
+                {/* Label */}
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: "bold",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Preferred Time
+                </Typography>
+
+                {/* Fieldset */}
+                <FormControl component="fieldset" fullWidth margin="dense">
+                  <FormGroup>
+                    {/* Predefined Times */}
+                    {predefinedTimes.map((time) => (
+                      <FormControlLabel
+                        key={time}
+                        control={
+                          <Checkbox
+                            checked={selectedPredefined.includes(time)}
+                            onChange={(e) => {
+                              const selected = new Set(selectedTimes);
+                              e.target.checked
+                                ? selected.add(time)
+                                : selected.delete(time);
+
+                              // Remove "Other" if at least one predefined is checked
+                              if ([...selected].some((t) => predefinedTimes.includes(t))) {
+                                selected.delete("Other");
+                              }
+
+                              handleInputChange({
+                                target: {
+                                  name: "preferred_mentoring_time",
+                                  value: Array.from(selected),
+                                },
+                              });
+                            }}
+                            sx={{
+                              color: "black",
+                              "&.Mui-checked": { color: "black" },
+                            }}
+                          />
+                        }
+                        label={time}
+                        sx={{ color: "black" }}
+                      />
+                    ))}
+
+                    {/* Other Checkbox + TextField */}
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={isOtherChecked}
+                          onChange={(e) => {
+                            const selected = new Set(selectedTimes);
+                            if (e.target.checked) {
+                              selected.add("Other");
+                            } else {
+                              selected.delete("Other");
+                              customTimes.forEach((t) => selected.delete(t));
+                            }
+
+                            handleInputChange({
+                              target: {
+                                name: "preferred_mentoring_time",
+                                value: Array.from(selected),
+                              },
+                            });
+                          }}
+                          sx={{
+                            color: "black",
+                            "&.Mui-checked": { color: "black" },
+                          }}
+                        />
+                      }
+                      label={
+                        <TextField
+                          label="Other"
+                          variant="outlined"
+                          fullWidth
+                          multiline
+                          minRows={1}
+                          maxRows={4}
+                          value={isOtherChecked ? customTimeValue : ""}
+                          onChange={(e) => {
+                            const value = e.target.value.trim();
+                            const selected = new Set(
+                              selectedTimes.filter(
+                                (t) => !customTimes.includes(t) && t !== "Other"
+                              )
+                            );
+
+                            if (value) {
+                              selected.add("Other");
+                              value.split(",").forEach((v) => {
+                                const trimmed = v.trim();
+                                if (trimmed) selected.add(trimmed);
+                              });
+                            } else {
+                              selected.delete("Other");
+                              customTimes.forEach((t) => selected.delete(t));
+                            }
+
+                            handleInputChange({
+                              target: {
+                                name: "preferred_mentoring_time",
+                                value: Array.from(selected),
+                              },
+                            });
+                          }}
+                          InputProps={{
+                            readOnly: false,
+                            style: { color: "#000" },
+                          }}
+                          InputLabelProps={{
+                            style: {
+                              color: "#000",
+                              backgroundColor: "#fff",
+                              padding: "0 4px",
+                            },
+                          }}
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              "& fieldset": {
+                                borderColor: "#000",
+                              },
+                              "&:hover fieldset": {
+                                borderColor: "#000",
+                              },
+                              "&.Mui-focused fieldset": {
+                                borderColor: "#000",
+                              },
+                            },
+                          }}
+                        />
+                      }
+                      sx={{ alignItems: "start", color: "black" }}
+                    />
+                  </FormGroup>
+                </FormControl>
               </Box>
 
               {/* Status Dropdown */}
@@ -1242,6 +1463,7 @@ const SocialEnterprise = ({ userRole }) => {
                 <Grid item xs={6}><strong>Meeting Frequency:</strong> {selectedApplication.meeting_frequency}</Grid>
                 <Grid item xs={12}><strong>Social Problem:</strong> {selectedApplication.social_problem || <i>Not provided</i>}</Grid>
                 <Grid item xs={12}><strong>Nature:</strong> {selectedApplication.se_nature}</Grid>
+                <Grid item xs={12}><strong>Social Enterprise Description:</strong> {selectedApplication.se_description}</Grid>
                 <Grid item xs={12}><strong>Team Characteristics:</strong> {selectedApplication.team_characteristics}</Grid>
                 <Grid item xs={12}><strong>Challenges:</strong> {selectedApplication.team_challenges}</Grid>
                 <Grid item xs={12}><strong>Critical Areas:</strong> {(selectedApplication.critical_areas || []).join(", ")}</Grid>

@@ -335,6 +335,8 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
       abbr = null,
       number_of_members = 0,
       criticalAreas = [],
+      description,
+      preferred_mentoring_time = [],
     } = socialEnterpriseData;
 
     if (!sdg_ids || !Array.isArray(sdg_ids) || sdg_ids.length === 0) {
@@ -343,8 +345,6 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
     if (!program_id) {
       throw new Error("Program ID is required but missing.");
     }
-
-    console.log("Passed data to controller", socialEnterpriseData)
 
     const formatted_sdg_ids = `{${sdg_ids.join(",")}}`;
 
@@ -357,9 +357,11 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
         isactive,
         abbr,
         numMember,
-        critical_areas
+        critical_areas,
+        description,
+        preferred_mentoring_time
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING se_id;
     `;
 
@@ -372,6 +374,8 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
       abbr,
       number_of_members,
       criticalAreas,
+      description,
+      preferred_mentoring_time,
     ];
 
     const result = await pgDatabase.query(query, values);
@@ -439,5 +443,62 @@ exports.getAreasOfFocus = async (se_id) => {
   } catch (error) {
     console.error("Error fetching areas of focus:", error);
     return null;
+  }
+};
+
+exports.getSuggestedMentors = async (se_id) => {
+  try {
+    const query = `
+      WITH se_areas AS (
+        SELECT critical_areas
+        FROM socialenterprises
+        WHERE se_id = $1
+      ),
+      mentor_matches AS (
+        SELECT
+          m.mentor_id,
+          m.mentor_firstname,
+          m.mentor_lastname,
+          m.critical_areas,
+          ARRAY(
+            SELECT UNNEST(m.critical_areas)
+            INTERSECT
+            SELECT UNNEST(se_areas.critical_areas)
+          ) AS matched_areas,
+          COALESCE(cardinality(
+            ARRAY(
+              SELECT UNNEST(m.critical_areas)
+              INTERSECT
+              SELECT UNNEST(se_areas.critical_areas)
+            )
+          ), 0) AS match_count,
+          cardinality(se_areas.critical_areas) AS total_se_areas
+        FROM mentors m, se_areas
+      ),
+      ranked_mentors AS (
+        SELECT *,
+          CASE
+            WHEN match_count = total_se_areas AND total_se_areas > 0 THEN 3  -- Top match
+            WHEN match_count >= CEIL(total_se_areas * 0.5) THEN 2           -- Good match
+            ELSE 1                                                          -- Weak match
+          END AS match_rank
+        FROM mentor_matches
+      )
+      SELECT jsonb_build_object(
+        'suggested', jsonb_agg(to_jsonb(ranked_mentors) ORDER BY match_rank DESC, match_count DESC)
+          FILTER (WHERE match_rank > 1),
+        'others', jsonb_agg(to_jsonb(ranked_mentors))
+          FILTER (WHERE match_rank = 1)
+      ) AS result
+      FROM ranked_mentors;
+    `;
+
+    const result = await pgDatabase.query(query, [se_id]);
+
+    // ✅ Correctly extract the JSON object from the result
+    return result.rows[0]?.result || { suggested: [], others: [] };
+  } catch (error) {
+    console.error("❌ Error fetching mentor suggestions:", error);
+    return { suggested: [], others: [] };
   }
 };

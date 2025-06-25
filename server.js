@@ -18,7 +18,8 @@ const { getSocialEnterprisesByProgram,
         updateSERowUpdate, 
         getAllSocialEnterprisesForComparison,
         getFlaggedSEs,
-        getAreasOfFocus} = require("./controllers/socialenterprisesController");
+        getAreasOfFocus,
+        getSuggestedMentors} = require("./controllers/socialenterprisesController");
 require("dotenv").config();
 const { getUsers, getUserName } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
@@ -1737,6 +1738,23 @@ app.put("/api/application/:id/status", async (req, res) => {
   }
 });
 
+// PUT route to update mentor application status
+app.put("/mentor-application/:id/status", async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  try {
+    await pgDatabase.query(
+      `UPDATE mentor_form_application SET status = $1 WHERE id = $2`,
+      [status, id]
+    );
+    res.sendStatus(200);
+  } catch (error) {
+    console.error("❌ Failed to update status:", error);
+    res.sendStatus(500);
+  }
+});
+
 // API endpoint to fetch all programs
 app.get("/getPrograms", async (req, res) => {
   try {
@@ -1824,6 +1842,8 @@ app.get("/getSocialEnterprisesByID", async (req, res) => {
 app.post("/api/social-enterprises", async (req, res) => {
   try {
     const socialEnterpriseData = req.body; // Extract data from the request body
+
+    console.log("DATA DEBUG: ",socialEnterpriseData);
 
     const newSocialEnterprise = await addSocialEnterprise(socialEnterpriseData); // Call the controller function
 
@@ -2557,6 +2577,7 @@ app.post("/api/googleform-webhook", async (req, res) => {
     'Kindly indicate the current phase of your social enterprise': current_phase,
     'What is the social problem that you are trying to address?': social_problem,
     'What is the nature of your social enterprise? Indicate your solution statement': se_nature,
+    'Briefly describe what your Social Enterprise does, including the problem it addresses and how it creates impact.': se_description,
     'What do you think are the unique characteristics of your SE/Team?': team_characteristics,
     'What are the challenges that you face as a team?': team_challenges,
     'What area/s of business is/are the most critical for your SE/Team at present?  Please select all that apply.': critical_areas,
@@ -2590,6 +2611,7 @@ app.post("/api/googleform-webhook", async (req, res) => {
         current_phase,
         social_problem,
         se_nature,
+        se_description,
         team_characteristics,
         team_challenges,
         critical_areas,
@@ -2609,7 +2631,7 @@ app.post("/api/googleform-webhook", async (req, res) => {
         $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15,
         $16, $17, $18, $19, $20,
-        $21, $22, $23
+        $21, $22, $23, $24
       )`,
       [
         new Date(Timestamp),
@@ -2621,6 +2643,7 @@ app.post("/api/googleform-webhook", async (req, res) => {
         current_phase,
         social_problem,
         se_nature,
+        se_description,
         team_characteristics,
         team_challenges,
         critical_areas?.split(',').map((v) => v.trim()) || [],
@@ -2637,7 +2660,6 @@ app.post("/api/googleform-webhook", async (req, res) => {
         focal_phone
       ]
     );
-
 
     res.sendStatus(200);
   } catch (error) {
@@ -2855,6 +2877,25 @@ app.get("/getMentorshipDates", async (req, res) => {
   }
 });
 
+app.post("/suggested-mentors", async (req, res) => {
+  try {
+    const { se_id } = req.body;
+
+    if (!se_id) {
+      return res.status(400).json({ message: "SE ID is required" });
+    }
+
+    const suggestedMentors = await getSuggestedMentors(se_id)
+
+    console.log(suggestedMentors)
+
+    res.status(200).json(suggestedMentors);
+  } catch (error) {
+    console.error("❌ Error fetching suggested mentors:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.post("/updateMentorshipZoomLink", async (req, res) => {
   try {
     const { mentorship_id, zoom_link } = req.body;
@@ -2962,7 +3003,7 @@ app.get("/api/notifications", async (req, res) => {
   }
 });
 
-
+// NEED PA BA ITO?
 // app.put('/updateUserRole/:id', requireAuth, async (req, res) => {
 //   const { id } = req.params;
 //   const { role } = req.body; // 'admin' or 'user'

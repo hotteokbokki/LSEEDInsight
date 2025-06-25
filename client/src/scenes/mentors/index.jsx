@@ -17,6 +17,7 @@ import {
   Grid,
 } from "@mui/material";
 import { tokens } from "../../theme";
+import Chip from '@mui/material/Chip';
 import React from "react";
 import axios from "axios";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
@@ -53,6 +54,8 @@ const Mentors = ( {userRole} ) => {
     abbr: "", 
     criticalAreas: [],
   });
+  const [suggestedMentors, setSuggestedMentors] = useState([]);
+  const [otherMentors, setOtherMentors] = useState([]);
   const [openAddMentor, setOpenAddMentor] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [openApplicationDialog, setOpenApplicationDialog] = useState(false);
@@ -140,7 +143,7 @@ const Mentors = ( {userRole} ) => {
       const applicationId = row.id; // Ensure `row.id` is defined
 
       try {
-        const response = await fetch(`http://localhost:4000/api/application/${applicationId}/status`, {
+        const response = await fetch(`http://localhost:4000/mentor-application/${applicationId}/status`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -359,6 +362,31 @@ const Mentors = ( {userRole} ) => {
     setMentorData({ ...mentorData, [e.target.name]: e.target.value });
   };
 
+  const matchMentors = async (selectedSeId) => {
+    try {
+      const response = await fetch(`http://localhost:4000/suggested-mentors`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ se_id: selectedSeId }),
+      });
+
+      const data = await response.json();
+
+      console.log("✅ Raw mentor match response:", data);
+      console.log("👉 Suggested mentors:", data.suggested);
+      console.log("👉 Other mentors:", data.others);
+
+      setSuggestedMentors(data.suggested || []);
+      setOtherMentors(data.others || []);
+    } catch (error) {
+      console.error("❌ Error fetching mentor matches:", error);
+      setSuggestedMentors([]);
+      setOtherMentors([]);
+    }
+  };
+
   const handleRemoveMentorship = async () => {
     if (!selectedMentor || !selectedSE) {
       alert("Please select a mentor and a social enterprise.");
@@ -567,7 +595,6 @@ const Mentors = ( {userRole} ) => {
       ),
     },
   ];
-
 
   return (
     <Box m="20px">
@@ -1019,7 +1046,7 @@ const Mentors = ( {userRole} ) => {
         </Snackbar>
       </Box>
       
-      {/* DIALOG BOX */}
+      {/* Add Mentorship Dialog */}
       <Dialog
         open={openDialog}
         onClose={handleDialogClose}
@@ -1098,26 +1125,74 @@ const Mentors = ( {userRole} ) => {
                 label="Select Mentor"
                 sx={{
                   "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#000", // Consistent border color
+                    borderColor: "#000",
                   },
                   "&:hover .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#000", // Darken border on hover
+                    borderColor: "#000",
                   },
                   "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#000", // Consistent border color when focused
+                    borderColor: "#000",
                   },
                   "& .MuiSelect-select": {
-                    color: "#000", // Ensure the selected text is black
+                    color: "#000",
                   },
                 }}
               >
-                {mentors.map((mentor) => (
+                {/* Section Header for Suggested */}
+                <MenuItem disabled>
+                  <Typography variant="subtitle2" fontWeight="bold">
+                    Suggested Mentors
+                  </Typography>
+                </MenuItem>
+
+                {suggestedMentors.length > 0 ? (
+                  suggestedMentors.map((mentor) => (
+                    <MenuItem key={mentor.mentor_id} value={mentor.mentor_id}>
+                      <Box display="flex" flexDirection="column" alignItems="flex-start">
+                        <Box display="flex" alignItems="center">
+                          <Typography>
+                            {mentor.mentor_firstname} {mentor.mentor_lastname}
+                          </Typography>
+                          <Chip
+                            label="Recommended"
+                            size="small"
+                            color="success"
+                            sx={{ ml: 1 }}
+                          />
+                        </Box>
+                        <Typography variant="body2" color="text.secondary">
+                          Matched on {mentor.match_count} area
+                          {mentor.match_count !== 1 ? "s" : ""}:
+                          {" "}
+                          {mentor.matched_areas?.join(", ") || "N/A"}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))
+                ) : (
+                  <MenuItem disabled>
+                    <Typography variant="body2" color="text.secondary">
+                      No highly matching mentors found.
+                    </Typography>
+                  </MenuItem>
+                )}
+
+                {/* Section Header for Others */}
+                <MenuItem disabled>
+                  <Typography variant="subtitle2" fontWeight="bold">
+                    Other Mentors
+                  </Typography>
+                </MenuItem>
+
+                {otherMentors.map((mentor) => (
                   <MenuItem key={mentor.mentor_id} value={mentor.mentor_id}>
-                    {mentor.mentor_firstName} {mentor.mentor_lastName}
+                    {mentor.mentor_firstname} {mentor.mentor_lastname}
                   </MenuItem>
                 ))}
               </Select>
+
             </FormControl>
+
             <Typography
               variant="subtitle1"
               sx={{
@@ -1145,28 +1220,37 @@ const Mentors = ( {userRole} ) => {
                 labelId="se-label"
                 name="selectedSocialEnterprise"
                 value={mentorshipData.selectedSocialEnterprise}
-                onChange={(e) =>
-                  setMentorshipData({
-                    ...mentorshipData,
-                    selectedSocialEnterprise: e.target.value,
-                  })
-                }
+                onChange={(e) => {
+                  const selectedSeId = e.target.value;
+                  console.log("✅ Selected SE ID:", selectedSeId);
+                  setMentorshipData((prev) => ({
+                    ...prev,
+                    selectedSocialEnterprise: selectedSeId,
+                  }));
+                  matchMentors(selectedSeId); // 🔥
+                }}
                 label="Select Social Enterprise"
+                displayEmpty
+                fullWidth
+                margin="dense"
                 sx={{
                   "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#000", // Consistent border color
+                    borderColor: "#000",
                   },
                   "&:hover .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#000", // Darken border on hover
+                    borderColor: "#000",
                   },
                   "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#000", // Consistent border color when focused
+                    borderColor: "#000",
                   },
                   "& .MuiSelect-select": {
-                    color: "#000", // Ensure the selected text is black
+                    color: "#000",
                   },
                 }}
               >
+                <MenuItem disabled value="">
+                  <em>Select Social Enterprise</em>
+                </MenuItem>
                 {socialEnterprises.map((se) => (
                   <MenuItem key={se.id} value={se.id}>
                     {se.name}
@@ -1589,8 +1673,7 @@ const Mentors = ( {userRole} ) => {
                 {(selectedApplication.communication_mode || []).join(", ")}
               </Grid>
 
-              {/* Status & Submission */}
-              <Grid item xs={6}><strong>Status:</strong> {selectedApplication.status}</Grid>
+              {/* Application Date */}
               <Grid item xs={6}>
                 <strong>Date Applied:</strong>{" "}
                 {selectedApplication.date_applied}

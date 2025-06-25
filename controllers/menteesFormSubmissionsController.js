@@ -13,6 +13,7 @@ exports.getApplicationList = async () => {
                 current_phase,
                 social_problem,
                 se_nature,
+                se_description,
                 team_characteristics,
                 team_challenges,
                 critical_areas,
