@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import axios from "axios";
 import React, { useRef, useState } from "react";
 import {
   Box,
@@ -79,13 +81,37 @@ const Reports = () => {
     setSelectedSE(event.target.value);
   };
 
-  // Sample list of SEs — replace with actual data
-  const socialEnterprises = [
-    "Galing LNC",
-    "Green Earth",
-    "Agos ng Buhay",
-    "Bayanihan Builders",
-  ];
+  const [socialEnterprises, setSocialEnterprises] = useState([]);
+
+  useEffect(() => {
+    const fetchSEs = async () => {
+      try {
+        const response = await axios.get("http://localhost:4000/getAllSocialEnterprisesForComparison");
+        setSocialEnterprises(response.data); // Assuming response contains [{ se_id, abbr }, ...]
+      } catch (error) {
+        console.error("Error fetching SE list:", error);
+      }
+    };
+
+    fetchSEs();
+  }, []);
+
+  const reportTables = [
+  "reports",
+  "financial_statements",
+  "cash_in",
+  "cash_out",
+  "inventory_report",
+];
+
+const formatTableName = (name) => {
+  return name
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+const [selectedReportType, setSelectedReportType] = useState("");
 
   return (
     <Box m="20px">
@@ -116,7 +142,7 @@ const Reports = () => {
             }}
           >
             <InputLabel id="se-select-label" sx={{ color: "white" }}>
-              Select Social Enterprise
+            Select Social Enterprise
             </InputLabel>
             <Select
               labelId="se-select-label"
@@ -124,14 +150,54 @@ const Reports = () => {
               label="Select Social Enterprise"
               onChange={handleSEChange}
               sx={{
-                color: "black",
+                color: "white",
                 ".MuiOutlinedInput-notchedOutline": { border: 0 },
                 "& .MuiSvgIcon-root": { color: "white" },
               }}
             >
-              {socialEnterprises.map((se, index) => (
-                <MenuItem key={index} value={se} sx={{ color: "white" }}>
-                  {se}
+              {socialEnterprises.map((se) => (
+                <MenuItem
+                  key={se.se_id}
+                  value={se.se_id}
+                  sx={{ color: "white" }}
+                >
+                  {se.abbr}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+        <Box
+          width="27%"
+          bgcolor={colors.primary[400]}
+          display="flex"
+          padding={2}
+          gap={2}
+        >
+          <FormControl
+            fullWidth
+            sx={{
+              maxWidth: "500px",
+              backgroundColor: colors.blueAccent[500],
+            }}
+          >
+            <InputLabel id="report-type-label" sx={{ color: "white" }}>
+              Select Report Type
+            </InputLabel>
+            <Select
+              labelId="report-type-label"
+              value={selectedReportType}
+              label="Select Report Type"
+              onChange={(e) => setSelectedReportType(e.target.value)}
+              sx={{
+                color: "white",
+                ".MuiOutlinedInput-notchedOutline": { border: 0 },
+                "& .MuiSvgIcon-root": { color: "white" },
+              }}
+            >
+              {reportTables.map((table) => (
+                <MenuItem key={table} value={table} sx={{ color: "white" }}>
+                  {formatTableName(table)}
                 </MenuItem>
               ))}
             </Select>
