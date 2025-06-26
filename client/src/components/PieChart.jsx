@@ -42,7 +42,11 @@ const PieChart = ({ data, isDashboard = false }) => {
           },
         },
       }}
-      tooltip={({ datum }) => (
+      tooltip={({ datum }) => {
+      const total = data.reduce((sum, d) => sum + d.value, 0);
+      const percent = ((datum.data.value / total) * 100).toFixed(2);
+
+      return (
         <div
           style={{
             background: theme.palette.mode === "dark" ? "#222" : "#fff",
@@ -52,10 +56,11 @@ const PieChart = ({ data, isDashboard = false }) => {
             boxShadow: "0px 2px 10px rgba(0, 0, 0, 0.1)",
           }}
         >
-          <strong>{datum.data.comment}</strong>
-          <div>Percentage: {datum.label}</div> {/* ✅ Shows only category & percentage */}
+          <strong>{datum.id}</strong>
+          <div>Percentage: {percent}%</div>
         </div>
-      )}
+      );
+    }}
       legends={[
         {
           anchor: "bottom",

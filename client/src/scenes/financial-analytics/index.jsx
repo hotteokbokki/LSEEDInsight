@@ -265,7 +265,7 @@ useEffect(() => {
   .sort((a, b) => b[1] - a[1]) // Sort descending by quantity
   .slice(0, 10) // Take top 10
   .map(([se_abbr, qty]) => ({
-    id: se_abbr,   // ✅ Change from name → id
+    id: se_abbr,
     value: qty,
   }));
   
@@ -354,14 +354,21 @@ useEffect(() => {
     // ...more monthly data
   ];
 
-  const individualInventoryData = [
-    { name: "Item A", value: 400 },
-    { name: "Item B", value: 300 },
-    { name: "Item C", value: 300 },
-    { name: "Item D", value: 200 },
-  ];
-
-  console.log("Inventory Pie Chart Data:", inventoryBreakdownData);
+  const individualInventoryData = Object.entries(
+  inventoryData.reduce((acc, { item_name, qty }) => {
+    if (item_name && typeof qty === "number" && !isNaN(qty)) {
+      acc[item_name] = (acc[item_name] || 0) + qty;
+    }
+    return acc;
+  }, {})
+)
+  .map(([name, value]) => ({
+    id: name,
+    value: typeof value === "number" && !isNaN(value) ? value : 0,
+  }))
+  .filter((item) => item.value > 0) // remove invalid or 0 values
+  .sort((a, b) => b.value - a.value)
+  .slice(0, 10);
 
   return (
     <Box m="20px">
