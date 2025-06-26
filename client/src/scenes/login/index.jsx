@@ -16,8 +16,10 @@ import {
   InputLabel,
   FormControl,
   Alert,
+  Snackbar,
   OutlinedInput,
   ListItemText,
+  Box,
 } from "@mui/material";
 
 const Login = () => {
@@ -26,12 +28,21 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [passwordStrength, setPasswordStrength] = useState("");
+  const [passwordsMatch, setPasswordsMatch] = useState(true);
+  const [passwordChecklist, setPasswordChecklist] = useState({
+    length: false,
+    uppercase: false,
+    number: false,
+    specialChar: false,
+  });
   const [formData, setFormData] = useState({
     // General Sign-Up Info
     firstName: "",
     lastName: "",
     email: "",
     password: "",
+    confirmPassword: "",
     contactno: "",
 
     // Mentor-Specific Info
@@ -43,6 +54,10 @@ const Login = () => {
     specificTime: "",          // If preferredTime is "Other"
     communicationMode: [],     // Multiple choice
   });
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success"); // or "error", "info", etc.
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
 
   const businessAreasList = [
@@ -137,15 +152,52 @@ const Login = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
+
+    const updatedForm = {
+      ...formData,
       [name]: type === "checkbox" ? checked : value,
-    }));
+    };
+
+    setFormData(updatedForm);
+
+    // If user starts fixing the confirm password, and it now matches, clear the red border
+    if (name === "confirmPassword" && hasSubmitted) {
+      setHasSubmitted(false); // Remove red border and helper text
+    }
+
+    if (name === "password") {
+      setPasswordStrength(getPasswordStrength(value));
+      setPasswordChecklist(getPasswordChecklist(value));
+    }
   };
+
+  const getPasswordStrength = (password) => {
+    if (password.length < 6) return "Weak";
+    if (/[A-Z]/.test(password) && /[0-9]/.test(password) && /[\W_]/.test(password)) return "Strong";
+    return "Moderate";
+  };
+
+  const getPasswordChecklist = (password) => ({
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    number: /[0-9]/.test(password),
+    specialChar: /[\W_]/.test(password),
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setHasSubmitted(true); // Mark that the user tried submitting
+
+    // Validate password match
+    if (formData.password !== formData.confirmPassword) {
+      setSnackbarMessage("Passwords do not match. Please correct them before submitting.");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+      return;
+    }
+
+    console.log("Success");
+
     try {
       const response = await fetch("http://localhost:4000/signup", {
         method: "POST",
@@ -157,7 +209,9 @@ const Login = () => {
 
       const data = await response.json();
       if (response.ok) {
-        alert("Signup successful! Please log in.");
+        setSnackbarMessage("Signup successful! Check email on application status");
+        setSnackbarSeverity("success");
+        setSnackbarOpen(true);
         setIsFlipped(false);
       } else {
         setErrorMessage(data.message || "Signup failed");
@@ -281,7 +335,52 @@ const Login = () => {
                         }}
                       />
                     ))}
-
+                    {formData.password && (
+                      <Box sx={{ mt: 1, ml: 1 }}>
+                        <Typography variant="body2" sx={{ color: "#000", mb: 0.5 }}>
+                          Your password must contain:
+                        </Typography>
+                        <ul style={{ paddingLeft: "20px", marginTop: 0 }}>
+                          <li style={{ color: passwordChecklist.length ? "green" : "red" }}>
+                            At least 8 characters
+                          </li>
+                          <li style={{ color: passwordChecklist.uppercase ? "green" : "red" }}>
+                            At least one uppercase letter
+                          </li>
+                          <li style={{ color: passwordChecklist.number ? "green" : "red" }}>
+                            At least one number
+                          </li>
+                          <li style={{ color: passwordChecklist.specialChar ? "green" : "red" }}>
+                            At least one special character (!@#$%^&*)
+                          </li>
+                        </ul>
+                      </Box>
+                    )}
+                    <TextField
+                      label="Confirm Password"
+                      name="confirmPassword"
+                      type="password"
+                      fullWidth
+                      required
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      error={hasSubmitted && formData.password !== formData.confirmPassword}
+                      helperText={
+                        hasSubmitted && formData.password !== formData.confirmPassword
+                          ? "Passwords do not match"
+                          : ""
+                      }
+                      InputProps={{ style: { color: "#000" } }}
+                      InputLabelProps={{ style: { color: "#000" } }}
+                      sx={{
+                        mt: 2,
+                        "& .MuiOutlinedInput-root": {
+                          "& fieldset": { borderColor: "#000" },
+                          "&:hover fieldset": { borderColor: "#000" },
+                          "&.Mui-focused fieldset": { borderColor: "#000" },
+                        },
+                      }}
+                    />
                     {[ 
                       { label: "Affiliation (Position/Organization)", key: "affiliation" },
                       { label: "Reason/Motivation to volunteer", key: "motivation", multiline: true },
@@ -522,14 +621,59 @@ const Login = () => {
           Terms and Conditions
         </DialogTitle>
         <DialogContent className="custom-dialog-content">
-          <Typography className="custom-dialog-text">
-            Here are the terms and conditions for using this service...
-          </Typography>
+          <Box sx={{ color: "#000", textAlign: "justify" }}>
+            <Typography variant="body1" paragraph>
+              <strong>Good day, Volunteer Mentors!</strong>
+            </Typography>
+
+            <Typography variant="body1" paragraph>
+              Thank you once again for your interest in joining our panel of mentors for <strong>LSEED Mentoring</strong>. We truly appreciate it!
+            </Typography>
+
+            <Typography variant="body1" paragraph>
+              For an overview, LSEED Mentoring is a three-phase online coaching & mentoring initiative of the <strong>Lasallian Social Enterprise for Economic Development (LSEED) Center</strong>, for Lasallian social entrepreneurs and partners. It also serves as a strategy to help Lasallian social enterprises develop new mechanisms to adapt to the ever-changing landscape of social entrepreneurship in the country.
+            </Typography>
+
+            <Typography variant="body1" paragraph>
+              In order to properly coordinate mentoring session schedules, we would like to inquire about your availability this Academic Year. Your response to this survey will serve as available options for our students/mentees when selecting mentoring session schedules.
+            </Typography>
+
+            <Typography variant="body1" paragraph>
+              For questions and/or clarifications, you may get in touch with us through email: <a href="mailto:lseed@dlsu.edu.ph">lseed@dlsu.edu.ph</a> or <a href="mailto:norby.salonga@dlsu.edu.ph">norby.salonga@dlsu.edu.ph</a>.
+            </Typography>
+
+            <Typography variant="body1" paragraph>
+              <strong>Privacy and Confidentiality Note:</strong> All collected information through this form will only be used for LSEED Online Mentoring.
+            </Typography>
+
+            <Typography variant="body1" paragraph>
+              By filling out this form, I understand that I have the responsibility as a volunteer mentor to keep all information (shared and entrusted to me) with utmost confidentiality—specifically the SE ideas and information of students/social entrepreneurs participating in LSEED Mentoring.
+            </Typography>
+
+            <Typography variant="body1">
+              <strong>Do you agree?</strong>
+            </Typography>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Accept</Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </div>
   );
 };
