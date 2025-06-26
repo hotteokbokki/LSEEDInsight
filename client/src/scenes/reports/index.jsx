@@ -60,11 +60,49 @@ const Reports = () => {
   };
 
   const handleImport = () => {
-    console.log("Importing to database:", parsedData);
-    alert("Imported successfully!");
+  const requiredCols = expectedColumns[selectedReportType] || [];
+  const actualCols = Object.keys(parsedData[0] || {});
+  const missingCols = requiredCols.filter((col) => !actualCols.includes(col));
+
+  console.log("Sending to backend:", {
+  se_id: selectedSE,
+  data: parsedData,
+});
+
+  if (missingCols.length > 0) {
+    alert(`Missing required columns: ${missingCols.join(", ")}`);
+    return;
+  }
+
+  // Proceed to API call with selectedSE and parsedData
+  axios.post(
+  `http://localhost:4000/api/import/${selectedReportType}`,
+  {
+    se_id: selectedSE,
+    data: parsedData,
+  },
+  {
+    withCredentials: true, // very important for session to work!
+  }
+)
+
+  .then(() => {
+    alert("Import successful!");
     setParsedData([]);
     setFileName("");
-  };
+  })
+  .catch((err) => {
+  console.error("Import error:", err);
+
+  if (err.response && err.response.status === 400 && err.response.data?.message === "Missing required columns") {
+    alert(`File upload failed: ${err.response.data.message}. Missing: ${err.response.data.missingFields?.join(", ")}`);
+  } else if (err.response && err.response.status === 400) {
+    alert(`File upload failed: ${err.response.data.message}`);
+  } else {
+    alert("Import failed due to server error.");
+  }
+});
+};
 
   const handleCancel = () => {
     setParsedData([]);
@@ -109,6 +147,14 @@ const formatTableName = (name) => {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+};
+
+const expectedColumns = {
+  financial_statements: ["date","total_revenue","total_expenses","net_income","total_assets","total_liabilities","owner_equity"],
+  inventory_report: ["item_name", "qty", "price", "amount"],
+  cash_in: ["date", "sales", "otherRevenue", "assets", "liability", "ownerCapital", "notes", "cash"],
+  cash_out: ["date", "cash", "expenses", "assets", "inventory", "liability", "ownerWithdrawal", "notes"],
+
 };
 
 const [selectedReportType, setSelectedReportType] = useState("");
