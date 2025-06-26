@@ -30,6 +30,8 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Snackbar, Alert } from "@mui/material";
+import Tooltip from "@mui/material/Tooltip";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 const Mentors = ( {userRole} ) => {
   const theme = useTheme();
@@ -1103,10 +1105,10 @@ const Mentors = ( {userRole} ) => {
               <InputLabel
                 id="mentor-label"
                 sx={{
-                  backgroundColor: "#fff", // Prevent overlap with the border
-                  padding: "0 4px", // Add padding for readability
+                  backgroundColor: "#fff",
+                  padding: "0 4px",
                   "&.Mui-focused": {
-                    backgroundColor: "#fff", // Ensure the background remains white when focused
+                    backgroundColor: "#fff",
                   },
                 }}
               >
@@ -1139,11 +1141,21 @@ const Mentors = ( {userRole} ) => {
                 }}
               >
                 {/* Section Header for Suggested */}
-                <MenuItem disabled>
+                <Box
+                  px={2}
+                  py={1}
+                  display="flex"
+                  alignItems="center"
+                  gap={1}
+                  sx={{ pointerEvents: "none"}}
+                >
                   <Typography variant="subtitle2" fontWeight="bold">
-                    Suggested Mentors
+                    Recommended Mentors (Top & Good Match)
                   </Typography>
-                </MenuItem>
+                  <Tooltip title="These mentors match most or all areas with the SE’s critical areas.">
+                    <InfoOutlinedIcon fontSize="small" sx={{ pointerEvents: "auto" }} />
+                  </Tooltip>
+                </Box>
 
                 {suggestedMentors.length > 0 ? (
                   suggestedMentors.map((mentor) => (
@@ -1152,11 +1164,11 @@ const Mentors = ( {userRole} ) => {
                       value={mentor.mentor_id}
                       disabled={!mentor.is_available_for_assignment}
                       sx={{
-                        opacity: mentor.is_available_for_assignment ? 1 : 0.5, // visually gray out
+                        opacity: mentor.is_available_for_assignment ? 1 : 0.5,
                       }}
                     >
                       <Box display="flex" flexDirection="column" alignItems="flex-start">
-                        <Box display="flex" alignItems="center">
+                        <Box display="flex" alignItems="center" gap={1}>
                           <Typography>
                             {mentor.mentor_firstname} {mentor.mentor_lastname}
                           </Typography>
@@ -1164,7 +1176,11 @@ const Mentors = ( {userRole} ) => {
                             label="Recommended"
                             size="small"
                             color="success"
-                            sx={{ ml: 1 }}
+                          />
+                          <Chip
+                            label={mentor.is_available_for_assignment ? "Available" : "Unavailable"}
+                            size="small"
+                            color={mentor.is_available_for_assignment ? "success" : "default"}
                           />
                         </Box>
                         <Typography variant="body2" color="text.secondary">
@@ -1172,11 +1188,9 @@ const Mentors = ( {userRole} ) => {
                           {mentor.match_count !== 1 ? "s" : ""}:{" "}
                           {mentor.matched_areas?.join(", ") || "N/A"}
                         </Typography>
-
-                        {/* Show availability status */}
                         {!mentor.is_available_for_assignment && (
                           <Typography variant="caption" color="error">
-                            Unavailable for assignment
+                            Not currently accepting new assignments
                           </Typography>
                         )}
                       </Box>
@@ -1191,44 +1205,58 @@ const Mentors = ( {userRole} ) => {
                 )}
 
                 {/* Section Header for Others */}
-                <MenuItem disabled>
+                <Box
+                  px={2}
+                  py={1}
+                  display="flex"
+                  alignItems="center"
+                  gap={1}
+                  sx={{ pointerEvents: "none" }}
+                >
                   <Typography variant="subtitle2" fontWeight="bold">
-                    Other Mentors
+                    Other Available Mentors (Low Match)
                   </Typography>
-                </MenuItem>
+                  <Tooltip title="These mentors matched few or none of the SE’s critical areas.">
+                    <InfoOutlinedIcon fontSize="small" sx={{ pointerEvents: "auto" }} />
+                  </Tooltip>
+                </Box>
 
                 {otherMentors.map((mentor) => (
                   <MenuItem
                     key={mentor.mentor_id}
                     value={mentor.mentor_id}
-                    disabled={!mentor.is_available_for_assignment} // Disable if not available
+                    disabled={!mentor.is_available_for_assignment}
                     sx={{
                       opacity: mentor.is_available_for_assignment ? 1 : 0.5,
-                      pointerEvents: mentor.is_available_for_assignment ? "auto" : "none",
                     }}
                   >
                     <Box display="flex" flexDirection="column" alignItems="flex-start">
-                      <Typography>
-                        {mentor.mentor_firstname} {mentor.mentor_lastname}
-                      </Typography>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Typography>
+                          {mentor.mentor_firstname} {mentor.mentor_lastname}
+                        </Typography>
+                        <Chip
+                          label={mentor.is_available_for_assignment ? "Available" : "Unavailable"}
+                          size="small"
+                          color={mentor.is_available_for_assignment ? "success" : "default"}
+                        />
+                      </Box>
                       <Typography variant="body2" color="text.secondary">
                         Matched on {mentor.match_count} area
-                        {mentor.match_count !== 1 ? "s" : ""}:
-                        {" "}
+                        {mentor.match_count !== 1 ? "s" : ""}:{" "}
                         {mentor.matched_areas?.join(", ") || "N/A"}
                       </Typography>
                       {!mentor.is_available_for_assignment && (
                         <Typography variant="caption" color="error">
-                          Unavailable for assignment
+                          Not currently accepting new assignments
                         </Typography>
                       )}
                     </Box>
                   </MenuItem>
                 ))}
               </Select>
-
             </FormControl>
-
+            
             <Typography
               variant="subtitle1"
               sx={{
