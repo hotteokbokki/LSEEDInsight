@@ -12,6 +12,8 @@ import axios from "axios";
 import { DataGrid } from "@mui/x-data-grid";
 import { FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 import MoneyOffOutlinedIcon from "@mui/icons-material/MoneyOffOutlined";
+import InventoryValuePie from "../../components/TotalInventoryPieChart.jsx";
+import InventoryTurnoverBar from "../../components/InventoryTurnoverBarChart.jsx";
 
 const FinancialAnalytics = ({ userRole }) => {
   const theme = useTheme();
@@ -40,18 +42,55 @@ const FinancialAnalytics = ({ userRole }) => {
 
   const [inventoryData, setInventoryData] = useState([]);
 
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const response = await axios.get("http://localhost:4000/api/inventory-distribution");
-      setInventoryData(response.data);
-    } catch (error) {
-      console.error("Error fetching inventory data:", error);
-    }
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(
+          "http://localhost:4000/api/inventory-distribution"
+        );
+        setInventoryData(response.data);
+      } catch (error) {
+        console.error("Error fetching inventory data:", error);
+      }
+    };
 
-  fetchData();
-}, []);
+    fetchData();
+  }, []);
+  // Mock inventory data
+  const mockInventoryData = [
+    { se_id: "SE01", item_name: "T-shirt", qty: 10, price: 100 },
+    { se_id: "SE02", item_name: "Notebook", qty: 5, price: 200 },
+    { se_id: "SE01", item_name: "Cap", qty: 2, price: 150 },
+    { se_id: "SE03", item_name: "Coffee", qty: 20, price: 50 },
+    { se_id: "SE02", item_name: "Pen", qty: 10, price: 20 },
+  ];
+
+  // Compute totals
+  const inventoryBySE = {};
+
+  mockInventoryData.forEach(({ se_id, qty, price }) => {
+    const amount = qty * price;
+    if (!inventoryBySE[se_id]) {
+      inventoryBySE[se_id] = { totalValue: 0 };
+    }
+    inventoryBySE[se_id].totalValue += amount;
+  });
+
+  // Format data for charts
+  const inventoryValueData = Object.entries(inventoryBySE).map(
+    ([se_id, data]) => ({
+      name: se_id,
+      value: data.totalValue,
+    })
+  );
+
+  const inventoryTurnoverData = inventoryValueData.map(({ name, value }) => {
+    const cogs = value * 0.7; // Assume COGS = 70% of value
+    const avgInventory = value;
+    const turnover =
+      avgInventory === 0 ? 0 : parseFloat((cogs / avgInventory).toFixed(2));
+    return { name, turnover };
+  });
 
   const seMap = new Map();
   financialData.forEach((item) => {
@@ -262,13 +301,13 @@ useEffect(() => {
   });
 
   const inventoryBreakdownData = Object.entries(inventoryPerSE)
-  .sort((a, b) => b[1] - a[1]) // Sort descending by quantity
-  .slice(0, 10) // Take top 10
-  .map(([se_abbr, qty]) => ({
-    id: se_abbr,
-    value: qty,
-  }));
-  
+    .sort((a, b) => b[1] - a[1]) // Sort descending by quantity
+    .slice(0, 10) // Take top 10
+    .map(([se_abbr, qty]) => ({
+      id: se_abbr,
+      value: qty,
+    }));
+
   // Safely compute the latest valid date in YYYY-MM-DD format
   const validDates = financialData
     .map((item) => item.date)
@@ -355,20 +394,20 @@ useEffect(() => {
   ];
 
   const individualInventoryData = Object.entries(
-  inventoryData.reduce((acc, { item_name, qty }) => {
-    if (item_name && typeof qty === "number" && !isNaN(qty)) {
-      acc[item_name] = (acc[item_name] || 0) + qty;
-    }
-    return acc;
-  }, {})
-)
-  .map(([name, value]) => ({
-    id: name,
-    value: typeof value === "number" && !isNaN(value) ? value : 0,
-  }))
-  .filter((item) => item.value > 0) // remove invalid or 0 values
-  .sort((a, b) => b.value - a.value)
-  .slice(0, 10);
+    inventoryData.reduce((acc, { item_name, qty }) => {
+      if (item_name && typeof qty === "number" && !isNaN(qty)) {
+        acc[item_name] = (acc[item_name] || 0) + qty;
+      }
+      return acc;
+    }, {})
+  )
+    .map(([name, value]) => ({
+      id: name,
+      value: typeof value === "number" && !isNaN(value) ? value : 0,
+    }))
+    .filter((item) => item.value > 0) // remove invalid or 0 values
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10);
 
   return (
     <Box m="20px">
@@ -546,35 +585,35 @@ useEffect(() => {
         </Box>
       </Box>
 
-      {/* Row 5 - Inventory Distribution (Aggregated) */}
+      {/* Row 5 - Total Inventory Value by SE */}
       <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
         <Typography
           variant="h3"
           fontWeight="bold"
           color={colors.greenAccent[500]}
         >
-          Aggregate Inventory Distribution
+          Total Inventory Value by Social Enterprise
         </Typography>
         <Box height="400px">
-          <PieChart data={inventoryBreakdownData} />
+          <InventoryValuePie data={inventoryValueData} />
         </Box>
       </Box>
 
-      {/* Row 6 - Individual Inventory Reports */}
+      {/* Row 6 - Inventory Turnover Ratio by SE */}
       <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
         <Typography
           variant="h3"
           fontWeight="bold"
           color={colors.greenAccent[500]}
         >
-          Individual Inventory Reports by Item
+          Inventory Turnover Ratio by Social Enterprise
         </Typography>
         <Box height="400px">
-          <PieChart data={individualInventoryData} />
+          <InventoryTurnoverBar data={inventoryTurnoverData} />
         </Box>
       </Box>
 
-      {/* Row 8 - Equity Trend Comparison */}
+      {/* Row 7 - Equity Trend Comparison */}
       <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
         <Typography
           variant="h3"

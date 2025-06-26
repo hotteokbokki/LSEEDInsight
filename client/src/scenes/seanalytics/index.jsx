@@ -31,6 +31,8 @@ import PeopleIcon from "@mui/icons-material/People";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import TrafficIcon from "@mui/icons-material/Traffic";
+import InventoryValuePie from "../../components/TotalInventoryPieChart.jsx";
+import InventoryTurnoverBar from "../../components/InventoryTurnoverBarChart.jsx";
 
 const SEAnalytics = () => {
   const theme = useTheme();
@@ -88,11 +90,12 @@ const SEAnalytics = () => {
     fetchSocialEnterprises();
   }, [id]);
 
-  
   useEffect(() => {
     const fetchCriticalAreas = async () => {
       try {
-        const response = await fetch(`http://localhost:4000/api/critical-areas/${selectedSEId}`);
+        const response = await fetch(
+          `http://localhost:4000/api/critical-areas/${selectedSEId}`
+        );
         const data = await response.json();
         setCriticalAreas(data);
       } catch (error) {
@@ -321,6 +324,42 @@ const SEAnalytics = () => {
     return <Box>No Social Enterprise found</Box>;
   }
 
+  // Mock inventory data
+  const mockInventoryData = [
+    { se_id: "SE01", item_name: "T-shirt", qty: 10, price: 100 },
+    { se_id: "SE02", item_name: "Notebook", qty: 5, price: 200 },
+    { se_id: "SE01", item_name: "Cap", qty: 2, price: 150 },
+    { se_id: "SE03", item_name: "Coffee", qty: 20, price: 50 },
+    { se_id: "SE02", item_name: "Pen", qty: 10, price: 20 },
+  ];
+
+  // Compute totals
+  const inventoryBySE = {};
+
+  mockInventoryData.forEach(({ se_id, qty, price }) => {
+    const amount = qty * price;
+    if (!inventoryBySE[se_id]) {
+      inventoryBySE[se_id] = { totalValue: 0 };
+    }
+    inventoryBySE[se_id].totalValue += amount;
+  });
+
+  // Format data for charts
+  const inventoryValueData = Object.entries(inventoryBySE).map(
+    ([se_id, data]) => ({
+      name: se_id,
+      value: data.totalValue,
+    })
+  );
+
+  const inventoryTurnoverData = inventoryValueData.map(({ name, value }) => {
+    const cogs = value * 0.7; // Assume COGS = 70% of value
+    const avgInventory = value;
+    const turnover =
+      avgInventory === 0 ? 0 : parseFloat((cogs / avgInventory).toFixed(2));
+    return { name, turnover };
+  });
+
   return (
     <Box m="20px">
       {/* Header */}
@@ -492,11 +531,7 @@ const SEAnalytics = () => {
           />
         </Box>
         {/* AREAS OF FOCUS TABLE */}
-        <Box
-          flex="1"
-          backgroundColor={colors.primary[400]}
-          overflow="auto"
-        >
+        <Box flex="1" backgroundColor={colors.primary[400]} overflow="auto">
           <Box
             display="flex"
             justifyContent="space-between"
@@ -504,7 +539,11 @@ const SEAnalytics = () => {
             borderBottom={`4px solid ${colors.primary[500]}`}
             p="15px"
           >
-            <Typography color={colors.greenAccent[500]} variant="h3" fontWeight="600">
+            <Typography
+              color={colors.greenAccent[500]}
+              variant="h3"
+              fontWeight="600"
+            >
               Critical Areas of Focus
             </Typography>
           </Box>
@@ -518,9 +557,7 @@ const SEAnalytics = () => {
               p="15px"
             >
               {/* Icon */}
-              <Box sx={{ pr: 2, fontSize: "24px" }}>
-                📌
-              </Box>
+              <Box sx={{ pr: 2, fontSize: "24px" }}>📌</Box>
 
               {/* Area Name */}
               <Typography
@@ -537,7 +574,6 @@ const SEAnalytics = () => {
             </Box>
           ))}
         </Box>
-
       </Box>
       {/* Evaluation Details Dialog - Read-Only */}
       <Dialog
@@ -1003,6 +1039,33 @@ const SEAnalytics = () => {
             <Typography variant="h3" color={colors.grey[100]}>
               0.32
             </Typography>
+          </Box>
+        </Box>
+        {/* Total Inventory Value */}
+        <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
+          <Typography
+            variant="h3"
+            fontWeight="bold"
+            color={colors.greenAccent[500]}
+          >
+            Total Inventory Value
+          </Typography>
+          <Box height="400px">
+            <InventoryValuePie data={inventoryValueData} />
+          </Box>
+        </Box>
+
+        {/* Inventory Turnover Ratio */}
+        <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
+          <Typography
+            variant="h3"
+            fontWeight="bold"
+            color={colors.greenAccent[500]}
+          >
+            Inventory Turnover Ratio
+          </Typography>
+          <Box height="400px">
+            <InventoryTurnoverBar data={inventoryTurnoverData} />
           </Box>
         </Box>
       </Box>

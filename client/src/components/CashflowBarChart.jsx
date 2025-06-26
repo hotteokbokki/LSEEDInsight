@@ -13,19 +13,31 @@ const CustomTooltip = ({ value, indexValue, id, data }) => {
   const flowType = isInflow ? "inflow" : "outflow";
 
   // Get the current SE and the other SE based on flow type
-  const allKeys = Object.keys(entry).filter(k => k.includes(flowType));
-  const otherId = allKeys.find(k => k !== id); // the other SE with same flow type
+  const allKeys = Object.keys(entry).filter((k) => k.includes(flowType));
+  const otherId = allKeys.find((k) => k !== id); // the other SE with same flow type
 
   const otherValue = entry?.[otherId] ?? 0;
   const otherLabel = abbrMap[otherId] || otherId;
 
-  let comparisonText;
-  if (value > otherValue) {
-    comparisonText = `${currentLabel} outperforms ${otherLabel}`;
-  } else if (value < otherValue) {
-    comparisonText = `${otherLabel} outperforms ${currentLabel}`;
-  } else {
-    comparisonText = `${currentLabel} and ${otherLabel} are equal`;
+  let comparisonText = "";
+
+  if (otherId) {
+    const currentValFormatted = value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    const otherValFormatted = otherValue.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    if (value > otherValue) {
+      comparisonText = `${currentLabel} (${currentValFormatted}) is higher than ${otherLabel} (${otherValFormatted})`;
+    } else if (value < otherValue) {
+      comparisonText = `${otherLabel} (${otherValFormatted}) is higher than ${currentLabel} (${currentValFormatted})`;
+    } else {
+      comparisonText = `${currentLabel} and ${otherLabel} are equal at ₱${currentValFormatted}`;
+    }
   }
 
   return (
@@ -38,16 +50,19 @@ const CustomTooltip = ({ value, indexValue, id, data }) => {
         color: "black",
       }}
     >
-      <strong>{new Date(indexValue).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-      })}</strong>
+      <strong>
+        {new Date(indexValue).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}
+      </strong>
       <br />
       <span>
-        {currentLabel}: {value.toLocaleString("en-US", {
+        {currentLabel}:{" "}
+        {value.toLocaleString("en-US", {
           minimumFractionDigits: 2,
-          maximumFractionDigits: 2
+          maximumFractionDigits: 2,
         })}
       </span>
       <br />
@@ -104,39 +119,39 @@ const CashFlowBarChart = ({ userRole }) => {
   }, [selectedSEs]);
 
   const fetchComparisonData = async (se1, se2) => {
-  setLoading(true);
-  try {
-    const response = await axios.get("http://localhost:4000/api/cashflow");
+    setLoading(true);
+    try {
+      const response = await axios.get("http://localhost:4000/api/cashflow");
 
-    // Filter cashflow data for the selected SEs
-    const filtered = response.data.filter(
-      (entry) => entry.se_id === se1 || entry.se_id === se2
-    );
+      // Filter cashflow data for the selected SEs
+      const filtered = response.data.filter(
+        (entry) => entry.se_id === se1 || entry.se_id === se2
+      );
 
-    const groupByDate = {};
-    const abbrMap = {};
+      const groupByDate = {};
+      const abbrMap = {};
 
-    filtered.forEach(({ date, inflow, outflow, se_abbr, se_id }) => {
-      if (!groupByDate[date]) {
-        groupByDate[date] = { category: date }; // category is used for indexBy
-      }
-      groupByDate[date][`${se_id}_inflow`] = inflow;
-      groupByDate[date][`${se_id}_outflow`] = outflow;
-      abbrMap[`${se_id}_inflow`] = `${se_abbr} Inflow`;
-      abbrMap[`${se_id}_outflow`] = `${se_abbr} Outflow`;
-    });
+      filtered.forEach(({ date, inflow, outflow, se_abbr, se_id }) => {
+        if (!groupByDate[date]) {
+          groupByDate[date] = { category: date }; // category is used for indexBy
+        }
+        groupByDate[date][`${se_id}_inflow`] = inflow;
+        groupByDate[date][`${se_id}_outflow`] = outflow;
+        abbrMap[`${se_id}_inflow`] = `${se_abbr} Inflow`;
+        abbrMap[`${se_id}_outflow`] = `${se_abbr} Outflow`;
+      });
 
-    const formattedData = Object.values(groupByDate).map((row) => ({
-      ...row,
-      abbrMap,
-    }));
+      const formattedData = Object.values(groupByDate).map((row) => ({
+        ...row,
+        abbrMap,
+      }));
 
-    setChartData(formattedData);
-  } catch (error) {
-    console.error("Error fetching cashflow data:", error);
-  }
-  setLoading(false);
-};
+      setChartData(formattedData);
+    } catch (error) {
+      console.error("Error fetching cashflow data:", error);
+    }
+    setLoading(false);
+  };
 
   const handleSelectSE = (index, seId) => {
     const se = seList.find((s) => s.se_id === seId);
@@ -215,23 +230,26 @@ const CashFlowBarChart = ({ userRole }) => {
             <div style={{ height: 400 }}>
               <ResponsiveBar
                 data={chartData}
-                keys={selectedSEs.length === 2 ? [
+                keys={
+                  selectedSEs.length === 2
+                    ? [
                         `${selectedSEs[0].id}_inflow`,
                         `${selectedSEs[1].id}_inflow`,
                         `${selectedSEs[0].id}_outflow`,
                         `${selectedSEs[1].id}_outflow`,
                       ]
-                    : []}
+                    : []
+                }
                 indexBy="category"
                 margin={{ top: 40, right: 130, bottom: 70, left: 60 }}
-                padding={0.3}
+                padding={0.1}
                 groupMode="grouped"
                 colors={({ id }) => {
                   const se1Id = selectedSEs[0]?.id;
                   const se2Id = selectedSEs[1]?.id;
 
                   if (id.includes(se1Id)) return colors.greenAccent[500]; // SE 1 = green
-                  if (id.includes(se2Id)) return colors.blueAccent[500];  // SE 2 = blue
+                  if (id.includes(se2Id)) return colors.blueAccent[500]; // SE 2 = blue
                   return "#ccc"; // fallback
                 }}
                 axisBottom={{
@@ -239,12 +257,11 @@ const CashFlowBarChart = ({ userRole }) => {
                   tickPadding: 0,
                   tickRotation: 0,
                   format: () => "",
-                  legend: "Hover for Category",
-                  legendPosition: "middle",
-                  legendOffset: 40,
+
                   color: colors.grey[100],
                 }}
                 axisLeft={{
+                  tickPadding: -20,
                   legend: "Cash Flow (₱)",
                   legendPosition: "middle",
                   legendOffset: -50,
@@ -253,7 +270,12 @@ const CashFlowBarChart = ({ userRole }) => {
                 enableLabel={true} // Enables labels
                 labelSkipHeight={12} // Hides labels on very small bars
                 labelTextColor={colors.grey[100]} // Ensures text is visible inside the bars
-                label={({ value }) => value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2,})}// Shows numbers inside bars
+                label={({ value }) =>
+                  value.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })
+                } // Shows numbers inside bars
                 minValue={0}
                 theme={{
                   axis: {
@@ -283,42 +305,37 @@ const CashFlowBarChart = ({ userRole }) => {
                   />
                 )}
                 legends={[
-  {
-    data: selectedSEs.flatMap((se, i) => [
-      {
-        id: `${se.id}_inflow`,
-        label: `${se.name} Inflow`,
-        color: i === 0 ? colors.greenAccent[500] : colors.blueAccent[500],
-      },
-      {
-        id: `${se.id}_outflow`,
-        label: `${se.name} Outflow`,
-        color: i === 0 ? colors.greenAccent[500] : colors.blueAccent[500],
-      },
-    ]),
-    anchor: "right",
-    direction: "column",
-    justify: false,
-    translateX: 0,
-    translateY: 190,
-    itemsSpacing: 2,
-    itemWidth: 120,
-    itemHeight: 20,
-    itemDirection: "left-to-right",
-    itemOpacity: 1,
-    symbolSize: 20,
-    symbolShape: "circle",
-    effects: [
-      {
-        on: "hover",
-        style: {
-          itemOpacity: 0.85,
-        },
-      },
-    ],
-  },
-]}
-
+                  {
+                    data: selectedSEs.map((se, i) => ({
+                      id: se.id,
+                      label: se.name,
+                      color:
+                        i === 0
+                          ? colors.greenAccent[500]
+                          : colors.blueAccent[500],
+                    })),
+                    anchor: "right",
+                    direction: "column",
+                    justify: false,
+                    translateX: 0,
+                    translateY: 190,
+                    itemsSpacing: 2,
+                    itemWidth: 100,
+                    itemHeight: 20,
+                    itemDirection: "left-to-right",
+                    itemOpacity: 1,
+                    symbolSize: 20,
+                    symbolShape: "circle",
+                    effects: [
+                      {
+                        on: "hover",
+                        style: {
+                          itemOpacity: 0.85,
+                        },
+                      },
+                    ],
+                  },
+                ]}
               />
             </div>
           )}
