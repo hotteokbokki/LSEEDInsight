@@ -1147,7 +1147,14 @@ const Mentors = ( {userRole} ) => {
 
                 {suggestedMentors.length > 0 ? (
                   suggestedMentors.map((mentor) => (
-                    <MenuItem key={mentor.mentor_id} value={mentor.mentor_id}>
+                    <MenuItem
+                      key={mentor.mentor_id}
+                      value={mentor.mentor_id}
+                      disabled={!mentor.is_available_for_assignment}
+                      sx={{
+                        opacity: mentor.is_available_for_assignment ? 1 : 0.5, // visually gray out
+                      }}
+                    >
                       <Box display="flex" flexDirection="column" alignItems="flex-start">
                         <Box display="flex" alignItems="center">
                           <Typography>
@@ -1162,10 +1169,16 @@ const Mentors = ( {userRole} ) => {
                         </Box>
                         <Typography variant="body2" color="text.secondary">
                           Matched on {mentor.match_count} area
-                          {mentor.match_count !== 1 ? "s" : ""}:
-                          {" "}
+                          {mentor.match_count !== 1 ? "s" : ""}:{" "}
                           {mentor.matched_areas?.join(", ") || "N/A"}
                         </Typography>
+
+                        {/* Show availability status */}
+                        {!mentor.is_available_for_assignment && (
+                          <Typography variant="caption" color="error">
+                            Unavailable for assignment
+                          </Typography>
+                        )}
                       </Box>
                     </MenuItem>
                   ))
@@ -1185,8 +1198,31 @@ const Mentors = ( {userRole} ) => {
                 </MenuItem>
 
                 {otherMentors.map((mentor) => (
-                  <MenuItem key={mentor.mentor_id} value={mentor.mentor_id}>
-                    {mentor.mentor_firstname} {mentor.mentor_lastname}
+                  <MenuItem
+                    key={mentor.mentor_id}
+                    value={mentor.mentor_id}
+                    disabled={!mentor.is_available_for_assignment} // Disable if not available
+                    sx={{
+                      opacity: mentor.is_available_for_assignment ? 1 : 0.5,
+                      pointerEvents: mentor.is_available_for_assignment ? "auto" : "none",
+                    }}
+                  >
+                    <Box display="flex" flexDirection="column" alignItems="flex-start">
+                      <Typography>
+                        {mentor.mentor_firstname} {mentor.mentor_lastname}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Matched on {mentor.match_count} area
+                        {mentor.match_count !== 1 ? "s" : ""}:
+                        {" "}
+                        {mentor.matched_areas?.join(", ") || "N/A"}
+                      </Typography>
+                      {!mentor.is_available_for_assignment && (
+                        <Typography variant="caption" color="error">
+                          Unavailable for assignment
+                        </Typography>
+                      )}
+                    </Box>
                   </MenuItem>
                 ))}
               </Select>

@@ -460,6 +460,7 @@ exports.getSuggestedMentors = async (se_id) => {
           m.mentor_firstname,
           m.mentor_lastname,
           m.critical_areas,
+          m.is_available_for_assignment,  -- Include toggle column here
           ARRAY(
             SELECT UNNEST(m.critical_areas)
             INTERSECT

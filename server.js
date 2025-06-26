@@ -707,6 +707,16 @@ app.post("/accept-mentor-application", async (req, res) => {
 
     const app = result.rows[0];
 
+    // 2. Check if user email already exists
+    const existingUser = await pgDatabase.query(
+      `SELECT * FROM users WHERE email = $1`,
+      [app.email]
+    );
+
+    if (existingUser.rowCount > 0) {
+      return res.status(409).json({ message: "A user with this email already exists." });
+    }
+
     // 3. Insert into users
     const userResult = await pgDatabase.query(
       `INSERT INTO users (first_name, last_name, email, password, contactnum, roles, isactive)
@@ -725,7 +735,7 @@ app.post("/accept-mentor-application", async (req, res) => {
 
     // 5. Update application status
     await pgDatabase.query(
-      `UPDATE mentor_form_application SET status = 'Accepted' WHERE id = $1`,
+      `UPDATE mentor_form_application SET status = 'Approved' WHERE id = $1`,
       [applicationId]
     );
 
@@ -771,6 +781,56 @@ app.get("/api/dashboard-stats", async (req, res) => {
   } catch (error) {
     console.error("❌ Error fetching dashboard stats:", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+// Toggle mentor availability
+app.post("/toggle-mentor-availability", async (req, res) => {
+  const { isAvailable } = req.body;
+  const mentorID = req.session.user?.id;
+
+  if (!mentorID) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    await pgDatabase.query(
+      `UPDATE mentors SET is_available_for_assignment = $1 WHERE mentor_id = $2`,
+      [isAvailable, mentorID]
+    );
+
+    res.status(200).json({ message: `Availability updated to ${isAvailable}.` });
+  } catch (err) {
+    console.error("❌ Error toggling availability:", err);
+    res.status(500).json({ message: "Error updating availability." });
+  }
+});
+
+// Returns mentor availability for mentorship
+app.get("/get-mentor-availability", async (req, res) => {
+  const user = req.session.user;
+
+  if (!user || user.role !== "Mentor") {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const mentorId = user.id;
+
+  try {
+    const result = await pgDatabase.query(
+      `SELECT is_available_for_assignment FROM mentors WHERE mentor_id = $1`,
+      [mentorId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Mentor not found" });
+    }
+
+    const isAvailable = result.rows[0].is_available_for_assignment;
+    res.json({ isAvailable });
+  } catch (err) {
+    console.error("Error fetching mentor availability:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
@@ -2969,8 +3029,6 @@ app.post("/suggested-mentors", async (req, res) => {
     }
 
     const suggestedMentors = await getSuggestedMentors(se_id)
-
-    console.log(suggestedMentors)
 
     res.status(200).json(suggestedMentors);
   } catch (error) {

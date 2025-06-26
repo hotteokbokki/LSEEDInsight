@@ -16,6 +16,7 @@ import {
   TextField,
   MenuItem,
 } from "@mui/material";
+import Switch from "@mui/material/Switch";
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
@@ -52,6 +53,8 @@ const Mentorships = () => {
   const [openAddProgram, setOpenAddProgram] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
+  const [isAvailable, setIsAvailable] = useState(false);
+  const [isLoadingToggle, setIsLoadingToggle] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showEditButtons, setShowEditButtons] = useState(false);
   const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
@@ -80,6 +83,38 @@ const Mentorships = () => {
   const toggleEditing = () => {
     setIsEditing((prev) => !prev); // Toggle editing mode
     setShowEditButtons((prev) => !prev); // Show/hide the "Cancel" and "Save Changes" buttons
+  };
+
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      try {
+        const response = await axios.get("http://localhost:4000/get-mentor-availability", {
+          withCredentials: true, // If session/cookie-based auth
+        });
+        setIsAvailable(response.data.isAvailable);
+      } catch (err) {
+        console.error("Failed to fetch availability", err);
+      }
+    };
+
+    fetchAvailability();
+  }, []);
+
+  const handleToggle = async () => {
+    try {
+      const newValue = !isAvailable;
+      setIsLoadingToggle(true);
+      await axios.post(
+        "http://localhost:4000/toggle-mentor-availability",
+        { isAvailable: newValue },
+        { withCredentials: true } // ✅ ensure cookie is sent
+      );
+      setIsAvailable(newValue);
+    } catch (err) {
+      console.error("Failed to update availability", err);
+    } finally {
+      setIsLoadingToggle(false);
+    }
   };
 
   // Fetch social enterprises from the backend
@@ -246,12 +281,6 @@ const Mentorships = () => {
       setSelectedRow(params.row);
       setOpenEditDialog(true);
     }
-  };
-
-  const handleCloseEditDialog = () => setOpenEditDialog(false);
-
-  const handleEditChange = (e) => {
-    setSelectedRow({ ...selectedRow, [e.target.name]: e.target.value });
   };
 
   const columns = [
@@ -987,15 +1016,38 @@ const Mentorships = () => {
           </Alert>
         </Snackbar>
       </Box>
-      <Box width="100%" backgroundColor={colors.primary[400]} padding="20px">
-        <Typography
-          variant="h3"
-          fontWeight="bold"
-          color={colors.greenAccent[500]}
-          marginBottom="15px" // Ensures a small gap between header & DataGrid
-        >
-          My Mentorships
-        </Typography>
+      <Box
+        width="100%"
+        backgroundColor={colors.primary[400]}
+        padding="20px"
+        display="flex"
+        flexDirection="column"
+      >
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Typography
+            variant="h3"
+            fontWeight="bold"
+            color={colors.greenAccent[500]}
+            marginBottom="15px"
+          >
+            My Mentorships
+          </Typography>
+
+          {/* Availability Toggle */}
+          <Box display="flex" alignItems="center">
+            <Typography color={colors.grey[100]} marginRight="8px">
+              Available for Assignments
+            </Typography>
+            <Switch
+              checked={isAvailable}
+              onChange={handleToggle}
+              color="success"
+              disabled={isLoadingToggle}
+            />
+          </Box>
+        </Box>
+
+        {/* DataGrid container */}
         <Box
           height="400px"
           minHeight="400px"
@@ -1022,9 +1074,9 @@ const Mentorships = () => {
             <DataGrid
               rows={socialEnterprises}
               columns={columns}
-              getRowId={(row) => row.id} // Use `id` as the unique identifier
+              getRowId={(row) => row.id}
               onRowClick={handleRowClick}
-              editMode="row" // Enable row editing
+              editMode="row"
             />
           )}
         </Box>
