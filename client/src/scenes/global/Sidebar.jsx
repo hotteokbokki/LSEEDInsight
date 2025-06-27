@@ -61,6 +61,9 @@ const Sidebar = () => {
   const [googleUser, setGoogleUser] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
 
+  const hasMentorRole = user?.roles?.includes("Mentor");
+  const isLSEEDUser = user?.roles?.some(role => role === "LSEED-Coordinator" || role === "Administrator");
+
   // Determine the default selected item based on the current route
   const getSelectedTitle = () => {
     const routeMap = {
@@ -193,7 +196,10 @@ const Sidebar = () => {
                 {user.firstname || "User"} {user.lastname || "User"}
               </Typography>
               <Typography variant="body2" color={colors.greenAccent[500]}>
-                {user.role || "LSEED User"}
+                {/* REVISED: Display all roles from the array */}
+                {user.role && user.role.length > 0
+                  ? user.role.join(", ") // Joins the array into a string
+                  : "No Role Assigned"}
               </Typography>
             </Box>
           )}
@@ -238,8 +244,9 @@ const Sidebar = () => {
                 </MenuItem>
               </>
             )}
+            
 
-            {user?.role?.startsWith("LSEED") && (
+            {isLSEEDUser && (
               <>
                 <Item
                   title="Dashboard"

@@ -501,10 +501,31 @@ app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    const query = `
+      SELECT
+          u.user_id,
+          u.first_name,
+          u.last_name,
+          u.email,
+          u.password, -- We need the password hash for comparison
+          u.isactive,
+          ARRAY_AGG(uhr.role_name) AS roles
+      FROM
+          users u
+      LEFT JOIN
+          user_has_roles uhr ON u.user_id = uhr.user_id
+      WHERE
+          u.email = $1
+      GROUP BY
+          u.user_id, u.first_name, u.last_name, u.email, u.password, u.isactive;
+    `;
+
+    // Place the full query string here
     const result = await pgDatabase.query(
-      "SELECT * FROM users WHERE email = $1",
+      query,
       [email]
     );
+
     const user = result.rows[0];
 
     if (!user) {
@@ -523,28 +544,31 @@ app.post("/login", async (req, res) => {
       });
     }
 
-    // ✅ Store user info in session (session is created automatically)
+    // Clean up the roles array from [null] to []
+    const cleanedRoles = user.roles && user.roles.length > 0 && user.roles[0] !== null
+      ? user.roles
+      : [];
+
+    // Store user info in session
     req.session.user = {
       id: user.user_id,
       email: user.email,
-      role: user.roles,
+      roles: cleanedRoles,
       firstName: user.first_name,
       lastName: user.last_name,
     };
     req.session.isAuth = true;
 
-    console.log("[authRoutes] Session ID:", req.session); // Use this for logs
-
-    // ✅ Use default session cookie — no need for manual `res.cookie()`
+    console.log("[authRoutes] Session ID:", req.session);
 
     // Respond appropriately
-    if (user.roles === "Administrator") {
+    if (cleanedRoles.includes("Administrator")) { // Use .includes() for array check
       return res.json({
         message: "Admin login successful",
         user: {
           id: user.user_id,
           email: user.email,
-          role: user.roles,
+          roles: cleanedRoles,
         },
         session_id: req.sessionID,
         redirect: "/admin",
@@ -555,9 +579,9 @@ app.post("/login", async (req, res) => {
         user: {
           id: user.user_id,
           email: user.email,
-          role: user.roles,
-          firstname: user.first_name,
-          lastname: user.last_name,
+          roles: cleanedRoles,
+          firstName: user.first_name,
+          lastName: user.last_name,
         },
         session_id: req.sessionID,
         redirect: "/dashboard",
@@ -1610,12 +1634,17 @@ app.get("/getEvaluationDetailsForMentorEvaluation", async (req, res) => {
 
 app.get("/api/top-se-performance", async (req, res) => {
   try {
-    // Capture the period from query params
-    const period = req.query.period; 
-    const program = req.query.program || null; // Optional program param
-    const mentor_id = req.session.user?.role === 'mentor' ? req.session.user.id : null;    
-    const se_id = req.query.se_id || null;
+    const period = req.query.period;
+    const program = req.query.program || null; 
 
+    let mentor_id = null;
+    // Ensure req.session.user.roles exists and is an array before checking
+    if (req.session.user && Array.isArray(req.session.user.roles) && req.session.user.roles.includes('Mentor')) {
+      mentor_id = req.session.user.id;
+    }
+
+    const se_id = req.query.se_id || null;
+    // Check mentor_id before assigning to result
     // Fetch the top SE performance based on the period
     const result = await getTopSEPerformance(period, program, mentor_id, se_id);
 
@@ -3066,23 +3095,91 @@ app.post("/updateMentorshipZoomLink", async (req, res) => {
 });
 
 async function updateUser(id, updatedUser) {
-  const { first_name, last_name, roles, isactive, email } = updatedUser; // Modify based on your schema
+  // Destructure updatedUser. 'roles' is now expected to be an array of role_names.
+  const { first_name, last_name, roles, isactive, email } = updatedUser;
 
-  const query = `
-    UPDATE users
-    SET first_name = $1, last_name = $2, roles = $3, isactive = $4, email = $5
-    WHERE user_id = $6
-    RETURNING *;
-  `;
-
-  const values = [first_name, last_name, roles, isactive, email, id];
-
+  // Start a transaction to ensure atomicity of user and role updates
+  const client = await pgDatabase.connect(); // Get a client from the pool
   try {
-    const result = await pgDatabase.query(query, values);
-    return result;
+    await client.query('BEGIN'); // Start the transaction
+
+    // 1. Update basic user details in the 'users' table
+    // IMPORTANT: Remove 'roles = $3' from this UPDATE query, as roles are no longer
+    // stored directly in the users table.
+    const userUpdateQuery = `
+            UPDATE users
+            SET
+                first_name = $1,
+                last_name = $2,
+                isactive = $3,
+                email = $4
+            WHERE user_id = $5
+            RETURNING user_id, first_name, last_name, isactive, email;
+        `;
+    const userUpdateValues = [first_name, last_name, isactive, email, id];
+    const userResult = await client.query(userUpdateQuery, userUpdateValues);
+
+    // If the user_id somehow didn't match (e.g., user not found), throw an error
+    if (userResult.rows.length === 0) {
+      throw new Error(`User with ID ${id} not found for update.`);
+    }
+
+    // 2. Handle roles in the 'user_has_roles' table
+    // A. Delete all existing role assignments for this user
+    await client.query('DELETE FROM user_has_roles WHERE user_id = $1;', [id]);
+
+    // B. Insert new roles if 'roles' array is provided and not empty
+    if (roles && Array.isArray(roles) && roles.length > 0) {
+      // Prepare values for bulk insert using UNNEST
+      // We need an array of user_ids and an array of role_names
+      const userIdsForRoles = [];
+      const roleNamesForRoles = [];
+      roles.forEach(roleName => {
+        userIdsForRoles.push(id);
+        roleNamesForRoles.push(roleName);
+      });
+
+      const roleInsertQuery = `
+                INSERT INTO user_has_roles (user_id, role_name)
+                SELECT unnest($1::uuid[]), unnest($2::varchar[])
+                ON CONFLICT (user_id, role_name) DO NOTHING; -- Prevents errors if a role somehow already exists (though DELETE should prevent this)
+            `;
+      await client.query(roleInsertQuery, [userIdsForRoles, roleNamesForRoles]);
+    }
+
+    await client.query('COMMIT'); // Commit the transaction if all operations succeed
+
+    // Fetch the updated roles to return a complete user object
+    // This query is similar to what you'd use for fetching roles on login
+    const updatedRolesResult = await client.query(
+      `
+            SELECT ARRAY_AGG(uhr.role_name) AS roles
+            FROM user_has_roles uhr
+            WHERE uhr.user_id = $1
+            GROUP BY uhr.user_id;
+            `,
+      [id]
+    );
+
+    // Handle the case where ARRAY_AGG returns [null] for users with no roles
+    const fetchedRoles = updatedRolesResult.rows[0]?.roles;
+    const finalRoles = (fetchedRoles && fetchedRoles.length > 0 && fetchedRoles[0] !== null)
+      ? fetchedRoles
+      : [];
+
+    // Return the combined updated user data
+    // This object should mirror what you store in the session or send to frontend
+    return {
+      ...userResult.rows[0], // Basic updated user info (id, first_name, last_name, isactive, email)
+      roles: finalRoles // The freshly fetched and formatted array of roles
+    };
+
   } catch (error) {
-    console.error("Database update error:", error);
-    throw error;
+    await client.query('ROLLBACK'); // Rollback the transaction on any error
+    console.error("Database update error (updateUser function):", error);
+    throw error; // Re-throw the error to be caught by the calling API route
+  } finally {
+    client.release(); // Release the client back to the pool
   }
 }
 
@@ -3094,53 +3191,78 @@ app.get("/api/notifications", async (req, res) => {
           return res.status(400).json({ message: "Receiver ID is required" });
       }
 
-      // ✅ Fetch the user role to determine which notifications to show
-      const userQuery = `SELECT roles FROM users WHERE user_id = $1`;
-      const userResult = await pgDatabase.query(userQuery, [receiver_id]);
-      if (userResult.rows.length === 0) {
-          return res.status(404).json({ message: "User not found" });
-      }
+    // ✅ Fetch the user's roles (as an array) to determine which notifications to show
+    const userRolesQuery = `
+      SELECT
+          ARRAY_AGG(uhr.role_name) AS roles
+      FROM
+          users u
+      LEFT JOIN
+          user_has_roles uhr ON u.user_id = uhr.user_id
+      WHERE
+          u.user_id = $1
+      GROUP BY
+          u.user_id; -- Group by user_id to get all roles for one user
+    `;
+    const userResult = await pgDatabase.query(userRolesQuery, [receiver_id]);
 
-      const userRole = userResult.rows[0].roles;
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-      // ✅ Modify the query based on user role
-      let query;
-      if (userRole?.startsWith("LSEED")) {
-          // LSEED users only get scheduling notifications
-          query = `
-              SELECT n.notification_id, n.title, n.created_at, 
-                     u.first_name || ' ' || u.last_name AS sender_name,
-                     n.se_id, se.team_name AS se_name, ms.status
-              FROM notification n
-              JOIN users u ON n.sender_id = u.user_id
-              JOIN socialenterprises se ON n.se_id = se.se_id
-              JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
-              WHERE n.receiver_id = $1 AND n.title = 'Scheduling Approval Needed'
-              ORDER BY n.created_at DESC
-          `;
-      } else {
-          // Mentors only get status change notifications
-          query = `
-              SELECT n.notification_id, n.title, n.created_at, 
-                     n.se_id, se.team_name AS se_name, ms.status
-              FROM notification n
-              JOIN socialenterprises se ON n.se_id = se.se_id
-              JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
-              WHERE n.receiver_id = $1 AND n.title != 'Scheduling Approval Needed'
-              ORDER BY n.created_at DESC
-          `;
-      }
+    // Extract roles array, handling [null] if no roles are assigned
+    const userRoles = userResult.rows[0].roles && userResult.rows[0].roles[0] !== null
+      ? userResult.rows[0].roles
+      : [];
 
-      const result = await pgDatabase.query(query, [receiver_id]);
+    // Determine the user's effective role for notification purposes
+    const isLSEEDUser = userRoles.some(role => role === "LSEED-Coordinator" || role === "Administrator");
+    const isMentorUser = userRoles.includes("Mentor");
 
-      if (result.rows.length === 0) {
-          return res.status(200).json([]); // Return empty array if no notifications
-      }
+    let query;
+    let queryParams = [receiver_id]; // Base parameters for the query
 
-      res.json(result.rows);
+    // ✅ Modify the query based on user role(s)
+    if (isLSEEDUser) {
+      // LSEED users (including Administrators) get scheduling notifications
+      query = `
+          SELECT n.notification_id, n.title, n.created_at,
+                  u.first_name || ' ' || u.last_name AS sender_name,
+                  n.se_id, se.team_name AS se_name, ms.status
+          FROM notification n
+          JOIN users u ON n.sender_id = u.user_id
+          JOIN socialenterprises se ON n.se_id = se.se_id
+          JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
+          WHERE n.receiver_id = $1 AND n.title = 'Scheduling Approval Needed'
+          ORDER BY n.created_at DESC;
+      `;
+    } else if (isMentorUser) { // If not LSEED, check if they are a Mentor
+      // Mentors only get status change notifications
+      query = `
+          SELECT n.notification_id, n.title, n.created_at,
+                  n.se_id, se.team_name AS se_name, ms.status
+          FROM notification n
+          JOIN socialenterprises se ON n.se_id = se.se_id
+          JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
+          WHERE n.receiver_id = $1 AND n.title != 'Scheduling Approval Needed'
+          ORDER BY n.created_at DESC;
+      `;
+    } else {
+        // Handle cases for other roles or users with no relevant roles
+        // Perhaps return an empty array or a message indicating no specific notifications
+        return res.status(200).json([]);
+    }
+
+    const result = await pgDatabase.query(query, queryParams); // Use queryParams for the SQL values
+
+    if (result.rows.length === 0) {
+      return res.status(200).json([]); // Return empty array if no notifications
+    }
+
+    res.json(result.rows);
   } catch (error) {
-      console.error("❌ Error fetching notifications:", error);
-      res.status(500).json({ message: "Internal Server Error" });
+    console.error("❌ Error fetching notifications:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 

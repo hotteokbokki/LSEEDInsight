@@ -92,6 +92,8 @@ router.post('/login', async (req, res) => {
     const result = await pgDatabase.query('SELECT * FROM users WHERE email = $1', [email]);
     const user = result.rows[0]; // Assuming email is unique, we take the first result
 
+    console.log("[Login Route] Fetched user from DB:", user);
+
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -101,6 +103,8 @@ router.post('/login', async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+
+    console.log("[Login Route] User object before session storage:", user);
 
     // Check if account is active
     if (!user.isactive) {
@@ -127,7 +131,7 @@ router.post('/login', async (req, res) => {
     req.session.user = {
       id: user.user_id,
       email: user.email,
-      role: user.roles,
+      role: user.cleanedRoles,
       firstName: user.first_name,
       lastName: user.last_name,
       sessionId: sessionId,
@@ -172,14 +176,42 @@ router.get("/session-check", (req, res) => {
   }
 });
 
-
-
 router.get("/users", async (req, res) => {
   try {
-    const result = await pool.query("SELECT id, name, email, role FROM users");
-    res.json(result.rows);
+    const query = `
+      SELECT
+          u.user_id AS id,
+          u.first_name || ' ' || u.last_name AS name,
+          u.email,
+          -- Aggregate roles into an array
+          ARRAY_AGG(uhr.role_name) AS roles
+      FROM
+          users u
+      LEFT JOIN
+          user_has_roles uhr ON u.user_id = uhr.user_id
+      GROUP BY
+          u.user_id, u.first_name, u.last_name, u.email
+      ORDER BY
+          u.first_name, u.last_name;
+    `;
+
+    const result = await pool.query(query);
+
+    // Clean up the roles array from [null] to [] for users with no roles
+    const usersWithCleanRoles = result.rows.map(user => {
+        // If roles is [null], change it to an empty array
+        const cleanedRoles = user.roles && user.roles.length > 0 && user.roles[0] !== null
+                             ? user.roles
+                             : [];
+        return {
+            ...user,
+            roles: cleanedRoles,
+        };
+    });
+
+    res.json(usersWithCleanRoles);
   } catch (err) {
-    console.error(err.message);
+    console.error("Error fetching users:", err.message);
     res.status(500).json({ error: "Server error fetching users" });
   }
 });

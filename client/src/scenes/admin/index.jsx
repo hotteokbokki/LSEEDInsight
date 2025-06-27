@@ -87,26 +87,25 @@ const AdminPage = () => {
     },
     {
       field: "roles",
-      headerName: "Role",
-      flex: 1,
-      editable: isEditing,
-      renderEditCell: (params) => (
-        <Select
-          value={params.value || ""}
-          onChange={(e) =>
-            params.api.setEditCellValue({
-              id: params.id,
-              field: params.field,
-              value: e.target.value,
-            })
-          }
-          fullWidth
-        >
-          <MenuItem value="Guest User">Guest User</MenuItem>
-          <MenuItem value="Mentor">Mentor</MenuItem>
-          <MenuItem value="LSEED">LSEED-Coordinator</MenuItem>
-        </Select>
+      headerName: "Roles",
+      flex: 1.5,
+      // Render roles as a comma-separated string or badges
+      renderCell: (params) => (
+        <Box>
+          {params.value && params.value.length > 0 ? (
+            params.value.join(", ") // Display as "Admin, LSEED-Coordinator"
+            // Or if you want badges:
+            // params.value.map((role, index) => (
+            //   <Chip key={index} label={role} size="small" style={{ margin: '2px' }} />
+            // ))
+          ) : (
+            <Typography variant="body2" color="textSecondary">
+              No Roles
+            </Typography>
+          )}
+        </Box>
       ),
+      editable: false, // You'll likely use a separate dialog for role editing
     },
     {
       field: "isactive",

@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import { tokens } from "../../theme";
 import PersonIcon from "@mui/icons-material/Person";
-
+import { useAuth } from "../../context/authContext"; 
 import SchoolIcon from "@mui/icons-material/School";
 import { mockTransactions } from "../../sampledata/mockData";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
@@ -53,6 +53,7 @@ import axios from "axios";
 const Dashboard = ({ userRole }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const { user } = useAuth();
   const [currentEvents, setCurrentEvents] = useState([]);
   const [lowPerformingSEs, setLowPerformingSEs] = useState([]);
   const [mentorSchedules, setMentorSchedules] = useState([]);
@@ -190,7 +191,7 @@ const Dashboard = ({ userRole }) => {
         setIsLoadingEvaluations(true);
 
         let response;
-        if (userRole === "Mentor") {
+        if (user?.roles?.includes("Mentor")) {
           response = await axios.get("http://localhost:4000/getRecentMentorEvaluations", {
             withCredentials: true,
           });
@@ -214,8 +215,12 @@ const Dashboard = ({ userRole }) => {
       }
     };
 
+    // ✅ Add user to the dependency array to re-run when user data is available
+    if (user) {
+      fetchEvaluations();
+    }
     fetchEvaluations();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const fetchUpcomingSchedule = async () => {
@@ -224,7 +229,7 @@ const Dashboard = ({ userRole }) => {
 
         let response;
         
-        if (userRole === "Mentor") {
+        if (user?.roles?.includes("Mentor")) {
           response = await axios.get("http://localhost:4000/getUpcomingSchedulesForMentor", {
             withCredentials: true,
           });
@@ -245,8 +250,11 @@ const Dashboard = ({ userRole }) => {
       }
     };
 
-    fetchUpcomingSchedule();
-  }, []);
+    // ✅ Add user to the dependency array
+    if (user) {
+      fetchUpcomingSchedule();
+    }
+  }, [user]);
 
   const mentorColumns = [
     { field: "social_enterprise", headerName: "Social Enterprise", flex: 1 },
@@ -395,7 +403,7 @@ const Dashboard = ({ userRole }) => {
       try {
         let response;
         
-        if (userRole === 'LSEED-Coordinator') {
+        if (user?.roles?.some(role => role?.startsWith("LSEED"))) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",
             credentials: "include", // Required to send session cookie
@@ -439,7 +447,7 @@ const Dashboard = ({ userRole }) => {
       try {
         let response;
 
-        if (userRole === 'LSEED-Coordinator') {
+        if (user?.roles?.some(role => role?.startsWith("LSEED"))) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",
             credentials: "include", // Required to send session cookie
@@ -472,8 +480,10 @@ const Dashboard = ({ userRole }) => {
       }
     };
 
-    fetchMentorSchedules();
-  }, []);
+    if (user) {
+      fetchMentorSchedules();
+    }
+  }, [user]);
 
   const handleAction = (id) => {
     navigate(`/se-analytics/${id}`);
@@ -557,7 +567,7 @@ const Dashboard = ({ userRole }) => {
       try {
         let response;
         
-        if (userRole === 'LSEED-Coordinator') {
+        if (user?.roles?.some(role => role?.startsWith("LSEED"))) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",
             credentials: "include", // Required to send session cookie
@@ -591,8 +601,11 @@ const Dashboard = ({ userRole }) => {
         console.error("Error fetching evaluation stats:", error);
       }
     };
-    fetchEvaluationStats();
-  }, []);
+
+    if (user) {
+      fetchEvaluationStats();
+    }
+  }, [user]);
 
   const acknowledgedPercentage =
     evaluations.total > 0
@@ -605,7 +618,7 @@ const Dashboard = ({ userRole }) => {
         setLoading(true); // ✅ Set loading state before fetching
 
         let response;
-        if (userRole === 'LSEED-Coordinator') {
+        if (user?.roles?.some(role => role?.startsWith("LSEED"))) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",
             credentials: "include", // Required to send session cookie
@@ -635,8 +648,10 @@ const Dashboard = ({ userRole }) => {
       }
     };
 
-    fetchDashboardStats();
-  }, []);
+    if (user) {
+      fetchDashboardStats();
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchSocialEnterprises = async () => {
@@ -697,14 +712,15 @@ const Dashboard = ({ userRole }) => {
         <Header
           title="Dashboard"
           subtitle={
-            userRole?.startsWith("LSEED")
+            // ✅ REVISED: Use .some() to check if any role starts with "LSEED"
+            user?.roles?.some(role => role?.startsWith("LSEED") || role === "Administrator")
               ? "Welcome to LSEED Dashboard"
               : "Welcome to Mentor Dashboard"
           }
         />
       </Box>
 
-      {userRole?.startsWith("LSEED")  && (
+      {user?.roles?.some(role => role?.startsWith("LSEED"))  && (
         <>
           <Box
             display="grid"
