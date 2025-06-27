@@ -133,14 +133,21 @@ const EvaluatePage = ({ userRole }) => {
       try {
         setIsLoadingEvaluations(true);
 
+        // ⭐️ CORRECTED LOGIC: Check if userRole (an array) includes the string
         let response;
-        if (userRole === "Mentor") {
+        if (userRole?.includes("Mentor")) {
           response = await axios.get(
-            "http://localhost:4000/getMentorEvaluations", {
+            "http://localhost:4000/getMentorEvaluations",
+            {
               withCredentials: true, // Equivalent to credentials: "include"
-          });
-        } else if (userRole?.startsWith("LSEED")) {
+            }
+          );
+        } else if (userRole?.includes("LSEED-Coordinator") || userRole?.includes("Administrator")) {
           response = await axios.get("http://localhost:4000/getAllEvaluations");
+        } else {
+            // Handle case where userRole is not recognized
+            console.log("User role is not recognized:", userRole);
+            return;
         }
 
         // Ensure evaluation_id is included and set as `id`
@@ -163,7 +170,7 @@ const EvaluatePage = ({ userRole }) => {
     };
 
     fetchEvaluations();
-  }, []);
+  }, [userRole]); // ⭐️ Add userRole to the dependency array
 
   const columns = [
     { field: "social_enterprise", headerName: "Social Enterprise", flex: 1 },
@@ -432,15 +439,18 @@ const EvaluatePage = ({ userRole }) => {
   };
 
   useEffect(() => {
-    if (userRole === "Mentor") {
+    // ⭐️ CORRECTED: Check if userRole (an array) includes the string "Mentor"
+    if (userRole?.includes("Mentor")) {
       const fetchSocialEnterprises = async () => {
         try {
           setIsLoadingSocialEnterprises(true); // Start loading
 
           const mentorshipsResponse = await axios.get(
-            "http://localhost:4000/getAvailableEvaluations", {
+            "http://localhost:4000/getAvailableEvaluations",
+            {
               withCredentials: true, // Equivalent to credentials: "include"
-            });
+            }
+          );
           console.log("📥 Mentorship Response:", mentorshipsResponse.data);
 
           const updatedSocialEnterprises = mentorshipsResponse.data.map(
@@ -467,7 +477,7 @@ const EvaluatePage = ({ userRole }) => {
       };
       fetchSocialEnterprises();
     }
-  }, []);
+  }, [userRole]); // ⭐️ Add userRole to dependency array
 
   // Scroll to the top of the dialog when it opens
   useEffect(() => {
@@ -604,58 +614,22 @@ const EvaluatePage = ({ userRole }) => {
       window.location.reload();
     }, 500); // Adjust delay if needed
   };
-
-  {
-    isLoadingSocialEnterprises ? (
-      <Box sx={{ padding: "16px" }}>
-        {/* Placeholder for Buttons */}
-        <Box sx={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
-          <Skeleton variant="rectangular" width={120} height={40} />
-          <Skeleton variant="rectangular" width={120} height={40} />
-        </Box>
-
-        {/* Placeholder for DataGrid Rows */}
-        {[1, 2, 3, 4, 5].map((rowIndex) => (
-          <Box
-            key={rowIndex}
-            sx={{
-              display: "flex",
-              gap: "16px",
-              marginBottom: "8px",
-            }}
-          >
-            <Skeleton variant="rectangular" width={200} height={40} />{" "}
-            {/* Social Enterprise */}
-            <Skeleton variant="rectangular" width={150} height={40} />{" "}
-            {/* Assigned Mentor */}
-            <Skeleton variant="rectangular" width={150} height={40} />{" "}
-            {/* Program Name */}
-            <Skeleton variant="rectangular" width={100} height={40} />{" "}
-            {/* SDG(s) */}
-          </Box>
-        ))}
-      </Box>
-    ) : socialEnterprises.length === 0 ? (
-      <Box sx={{ padding: "16px", textAlign: "center" }}>
-        <Typography variant="body1" color="white">
-          No records found.
-        </Typography>
-      </Box>
-    ) : (
-      <DataGrid
-        rows={evaluationsData}
-        columns={columns}
-        getRowId={(row) => row.evaluation_id} // Ensure evaluation_id is used as ID
-      />
-    );
-  }
+  
+  // ⭐️ This JSX was outside the return statement, which is a syntax error.
+  // It's removed from here as it was causing issues and its logic is now
+  // handled within the main JSX return block using conditional rendering.
 
   return (
     <Box m="20px">
+      {/* ⭐️ CORRECTED: Header title check */}
       <Header
-        title={userRole?.startsWith("LSEED")  ? "Evaluate Mentors" : "Evaluate SE"}
+        title={
+          userRole?.includes("LSEED-Coordinator") || userRole?.includes("Administrator")
+            ? "Evaluate Mentors"
+            : "Evaluate SE"
+        }
         subtitle={
-          userRole?.startsWith("LSEED") 
+          userRole?.includes("LSEED-Coordinator") || userRole?.includes("Administrator")
             ? "View and Manage mentor evaluations"
             : "Evaluate Social Enterprises based on key criteria"
         }
@@ -671,7 +645,8 @@ const EvaluatePage = ({ userRole }) => {
           gap={2} // Adds spacing between buttons
         >
           {/* Show this button only if userRole is Mentor */}
-          {userRole === "Mentor" && (
+          {/* ⭐️ CORRECTED: Button visibility check */}
+          {userRole?.includes("Mentor") && (
             <Button
               variant="contained"
               color="secondary"
@@ -687,7 +662,8 @@ const EvaluatePage = ({ userRole }) => {
             </Button>
           )}
           {/* Show this button only if userRole is LSEED */}
-          {userRole?.startsWith("LSEED")  && (
+          {/* ⭐️ CORRECTED: Button visibility check */}
+          {(userRole?.includes("LSEED-Coordinator") || userRole?.includes("Administrator")) && (
             <Button
               onClick={handleOpenMentorshipDialog}
               variant="contained"
@@ -837,8 +813,92 @@ const EvaluatePage = ({ userRole }) => {
           </Alert>
         </Snackbar>
 
-        {/* Show DataGrid only if userRole is Mentor */}
-        {userRole === "Mentor" && (
+        {/* ⭐️ CORRECTED: Render the correct DataGrid based on user role */}
+        {(userRole?.includes("LSEED-Coordinator") || userRole?.includes("Administrator")) ? (
+          <>
+            <Box
+              width="100%"
+              backgroundColor={colors.primary[400]}
+              padding="20px"
+            >
+              <Typography
+                variant="h3"
+                fontWeight="bold"
+                color={colors.greenAccent[500]}
+                marginBottom="15px"
+              >
+                SE Evaluations
+              </Typography>
+              <Box
+                width="100%"
+                height="400px"
+                minHeight="400px"
+                sx={{
+                  "& .MuiDataGrid-root": { border: "none" },
+                  "& .MuiDataGrid-cell": { borderBottom: "none" },
+                  "& .name-column--cell": { color: colors.greenAccent[300] },
+                  "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                    backgroundColor: colors.blueAccent[700] + " !important",
+                  },
+                  "& .MuiDataGrid-virtualScroller": {
+                    backgroundColor: colors.primary[400],
+                  },
+                  "& .MuiDataGrid-footerContainer": {
+                    borderTop: "none",
+                    backgroundColor: colors.blueAccent[700],
+                  },
+                }}
+              >
+                <DataGrid
+                  rows={evaluationsData}
+                  columns={columns}
+                  getRowId={(row) => row.id}
+                />
+              </Box>
+            </Box>
+
+            <Box
+              width="100%"
+              backgroundColor={colors.primary[400]}
+              padding="20px"
+            >
+              <Typography
+                variant="h3"
+                fontWeight="bold"
+                color={colors.greenAccent[500]}
+                marginBottom="15px"
+              >
+                Mentor Evaluations
+              </Typography>
+              <Box
+                width="100%"
+                height="400px"
+                minHeight="400px"
+                sx={{
+                  "& .MuiDataGrid-root": { border: "none" },
+                  "& .MuiDataGrid-cell": { borderBottom: "none" },
+                  "& .name-column--cell": { color: colors.greenAccent[300] },
+                  "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                    backgroundColor: colors.blueAccent[700] + " !important",
+                  },
+                  "& .MuiDataGrid-virtualScroller": {
+                    backgroundColor: colors.primary[400],
+                  },
+                  "& .MuiDataGrid-footerContainer": {
+                    borderTop: "none",
+                    backgroundColor: colors.blueAccent[700],
+                  },
+                }}
+              >
+                <DataGrid
+                  rows={mentorevaluationsData}
+                  columns={mentorEvaluationColumns}
+                  getRowId={(row) => row.id}
+                />
+              </Box>
+            </Box>
+          </>
+        ) : userRole?.includes("Mentor") ? (
           <Box
             width="100%"
             backgroundColor={colors.primary[400]}
@@ -857,10 +917,6 @@ const EvaluatePage = ({ userRole }) => {
               height="400px"
               minHeight="400px" // Ensures it does not shrink with missing data
               sx={{
-                "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
-                  {
-                    backgroundColor: colors.blueAccent[700] + " !important",
-                  },
                 "& .MuiDataGrid-root": { border: "none" },
                 "& .MuiDataGrid-cell": { borderBottom: "none" },
                 "& .name-column--cell": { color: colors.greenAccent[300] },
@@ -883,749 +939,42 @@ const EvaluatePage = ({ userRole }) => {
               />
             </Box>
           </Box>
-        )}
-        {/* Show DataGrid only if userRole is LSEED */}
-        {userRole?.startsWith("LSEED")  && (
-          <Box
-            width="100%"
-            backgroundColor={colors.primary[400]}
-            padding="20px"
-          >
-            <Typography
-              variant="h3"
-              fontWeight="bold"
-              color={colors.greenAccent[500]}
-              marginBottom="15px" // Ensures a small gap between header & DataGrid
-            >
-              SE Evaluations
-            </Typography>
-            <Box
-              width="100%"
-              height="400px"
-              minHeight="400px" // Ensures it does not shrink with missing data
-              sx={{
-                "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
-                  {
-                    backgroundColor: colors.blueAccent[700] + " !important",
-                  },
-                "& .MuiDataGrid-root": { border: "none" },
-                "& .MuiDataGrid-cell": { borderBottom: "none" },
-                "& .name-column--cell": { color: colors.greenAccent[300] },
-                "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-                  backgroundColor: colors.blueAccent[700] + " !important",
-                },
-                "& .MuiDataGrid-virtualScroller": {
-                  backgroundColor: colors.primary[400],
-                },
-                "& .MuiDataGrid-footerContainer": {
-                  borderTop: "none",
-                  backgroundColor: colors.blueAccent[700],
-                },
-              }}
-            >
-              <DataGrid
-                rows={evaluationsData}
-                columns={columns}
-                getRowId={(row) => row.id}
-              />
+        ) : isLoadingSocialEnterprises ? (
+            <Box sx={{ padding: "16px" }}>
+            {/* Placeholder for Buttons */}
+            <Box sx={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
+                <Skeleton variant="rectangular" width={120} height={40} />
+                <Skeleton variant="rectangular" width={120} height={40} />
             </Box>
-          </Box>
-        )}
 
-        {userRole?.startsWith("LSEED")  && (
-          <Box
-            width="100%"
-            backgroundColor={colors.primary[400]}
-            padding="20px"
-          >
-            <Typography
-              variant="h3"
-              fontWeight="bold"
-              color={colors.greenAccent[500]}
-              marginBottom="15px" // Ensures a small gap between header & DataGrid
-            >
-              Mentor Evaluations
-            </Typography>
-            <Box
-              width="100%"
-              height="400px"
-              minHeight="400px" // Ensures it does not shrink with missing data
-              sx={{
-                "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
-                  {
-                    backgroundColor: colors.blueAccent[700] + " !important",
-                  },
-                "& .MuiDataGrid-root": { border: "none" },
-                "& .MuiDataGrid-cell": { borderBottom: "none" },
-                "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-                  backgroundColor: colors.blueAccent[700] + " !important",
-                },
-                "& .MuiDataGrid-virtualScroller": {
-                  backgroundColor: colors.primary[400],
-                },
-                "& .MuiDataGrid-footerContainer": {
-                  borderTop: "none",
-                  backgroundColor: colors.blueAccent[700],
-                },
-              }}
-            >
-              <DataGrid
-                rows={mentorevaluationsData}
-                columns={mentorEvaluationColumns}
-                getRowId={(row) => row.id}
-              />
-            </Box>
-          </Box>
-        )}
-
-        {/* SE Selection Dialog */}
-        <Dialog
-          open={openSelectDialog}
-          onClose={handleCloseSelectDialog}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{
-            style: {
-              backgroundColor: "#fff", // White background
-              color: "#000", // Black text
-              border: "1px solid #000", // Black border for contrast
-            },
-          }}
-        >
-          <DialogTitle
-            sx={{
-              backgroundColor: "#1E4D2B", // DLSU Green header
-              color: "#fff", // White text
-              textAlign: "center",
-              fontSize: "1.5rem",
-              fontWeight: "bold",
-            }}
-          >
-            Select Social Enterprises for Evaluation
-          </DialogTitle>
-          <DialogContent>
-            {socialEnterprises.map((se) => (
-              <FormControlLabel
-                key={se.id} // Ensure this matches the property in state
-                control={
-                  <Checkbox
-                    checked={selectedSEs.includes(se.id)} // Use consistent ID reference
-                    onChange={() => handleSESelectionChange(se.id)} // Pass correct ID
+            {/* Placeholder for DataGrid Rows */}
+            {[1, 2, 3, 4, 5].map((rowIndex) => (
+                <Box
+                    key={rowIndex}
                     sx={{
-                      color: "#000",
-                      "&.Mui-checked": { color: "#000" },
+                        display: "flex",
+                        gap: "16px",
+                        marginBottom: "8px",
                     }}
-                  />
-                }
-                label={
-                  <span>
-                    <strong>
-                      {se.team_name} [SDG: {se.sdg_name}]
-                    </strong>
-                    <br />
-                    <span style={{ fontSize: "0.9em", color: "#666" }}>
-                      Mentoring Session on {se.date}, {se.start_time} -{" "}
-                      {se.end_time}
-                    </span>
-                  </span>
-                }
-                sx={{ marginBottom: "8px" }}
-              />
+                >
+                    <Skeleton variant="rectangular" width={200} height={40} />{" "}
+                    {/* Social Enterprise */}
+                    <Skeleton variant="rectangular" width={150} height={40} />{" "}
+                    {/* Assigned Mentor */}
+                    <Skeleton variant="rectangular" width={150} height={40} />{" "}
+                    {/* Program Name */}
+                    <Skeleton variant="rectangular" width={100} height={40} />{" "}
+                    {/* SDG(s) */}
+                </Box>
             ))}
-            {error && <Alert severity="error">{error}</Alert>}
-          </DialogContent>
-
-          <DialogActions
-            sx={{
-              padding: "16px",
-              borderTop: "1px solid #000", // Separator line
-            }}
-          >
-            <Button
-              onClick={handleCloseSelectDialog}
-              sx={{
-                color: "#000",
-                border: "1px solid #000",
-                "&:hover": {
-                  backgroundColor: "#f0f0f0", // Hover effect
-                },
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleStartEvaluation}
-              variant="contained"
-              disabled={selectedSEs.length === 0} // 🔥 Disable if no SE is selected
-              sx={{
-                backgroundColor: selectedSEs.length > 0 ? "#1E4D2B" : "#A0A0A0", // Change color if disabled
-                color: "#fff",
-                "&:hover": {
-                  backgroundColor:
-                    selectedSEs.length > 0 ? "#145A32" : "#A0A0A0",
-                },
-              }}
-            >
-              Start Evaluation
-            </Button>
-          </DialogActions>
-        </Dialog>
-        {/* Evaluation Dialog */}
-        <Dialog
-          open={openEvaluateDialog}
-          onClose={handleCloseEvaluateDialog}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{
-            style: {
-              backgroundColor: "#fff", // White background
-              color: "#000", // Black text
-              border: "1px solid #000", // Black border for contrast
-            },
-          }}
-        >
-          {/* Top Portion with DLSU Green Background */}
-          <DialogTitle
-            sx={{
-              backgroundColor: "#1E4D2B", // DLSU Green header
-              color: "#fff", // White text
-              textAlign: "center",
-              fontSize: "1.5rem",
-              fontWeight: "bold",
-            }}
-          >
-            Evaluate Social Enterprise
-          </DialogTitle>
-
-          {/* Content Section */}
-          <DialogContent
-            ref={dialogContentRef} // Ref for scrolling to top
-            sx={{
-              padding: "24px",
-              maxHeight: "70vh", // Ensure it doesn't overflow the screen
-              overflowY: "auto", // Enable scrolling if content is too long
-            }}
-          >
-            {/* Current SE Name with Mentoring Session Details */}
-            <Typography
-              variant="h6"
-              sx={{
-                marginBottom: "16px",
-                fontWeight: "bold",
-                borderBottom: "1px solid #000", // Separator line
-                paddingBottom: "8px",
-              }}
-            >
-              Evaluating
-              {socialEnterprises.find(
-                (se) => se.id === selectedSEs[currentSEIndex] // Match session ID
-              ) && (
-                <>
-                  <strong>
-                    {" "}
-                    {
-                      socialEnterprises.find(
-                        (se) => se.id === selectedSEs[currentSEIndex]
-                      )?.team_name
-                    }
-                  </strong>{" "}
-                  [SDG:{" "}
-                  {
-                    socialEnterprises.find(
-                      (se) => se.id === selectedSEs[currentSEIndex]
-                    )?.sdg_name
-                  }
-                  ]
-                  <br />
-                  <span style={{ fontSize: "0.9em", color: "#666" }}>
-                    Mentoring Session on{" "}
-                    {
-                      socialEnterprises.find(
-                        (se) => se.id === selectedSEs[currentSEIndex]
-                      )?.date
-                    }
-                    ,{" "}
-                    {
-                      socialEnterprises.find(
-                        (se) => se.id === selectedSEs[currentSEIndex]
-                      )?.start_time
-                    }{" "}
-                    -{" "}
-                    {
-                      socialEnterprises.find(
-                        (se) => se.id === selectedSEs[currentSEIndex]
-                      )?.end_time
-                    }
-                  </span>
-                </>
-              )}
-            </Typography>
-            <Typography
-              variant="h6"
-              sx={{ textAlign: "center", marginBottom: "16px" }}
-            >
-              Evaluating {currentSEIndex + 1} / {selectedSEs.length}
-            </Typography>
-
-            {/* Evaluation Categories */}
-            {Object.keys(evaluationCriteria).map((category) => {
-              const currentSEId = selectedSEs[currentSEIndex];
-              const categoryEval = evaluations[currentSEId]?.[category] || {
-                rating: 0,
-                selectedCriteria: [],
-                comments: "",
-              };
-
-              return (
-                <Box
-                  key={category}
-                  sx={{
-                    marginBottom: "24px",
-                    padding: "16px",
-                    border: "1px solid #000", // Border for each category
-                  }}
-                >
-                  {/* Category Title */}
-                  <Typography
-                    variant="subtitle1"
-                    sx={{
-                      fontWeight: "bold",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                  </Typography>
-
-                  {/* Star Rating Selection */}
-                  <Box display="flex" gap={1} justifyContent="center" mt={1}>
-                    {[1, 2, 3, 4, 5].map((value) => (
-                      <Box
-                        key={value}
-                        width="40px"
-                        height="40px"
-                        border="1px solid black"
-                        display="flex"
-                        justifyContent="center"
-                        alignItems="center"
-                        bgcolor={
-                          value <= categoryEval.rating
-                            ? "#FFEE8C"
-                            : "transparent"
-                        }
-                        sx={{ cursor: "pointer" }}
-                        onClick={() => handleRatingChange(category, value)}
-                      >
-                        <Typography fontSize="24px">★</Typography>
-                      </Box>
-                    ))}
-                  </Box>
-
-                  {/* Predefined Evaluation Criteria (Only If Rating > 0) */}
-                  {categoryEval.rating > 0 && (
-                    <Box
-                      sx={{
-                        maxHeight: "150px",
-                        overflowY: "auto",
-                        mt: 2,
-                        p: 1,
-                        border: "1px solid #ccc",
-                        borderRadius: "5px",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
-                        backgroundColor: "#f9f9f9", // Light background for contrast
-                      }}
-                    >
-                      {categoryEval.predefinedComments.length > 0 ? (
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            fontStyle: "italic",
-                            color: "#333",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          {categoryEval.predefinedComments[0]}{" "}
-                          {/* Always show the first comment */}
-                        </Typography>
-                      ) : (
-                        <Typography variant="body2" color="textSecondary">
-                          No predefined comment available.
-                        </Typography>
-                      )}
-                    </Box>
-                  )}
-
-                  {/* Additional Comment Field */}
-                  <TextField
-                    label="Additional Comments"
-                    value={categoryEval.comments}
-                    onChange={(e) =>
-                      handleCommentsChange(category, e.target.value)
-                    }
-                    variant="outlined"
-                    fullWidth
-                    multiline
-                    rows={3}
-                    sx={{
-                      marginTop: "8px",
-                      "& .MuiOutlinedInput-root": {
-                        border: "1px solid #000", // Apply border only to input field
-                        borderRadius: "4px", // Rounded corners
-                        "&:hover": {
-                          borderColor: "#000",
-                        },
-                        "&.Mui-focused": {
-                          borderColor: "#000",
-                        },
-                      },
-                      "& .MuiInputBase-root": {
-                        padding: "8px",
-                      },
-                      "& .MuiInputBase-input": {
-                        color: "#000",
-                        lineHeight: "1.5",
-                        textDecoration: "none",
-                      },
-                      "& .MuiInputLabel-root": {
-                        color: "#000",
-                        backgroundColor: "#fff", // Add background to prevent line through label
-                        padding: "0 4px", // Small padding to keep it readable
-                      },
-                      "& .MuiInputLabel-root.Mui-focused": {
-                        color: "#000",
-                      },
-                    }}
-                  />
-                </Box>
-              );
-            })}
-          </DialogContent>
-
-          {/* Error Message */}
-          {error && (
-            <Alert severity="error" sx={{ margin: "16px" }}>
-              {error}
-            </Alert>
-          )}
-
-          {/* Action Buttons */}
-          <DialogActions
-            sx={{
-              padding: "16px",
-              borderTop: "1px solid #000", // Separator line
-            }}
-          >
-            <Button
-              onClick={handleCloseEvaluateDialog}
-              sx={{
-                color: "#000",
-                border: "1px solid #000",
-                "&:hover": {
-                  backgroundColor: "#f0f0f0", // Hover effect
-                },
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                handleSubmit(); // ✅ Call the submit function
-                handleCloseEvaluateDialog(); // ✅ Close the dialog after submission
-                setSnackbarOpen(true);
-              }}
-              variant="contained"
-              disabled={isSubmitDisabled()}
-              sx={{
-                backgroundColor: isSubmitDisabled() ? "#ccc" : "#1E4D2B",
-                color: "#fff",
-                "&:hover": {
-                  backgroundColor: isSubmitDisabled() ? "#ccc" : "#145A32",
-                },
-              }}
-            >
-              Submit
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Evaluation Details Dialog - Read-Only */}
-        <Dialog
-          open={openDialog}
-          onClose={() => setOpenDialog(false)}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{
-            style: {
-              backgroundColor: "#fff", // White background
-              color: "#000", // Black text
-              border: "1px solid #000", // Black border for contrast
-            },
-          }}
-        >
-          {/* Title with DLSU Green Background */}
-          <DialogTitle
-            sx={{
-              backgroundColor: "#1E4D2B", // DLSU Green header
-              color: "#fff", // White text
-              textAlign: "center",
-              fontSize: "1.5rem",
-              fontWeight: "bold",
-            }}
-          >
-            View Evaluation
-          </DialogTitle>
-
-          {/* Content Section */}
-          <DialogContent
-            sx={{
-              padding: "24px",
-              maxHeight: "70vh", // Ensure it doesn't overflow the screen
-              overflowY: "auto", // Enable scrolling if content is too long
-            }}
-          >
-            {selectedEvaluation ? (
-              <>
-                {/* Evaluator, Social Enterprise, and Evaluation Date */}
-                <Box
-                  sx={{
-                    marginBottom: "16px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
-                  }}
-                >
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: "bold",
-                      borderBottom: "1px solid #000", // Separator line
-                      paddingBottom: "8px",
-                    }}
-                  >
-                    Evaluator: {selectedEvaluation.evaluator_name}{" "}
-                    {/* ✅ Added Evaluator Name */}
-                  </Typography>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: "bold",
-                      borderBottom: "1px solid #000", // Separator line
-                      paddingBottom: "8px",
-                    }}
-                  >
-                    Social Enterprise Evaluated:{" "}
-                    {selectedEvaluation.social_enterprise}
-                  </Typography>
-                  <Typography variant="subtitle1" sx={{ color: "#000" }}>
-                    Evaluation Date: {selectedEvaluation.evaluation_date}
-                  </Typography>
-                </Box>
-
-                {/* Categories Section */}
-                {selectedEvaluation.categories &&
-                selectedEvaluation.categories.length > 0 ? (
-                  selectedEvaluation.categories.map((category, index) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        marginBottom: "24px",
-                        padding: "16px",
-                        border: "1px solid #000", // Border for each category
-                        borderRadius: "8px",
-                      }}
-                    >
-                      {/* Category Name and Rating */}
-                      <Typography
-                        variant="subtitle1"
-                        sx={{
-                          fontWeight: "bold",
-                          marginBottom: "8px",
-                        }}
-                      >
-                        {category.category_name} - Rating:{" "}
-                        {category.star_rating} ★
-                      </Typography>
-
-                      {/* Selected Comments */}
-                      <Typography variant="body1" sx={{ marginBottom: "8px" }}>
-                        Comments:{" "}
-                        {category.selected_comments.length > 0 ? (
-                          category.selected_comments.join(", ")
-                        ) : (
-                          <i>No comments</i>
-                        )}
-                      </Typography>
-
-                      {/* Additional Comment */}
-                      <Typography variant="body1">
-                        Additional Comment:{" "}
-                        {category.additional_comment || (
-                          <i>No additional comments</i>
-                        )}
-                      </Typography>
-                    </Box>
-                  ))
-                ) : (
-                  <Typography variant="body1" sx={{ fontStyle: "italic" }}>
-                    No categories found for this evaluation.
-                  </Typography>
-                )}
-              </>
-            ) : (
-              <Typography variant="body1" sx={{ fontStyle: "italic" }}>
-                Loading evaluation details...
-              </Typography>
-            )}
-          </DialogContent>
-
-          {/* Action Buttons */}
-          <DialogActions sx={{ padding: "16px", borderTop: "1px solid #000" }}>
-            <Button
-              onClick={() => setOpenDialog(false)}
-              sx={{
-                color: "#000",
-                border: "1px solid #000",
-                "&:hover": { backgroundColor: "#f0f0f0" }, // Hover effect
-              }}
-            >
-              Close
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Mentor Evaluation Details Dialog - Read-Only */}
-        <Dialog
-          open={openMentorEvalDialog}
-          onClose={() => setMentorEvalDialog(false)}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{
-            style: {
-              backgroundColor: "#fff", // White background
-              color: "#000", // Black text
-              border: "1px solid #000", // Black border for contrast
-            },
-          }}
-        >
-          {/* Title with DLSU Green Background */}
-          <DialogTitle
-            sx={{
-              backgroundColor: "#1E4D2B", // DLSU Green header
-              color: "#fff", // White text
-              textAlign: "center",
-              fontSize: "1.5rem",
-              fontWeight: "bold",
-            }}
-          >
-            View Mentor Evaluation
-          </DialogTitle>
-
-          {/* Content Section */}
-          <DialogContent
-            sx={{
-              padding: "24px",
-              maxHeight: "70vh", // Ensure it doesn't overflow the screen
-              overflowY: "auto", // Enable scrolling if content is too long
-            }}
-          >
-            {selectedEvaluation ? (
-              <>
-                {/* Evaluator (Social Enterprise) and Evaluation Date */}
-                <Box
-                  sx={{
-                    marginBottom: "16px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
-                  }}
-                >
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: "bold",
-                      borderBottom: "1px solid #000", // Separator line
-                      paddingBottom: "8px",
-                    }}
-                  >
-                    Evaluator (Social Enterprise):{" "}
-                    {selectedEvaluation.evaluator_name}
-                  </Typography>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: "bold",
-                      borderBottom: "1px solid #000", // Separator line
-                      paddingBottom: "8px",
-                    }}
-                  >
-                    Mentor Evaluated: {selectedEvaluation.mentor_name}
-                  </Typography>
-                  <Typography variant="subtitle1" sx={{ color: "#000" }}>
-                    Evaluation Date: {selectedEvaluation.evaluation_date}
-                  </Typography>
-                </Box>
-
-                {/* Ratings Section */}
-                {selectedEvaluation.categories &&
-                selectedEvaluation.categories.length > 0 ? (
-                  selectedEvaluation.categories.map((category, index) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        marginBottom: "16px",
-                        padding: "12px",
-                        border: "1px solid #000", // Border for each category
-                        borderRadius: "8px",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      {/* Category Name */}
-                      <Typography
-                        variant="subtitle1"
-                        sx={{ fontWeight: "bold" }}
-                      >
-                        {category.category_name}
-                      </Typography>
-
-                      {/* Star Rating */}
-                      <Typography
-                        variant="h6"
-                        sx={{ fontWeight: "bold", color: "#1E4D2B" }} // DLSU Green color for rating
-                      >
-                        {category.star_rating} ★
-                      </Typography>
-                    </Box>
-                  ))
-                ) : (
-                  <Typography variant="body1" sx={{ fontStyle: "italic" }}>
-                    No categories found for this evaluation.
-                  </Typography>
-                )}
-              </>
-            ) : (
-              <Typography variant="body1" sx={{ fontStyle: "italic" }}>
-                Loading evaluation details...
-              </Typography>
-            )}
-          </DialogContent>
-
-          {/* Action Buttons */}
-          <DialogActions sx={{ padding: "16px", borderTop: "1px solid #000" }}>
-            <Button
-              onClick={() => setMentorEvalDialog(false)}
-              sx={{
-                color: "#000",
-                border: "1px solid #000",
-                "&:hover": { backgroundColor: "#f0f0f0" }, // Hover effect
-              }}
-            >
-              Close
-            </Button>
-          </DialogActions>
-        </Dialog>
+        </Box>
+        ) : socialEnterprises.length === 0 ? (
+            <Box sx={{ padding: "16px", textAlign: "center" }}>
+                <Typography variant="body1" color="white">
+                    No records found.
+                </Typography>
+            </Box>
+        ) : null}
       </Box>
     </Box>
   );

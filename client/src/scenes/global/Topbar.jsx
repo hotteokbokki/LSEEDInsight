@@ -1,11 +1,14 @@
 import {
   Box,
+  Button,
   IconButton,
   Menu,
   MenuItem,
   Typography,
   useTheme,
   Divider,
+  FormControlLabel, // 1. Import FormControlLabel for the toggle switch label
+  Switch, // 2. Import Switch component
 } from "@mui/material";
 import { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -22,14 +25,15 @@ import { useAuth } from "../../context/authContext";
 import axios from "axios";
 
 
-const Topbar = () => {
+// 3. Destructure the new props from the function signature
+const Topbar = ({ isCoordinatorView, handleViewChange, hasBothRoles }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const colorMode = useContext(ColorModeContext);
   const [anchorEl, setAnchorEl] = useState(null);
   const [notifAnchorEl, setNotifAnchorEl] = useState(null);
   const navigate = useNavigate();
-  const { logout, user  } = useAuth();
+  const { logout, user } = useAuth();
   const [notifications, setNotifications] = useState([]);
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
@@ -42,59 +46,38 @@ const Topbar = () => {
 
   const fetchNotifications = async () => {
     try {
-        if (!user || !user.id) {
-            console.warn("⚠️ No user ID found, skipping notification fetch.");
-            return;
-        }
+      if (!user || !user.id) {
+        console.warn("⚠️ No user ID found, skipping notification fetch.");
+        return;
+      }
 
-        const requestUrl = `${API_BASE_URL}/api/notifications?receiver_id=${user.id}`;
-        console.log("🔍 Making request to:", requestUrl);
+      const requestUrl = `${API_BASE_URL}/api/notifications?receiver_id=${user.id}`;
+      console.log("🔍 Making request to:", requestUrl);
 
-        const response = await axios.get(requestUrl);
+      const response = await axios.get(requestUrl);
 
-        console.log("📩 Notifications received:", response.data); // ✅ Debugging API Response
-        setNotifications([...response.data]);  // ✅ Force React to detect state change
-        console.log("🔔 Updated notifications state:", notifications); // ✅ Check if state updates
+      console.log("📩 Notifications received:", response.data); // ✅ Debugging API Response
+      setNotifications([...response.data]); // ✅ Force React to detect state change
+      console.log("🔔 Updated notifications state:", notifications); // ✅ Check if state updates
     } catch (error) {
-        console.error("❌ Error fetching notifications:", error);
+      console.error("❌ Error fetching notifications:", error);
     }
-};
+  };
 
 
-useEffect(() => {
-  console.log("👤 User detected:", user); // ✅ Log user info
-  if (user && user.id) {
+  useEffect(() => {
+    console.log("👤 User detected:", user); // ✅ Log user info
+    if (user && user.id) {
       console.log("🔄 Fetching notifications for:", user.id);
       fetchNotifications();
       const interval = setInterval(fetchNotifications, 5000);
       return () => clearInterval(interval);
-  }
-}, [user]);
+    }
+  }, [user]);
 
-useEffect(() => {
-  console.log("🔥 Notifications state updated:", notifications);
-}, [notifications]);  // ✅ Ensure React tracks updates
-
-  // const notifications = [
-  //   {
-  //     id: 1,
-  //     title: "New Mentorship",
-  //     message: "John Doe has been assigned.",
-  //     time: "5m ago",
-  //   },
-  //   {
-  //     id: 2,
-  //     title: "System Update",
-  //     message: "System maintenance at 2 AM.",
-  //     time: "1h ago",
-  //   },
-  //   {
-  //     id: 3,
-  //     title: "Reminder",
-  //     message: "Monthly report due tomorrow.",
-  //     time: "1d ago",
-  //   },
-  // ];
+  useEffect(() => {
+    console.log("🔥 Notifications state updated:", notifications);
+  }, [notifications]); // ✅ Ensure React tracks updates
 
   return (
     <Box display="flex" justifyContent="space-between" p={2}>
@@ -112,6 +95,26 @@ useEffect(() => {
 
       {/* Icons */}
       <Box display="flex">
+        {/* Toggle Switch - Only visible if the user has both roles */}
+        {hasBothRoles && (
+          <Box display="flex" alignItems="center" mr={2}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isCoordinatorView}
+                  onChange={handleViewChange}
+                  color="secondary" // Uses your theme's secondary color
+                />
+              }
+              label={
+                <Typography variant="body1" color={colors.grey[100]}>
+                  {isCoordinatorView ? "Coordinator View" : "Mentor View"}
+                </Typography>
+              }
+            />
+          </Box>
+        )}
+
         <IconButton onClick={colorMode.toggleColorMode}>
           {theme.palette.mode === "dark" ? (
             <DarkModeOutlinedIcon />
@@ -138,7 +141,7 @@ useEffect(() => {
               border: "1px solid #000",
               boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)",
               maxHeight: "300px", // ✅ This limits height before scrolling
-            overflowY: "auto",
+              overflowY: "auto",
             },
           }}
         >
@@ -161,50 +164,49 @@ useEffect(() => {
 
           {/* Notification Items */}
           {notifications.length > 0 ? (
-              notifications.map((notif, index) => (
-                  <Box key={notif.notification_id}>
-                      <MenuItem
-                          onClick={handleNotifClose}
-                          sx={{
-                              display: "flex",
-                              flexDirection: "column",
-                              alignItems: "flex-start",
-                              padding: "12px",
-                              "&:hover": { backgroundColor: "#f0f0f0" },
-                          }}
-                      >
-                          <Typography sx={{ fontWeight: "bold" }}>
-                              {notif.title}
-                          </Typography>
+            notifications.map((notif, index) => (
+              <Box key={notif.notification_id}>
+                <MenuItem
+                  onClick={handleNotifClose}
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    padding: "12px",
+                    "&:hover": { backgroundColor: "#f0f0f0" },
+                  }}
+                >
+                  <Typography sx={{ fontWeight: "bold" }}>
+                    {notif.title}
+                  </Typography>
 
-                          {/* ✅ Display different messages based on status */}
-                          <Typography variant="body2">
-                          {notif.title === "Scheduling Approval Needed"
-                              ? `${notif.sender_name} created a schedule for ${notif.se_name}.` // ✅ LSEED users see this
-                              : notif.title === "LSEED Approval"
-                              ? `Your desired schedule for ${notif.se_name} is already accepted by the LSEED.`
-                              : notif.title === "Social Enterprise Approval"
-                              ? `The ${notif.se_name} has agreed to your desired schedule.`
-                              : notif.title}
-                          </Typography>
+                  {/* ✅ Display different messages based on status */}
+                  <Typography variant="body2">
+                    {notif.title === "Scheduling Approval Needed"
+                      ? `${notif.sender_name} created a schedule for ${notif.se_name}.` // ✅ LSEED users see this
+                      : notif.title === "LSEED Approval"
+                      ? `Your desired schedule for ${notif.se_name} is already accepted by the LSEED.`
+                      : notif.title === "Social Enterprise Approval"
+                      ? `The ${notif.se_name} has agreed to your desired schedule.`
+                      : notif.title}
+                  </Typography>
 
-                          <Typography variant="caption" color="gray">
-                              {new Date(notif.created_at).toLocaleString()}
-                          </Typography>
-                      </MenuItem>
+                  <Typography variant="caption" color="gray">
+                    {new Date(notif.created_at).toLocaleString()}
+                  </Typography>
+                </MenuItem>
 
-                      {index < notifications.length - 1 && <Divider />}
-                  </Box>
-              ))
+                {index < notifications.length - 1 && <Divider />}
+              </Box>
+            ))
           ) : (
-              <MenuItem sx={{ textAlign: "center", padding: "15px" }}>
-                  No new notifications
-              </MenuItem>
+            <MenuItem sx={{ textAlign: "center", padding: "15px" }}>
+              No new notifications
+            </MenuItem>
           )}
         </Menu>
 
-        {/* 
-<IconButton>
+        {/* <IconButton>
   <SettingsOutlinedIcon />
 </IconButton> 
 */}

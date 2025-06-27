@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ProSidebar, Menu, MenuItem } from "react-pro-sidebar";
 import "react-pro-sidebar/dist/css/styles.css";
 import {
@@ -51,7 +51,8 @@ const Item = ({ title, to, icon, selected, setSelected }) => {
   );
 };
 
-const Sidebar = () => {
+// ⭐️ STEP 1: Accept the `isCoordinatorView` prop from App.js
+const Sidebar = ({ isCoordinatorView }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -61,20 +62,37 @@ const Sidebar = () => {
   const [googleUser, setGoogleUser] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
 
-  const hasMentorRole = user?.roles?.includes("Mentor");
-  const isLSEEDUser = user?.roles?.some(role => role === "LSEED-Coordinator" || role === "Administrator");
+  // ⭐️ STEP 2: Correctly check roles from the `user.role` array
+  const userRoles = user?.roles || []; // Fallback to an empty array for safety
+  const isLSEEDCoordinator = userRoles.includes("LSEED-Coordinator");
+  const hasMentorRole = userRoles.includes("Mentor");
+  const isAdministrator = userRoles.includes("Administrator");
+  const isLSEEDUser = isLSEEDCoordinator || isAdministrator;
+
+  // ⭐️ Add this useEffect hook for debugging
+  useEffect(() => {
+    // Set up the interval to log the prop every 5 seconds (5000 milliseconds)
+    const intervalId = setInterval(() => {
+      console.log("Sidebar prop received: isCoordinatorView =", isCoordinatorView);
+    }, 5000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isCoordinatorView]); // Add isCoordinatorView as a dependency
+
 
   // Determine the default selected item based on the current route
   const getSelectedTitle = () => {
     const routeMap = {
       "/dashboard": "Dashboard",
-      "/assess": "Assess SE",
+      "/assess": "Evaluate",
       "/socialenterprise": "Manage SE",
       "/mentors": "LSEED Mentors",
       "/analytics": "Show Analytics",
       "/reports": "Show Reports",
       "/scheduling": "Scheduling Matrix",
-      "/admin": "Admin Page",
+      "/admin": "Manage Users",
       "/mentorships": "Manage Mentorships",
       "/analytics-mentorship": "Show Analytics",
       "/programs": "Manage Programs",
@@ -87,23 +105,21 @@ const Sidebar = () => {
   const login = useGoogleLogin({
     onSuccess: (response) => {
       console.log("Google Login Success:", response);
-      setGoogleUser(response); // ✅ Store Google user separately
+      setGoogleUser(response);
     },
     onError: (error) => console.error("Google Login Failed", error),
     scope: "https://www.googleapis.com/auth/calendar.events",
   });
 
-  // Function to handle dialog close
   const handleCloseDialog = () => {
     setOpenDialog(false);
   };
 
-  // Function to confirm navigation
   const handleConfirmNavigation = async () => {
     if (!googleUser) {
-      login(); // Prompt Google login if not logged in
+      login();
     } else {
-      await createCalendarEvents(googleUser, user); // ✅ Use googleUser for Calendar API
+      await createCalendarEvents(googleUser, user);
       navigate("/scheduling");
       handleCloseDialog();
     }
@@ -114,13 +130,16 @@ const Sidebar = () => {
     handleCloseDialog();
   };
 
-  const [selected, setSelected] = useState(getSelectedTitle());
+  const [selected, setSelected] = useState("");
+  useEffect(() => {
+    setSelected(getSelectedTitle());
+  }, [location.pathname]);
 
   return (
     <Box
       sx={{
-        height: "100vh", // Ensures sidebar reaches the bottom
-        position: "sticky", // Keeps it fixed on scroll
+        height: "100vh",
+        position: "sticky",
         top: 0,
         left: 0,
         background: colors.primary[400],
@@ -193,60 +212,19 @@ const Sidebar = () => {
                 fontWeight="bold"
                 mt={1}
               >
-                {user.firstname || "User"} {user.lastname || "User"}
+                {user.firstName || "User"} {user.lastame || "User"}
               </Typography>
               <Typography variant="body2" color={colors.greenAccent[500]}>
-                {/* REVISED: Display all roles from the array */}
-                {user.role && user.role.length > 0
-                  ? user.role.join(", ") // Joins the array into a string
-                  : "No Role Assigned"}
+                {user.roles && user.roles.length > 0 ? user.roles.join(" / ") : "No Role Assigned"}
               </Typography>
             </Box>
           )}
 
           {/* Navigation Items */}
           <Box paddingLeft={isCollapsed ? undefined : "10%"}>
-            {user?.role === "Mentor" && (
-              <>
-                <Item
-                  title="Dashboard"
-                  to="/dashboard"
-                  icon={<GridViewOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-                <Item
-                  title="Evaluate"
-                  to="/assess"
-                  icon={<AssignmentTurnedInOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-                <Item
-                  title="Manage Mentorships"
-                  to="/mentorships"
-                  icon={<SupervisorAccountOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-
-                <MenuItem
-                  active={selected === "Scheduling Matrix"}
-                  icon={<CalendarMonthOutlinedIcon />}
-                  onClick={() => setOpenDialog(true)} // Open the pop-up
-                  style={{
-                    color: colors.grey[100],
-                    fontWeight:
-                      selected === "Scheduling Matrix" ? "bold" : "normal",
-                  }}
-                >
-                  <Typography variant="body1">Scheduling Matrix</Typography>
-                </MenuItem>
-              </>
-            )}
-            
-
-            {isLSEEDUser && (
+            {/* ⭐️ STEP 3: Conditional rendering logic based on the view */}
+            {/* Show Coordinator menu if the user is a Coordinator/Admin AND the toggle is in Coordinator View */}
+            {(isLSEEDUser && isCoordinatorView) ? (
               <>
                 <Item
                   title="Dashboard"
@@ -290,7 +268,6 @@ const Sidebar = () => {
                   selected={selected}
                   setSelected={setSelected}
                 />
-
                 <Item
                   title="Show Reports"
                   to="/reports"
@@ -298,7 +275,6 @@ const Sidebar = () => {
                   selected={selected}
                   setSelected={setSelected}
                 />
-                
                 <Item
                   title="Scheduling Matrix"
                   to="/scheduling"
@@ -306,7 +282,6 @@ const Sidebar = () => {
                   selected={selected}
                   setSelected={setSelected}
                 />
-                {/* TODO*/}
                 <Item
                   title="Manage Programs"
                   to="/programs"
@@ -322,7 +297,55 @@ const Sidebar = () => {
                   setSelected={setSelected}
                 />
               </>
-            )}
+            ) : (hasMentorRole) ? (
+                // Show Mentor menu if the user has the Mentor role (regardless of other roles)
+                <>
+                    <Item
+                        title="Dashboard"
+                        to="/dashboard"
+                        icon={<GridViewOutlinedIcon />}
+                        selected={selected}
+                        setSelected={setSelected}
+                    />
+                    <Item
+                        title="Evaluate"
+                        to="/assess"
+                        icon={<AssignmentTurnedInOutlinedIcon />}
+                        selected={selected}
+                        setSelected={setSelected}
+                    />
+                    <Item
+                        title="Manage Mentorships"
+                        to="/mentorships"
+                        icon={<SupervisorAccountOutlinedIcon />}
+                        selected={selected}
+                        setSelected={setSelected}
+                    />
+                    {/* Scheduling Matrix with dialog */}
+                    <MenuItem
+                        active={selected === "Scheduling Matrix"}
+                        icon={<CalendarMonthOutlinedIcon />}
+                        onClick={() => setOpenDialog(true)}
+                        style={{
+                            color: colors.grey[100],
+                            fontWeight: selected === "Scheduling Matrix" ? "bold" : "normal",
+                        }}
+                    >
+                        <Typography variant="body1">Scheduling Matrix</Typography>
+                    </MenuItem>
+                </>
+            ) : null} {/* If user has no relevant role, show nothing */}
+
+            {/* Logout Button */}
+            <Box mt="20px">
+              <MenuItem
+                onClick={logout}
+                icon={<ExitToAppOutlinedIcon />}
+                style={{ color: colors.grey[100], transition: "all 0.3s ease" }}
+              >
+                <Typography variant="body1">Logout</Typography>
+              </MenuItem>
+            </Box>
           </Box>
         </Menu>
       </ProSidebar>

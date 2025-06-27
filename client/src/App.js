@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Box } from "@mui/material";
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthContextProvider, useAuth } from "./context/authContext";
-import ScrollToTop from "./components/ScrollToTop"; 
+import ScrollToTop from "./components/ScrollToTop";
 import Login from "./scenes/login";
 import Dashboard from "./scenes/dashboard";
 import SocialEnterprise from "./scenes/socialenterprise";
@@ -30,8 +30,6 @@ import ForgotPassword from "./scenes/forgotpassword";
 import ResetPassword from "./scenes/resetpassword";
 import FinancialAnalytics from "./scenes/financial-analytics";
 
-
-
 const App = () => {
   const [theme, colorMode] = useMode();
 
@@ -58,7 +56,11 @@ const ProtectedRoute = ({ allowedRoles }) => {
     return <Navigate to="/" replace />;
   }
 
-  if (!allowedRoles.includes(user.role)) {
+  // Assuming 'user.role' is a comma-separated string, check if any role is allowed
+  const userRoles = user.role.split(',').map(role => role.trim());
+  const isAllowed = userRoles.some(role => allowedRoles.includes(role));
+
+  if (!isAllowed) {
     return <Navigate to="/unauthorized" replace />;
   }
 
@@ -67,25 +69,63 @@ const ProtectedRoute = ({ allowedRoles }) => {
 
 const MainContent = () => {
   const { user, loading } = useAuth();
+  const [isCoordinatorView, setIsCoordinatorView] = useState(true); 
+  const [hasBothRoles, setHasBothRoles] = useState(false);
+
+  // Function to handle the view change
+  const handleViewChange = () => {
+    setIsCoordinatorView((prev) => !prev);
+  };
+
+  // Check user roles when the user data loads
+  useEffect(() => {
+    if (user && user.roles) {
+      // ✅ Correctly handles both Array and string roles
+      const roles = Array.isArray(user.roles) ? user.roles : user.roles.split(',').map(roles => roles.trim());
+      
+      const isCoordinator = roles.includes("LSEED-Coordinator");
+      const isMentor = roles.includes("Mentor");
+      
+      setHasBothRoles(isCoordinator && isMentor);
+
+      if (isCoordinator) {
+        setIsCoordinatorView(true);
+      } else {
+        setIsCoordinatorView(false);
+      }
+    } else {
+      // If no user or role, default to no roles and a default view
+      console.log("No user or role found, setting default state.");
+      setHasBothRoles(false);
+      setIsCoordinatorView(true);
+    }
+  }, [user]);
 
   if (loading) return <div>Loading...</div>;
 
   return (
     <Box sx={{ display: "flex", width: "100%", minHeight: "100vh" }}>
-      {user && <Sidebar />}
+      {user && <Sidebar isCoordinatorView={isCoordinatorView}/>}
       <Box
-        id="main-content" // ✅ Added ID for ScrollToTop.js to target
+        id="main-content"
         sx={{
           flexGrow: 1,
           display: "flex",
           flexDirection: "column",
           height: "100vh",
-          overflowY: "auto", // ✅ Ensures only the right side scrolls
+          overflowY: "auto",
           padding: "20px",
         }}
       >
-        {user && <Topbar />}
-        <ScrollToTop /> {/* ✅ Scrolls only the right content */}
+        {/* Pass the toggle state and handler to the Topbar */}
+        {user && (
+          <Topbar
+            isCoordinatorView={isCoordinatorView}
+            handleViewChange={handleViewChange}
+            hasBothRoles={hasBothRoles}
+          />
+        )}
+        <ScrollToTop />
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
@@ -94,9 +134,23 @@ const MainContent = () => {
           <Route path="/unauthorized" element={<Unauthorized />} />
           <Route path="/signup" element={<Signup />} />
 
+          {/* CHANGED: Pass the toggle state to the Dashboard */}
+          <Route
+            path="/dashboard"
+            element={
+              user ? (
+                <Dashboard
+                  userRole={user?.role}
+                  isCoordinatorView={isCoordinatorView}
+                  hasBothRoles={hasBothRoles}
+                />
+              ) : (
+                <Navigate to="/" />
+              )
+            }
+          />
 
-          {/* User Routes */}
-          <Route path="/dashboard" element={user ? <Dashboard userRole={user?.role}/> : <Navigate to="/" />} />
+          {/* User Routes (rest of your routes remain the same) */}
           <Route path="/socialenterprise" element={user ? <SocialEnterprise userRole={user?.role} /> : <Navigate to="/" />} />
           <Route path="/mentors" element={user ? <Mentors userRole={user?.role} /> : <Navigate to="/" />} />
           <Route path="/analytics" element={user ? <Analytics userRole={user?.role}/> : <Navigate to="/" />} />
