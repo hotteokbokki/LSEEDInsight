@@ -40,11 +40,12 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { saveAs } from "file-saver";
+import { useAuth } from "../contexts/AuthContext";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-const Scheduling = ({ userRole }) => {
+const Scheduling = ({  }) => {
   const [openModal, setOpenModal] = useState(false);
   const [openSEModal, setOpenSEModal] = useState(false);
   const [mentors, setMentors] = useState([]);
@@ -76,6 +77,9 @@ const Scheduling = ({ userRole }) => {
   const [selectedRowId, setSelectedRowId] = useState(null);
   const [mentorSchedules, setMentorSchedules] = useState([]);
   const [mentorHistory, setMentorHistory] = useState([]);
+
+  const isLSEEDCoordinator = user?.roles?.some(role => role?.startsWith("LSEED"));
+  const hasMentorRole = user?.roles?.includes("Mentor");
 
   const generateTimeSlots = () => {
     const slots = [];
@@ -293,12 +297,12 @@ const Scheduling = ({ userRole }) => {
       try {
         
         let response;
-        if (userRole === "Mentor") {
+        if (hasMentorRole) {
           response = await axios.get("http://localhost:4000/api/mentorSchedulesByID", {
             withCredentials: true, // Equivalent to credentials: "include"
           });
-        } else if (userRole?.startsWith("LSEED") ) {
-          if (userRole === 'LSEED-Coordinator') {
+        } else if (isLSEEDCoordinator ) {
+          if (user?.roles?.includes('LSEED-Coordinator')) {
             const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
               withCredentials: true, // Equivalent to credentials: "include"
             });
@@ -509,7 +513,7 @@ const Scheduling = ({ userRole }) => {
       try {
         let response;
 
-        if (userRole === 'LSEED-Coordinator') {
+        if (user?.roles?.includes('LSEED-Coordinator')) {
           const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
             withCredentials: true, // Equivalent to credentials: "include"
           });
@@ -550,13 +554,13 @@ const Scheduling = ({ userRole }) => {
       <Header
         title="Scheduling Matrix"
         subtitle={
-          userRole?.startsWith("LSEED") 
+          isLSEEDUser  
             ? "View and Manage the schedule of the mentors"
             : "Find the Appropriate Schedule"
         }
       />
 
-      {userRole === "Mentor" ? (
+      { hasMentorRole ? (
         <Box
           display="flex"
           flexDirection="column"
@@ -921,7 +925,7 @@ const Scheduling = ({ userRole }) => {
         </DialogActions>
       </Dialog>
 
-      {userRole === "Mentor" && (
+      {hasMentorRole  && (
         <Box mt={4}>
           {/* Export Button Positioned Outside DataGrid */}
           <Box mb={2}>

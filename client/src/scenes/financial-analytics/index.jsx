@@ -14,12 +14,14 @@ import { FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 import MoneyOffOutlinedIcon from "@mui/icons-material/MoneyOffOutlined";
 import InventoryValuePie from "../../components/TotalInventoryPieChart.jsx";
 import InventoryTurnoverBar from "../../components/InventoryTurnoverBarChart.jsx";
+import { useAuth } from "../contexts/AuthContext";
 
-const FinancialAnalytics = ({ userRole }) => {
+const FinancialAnalytics = ({ }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [financialData, setFinancialData] = useState([]);
   const [cashFlowRaw, setCashFlowRaw] = useState([]);
+  const { user } = useAuth();
 
   // Connect to the DB
 

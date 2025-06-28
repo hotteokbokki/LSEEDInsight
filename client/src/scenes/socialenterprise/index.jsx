@@ -32,9 +32,13 @@ import Header from "../../components/Header";
 import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import { useNavigate } from "react-router-dom"; // For navigation
+import { useAuth } from "../contexts/AuthContext";
 
-const SocialEnterprise = ({ userRole }) => {
+const SocialEnterprise = ({ }) => {
   const theme = useTheme();
+  const { user } = useAuth();
+  const isLSEEDCoordinator = user?.roles?.some(role => role?.startsWith("LSEED"));
+  const hasMentorRole = user?.roles?.includes("Mentor");
   const colors = tokens(theme.palette.mode);
   const navigate = useNavigate(); // Initialize navigation
   const [socialEnterpriseData, setSocialEnterpriseData] = useState({
@@ -180,7 +184,7 @@ const SocialEnterprise = ({ userRole }) => {
       try {
         let response;
 
-        if (userRole === 'LSEED-Coordinator') {
+        if (user?.roles?.includes('LSEED-Coordinator')) {
           const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
             withCredentials: true, // Equivalent to credentials: "include"
           });
@@ -587,7 +591,7 @@ const SocialEnterprise = ({ userRole }) => {
         backgroundColor={colors.primary[400]}
         paddingTop="10px"
       >
-        <SEPerformanceTrendChart userRole={userRole} />{" "}
+        <SEPerformanceTrendChart />{" "}
         {/* ✅ Embed the SEPerformanceChart component here */}
       </Box>
       <Box display="flex" gap="10px" mt="20px">
@@ -1687,7 +1691,7 @@ const SocialEnterprise = ({ userRole }) => {
         </Box>
 
         {/* APPLICATIONS TABLE */}
-        {userRole === "LSEED-Director" && (
+        {user?.roles?.includes('LSEED-Director') && (
           <Box
             flex="1"
             backgroundColor={colors.primary[400]}

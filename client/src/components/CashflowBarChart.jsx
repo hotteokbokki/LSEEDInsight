@@ -3,6 +3,7 @@ import axios from "axios";
 import { ResponsiveBar } from "@nivo/bar";
 import { useTheme, Button, MenuItem, Select, Typography } from "@mui/material";
 import { tokens } from "../theme";
+import { useAuth } from "../contexts/AuthContext";
 
 const CustomTooltip = ({ value, indexValue, id, data }) => {
   const entry = data.find((d) => d.category === indexValue);
@@ -71,10 +72,10 @@ const CustomTooltip = ({ value, indexValue, id, data }) => {
   );
 };
 
-const CashFlowBarChart = ({ userRole }) => {
+const CashFlowBarChart = ({  }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-
+  const { user } = useAuth();
   const [seList, setSeList] = useState([]);
   const [selectedSEs, setSelectedSEs] = useState([]);
   const [chartData, setChartData] = useState([]);
@@ -85,7 +86,8 @@ const CashFlowBarChart = ({ userRole }) => {
       let response;
 
       try {
-        if (userRole === "LSEED-Coordinator") {
+        const isLSEEDCoordinator = user?.roles?.some(role => role?.startsWith("LSEED"));
+        if (isLSEEDCoordinator) {
           const res = await axios.get(
             "http://localhost:4000/api/get-program-coordinator",
             {

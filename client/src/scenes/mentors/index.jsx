@@ -32,10 +32,12 @@ import { useNavigate } from "react-router-dom";
 import { Snackbar, Alert } from "@mui/material";
 import Tooltip from "@mui/material/Tooltip";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { useAuth } from "../contexts/AuthContext"; // Import useAuth hook
 
-const Mentors = ( {userRole} ) => {
+const Mentors = ( {} ) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const { user } = useAuth()
   const [rows, setRows] = useState();
   const navigate = useNavigate();
   const [mentorshipData, setMentorshipData] = useState({
@@ -73,6 +75,9 @@ const Mentors = ( {userRole} ) => {
   const [mentorSearch, setMentorSearch] = useState(""); // For autocomplete input
   const [selectedSE, setSelectedSE] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const hasMentorRole = user?.roles?.includes("Mentor");
+  const isLSEEDCoordinator = user?.roles?.some(role => role?.startsWith("LSEED"));
+
   // Fetch mentors from the database
   const fetchMentors = async () => {
     try {
@@ -270,7 +275,7 @@ const Mentors = ( {userRole} ) => {
     const fetchStats = async () => {
       try {
         let response;
-        if (userRole === 'LSEED-Coordinator') {
+        if (isLSEEDCoordinator) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",
             credentials: "include", // Required to send session cookie
@@ -1523,7 +1528,7 @@ const Mentors = ( {userRole} ) => {
         </Box>
 
         {/* MENTOR APPLICATIONS TABLE */}
-        {userRole === "LSEED-Director" && (
+        {user?.roles?.includes("LSEED-Director") && (
           <Box
             flex="1"
             backgroundColor={colors.primary[400]}

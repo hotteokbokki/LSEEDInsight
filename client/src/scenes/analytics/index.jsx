@@ -18,19 +18,20 @@ import HeatmapWrapper from "../../components/MyHeatMap";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { tokens } from "../../theme";
 import { useEffect, useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
 
-const Analytics = ( {userRole}) => {
+const Analytics = ( {}) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [stats, setStats] = useState(null);
-
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         let response;
-
-        if (userRole === 'LSEED-Coordinator') {
+        const isLSEEDCoordinator = user?.roles?.some(role => role?.startsWith("LSEED"));
+        if (isLSEEDCoordinator) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",
             credentials: "include", // Required to send session cookie
@@ -195,7 +196,7 @@ const Analytics = ( {userRole}) => {
         paddingTop="5px"
         marginTop="20px"
       >
-        <SEPerformanceTrendChart userRole={userRole}/>
+        <SEPerformanceTrendChart />
       </Box>
 
       {/* Row 2 - Horizontal Bar Charts */}
@@ -302,7 +303,7 @@ const Analytics = ( {userRole}) => {
           paddingleft="20px"
           paddingRight="20px"
         >
-          <HeatmapWrapper userRole={userRole}/>
+          <HeatmapWrapper />
         </Box>
 
         {/* Row 4 - Leaderboard */}
@@ -604,7 +605,7 @@ const Analytics = ( {userRole}) => {
             justifyContent="center"
             alignItems="center"
           >
-            <BarChart userRole={userRole}/>{" "}
+            <BarChart />{" "}
             {/* No need for conditional rendering, BarChart fetches its own data */}
           </Box>
         </Box>

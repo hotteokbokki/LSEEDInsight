@@ -5,7 +5,7 @@ import axios from "axios";
 import { tokens } from "../theme";
 import { useAuth } from "../contexts/AuthContext";
 
-const AcknowledgmentChart = ({userRole}) => {
+const AcknowledgmentChart = ({}) => {
   const [ackData, setAckData] = useState([]);
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);

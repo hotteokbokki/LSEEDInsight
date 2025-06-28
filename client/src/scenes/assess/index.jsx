@@ -19,10 +19,12 @@ import {
 import { tokens } from "../../theme";
 import { DataGrid } from "@mui/x-data-grid";
 import Header from "../../components/Header";
+import { useAuth } from "../contexts/AuthContext";
 
-const EvaluatePage = ({ userRole }) => {
+const EvaluatePage = ({ }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const { user } = useAuth();
   const [openSelectDialog, setOpenSelectDialog] = useState(false); // For SE selection dialog
   const [openEvaluateDialog, setOpenEvaluateDialog] = useState(false); // For evaluation dialog
   const dialogContentRef = useRef(null); // Ref for the dialog content
@@ -133,20 +135,23 @@ const EvaluatePage = ({ userRole }) => {
       try {
         setIsLoadingEvaluations(true);
 
-        // ⭐️ CORRECTED LOGIC: Check if userRole (an array) includes the string
+        // ⭐️ CORRECTED LOGIC: Check if role (an array) includes the string
         let response;
-        if (userRole?.includes("Mentor")) {
+        const hasMentorRole = user?.roles?.includes("Mentor");
+        const isLSEEDUser = user?.roles?.some(role => role === "LSEED-Coordinator" || role === "Administrator");
+
+        if (hasMentorRole) {
           response = await axios.get(
             "http://localhost:4000/getMentorEvaluations",
             {
               withCredentials: true, // Equivalent to credentials: "include"
             }
           );
-        } else if (userRole?.includes("LSEED-Coordinator") || userRole?.includes("Administrator")) {
+        } else if (isLSEEDUser) {
           response = await axios.get("http://localhost:4000/getAllEvaluations");
         } else {
-            // Handle case where userRole is not recognized
-            console.log("User role is not recognized:", userRole);
+            // Handle case where role is not recognized
+            console.log("User role is not recognized:", user?.roles);
             return;
         }
 
@@ -169,8 +174,10 @@ const EvaluatePage = ({ userRole }) => {
       }
     };
 
-    fetchEvaluations();
-  }, [userRole]); // ⭐️ Add userRole to the dependency array
+    if (user) {
+      fetchEvaluations();
+    }
+  }, [user]); // ⭐️ Add user to the dependency array
 
   const columns = [
     { field: "social_enterprise", headerName: "Social Enterprise", flex: 1 },
@@ -439,8 +446,8 @@ const EvaluatePage = ({ userRole }) => {
   };
 
   useEffect(() => {
-    // ⭐️ CORRECTED: Check if userRole (an array) includes the string "Mentor"
-    if (userRole?.includes("Mentor")) {
+    // ⭐️ CORRECTED: Check if user?.roles (an array) includes the string "Mentor"
+    if (hasMentorRole) {
       const fetchSocialEnterprises = async () => {
         try {
           setIsLoadingSocialEnterprises(true); // Start loading
@@ -475,9 +482,11 @@ const EvaluatePage = ({ userRole }) => {
           setIsLoadingSocialEnterprises(false); // Stop loading
         }
       };
-      fetchSocialEnterprises();
+      if (user) {
+        fetchEvaluations();
+      }
     }
-  }, [userRole]); // ⭐️ Add userRole to dependency array
+  }, [user]); // ⭐️ Add user to dependency array
 
   // Scroll to the top of the dialog when it opens
   useEffect(() => {
@@ -624,12 +633,12 @@ const EvaluatePage = ({ userRole }) => {
       {/* ⭐️ CORRECTED: Header title check */}
       <Header
         title={
-          userRole?.includes("LSEED-Coordinator") || userRole?.includes("Administrator")
+          isLSEEDUser
             ? "Evaluate Mentors"
             : "Evaluate SE"
         }
         subtitle={
-          userRole?.includes("LSEED-Coordinator") || userRole?.includes("Administrator")
+          isLSEEDUser
             ? "View and Manage mentor evaluations"
             : "Evaluate Social Enterprises based on key criteria"
         }
@@ -644,9 +653,9 @@ const EvaluatePage = ({ userRole }) => {
           padding={2}
           gap={2} // Adds spacing between buttons
         >
-          {/* Show this button only if userRole is Mentor */}
+          {/* Show this button only if user?.roles is Mentor */}
           {/* ⭐️ CORRECTED: Button visibility check */}
-          {userRole?.includes("Mentor") && (
+          {hasMentorRole && (
             <Button
               variant="contained"
               color="secondary"
@@ -661,9 +670,9 @@ const EvaluatePage = ({ userRole }) => {
               Evaluate SE
             </Button>
           )}
-          {/* Show this button only if userRole is LSEED */}
+          {/* Show this button only if user?.roles is LSEED */}
           {/* ⭐️ CORRECTED: Button visibility check */}
-          {(userRole?.includes("LSEED-Coordinator") || userRole?.includes("Administrator")) && (
+          {(isLSEEDUser) && (
             <Button
               onClick={handleOpenMentorshipDialog}
               variant="contained"
@@ -814,7 +823,7 @@ const EvaluatePage = ({ userRole }) => {
         </Snackbar>
 
         {/* ⭐️ CORRECTED: Render the correct DataGrid based on user role */}
-        {(userRole?.includes("LSEED-Coordinator") || userRole?.includes("Administrator")) ? (
+        {(isLSEEDUser ) ? (
           <>
             <Box
               width="100%"
@@ -898,7 +907,7 @@ const EvaluatePage = ({ userRole }) => {
               </Box>
             </Box>
           </>
-        ) : userRole?.includes("Mentor") ? (
+        ) : hasMentorRole ? (
           <Box
             width="100%"
             backgroundColor={colors.primary[400]}
