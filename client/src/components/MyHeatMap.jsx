@@ -4,19 +4,22 @@ import { tokens } from "../theme";
 import { useState, useEffect } from "react";
 import { Box, Select, MenuItem, Typography, Tooltip, IconButton } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import { useAuth } from "../contexts/AuthContext"; // Import useAuth hook
 
-const HeatmapWrapper = ( {userRole} ) => {
+const HeatmapWrapper = ( {} ) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [heatMapStats, setHeatMapStats] = useState([]);
   const [period, setPeriod] = useState("overall"); // Default to quarterly
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchHeatMapStats = async () => {
       try {
         let response;
+        const isLSEEDCoordinator = user?.roles?.some(role => role?.startsWith("LSEED"));
 
-        if (userRole === 'LSEED-Coordinator') {
+        if (isLSEEDCoordinator) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",
             credentials: "include", // Required to send session cookie
