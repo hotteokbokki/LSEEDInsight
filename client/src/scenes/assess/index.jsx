@@ -50,9 +50,6 @@ const EvaluatePage = ({ }) => {
   const hasMentorRole = user?.roles?.includes("Mentor");
   const isLSEEDUser = user?.roles?.some(role => role?.startsWith("LSEED"));
 
-  const hasMentorRole = user?.roles?.includes("Mentor");
-  const isLSEEDUser = user?.roles?.some(role => role === "LSEED-Coordinator" || role === "Administrator");
-  
   const handleProgramSelectionChange = (programId) => {
     setSelectedPrograms(
       (prev) =>
