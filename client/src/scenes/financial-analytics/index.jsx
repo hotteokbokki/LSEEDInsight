@@ -14,7 +14,7 @@ import { FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 import MoneyOffOutlinedIcon from "@mui/icons-material/MoneyOffOutlined";
 import InventoryValuePie from "../../components/TotalInventoryPieChart.jsx";
 import InventoryTurnoverBar from "../../components/InventoryTurnoverBarChart.jsx";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../../context/authContext";
 
 const FinancialAnalytics = ({ }) => {
   const theme = useTheme();

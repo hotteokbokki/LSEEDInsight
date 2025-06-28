@@ -83,7 +83,7 @@ const MainContent = () => {
       // ✅ Correctly handles both Array and string roles
       const roles = Array.isArray(user.roles) ? user.roles : user.roles.split(',').map(roles => roles.trim());
       
-      const isCoordinator = roles.includes("LSEED-Coordinator");
+      const isCoordinator = roles.some(role => role.startsWith("LSEED"));
       const isMentor = roles.includes("Mentor");
       
       setHasBothRoles(isCoordinator && isMentor);

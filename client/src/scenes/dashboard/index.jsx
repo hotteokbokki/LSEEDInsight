@@ -80,6 +80,9 @@ const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles
     previousUnassignedMentors: 0,
   });
   const [percentageIncrease, setPercentageIncrease] = useState("0%");
+  const hasMentorRole = user?.roles?.includes("Mentor");
+  const isLSEEDUser = user?.roles?.some(role => role === "LSEED-Coordinator" || role === "Administrator");
+  const isCoordinator = user?.roles?.includes("LSEED-Coordinator");
 
   const mockStats = {
     totalEvaluations: 25,
@@ -87,37 +90,6 @@ const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles
     mostCommonRating: 5,
     socialEnterprisesHandled: 10,
   };
-
-  const mockEvaluations = [
-    {
-      id: 1,
-      date: "2025-03-10",
-      enterprise: "GreenFuture SE",
-      status: "Acknowledged",
-    },
-    { id: 2, date: "2025-03-08", enterprise: "EcoSavers", status: "Pending" },
-    {
-      id: 3,
-      date: "2025-03-05",
-      enterprise: "BlueWater Solutions",
-      status: "Acknowledged",
-    },
-  ];
-
-  const mockSessions = [
-    {
-      id: 1,
-      date: "2025-03-20",
-      enterprise: "GreenFuture SE",
-      status: "Confirmed",
-    },
-    {
-      id: 2,
-      date: "2025-03-22",
-      enterprise: "EcoSavers",
-      status: "Pending Approval",
-    },
-  ];
 
   const alertColumns = [
     { field: "seName", headerName: "SE Name", flex: 2 },
@@ -187,19 +159,20 @@ const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles
     },
   ];
 
-  const hasMentorRole = user?.roles?.includes("Mentor");
-  const isLSEEDUser = user?.roles?.some(role => role === "LSEED-Coordinator" || role === "Administrator");
-
   useEffect(() => {
     const fetchEvaluations = async () => {
       try {
         setIsLoadingEvaluations(true);
 
         let response;
-        if (user?.roles?.includes("Mentor")) {
+        console.log("DEBUG: ", hasMentorRole)
+        if (hasMentorRole) {
           response = await axios.get("http://localhost:4000/getRecentMentorEvaluations", {
             withCredentials: true,
           });
+        } else {
+          setmentorEvaluations([]); // clear any old data
+          return;
         }
         // Ensure evaluation_id is included and set as `id`
         const formattedData = response.data.map((evaluation) => ({
@@ -211,7 +184,7 @@ const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles
           acknowledged: evaluation.acknowledged ? "Yes" : "No",
         }));
 
-        console.log("✅ Formatted EvaluationsData:", formattedData); // Debugging
+        console.log("✅ Post Data:", formattedData); // Debugging
         setmentorEvaluations(formattedData);
       } catch (error) {
         console.error("❌ Error fetching evaluations:", error);
@@ -234,10 +207,14 @@ const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles
 
         let response;
         
-        if (user?.roles?.includes("Mentor")) {
+        if (hasMentorRole) {
           response = await axios.get("http://localhost:4000/getUpcomingSchedulesForMentor", {
             withCredentials: true,
           });
+        } else {
+          console.log("User is not a Mentor → skipping mentor evaluations fetch.");
+          setmentorEvaluations([]); // clear any old data
+          return;
         }
         // Ensure evaluation_id is included and set as `id`
         const formattedData = response.data.map((schedule) => ({
@@ -446,12 +423,14 @@ const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles
   //   }
   // }, [user, isCoordinatorView]); // ✅ Add isCoordinatorView here
 
+  //DEBUG::
+
   useEffect(() => {
     const fetchFlaggedSE = async () => {
       try {
         let response;
-        
-        if (user?.roles?.some(role => role?.startsWith("LSEED"))) {
+
+        if (isCoordinator) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",
             credentials: "include", // Required to send session cookie
@@ -495,7 +474,7 @@ const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles
       try {
         let response;
 
-        if (user?.roles?.some(role => role?.startsWith("LSEED"))) {
+        if (isCoordinator) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",
             credentials: "include", // Required to send session cookie
@@ -615,7 +594,7 @@ const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles
       try {
         let response;
         
-        if (user?.roles?.some(role => role?.startsWith("LSEED"))) {
+        if (isCoordinator) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",
             credentials: "include", // Required to send session cookie
@@ -666,7 +645,7 @@ const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles
         setLoading(true); // ✅ Set loading state before fetching
 
         let response;
-        if (user?.roles?.some(role => role?.startsWith("LSEED"))) {
+        if (isCoordinator) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",
             credentials: "include", // Required to send session cookie
@@ -752,6 +731,8 @@ const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles
       selected.event.remove();
     }
   };
+
+  console.log("View: ", isCoordinatorView)
 
   return (
     <Box m="20px">
@@ -980,7 +961,6 @@ const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles
                                 maxHeight: "300px",
                                 objectFit: "contain",
                             }}
-                            userRole={user?.roles}
                         />
                     </Box>
 

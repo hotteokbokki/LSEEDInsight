@@ -18,19 +18,19 @@ import HeatmapWrapper from "../../components/MyHeatMap";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { tokens } from "../../theme";
 import { useEffect, useState } from "react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../../context/authContext";
 
 const Analytics = ( {}) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [stats, setStats] = useState(null);
   const { user } = useAuth();
+  const isLSEEDCoordinator = user?.roles?.includes("LSEED-Coordinator");
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         let response;
-        const isLSEEDCoordinator = user?.roles?.some(role => role?.startsWith("LSEED"));
         if (isLSEEDCoordinator) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",

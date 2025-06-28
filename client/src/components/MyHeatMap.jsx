@@ -4,7 +4,7 @@ import { tokens } from "../theme";
 import { useState, useEffect } from "react";
 import { Box, Select, MenuItem, Typography, Tooltip, IconButton } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import { useAuth } from "../contexts/AuthContext"; // Import useAuth hook
+import { useAuth } from "../context/authContext";
 
 const HeatmapWrapper = ( {} ) => {
   const theme = useTheme();
@@ -12,12 +12,12 @@ const HeatmapWrapper = ( {} ) => {
   const [heatMapStats, setHeatMapStats] = useState([]);
   const [period, setPeriod] = useState("overall"); // Default to quarterly
   const { user } = useAuth();
+  const isLSEEDCoordinator = user?.roles?.includes("LSEED-Coordinator");
 
   useEffect(() => {
     const fetchHeatMapStats = async () => {
       try {
         let response;
-        const isLSEEDCoordinator = user?.roles?.some(role => role?.startsWith("LSEED"));
 
         if (isLSEEDCoordinator) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {

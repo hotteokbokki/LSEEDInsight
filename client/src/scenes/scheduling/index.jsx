@@ -40,7 +40,6 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { saveAs } from "file-saver";
-import { useAuth } from "../contexts/AuthContext";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -78,7 +77,7 @@ const Scheduling = ({  }) => {
   const [mentorSchedules, setMentorSchedules] = useState([]);
   const [mentorHistory, setMentorHistory] = useState([]);
 
-  const isLSEEDCoordinator = user?.roles?.some(role => role?.startsWith("LSEED"));
+  const isLSEEDUser = user?.roles?.some(role => role?.startsWith("LSEED"));
   const hasMentorRole = user?.roles?.includes("Mentor");
 
   const generateTimeSlots = () => {
@@ -301,7 +300,7 @@ const Scheduling = ({  }) => {
           response = await axios.get("http://localhost:4000/api/mentorSchedulesByID", {
             withCredentials: true, // Equivalent to credentials: "include"
           });
-        } else if (isLSEEDCoordinator ) {
+        } else if (isLSEEDUser ) {
           if (user?.roles?.includes('LSEED-Coordinator')) {
             const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
               withCredentials: true, // Equivalent to credentials: "include"

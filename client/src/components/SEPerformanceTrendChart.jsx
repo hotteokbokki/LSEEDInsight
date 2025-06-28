@@ -4,7 +4,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import LineChart from "./LineChart";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
-import { useAuth } from "../contexts/AuthContext"; // Import useAuth hook
+import { useAuth } from "../context/authContext";
 
 const SEPerformanceTrendChart = ({selectedSEId = null}) => {
   const theme = useTheme();
@@ -13,14 +13,14 @@ const SEPerformanceTrendChart = ({selectedSEId = null}) => {
   const [period, setPeriod] = useState("overall");
   const [topPerformer, setTopPerformer] = useState(null);
   const { user } = useAuth();
+  const isCoordinator = user?.roles?.includes("LSEED-Coordinator");
 
   useEffect(() => {
     const fetchTopPerformers = async () => {
       try {
         let response;
-        const isLSEEDCoordinator = user?.roles?.some(role => role?.startsWith("LSEED"));
 
-        if (isLSEEDCoordinator) {
+        if (isCoordinator) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",
             credentials: "include", // Required to send session cookie

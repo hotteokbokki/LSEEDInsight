@@ -3,7 +3,7 @@ import axios from "axios";
 import { ResponsiveBar } from "@nivo/bar";
 import { useTheme, Button, MenuItem, Select, Typography } from "@mui/material";
 import { tokens } from "../theme";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../context/authContext";
 
 const CustomTooltip = ({ value, indexValue, id, data }) => {
   const se1 = data.find((d) => d.category === indexValue);
@@ -60,6 +60,7 @@ const BarChart = ( {} ) => {
   const [selectedSEs, setSelectedSEs] = useState([]);
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const isLSEEDCoordinator = user?.roles?.includes("LSEED-Coordinator");
 
 
   useEffect(() => {
@@ -68,7 +69,6 @@ const BarChart = ( {} ) => {
       let response;
       
       try {
-        const isLSEEDCoordinator = user?.roles?.some(role => role?.startsWith("LSEED"));
         if (isLSEEDCoordinator) {
           const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
             withCredentials: true, // Equivalent to credentials: "include"

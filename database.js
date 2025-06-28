@@ -12,17 +12,6 @@ const { Pool } = require('pg');
 // idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
 // });
 
-// // Retrieve Database credentials from environment variables (LOCAL)
-// const pool = new Pool({
-// host: process.env.DATABASE_LOCALHOSTNAME,
-// user: process.env.DATABASE_LOCAL_USER,
-// port: process.env.DATABASE_PORT,
-// password: process.env.DATABASE_KEY,
-// database: process.env.DATABASE_LOCAL_NAME,
-// max: 10, // Max connections in pool
-// idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-// });
-
 // Retrieve Database credentials from environment variables (LOCAL)
 const pool = new Pool({
 host: process.env.DATABASE_LOCALHOSTNAME,

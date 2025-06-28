@@ -64,10 +64,10 @@ const Sidebar = ({ isCoordinatorView }) => {
 
   // ⭐️ STEP 2: Correctly check roles from the `user.role` array
   const userRoles = user?.roles || []; // Fallback to an empty array for safety
-  const isLSEEDCoordinator = userRoles.includes("LSEED-Coordinator");
+  //const isLSEEDCoordinator = userRoles.includes("LSEED-Coordinator");
   const hasMentorRole = userRoles.includes("Mentor");
-  const isAdministrator = userRoles.includes("Administrator");
-  const isLSEEDUser = isLSEEDCoordinator || isAdministrator;
+  //const isAdministrator = userRoles.includes("Administrator");
+  const isLSEEDUser = userRoles.some(role => role.startsWith("LSEED"));
 
   // ⭐️ Add this useEffect hook for debugging
   useEffect(() => {
