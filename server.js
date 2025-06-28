@@ -224,7 +224,6 @@ console.log("First row preview:", data[0]);
 const userStates = {};
 // Timeout duration (in milliseconds) before clearing stale states
 const STATE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
-const PASSWORD = 'q@P#3_4)V5vUw+LJ!F'; // Set a secure password for authentication
 const userSelections = {}; // Store selections temporarily before final save
 
 const extractEmails = (text) => {
