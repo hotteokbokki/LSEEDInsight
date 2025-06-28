@@ -50,6 +50,9 @@ const EvaluatePage = ({ }) => {
   const hasMentorRole = user?.roles?.includes("Mentor");
   const isLSEEDUser = user?.roles?.some(role => role?.startsWith("LSEED"));
 
+  const hasMentorRole = user?.roles?.includes("Mentor");
+  const isLSEEDUser = user?.roles?.some(role => role === "LSEED-Coordinator" || role === "Administrator");
+  
   const handleProgramSelectionChange = (programId) => {
     setSelectedPrograms(
       (prev) =>
@@ -486,7 +489,7 @@ const EvaluatePage = ({ }) => {
         fetchSocialEnterprises();
       }
     }
-  }, [user]); // ⭐️ Add user to dependency array
+  }, [user, hasMentorRole]); // ⭐️ Add user to dependency array
 
   // Scroll to the top of the dialog when it opens
   useEffect(() => {

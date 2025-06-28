@@ -553,7 +553,7 @@ const Scheduling = ({  }) => {
       <Header
         title="Scheduling Matrix"
         subtitle={
-          isLSEEDUser  
+          isLSEEDCoordinator  
             ? "View and Manage the schedule of the mentors"
             : "Find the Appropriate Schedule"
         }
