@@ -30,6 +30,7 @@
     "express-session": "^1.18.1",
     "js-cookie": "^3.0.5",
     "ngrok": "^5.0.0-beta.2",
+    "node-cron": "^4.1.1",
     "node-telegram-bot-api": "^0.66.0",
     "nodemailer": "^7.0.3",
     "papaparse": "^5.5.3",

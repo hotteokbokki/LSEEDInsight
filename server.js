@@ -2,6 +2,8 @@ const express = require("express");
 const session = require("express-session");
 const cors = require("cors");
 const bcrypt = require('bcrypt'); // For password hashing
+const cron = require('node-cron'); // For automating password changing
+const crypto = require('crypto'); // FOr generating passwords for sign up
 const { router: authRoutes, requireAuth } = require("./routes/authRoutes");
 const axios = require("axios");
 const ngrok = require("ngrok"); // Exposes your local server to the internet
@@ -233,6 +235,31 @@ const extractPhoneNumbers = (text) => {
   return text?.match(/(?:\+?\d{1,4}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?)?\d{3,4}[\s-]?\d{3,4}/g) || [];
 };
 
+function generateRandomPassword(length = 16) {
+  return crypto.randomBytes(length).toString('base64').slice(0, length);
+}
+
+cron.schedule('0 8 * * 1', async () => {
+  const newPassword = generateRandomPassword(16);
+  const validFrom = new Date();
+  const validUntil = new Date();
+  validUntil.setDate(validFrom.getDate() + 7); // Valid for 7 days
+
+  try {
+    // Step 1: Delete all previous passwords
+    await pgDatabase.query(`DELETE FROM signup_passwords;`);
+
+    // Step 2: Insert new password
+    await pgDatabase.query(`
+      INSERT INTO signup_passwords (password, valid_from, valid_until)
+      VALUES ($1, $2, $3)
+    `, [newPassword, validFrom, validUntil]);
+
+    console.log(`✅ New signup password generated: ${newPassword}`);
+  } catch (err) {
+    console.error('❌ Error rotating signup password:', err);
+  }
+});
 
 // Helper function to send plain messages (without buttons)
 async function sendMessage(chatId, message) {
@@ -2188,36 +2215,45 @@ app.post("/webhook-bot1", async (req, res) => {
         const formattedOptions = options.map(option => [option]); // Ensure 2D array
         console.log("✅ Formatted Inline Keyboard:", JSON.stringify(formattedOptions, null, 2)); 
 
-        // If user enters password and options are available
-        if (
-          userStates[chatId]?.state === "awaiting_password" &&
-          message.text.trim().toLowerCase() === PASSWORD.toLowerCase()
-        ) {
-          setUserState(chatId, "awaiting_program_selection"); // Transition to program selection
-          if (formattedOptions.length === 0) {
-            await sendMessage(
+        if (userStates[chatId]?.state === "awaiting_password") {
+          const enteredPassword = message.text.trim().toLowerCase();
+
+          // Step 1: Fetch current valid password from database
+          const { rows } = await pgDatabase.query(`
+            SELECT password FROM signup_passwords
+            WHERE NOW() BETWEEN valid_from AND valid_until
+            LIMIT 1
+          `);
+
+          const currentPassword = rows[0]?.password?.toLowerCase();
+
+          if (enteredPassword === currentPassword) {
+            setUserState(chatId, "awaiting_program_selection"); // Transition to program selection
+
+            if (formattedOptions.length === 0) {
+              await sendMessage(
+                chatId,
+                "⚠️ No programs available at the moment. Please try again later."
+              );
+              delete userStates[chatId]; // Reset state
+              return res.sendStatus(200);
+            }
+
+            const confirmationMessage = await sendMessageWithOptions(
               chatId,
-              "⚠️ No programs available at the moment. Please try again later."
+              "✅ Password correct! You have been successfully registered.\n\nPlease choose your program:",
+              formattedOptions
             );
-            delete userStates[chatId]; // Reset state if no programs are available
+
+            userStates[chatId] = {
+              confirmationMessageId: confirmationMessage?.message_id || null
+            };
+
+            return res.sendStatus(200);
+          } else {
+            await sendMessage(chatId, "❌ Incorrect password. Please try again.");
             return res.sendStatus(200);
           }
-          const confirmationMessage = await sendMessageWithOptions(
-            chatId,
-            "✅ Password correct! You have been successfully registered.\n\nPlease choose your program:",
-            formattedOptions
-          );
-          
-          // Update userStates
-          userStates[chatId] = { confirmationMessageId: confirmationMessage?.message_id || null };
-
-          return res.sendStatus(200);
-        }
-
-        // If password is incorrect
-        if (userStates[chatId]?.state === "awaiting_password") {
-          await sendMessage(chatId, "❌ Incorrect password. Please try again.");
-          return res.sendStatus(200);
         }
 
         // Handle invalid input during program selection
