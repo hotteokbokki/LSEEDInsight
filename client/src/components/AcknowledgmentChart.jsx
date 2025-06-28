@@ -3,11 +3,13 @@ import { Box, Typography, useTheme } from "@mui/material";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { tokens } from "../theme";
+import { useAuth } from "../contexts/AuthContext";
 
 const AcknowledgmentChart = ({userRole}) => {
   const [ackData, setAckData] = useState([]);
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchAckData = async () => {
@@ -15,7 +17,9 @@ const AcknowledgmentChart = ({userRole}) => {
       let response;
       
       try {
-        if (userRole === 'LSEED-Coordinator') {
+        const isLSEEDCoordinator = user?.roles?.some(role => role?.startsWith("LSEED"));
+
+        if (isLSEEDCoordinator) {
           const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
             method: "GET",
             credentials: "include", // Required to send session cookie
