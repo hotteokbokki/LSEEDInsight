@@ -1498,7 +1498,7 @@ app.get("/getMentorEvaluations", async (req, res) => {
 
     const result = await getEvaluationsMadeByMentor(mentor_id); // Fetch SEs from DB
     if (!result || result.length === 0) {
-      return res.status(404).json({ message: "No evaluations found" });
+      return res.json([]); 
     }
     res.json(result);
   } catch (error) {
