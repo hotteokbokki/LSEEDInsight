@@ -19,7 +19,7 @@ import {
 import { tokens } from "../../theme";
 import { DataGrid } from "@mui/x-data-grid";
 import Header from "../../components/Header";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../../context/authContext";
 
 const EvaluatePage = ({ }) => {
   const theme = useTheme();
@@ -48,6 +48,9 @@ const EvaluatePage = ({ }) => {
   const [isLoadingPrograms, setIsLoadingPrograms] = useState(false);
   const [openMentorEvalDialog, setMentorEvalDialog] = useState(false);
 
+  const hasMentorRole = user?.roles?.includes("Mentor");
+  const isLSEEDUser = user?.roles?.some(role => role === "LSEED-Coordinator" || role === "Administrator");
+  
   const handleProgramSelectionChange = (programId) => {
     setSelectedPrograms(
       (prev) =>
@@ -137,8 +140,6 @@ const EvaluatePage = ({ }) => {
 
         // ⭐️ CORRECTED LOGIC: Check if role (an array) includes the string
         let response;
-        const hasMentorRole = user?.roles?.includes("Mentor");
-        const isLSEEDUser = user?.roles?.some(role => role === "LSEED-Coordinator" || role === "Administrator");
 
         if (hasMentorRole) {
           response = await axios.get(
@@ -483,10 +484,10 @@ const EvaluatePage = ({ }) => {
         }
       };
       if (user) {
-        fetchEvaluations();
+        fetchSocialEnterprises();
       }
     }
-  }, [user]); // ⭐️ Add user to dependency array
+  }, [user, hasMentorRole]); // ⭐️ Add user to dependency array
 
   // Scroll to the top of the dialog when it opens
   useEffect(() => {

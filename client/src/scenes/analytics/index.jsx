@@ -18,7 +18,7 @@ import HeatmapWrapper from "../../components/MyHeatMap";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { tokens } from "../../theme";
 import { useEffect, useState } from "react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../../context/authContext";
 
 const Analytics = ( {}) => {
   const theme = useTheme();

@@ -40,7 +40,6 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { saveAs } from "file-saver";
-import { useAuth } from "../contexts/AuthContext";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -554,7 +553,7 @@ const Scheduling = ({  }) => {
       <Header
         title="Scheduling Matrix"
         subtitle={
-          isLSEEDUser  
+          isLSEEDCoordinator  
             ? "View and Manage the schedule of the mentors"
             : "Find the Appropriate Schedule"
         }

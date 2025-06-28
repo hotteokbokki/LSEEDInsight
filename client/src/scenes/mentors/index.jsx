@@ -32,7 +32,7 @@ import { useNavigate } from "react-router-dom";
 import { Snackbar, Alert } from "@mui/material";
 import Tooltip from "@mui/material/Tooltip";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { useAuth } from "../contexts/AuthContext"; // Import useAuth hook
+import { useAuth } from "../../context/authContext";
 
 const Mentors = ( {} ) => {
   const theme = useTheme();

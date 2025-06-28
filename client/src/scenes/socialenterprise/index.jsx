@@ -32,7 +32,7 @@ import Header from "../../components/Header";
 import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import { useNavigate } from "react-router-dom"; // For navigation
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../../context/authContext";
 
 const SocialEnterprise = ({ }) => {
   const theme = useTheme();

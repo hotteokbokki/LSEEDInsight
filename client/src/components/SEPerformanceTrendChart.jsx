@@ -4,7 +4,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import LineChart from "./LineChart";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
-import { useAuth } from "../contexts/AuthContext"; // Import useAuth hook
+import { useAuth } from "../context/authContext";
 
 const SEPerformanceTrendChart = ({selectedSEId = null}) => {
   const theme = useTheme();

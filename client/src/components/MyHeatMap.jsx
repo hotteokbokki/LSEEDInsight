@@ -4,7 +4,7 @@ import { tokens } from "../theme";
 import { useState, useEffect } from "react";
 import { Box, Select, MenuItem, Typography, Tooltip, IconButton } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import { useAuth } from "../contexts/AuthContext"; // Import useAuth hook
+import { useAuth } from "../context/authContext";
 
 const HeatmapWrapper = ( {} ) => {
   const theme = useTheme();

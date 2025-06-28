@@ -3,7 +3,7 @@ import axios from "axios";
 import { ResponsiveBar } from "@nivo/bar";
 import { useTheme, Button, MenuItem, Select, Typography } from "@mui/material";
 import { tokens } from "../theme";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../context/authContext";
 
 const CustomTooltip = ({ value, indexValue, id, data }) => {
   const se1 = data.find((d) => d.category === indexValue);

@@ -3,7 +3,7 @@ import { Box, Typography, useTheme } from "@mui/material";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { tokens } from "../theme";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../context/authContext";
 
 const AcknowledgmentChart = ({}) => {
   const [ackData, setAckData] = useState([]);
