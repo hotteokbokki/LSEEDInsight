@@ -52,10 +52,10 @@ import {
 } from "@mui/icons-material";
 import axios from "axios";
 
-const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles }) => {
+const Dashboard = ({ }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-  const { user } = useAuth();
+  const { user, isMentorView, toggleView, loading: authLoading } = useAuth();
   const [currentEvents, setCurrentEvents] = useState([]);
   const [lowPerformingSEs, setLowPerformingSEs] = useState([]);
   const [mentorSchedules, setMentorSchedules] = useState([]);
@@ -80,9 +80,12 @@ const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles
     previousUnassignedMentors: 0,
   });
   const [percentageIncrease, setPercentageIncrease] = useState("0%");
+
   const hasMentorRole = user?.roles?.includes("Mentor");
   const isLSEEDUser = user?.roles?.some(role => role === "LSEED-Coordinator" || role === "Administrator");
   const isCoordinator = user?.roles?.includes("LSEED-Coordinator");
+  const hasBothRoles = hasMentorRole && isLSEEDUser;
+  const isCoordinatorView = !isMentorView;
 
   const mockStats = {
     totalEvaluations: 25,
@@ -739,13 +742,31 @@ const Dashboard = ({ userRole, isCoordinatorView, handleViewChange, hasBothRoles
         {/* HEADER and TOGGLE SWITCH */}
         <Box display="flex" justifyContent="space-between" alignItems="center">
             <Header
-                title="Dashboard"
+                title={
+                    isCoordinatorView
+                        ? "LSEED Dashboard"
+                        : "Mentor Dashboard"
+                }
                 subtitle={
                     isCoordinatorView
                         ? "Welcome to LSEED Dashboard"
                         : "Welcome to Mentor Dashboard"
                 }
             />
+            {/* ⭐️ STEP 4: Render the toggle switch only if the user has both roles */}
+            {hasBothRoles && (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={isMentorView}
+                    onChange={toggleView}
+                    color="success"
+                  />
+                }
+                label={isMentorView ? "Mentor View" : "LSEED Coordinator View"}
+                labelPlacement="start"
+              />
+            )}
         </Box>
 
         {/* --- */}
