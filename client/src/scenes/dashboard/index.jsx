@@ -203,7 +203,7 @@ const Dashboard = ({ }) => {
         setIsLoadingEvaluations(true);
 
         let response;
-        console.log("DEBUG: ", hasMentorRole)
+        
         if (hasMentorRole) {
           response = await axios.get("http://localhost:4000/getRecentMentorEvaluations", {
             withCredentials: true,

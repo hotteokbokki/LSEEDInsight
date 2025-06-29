@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 import {
   Box,
   Button,
@@ -10,7 +11,7 @@ import {
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
 import { DataGrid } from "@mui/x-data-grid";
-import { Snackbar, Alert } from "@mui/material";
+import { Snackbar, Alert, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Grid} from "@mui/material";
 
 const ProgramPage = () => {
   const [programs, setPrograms] = useState([]);
@@ -22,10 +23,16 @@ const ProgramPage = () => {
   const colors = tokens(theme.palette.mode);
   const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
   const [showEditButtons, setShowEditButtons] = useState(false);
-
+  const [programFormData, setProgramFormData] = useState({
+    name: "",
+    description: "",
+  });
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [openAddProgram, setOpenAddProgram] = useState(false);
+  const handleOpenAddProgram = () => setOpenAddProgram(true);
+  const handleCloseAddProgram = () => setOpenAddProgram(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -140,6 +147,43 @@ const ProgramPage = () => {
     }
   };
 
+  const handleProgramInputChange = (e) => {
+    const { name, value } = e.target;
+    setProgramFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  const handleAddProgram = async () => {
+    try {
+      // Basic validation
+      if (!programFormData.name.trim()) {
+        alert("Program name is required");
+        return;
+      }
+
+      // Send the program data to the backend
+      const response = await axios.post(
+        "http://localhost:4000/api/programs",
+        programFormData
+      );
+
+      if (response.status === 201) {
+        console.log("Program added successfully:", response.data);
+        setIsSuccessPopupOpen(true);
+        handleCloseAddProgram(); // Close the dialog
+        setProgramFormData({ name: "", description: "" }); // Reset form fields
+        setTimeout(() => {
+          window.location.reload();
+        }, 500); // Adjust delay if needed
+      }
+    } catch (error) {
+      console.error("Failed to add program:", error);
+      alert("Failed to add program. Please try again.");
+    }
+  };
+
   const columns = [
     {
       field: "coordinator_name",
@@ -228,57 +272,260 @@ const ProgramPage = () => {
         <Header title="PROGRAMS PAGE" subtitle="View and Manage program assignment" />
       </Box>
 
-      <Box display="flex" alignItems="center" gap={2} mb={2}>
-        {!showEditButtons && (
-          <Button
-            variant="contained"
-            sx={{
-              backgroundColor: colors.blueAccent[500],
-              color: "black",
-              "&:hover": { backgroundColor: colors.blueAccent[800] },
-            }}
-            onClick={toggleEditing}
-          >
-            Enable Editing
-          </Button>
-        )}
+      <Box display="flex" gap="10px" mt="20px">
+        <Button
+          variant="contained"
+          sx={{ backgroundColor: colors.greenAccent[500], color: "black" }}
+          onClick={handleOpenAddProgram}
+        >
+          Add Program
+        </Button>
 
-        {showEditButtons && (
-          <>
+        <Dialog
+          open={openAddProgram}
+          onClose={handleCloseAddProgram}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            style: {
+              backgroundColor: "#fff", // White background
+              color: "#000", // Black text
+              border: "1px solid #000", // Black border for contrast
+              borderRadius: "4px", // Rounded corners for the dialog
+            },
+          }}
+        >
+          {/* Dialog Title */}
+          <DialogTitle
+            sx={{
+              backgroundColor: "#1E4D2B", // DLSU Green header
+              color: "#fff", // White text
+              textAlign: "center",
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+              borderBottom: "1px solid #000", // Separator line below the title
+            }}
+          >
+            Add Program
+          </DialogTitle>
+
+          {/* Dialog Content */}
+          <DialogContent
+            sx={{
+              padding: "24px",
+              maxHeight: "70vh", // Ensure it doesn't overflow the screen
+              overflowY: "auto", // Enable scrolling if content is too long
+            }}
+          >
+            {/* Input Fields */}
+            <Box display="flex" flexDirection="column" gap={2}>
+              {/* Program Name Field */}
+              <Box>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: "bold",
+                    marginBottom: "8px", // Space between label and input
+                  }}
+                >
+                  Program Name
+                </Typography>
+
+                <TextField
+                  name="name"
+                  label="Enter Program Name"
+                  fullWidth
+                  margin="dense"
+                  value={programFormData.name}
+                  onChange={handleProgramInputChange}
+                  sx={{
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#000", // Consistent border color
+                      borderWidth: "1px", // Solid 1px border
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#000", // Darken border on hover
+                    },
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#000", // Consistent border color when focused
+                    },
+                    "& .MuiInputBase-input": {
+                      color: "#000", // Set text color to black
+                    },
+                  }}
+                />
+              </Box>
+
+              {/* Description Field */}
+              <Box>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: "bold",
+                    marginBottom: "8px", // Space between label and input
+                  }}
+                >
+                  Description
+                </Typography>
+                <TextField
+                  name="description"
+                  label="Enter Description"
+                  fullWidth
+                  margin="dense"
+                  multiline
+                  value={programFormData.description}
+                  onChange={handleProgramInputChange}
+                  rows={3}
+                  sx={{
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#000", // Consistent border color
+                      borderWidth: "1px", // Solid 1px border
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#000", // Darken border on hover
+                    },
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#000", // Consistent border color when focused
+                    },
+                    "& .MuiInputBase-input": {
+                      color: "#000", // Set text color to black
+                    },
+                  }}
+                />
+              </Box>
+            </Box>
+          </DialogContent>
+
+          {/* Dialog Actions */}
+          <DialogActions
+            sx={{
+              padding: "16px",
+              borderTop: "1px solid #000", // Separator line above the actions
+            }}
+          >
+            {/* Cancel Button */}
             <Button
-              variant="outlined"
-              sx={{
-                backgroundColor: colors.redAccent[500],
-                color: "black",
-                "&:hover": { backgroundColor: colors.redAccent[600] },
-              }}
               onClick={() => {
-                setIsEditing(false);
-                setShowEditButtons(false);
+                handleCloseAddProgram(); // ✅ Closes after timeout
+                setTimeout(() => {
+                  window.location.reload();
+                }, 500); // Adjust delay if needed
+              }}
+              sx={{
+                color: "#000",
+                border: "1px solid #000",
+                borderRadius: "4px", // Rounded corners
+                "&:hover": {
+                  backgroundColor: "#f0f0f0", // Hover effect
+                },
               }}
             >
               Cancel
             </Button>
 
+            {/* Add Button */}
+            <Button
+              onClick={handleAddProgram}
+              variant="contained"
+              disabled={!programFormData.name || !programFormData.description} // 🔥 Disables if name or description is empty
+              sx={{
+                backgroundColor:
+                  programFormData.name && programFormData.description
+                    ? "#1E4D2B"
+                    : "#A0A0A0", // Gray if disabled
+                color: "#fff",
+                borderRadius: "4px", // Rounded corners
+                "&:hover": {
+                  backgroundColor:
+                    programFormData.name && programFormData.description
+                      ? "#145A32"
+                      : "#A0A0A0", // Keep gray on hover when disabled
+                },
+              }}
+            >
+              Add
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Snackbar
+          open={isSuccessPopupOpen} // Controlled by state
+          autoHideDuration={3000} // Automatically close after 3 seconds
+          onClose={() => setIsSuccessPopupOpen(false)} // Close on click or timeout
+          anchorOrigin={{ vertical: "top", horizontal: "center" }} // Position of the popup
+        >
+          <Alert
+            onClose={() => setIsSuccessPopupOpen(false)}
+            severity="success"
+            sx={{ width: "100%" }}
+          >
+            Program added successfully!
+          </Alert>
+        </Snackbar>
+
+        <Box display="flex" alignItems="center" gap={2}>
+          {!showEditButtons && (
             <Button
               variant="contained"
               sx={{
                 backgroundColor: colors.blueAccent[500],
                 color: "black",
-                "&:hover": { backgroundColor: colors.blueAccent[600] },
+                "&:hover": {
+                  backgroundColor: colors.blueAccent[800],
+                },
               }}
-              onClick={() => {
-                setIsEditing(false);
-                setShowEditButtons(false);
-                setIsSuccessEditPopupOpen(true);
-              }}
+              onClick={toggleEditing}
             >
-              Save Changes
+              Enable Editing
             </Button>
-          </>
-        )}
-      </Box>
+          )}
+          {/* Cancel and Save Changes Buttons */}
+          {showEditButtons && (
+            <>
+              <Button
+                variant="outlined"
+                sx={{
+                  backgroundColor: colors.redAccent[500],
+                  color: "black",
+                  "&:hover": {
+                    backgroundColor: colors.redAccent[600],
+                  },
+                }}
+                onClick={() => {
+                  setIsEditing(false); // Disable editing mode
+                  setShowEditButtons(false);
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 500); // Adjust delay if needed
+                }}
+              >
+                Cancel
+              </Button>
 
+              <Button
+                variant="contained"
+                sx={{
+                  backgroundColor: colors.blueAccent[500],
+                  color: "black",
+                  "&:hover": {
+                    backgroundColor: colors.blueAccent[600],
+                  },
+                }}
+                onClick={() => {
+                  setIsEditing(false); // Disable editing mode
+                  setShowEditButtons(false);
+                  setIsSuccessEditPopupOpen(true);
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 500); // Adjust delay if needed
+                }}
+              >
+                Save Changes
+              </Button>
+            </>
+          )}
+        </Box>
+      </Box>
       <Snackbar
         open={isSuccessEditPopupOpen}
         autoHideDuration={3000}

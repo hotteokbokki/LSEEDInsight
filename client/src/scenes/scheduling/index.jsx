@@ -369,16 +369,13 @@ const handleEndTimeChange = (newEndTimeRaw) => {
   const formatRows = (data) =>
     data.map((mentorship) => ({
       id: mentorship.mentoring_session_id,
-      team_name: mentorship.team_name || "N/A",
-      mentor_name: mentorship.mentor_name || "N/A",
+      sessionDetails: `${mentorship.status} Mentoring Session for ${
+          mentorship.team_name || "Unknown SE"
+      } with Mentor ${
+          mentorship.mentor_name || "Unknown Mentor"
+      }`,
       program_name: mentorship.program_name || "N/A",
-      mentoring_session_date: new Date(
-        mentorship.mentoring_session_date
-      ).toLocaleDateString("en-US", {
-        month: "long",
-        day: "2-digit",
-        year: "numeric",
-      }),
+      date: `${mentorship.mentoring_session_date}, ${mentorship.mentoring_session_time}` || "N/A",
       mentoring_session_time: mentorship.mentoring_session_time || "N/A",
       status: mentorship.status || "N/A",
       zoom_link: mentorship.zoom_link || "N/A",
@@ -550,7 +547,8 @@ const handleEndTimeChange = (newEndTimeRaw) => {
 
           response = await axios.get(
             "http://localhost:4000/api/pending-schedules",
-            { params: { program } }
+            { params: { program },
+              withCredentials: true }
           );
         }
         else {
@@ -888,30 +886,59 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                   rows={formatRows(lseedHistory)}
                   columns={[
                     {
-                      field: "team_name",
-                      headerName: "Social Enterprise",
+                      field: "sessionDetails",
+                      headerName: "Mentoring Session Information",
                       flex: 1,
                       minWidth: 250,
+                      renderCell: (params) => (
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            lineHeight: 1.4,
+                            width: "100%",
+                          }}
+                        >
+                          {params.value}
+                        </Typography>
+                      ),
                     },
                     {
-                      field: "mentor_name",
-                      headerName: "Mentor",
+                      field: "date",
+                      headerName: "Scheduled Date",
                       width: 250,
+                      renderCell: (params) => (
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            lineHeight: 1.4,
+                            width: "100%",
+                          }}
+                        >
+                          {params.value}
+                        </Typography>
+                      ),
                     },
                     {
                       field: "program_name",
                       headerName: "Program",
                       width: 250,
-                    },
-                    {
-                      field: "mentoring_session_date",
-                      headerName: "Date",
-                      width: 250,
-                    },
-                    {
-                      field: "mentoring_session_time",
-                      headerName: "Time",
-                      width: 250,
+                      renderCell: (params) => (
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            lineHeight: 1.4,
+                            width: "100%",
+                          }}
+                        >
+                          {params.value}
+                        </Typography>
+                      ),
                     },
                     {
                       field: "status",
@@ -949,7 +976,20 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                       },
                     },
                   ]}
+                  sx={{
+                    "& .MuiDataGrid-cell": {
+                      display: "flex",
+                      alignItems: "center",
+                      paddingTop: "12px",
+                      paddingBottom: "12px",
+                    },
+                    "& .MuiDataGrid-cellContent": {
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                    },
+                  }}
                   pageSize={5}
+                  getRowHeight={() => 'auto'}
                   rowsPerPageOptions={[5, 10]}
                 />
               </Box>
@@ -1033,31 +1073,64 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                   rows={formatRows(mentorOwnHistory)}
                   columns={[
                     {
-                      field: "team_name",
-                      headerName: "Social Enterprise",
+                      field: "sessionDetails",
+                      headerName: "Mentoring Session Information",
                       flex: 1,
-                      minWidth: 200,
+                      minWidth: 250,
+                      renderCell: (params) => (
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            lineHeight: 1.4,
+                            width: "100%",
+                          }}
+                        >
+                          {params.value}
+                        </Typography>
+                      ),
                     },
-                    { field: "mentor_name", headerName: "Mentor", width: 200 },
+                    {
+                      field: "date",
+                      headerName: "Scheduled Date",
+                      width: 250,
+                      renderCell: (params) => (
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            lineHeight: 1.4,
+                            width: "100%",
+                          }}
+                        >
+                          {params.value}
+                        </Typography>
+                      ),
+                    },
                     {
                       field: "program_name",
                       headerName: "Program",
-                      width: 150,
-                    },
-                    {
-                      field: "mentoring_session_date",
-                      headerName: "Date",
-                      width: 150,
-                    },
-                    {
-                      field: "mentoring_session_time",
-                      headerName: "Time",
-                      width: 150,
+                      width: 250,
+                      renderCell: (params) => (
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            lineHeight: 1.4,
+                            width: "100%",
+                          }}
+                        >
+                          {params.value}
+                        </Typography>
+                      ),
                     },
                     {
                       field: "status",
                       headerName: "Status",
-                      width: 150,
+                      width: 200,
                       renderCell: (params) => {
                         let color = "default";
                         if (params.value === "Pending SE") color = "warning";
@@ -1065,13 +1138,15 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                         if (params.value === "Declined") color = "error";
                         if (params.value === "Evaluated") color = "info";
                         if (params.value === "Completed") color = "primary";
+
                         return <Chip label={params.value} color={color} />;
                       },
                     },
                     {
                       field: "zoom_link",
                       headerName: "Zoom Link",
-                      width: 250,
+                      flex: 1,
+                      minWidth: 50,
                       renderCell: (params) => {
                         const { row } = params;
                         return row.zoom_link && row.zoom_link !== "N/A" ? (
@@ -1088,7 +1163,20 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                       },
                     },
                   ]}
+                  sx={{
+                    "& .MuiDataGrid-cell": {
+                      display: "flex",
+                      alignItems: "center",
+                      paddingTop: "12px",
+                      paddingBottom: "12px",
+                    },
+                    "& .MuiDataGrid-cellContent": {
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                    },
+                  }}
                   pageSize={5}
+                  getRowHeight={() => 'auto'}
                   rowsPerPageOptions={[5, 10]}
                 />
               </Box>

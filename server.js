@@ -263,7 +263,6 @@ cron.schedule('0 8 * * 1', async () => {
 });
 
 cron.schedule('* * * * *', async () => {
-  console.log('⏰ Running mentoring session status updater');
 
   try {
     // 1. Auto-decline Pending SE sessions that are overdue
@@ -291,7 +290,6 @@ cron.schedule('* * * * *', async () => {
         AND end_time <= NOW()
     `);
 
-    console.log('✅ Mentoring session statuses updated');
   } catch (err) {
     console.error('❌ Error updating mentoring session statuses:', err);
   }
@@ -946,8 +944,11 @@ app.get("/api/mentor-stats", async (req, res) => {
 app.get("/api/pending-schedules", async (req, res) => {
   try {
     const program = req.query.program || null; // Optional program param
+    const mentorID = req.session.user?.id;
 
-    const result = await getPendingSchedules(program);
+    console.log("Mentor: ",mentorID)
+
+    const result = await getPendingSchedules(program, mentorID);
 
     res.json(result);
   } catch (error) {
@@ -1041,7 +1042,7 @@ app.get("/api/analytics-stats", async (req, res) => {
 
 app.get("/fetch-mentor-dashboard-stats", async (req, res) => {
   try {
-    const mentorID = req.session.user?.id
+    const mentorID = req.session.user?.id;
 
     // ✅ Fetch data
     const totalEvalMade = await getEvaluationSubmittedCount(mentorID);
@@ -1571,8 +1572,6 @@ app.get("/api/mentorSchedulesByID", async (req, res) => {
     if (!mentor_id) {
       return res.status(400).json({ message: "mentor_id is required" });
     }
-
-    console.log("DEBUG: ",mentor_id)
 
     const result = await getSchedulingHistoryByMentorID(mentor_id); // Fetch SEs from DB
     res.json(result);
@@ -2109,8 +2108,6 @@ app.get("/getSocialEnterprisesByID", async (req, res) => {
 app.post("/api/social-enterprises", async (req, res) => {
   try {
     const socialEnterpriseData = req.body; // Extract data from the request body
-
-    console.log("DATA DEBUG: ",socialEnterpriseData);
 
     const newSocialEnterprise = await addSocialEnterprise(socialEnterpriseData); // Call the controller function
 
