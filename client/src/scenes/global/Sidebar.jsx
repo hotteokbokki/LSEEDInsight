@@ -51,22 +51,25 @@ const Item = ({ title, to, icon, selected, setSelected }) => {
   );
 };
 
-// ⭐️ STEP 1: Accept the `isCoordinatorView` prop from App.js
-const Sidebar = ({ isCoordinatorView }) => {
+// ⭐️ 
+const Sidebar = ({ }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [googleUser, setGoogleUser] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
 
+  const { user, logout, isMentorView } = useAuth();
+
+  const isCoordinatorView = !isMentorView;
+
   // ⭐️ STEP 2: Correctly check roles from the `user.role` array
   const userRoles = user?.roles || []; // Fallback to an empty array for safety
-  //const isLSEEDCoordinator = userRoles.includes("LSEED-Coordinator");
+  const isLSEEDCoordinator = userRoles.includes("LSEED-Coordinator");
   const hasMentorRole = userRoles.includes("Mentor");
-  //const isAdministrator = userRoles.includes("Administrator");
+  const isAdministrator = userRoles.includes("Administrator");
   const isLSEEDUser = userRoles.some(role => role.startsWith("LSEED"));
 
   // ⭐️ Add this useEffect hook for debugging
@@ -85,7 +88,8 @@ const Sidebar = ({ isCoordinatorView }) => {
   // Determine the default selected item based on the current route
   const getSelectedTitle = () => {
     const routeMap = {
-      "/dashboard": "Dashboard",
+      "/dashboard/lseed": "Dashboard",
+      "/dashboard/mentor": "Dashboard",
       "/assess": "Evaluate",
       "/socialenterprise": "Manage SE",
       "/mentors": "LSEED Mentors",
@@ -222,118 +226,38 @@ const Sidebar = ({ isCoordinatorView }) => {
 
           {/* Navigation Items */}
           <Box paddingLeft={isCollapsed ? undefined : "10%"}>
-            {/* ⭐️ STEP 3: Conditional rendering logic based on the view */}
-            {/* Show Coordinator menu if the user is a Coordinator/Admin AND the toggle is in Coordinator View */}
-            {(isLSEEDUser && isCoordinatorView) ? (
+            {/* ⭐️ Conditional rendering based on the isCoordinatorView state from context */}
+            {isCoordinatorView ? (
+              // ⭐️ Coordinator/Admin Menu Items (Only visible in Coordinator View)
               <>
-                <Item
-                  title="Dashboard"
-                  to="/dashboard"
-                  icon={<GridViewOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-                <Item
-                  title="Evaluate"
-                  to="/assess"
-                  icon={<AssignmentTurnedInOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-                <Item
-                  title="Manage SE"
-                  to="/socialenterprise"
-                  icon={<Diversity2OutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-                <Item
-                  title="LSEED Mentors"
-                  to="/mentors"
-                  icon={<SettingsAccessibilityOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-                <Item
-                  title="Show Analytics"
-                  to="/analytics"
-                  icon={<AnalyticsOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-                <Item
-                  title="Financial Analytics"
-                  to="/financial-analytics"
-                  icon={<AccountBalanceOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-                <Item
-                  title="Show Reports"
-                  to="/reports"
-                  icon={<GradingOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-                <Item
-                  title="Scheduling Matrix"
-                  to="/scheduling"
-                  icon={<CalendarMonthOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-                <Item
-                  title="Manage Programs"
-                  to="/programs"
-                  icon={<FactCheckOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
-                <Item
-                  title="Manage Users"
-                  to="/admin"
-                  icon={<AdminPanelSettingsOutlinedIcon />}
-                  selected={selected}
-                  setSelected={setSelected}
-                />
+                <Item title="Dashboard" to="/dashboard/lseed" icon={<GridViewOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="Evaluate" to="/assess" icon={<AssignmentTurnedInOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="Manage SE" to="/socialenterprise" icon={<Diversity2OutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="LSEED Mentors" to="/mentors" icon={<SettingsAccessibilityOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="Show Analytics" to="/analytics" icon={<AnalyticsOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="Financial Analytics" to="/financial-analytics" icon={<AccountBalanceOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="Show Reports" to="/reports" icon={<GradingOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="Scheduling Matrix" to="/scheduling" icon={<CalendarMonthOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="Manage Programs" to="/programs" icon={<FactCheckOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                {isAdministrator && (
+                  <Item title="Manage Users" to="/admin" icon={<AdminPanelSettingsOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                )}
               </>
-            ) : (hasMentorRole) ? (
-                // Show Mentor menu if the user has the Mentor role (regardless of other roles)
-                <>
-                    <Item
-                        title="Dashboard"
-                        to="/dashboard"
-                        icon={<GridViewOutlinedIcon />}
-                        selected={selected}
-                        setSelected={setSelected}
-                    />
-                    <Item
-                        title="Evaluate"
-                        to="/assess"
-                        icon={<AssignmentTurnedInOutlinedIcon />}
-                        selected={selected}
-                        setSelected={setSelected}
-                    />
-                    <Item
-                        title="Manage Mentorships"
-                        to="/mentorships"
-                        icon={<SupervisorAccountOutlinedIcon />}
-                        selected={selected}
-                        setSelected={setSelected}
-                    />
-                    {/* Scheduling Matrix with dialog */}
-                    <MenuItem
-                        active={selected === "Scheduling Matrix"}
-                        icon={<CalendarMonthOutlinedIcon />}
-                        onClick={() => setOpenDialog(true)}
-                        style={{
-                            color: colors.grey[100],
-                            fontWeight: selected === "Scheduling Matrix" ? "bold" : "normal",
-                        }}
-                    >
-                        <Typography variant="body1">Scheduling Matrix</Typography>
-                    </MenuItem>
-                </>
+            ) : hasMentorRole ? (
+              // ⭐️ Mentor Menu Items (Only visible in Mentor View)
+              <>
+                <Item title="Dashboard" to="/dashboard/mentor" icon={<GridViewOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="Evaluate" to="/assess" icon={<AssignmentTurnedInOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="Manage Mentorships" to="/mentorships" icon={<SupervisorAccountOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <MenuItem
+                  active={selected === "Scheduling Matrix"}
+                  icon={<CalendarMonthOutlinedIcon />}
+                  onClick={() => setOpenDialog(true)}
+                  style={{ color: colors.grey[100], fontWeight: selected === "Scheduling Matrix" ? "bold" : "normal" }}
+                >
+                  <Typography variant="body1">Scheduling Matrix</Typography>
+                </MenuItem>
+              </>
             ) : null} {/* If user has no relevant role, show nothing */}
 
             {/* Logout Button */}

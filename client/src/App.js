@@ -51,13 +51,13 @@ const App = () => {
 
 const ProtectedRoute = ({ allowedRoles }) => {
   const { user } = useAuth();
-
+  
   if (!user) {
     return <Navigate to="/" replace />;
   }
-
-  // Assuming 'user.role' is a comma-separated string, check if any role is allowed
-  const userRoles = user.role.split(',').map(role => role.trim());
+  
+  // Assuming user.roles is an array from the backend
+  const userRoles = Array.isArray(user.roles) ? user.roles : user.roles.split(',').map(role => role.trim());
   const isAllowed = userRoles.some(role => allowedRoles.includes(role));
 
   if (!isAllowed) {
@@ -68,44 +68,13 @@ const ProtectedRoute = ({ allowedRoles }) => {
 };
 
 const MainContent = () => {
-  const { user, loading } = useAuth();
-  const [isCoordinatorView, setIsCoordinatorView] = useState(true); 
-  const [hasBothRoles, setHasBothRoles] = useState(false);
-
-  // Function to handle the view change
-  const handleViewChange = () => {
-    setIsCoordinatorView((prev) => !prev);
-  };
-
-  // Check user roles when the user data loads
-  useEffect(() => {
-    if (user && user.roles) {
-      // ✅ Correctly handles both Array and string roles
-      const roles = Array.isArray(user.roles) ? user.roles : user.roles.split(',').map(roles => roles.trim());
-      
-      const isCoordinator = roles.some(role => role.startsWith("LSEED"));
-      const isMentor = roles.includes("Mentor");
-      
-      setHasBothRoles(isCoordinator && isMentor);
-
-      if (isCoordinator) {
-        setIsCoordinatorView(true);
-      } else {
-        setIsCoordinatorView(false);
-      }
-    } else {
-      // If no user or role, default to no roles and a default view
-      console.log("No user or role found, setting default state.");
-      setHasBothRoles(false);
-      setIsCoordinatorView(true);
-    }
-  }, [user]);
-
-  if (loading) return <div>Loading...</div>;
+  const { user, loading, isMentorView } = useAuth(); // ⭐️ Get isMentorView from context
+  
+  if (loading) return <div>Loading...</div>; // Show a loader while the user context loads
 
   return (
     <Box sx={{ display: "flex", width: "100%", minHeight: "100vh" }}>
-      {user && <Sidebar isCoordinatorView={isCoordinatorView}/>}
+      {user && <Sidebar isMentorView={isMentorView} />} {/* ⭐️ Pass isMentorView from context */}
       <Box
         id="main-content"
         sx={{
@@ -117,81 +86,47 @@ const MainContent = () => {
           padding: "20px",
         }}
       >
-        {/* Pass the toggle state and handler to the Topbar */}
-        {user && (
-          <Topbar
-            isCoordinatorView={isCoordinatorView}
-            handleViewChange={handleViewChange}
-            hasBothRoles={hasBothRoles}
-          />
-        )}
+        {user && <Topbar />} {/* ⭐️ No props needed anymore! */}
         <ScrollToTop />
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+          <Route path="/" element={user ? <Navigate to="/dashboard/lseed" /> : <Login />} /> {/* ⭐️ Redirect to LSEED dashboard by default */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
           <Route path="/signup" element={<Signup />} />
 
-          {/* CHANGED: Pass the toggle state to the Dashboard */}
-          <Route
-            path="/dashboard"
-            element={
-              user ? (
-                <Dashboard
-                  userRole={user?.role}
-                  isCoordinatorView={isCoordinatorView}
-                  hasBothRoles={hasBothRoles}
-                />
-              ) : (
-                <Navigate to="/" />
-              )
-            }
-          />
+          {/* ⭐️ Use nested routes for the dashboards */}
+          <Route path="/dashboard" element={<Navigate to={isMentorView ? "/dashboard/mentor" : "/dashboard/lseed"} replace />} />
+          <Route path="/dashboard/lseed" element={<Dashboard />} />
+          <Route path="/dashboard/mentor" element={<MentorDashboard />} />
 
-          {/* User Routes (rest of your routes remain the same) */}
-          <Route path="/socialenterprise" element={user ? <SocialEnterprise userRole={user?.role} /> : <Navigate to="/" />} />
-          <Route path="/mentors" element={user ? <Mentors userRole={user?.role} /> : <Navigate to="/" />} />
-          <Route path="/analytics" element={user ? <Analytics userRole={user?.role}/> : <Navigate to="/" />} />
-          <Route path="/reports" element={user ? <Reports /> : <Navigate to="/" />} />
-          <Route path="/scheduling" element={user ? <Scheduling userRole={user?.role}/> : <Navigate to="/" />} />
-          <Route path="/assess" element={user ? <EvaluatePage userRole={user?.role}/> : <Navigate to="/" />} />
-          <Route path="/se-analytics/:id" element={<SEAnalytics />} />
-          <Route path="/mentor-analytics/:id" element={<MentorAnalytics />} />
-          <Route path="/mentorships" element={<Mentorships />} />
-          <Route path="/analytics-mentorship" element={<MentorshipAnalytics />} />
-          <Route path="/admin" element={user ? <Admin /> : <Navigate to="/" />} />
-          <Route path="/programs" element={user ? <ProgramPage /> : <Navigate to="/" />} />
-          <Route path="/financial-analytics" element={user ? <FinancialAnalytics /> : <Navigate to="/" />} />
-
-
-          {/* Protected Routes */}
-          <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director"]} />}>
+          {/* ⭐️ Use ProtectedRoute for all protected routes */}
+          <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director", "LSEED-Coordinator"]} />}>
+            <Route path="/socialenterprise" element={<SocialEnterprise />} />
+            <Route path="/mentors" element={<Mentors />} />
+            <Route path="/programs" element={<ProgramPage />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/scheduling" element={<Scheduling />} />
+            <Route path="/evaluate" element={<EvaluatePage />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/financial-analytics" element={<FinancialAnalytics />} />
             <Route path="/admin" element={<Admin />} />
           </Route>
-
-          <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator", "Mentor"]} />}>
-            <Route path="/socialenterprise" element={<SocialEnterprise />} />
-          </Route>
-
-          <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator"]} />}>
-            <Route path="/mentors" element={<Mentors />} />
-            <Route path="/seanalytics" element={<SEAnalytics />} />
-          </Route>
-
-          <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator", "Guest User"]} />}>
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/reports" element={<Reports />} />
-          </Route>
-
-          <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator", "Mentor"]} />}>
-            <Route path="/scheduling" element={<Scheduling />} />
+          
+          <Route element={<ProtectedRoute allowedRoles={["Mentor"]} />}>
+            <Route path="/mentorships" element={<Mentorships />} />
+            <Route path="/mentor-analytics/:id" element={<MentorAnalytics />} />
             <Route path="/assess" element={<EvaluatePage />} />
           </Route>
 
-          {/* Catch-all: Redirect unauthorized access */}
-          <Route path="*" element={<Navigate to="/" />} />
+          {/* This route should be available to both */}
+          <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator", "Mentor", "Guest User"]} />}>
+            <Route path="/se-analytics/:id" element={<SEAnalytics />} />
+          </Route>
+
+          {/* Catch-all route for unmatched paths */}
+          <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} />} />
         </Routes>
       </Box>
     </Box>

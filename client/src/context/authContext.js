@@ -17,6 +17,7 @@ export const AuthContextProvider = ({ children }) => {
   const [loading, setLoading] = useState(true); // Loading state while checking session
   // const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
+  const [isMentorView, setIsMentorView] = useState(false); 
   
   // Check for session in localStorage when the app loads
   useEffect(() => {
@@ -68,10 +69,31 @@ export const AuthContextProvider = ({ children }) => {
     }
   };
 
+  const toggleView = () => {
+    if (!user || !user.roles) {
+      console.error("User or user roles not available for toggling.");
+      return;
+    }
+
+    const hasMentorRole = user.roles.includes("Mentor");
+    const isLSEEDUser = user.roles.includes("LSEED-Coordinator") || user.roles.includes("Administrator");
+    
+    // Toggle the state first, then navigate
+    setIsMentorView(prev => !prev); 
+
+    // Redirect to the appropriate dashboard
+    if (isMentorView) { // If currently in Mentor view, switch to LSEED view.
+      setIsMentorView(false); // Update state to Coordinator View
+      navigate('/dashboard/lseed');
+    } else { // If currently in Coordinator/LSEED view, switch to Mentor view.
+      setIsMentorView(true); // Update state to Mentor View
+      navigate('/dashboard/mentor');
+    }
+  };
   if (loading) return <div>Loading...</div>;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, isMentorView, toggleView, loading }}>
       {children}
     </AuthContext.Provider>
   );

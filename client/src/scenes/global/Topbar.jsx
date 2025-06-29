@@ -26,15 +26,16 @@ import axios from "axios";
 
 
 // 3. Destructure the new props from the function signature
-const Topbar = ({ isCoordinatorView, handleViewChange, hasBothRoles }) => {
+const Topbar = ({ }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const colorMode = useContext(ColorModeContext);
   const [anchorEl, setAnchorEl] = useState(null);
   const [notifAnchorEl, setNotifAnchorEl] = useState(null);
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
   const [notifications, setNotifications] = useState([]);
+
+  const { logout, user, isMentorView, toggleView } = useAuth(); 
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
@@ -79,6 +80,8 @@ const Topbar = ({ isCoordinatorView, handleViewChange, hasBothRoles }) => {
     console.log("🔥 Notifications state updated:", notifications);
   }, [notifications]); // ✅ Ensure React tracks updates
 
+  const hasBothRoles = user?.roles?.includes('LSEED-Coordinator') && user?.roles?.includes('Mentor');
+
   return (
     <Box display="flex" justifyContent="space-between" p={2}>
       {/* Search Bar */}
@@ -95,20 +98,20 @@ const Topbar = ({ isCoordinatorView, handleViewChange, hasBothRoles }) => {
 
       {/* Icons */}
       <Box display="flex">
-        {/* Toggle Switch - Only visible if the user has both roles */}
+        {/* Toggle Switch - Now using state and handler from context */}
         {hasBothRoles && (
           <Box display="flex" alignItems="center" mr={2}>
             <FormControlLabel
               control={
                 <Switch
-                  checked={isCoordinatorView}
-                  onChange={handleViewChange}
-                  color="secondary" // Uses your theme's secondary color
+                  checked={isMentorView} // ⭐️ Use isMentorView from context
+                  onChange={toggleView} // ⭐️ Use the toggleView function from context
+                  color="secondary"
                 />
               }
               label={
                 <Typography variant="body1" color={colors.grey[100]}>
-                  {isCoordinatorView ? "Coordinator View" : "Mentor View"}
+                  {isMentorView ? "Mentor View" : "Coordinator View"}
                 </Typography>
               }
             />
