@@ -16,7 +16,15 @@ exports.getProgramCoordinators = async () => {
         LEFT JOIN
             program_assignment pa ON p.program_id = pa.program_id
         LEFT JOIN
-            users u ON pa.user_id = u.user_id AND u.roles = 'LSEED-Coordinator';
+            users u ON pa.user_id = u.user_id
+        WHERE
+            pa.user_id IS NULL
+            OR EXISTS (
+                SELECT 1
+                FROM user_has_roles ur
+                WHERE ur.user_id = u.user_id
+                AND ur.role_name = 'LSEED-Coordinator'
+            );
     `;
     const result = await pgDatabase.query(query);
 
@@ -86,32 +94,6 @@ exports.assignProgramCoordinator = async (program_id, user_id) => {
       throw error; // Re-throw the error to be caught by the API endpoint in server.js
     }
   }
-
-exports.getLSEEDCoordinators = async () => {
-  try {
-    const query = `
-        SELECT
-            user_id,
-            first_name,
-            last_name,
-            email
-        FROM
-            users
-        WHERE
-            roles = 'LSEED-Coordinator';
-    `;
-    const result = await pgDatabase.query(query);
-
-    if (result.rows.length === 0) {
-      return [];
-    }
-
-    return result.rows;
-  } catch (error) {
-    console.error("Error fetching LSEED coordinators:", error);
-    return [];
-  }
-};
 
 exports.getProgramAssignment = async (user_id) => {
   try {

@@ -166,3 +166,42 @@ exports.getPerformanceOverviewForMentor = async (mentor_id) => {
         return []; // ✅ Returns empty array on failure
     }
 };
+
+exports.getAvgRatingGivenByMentor = async (mentor_id) => {
+    try {
+        const query = `
+            SELECT AVG(rating) AS average_rating
+            FROM evaluation_categories ec
+            JOIN evaluations e ON ec.evaluation_id = e.evaluation_id
+            WHERE e.mentor_id = $1;
+        `;
+
+        const result = await pgDatabase.query(query, [mentor_id]); 
+
+        return result.rows; 
+    } catch (error) {
+        console.error("❌ Error fetching mentor avg rating per category:", error);
+        return []; 
+    }
+};
+
+exports.getCommonRatingGiven = async (mentor_id) => {
+    try {
+        const query = `
+            SELECT rating, COUNT(*) AS count
+            FROM evaluation_categories ec
+            JOIN evaluations e ON ec.evaluation_id = e.evaluation_id
+            WHERE e.mentor_id = $1
+            GROUP BY rating
+            ORDER BY count DESC
+            LIMIT 1;
+        `;
+
+        const result = await pgDatabase.query(query, [mentor_id]); 
+
+        return result.rows; 
+    } catch (error) {
+        console.error("❌ Error fetching mentor avg rating per category:", error);
+        return []; 
+    }
+};

@@ -69,6 +69,7 @@ const Dashboard = ({ }) => {
   const [selectedEvaluation, setSelectedEvaluation] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
   const navigate = useNavigate();
+  const [mentorDashboardStats, setMentorDashboardStats] = useState(null);
   const [stats, setStats] = useState({
     mentorWithoutMentorshipCount: [{ count: "0" }], // Default structure to prevent undefined errors
     mentorWithMentorshipCount: [{ count: "0" }],
@@ -93,6 +94,40 @@ const Dashboard = ({ }) => {
     mostCommonRating: 5,
     socialEnterprisesHandled: 10,
   };
+
+  useEffect(() => {
+    const fetchMentorDashboardStats = async () => {
+      try {
+
+        const response = await axios.get("http://localhost:4000/fetch-mentor-dashboard-stats", {
+          withCredentials: true,
+        });
+
+        const data = response.data; 
+
+        const formattedData = {
+          totalEvalMade: parseInt(data.totalEvalMade?.[0]?.evaluation_count ?? "0", 10),
+          avgRatingGiven: parseFloat(data.avgRatingGiven?.[0]?.average_rating ?? "0"),
+          mostCommonRating: parseInt(data.mostCommonRating?.[0]?.rating ?? "0", 10),
+          mentorshipsCount: parseInt(data.mentorshipsCount?.[0]?.mentorship_count ?? "0", 10),
+        };
+
+        console.log("DATA DEBUG:", formattedData);
+
+        setMentorDashboardStats(formattedData);
+      } catch (error) {
+        console.error("❌ Error fetching mentor dashboard stats:", error);
+      } 
+    };
+
+    if (user?.roles?.includes("Mentor")) {
+      fetchMentorDashboardStats();
+    } else if (user) {
+      // ✅ clear old mentor-specific stats
+      setMentorDashboardStats({});
+    }
+  }, [user]);
+
 
   const alertColumns = [
     { field: "seName", headerName: "SE Name", flex: 2 },
@@ -338,20 +373,60 @@ const Dashboard = ({ }) => {
       headerName: "Mentoring Session Information",
       flex: 1,
       minWidth: 200,
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          sx={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            lineHeight: 1.4,
+            width: "100%",
+          }}
+        >
+          {params.value}
+        </Typography>
+      ),
     },
-    { field: "date", headerName: "Scheduled Date", flex: 1, minWidth: 200 },
+    {
+      field: "date",
+      headerName: "Scheduled Date",
+      flex: 1,
+      minWidth: 200,
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          sx={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            lineHeight: 1.4,
+            width: "100%",
+          }}
+        >
+          {params.value}
+        </Typography>
+      ),
+    },
     {
       field: "status",
       headerName: "Status",
       flex: 1,
       minWidth: 150,
       renderCell: (params) => (
-        <Chip
-          label={params.value}
-          color={
-            params.value === "Pending" ? "warning" : colors.greenAccent[600]
-          }
-        />
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <Chip
+            label={params.value}
+            color={
+              params.value === "Pending" ? "warning" : colors.greenAccent[600]
+            }
+            sx={{ width: "fit-content" }}
+          />
+        </Box>
       ),
     },
     {
@@ -360,12 +435,20 @@ const Dashboard = ({ }) => {
       flex: 1,
       minWidth: 200,
       renderCell: (params) => (
-        <div>
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
           <Button
             variant="contained"
-            style={{
+            sx={{
               backgroundColor: colors.greenAccent[500],
-              marginRight: "8px",
+              "&:hover": { backgroundColor: colors.greenAccent[600] },
             }}
             onClick={() => handleAcceptClick(params.row)}
           >
@@ -373,12 +456,15 @@ const Dashboard = ({ }) => {
           </Button>
           <Button
             variant="contained"
-            style={{ backgroundColor: colors.redAccent[500] }}
+            sx={{
+              backgroundColor: colors.redAccent[500],
+              "&:hover": { backgroundColor: colors.redAccent[600] },
+            }}
             onClick={() => handleDeclineClick(params.row)}
           >
             Decline
           </Button>
-        </div>
+        </Box>
       ),
     },
   ];
@@ -1086,6 +1172,19 @@ const Dashboard = ({ }) => {
                                             mentorship_id: schedule.mentorship_id,
                                             status: schedule.status || "Pending",
                                         }))}
+                                        sx={{
+                                          "& .MuiDataGrid-cell": {
+                                            display: "flex",
+                                            alignItems: "center",
+                                            paddingTop: "12px",
+                                            paddingBottom: "12px",
+                                          },
+                                          "& .MuiDataGrid-cellContent": {
+                                            whiteSpace: "normal",
+                                            wordBreak: "break-word",
+                                          },
+                                        }}
+                                        getRowHeight={() => 'auto'}
                                         columns={pendingScheduleColumns}
                                         pageSize={5}
                                         rowsPerPageOptions={[5, 10]}
@@ -1222,85 +1321,88 @@ const Dashboard = ({ }) => {
             <>
                 {/* Row 1 - StatBoxes */}
                 <Box
-                    display="flex"
-                    flexWrap="wrap"
-                    gap="20px"
-                    justifyContent="space-between"
-                    mt="20px"
+                  display="flex"
+                  flexWrap="wrap"
+                  gap="20px"
+                  justifyContent="space-between"
+                  mt="20px"
                 >
-                    {/* Total Evaluations Submitted */}
-                    <Box
-                        flex="1 1 22%"
-                        backgroundColor={colors.primary[400]}
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        p="20px"
-                    >
-                        <StatBox
-                            title={mockStats.totalEvaluations}
-                            subtitle="Total Evaluations Submitted"
-                            progress={mockStats.totalEvaluations / 50}
-                            increase={`${((mockStats.totalEvaluations / 50) * 100).toFixed(2)}%`}
-                            icon={<Assessment sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
-                        />
-                    </Box>
+                  {/* Total Evaluations Submitted */}
+                  <Box
+                    flex="1 1 22%"
+                    backgroundColor={colors.primary[400]}
+                    display="flex"
+                    flexDirection="column"
+                    alignItems="center"
+                    justifyContent="center"
+                    p="20px"
+                  >
+                    <AssignmentTurnedInOutlinedIcon sx={{ fontSize: 40, color: colors.greenAccent[500], mb: 1 }} />
+                    <Typography variant="h4" fontWeight="bold" color={colors.grey[100]}>
+                      {mentorDashboardStats?.totalEvalMade ?? 0}
+                    </Typography>
+                    <Typography variant="subtitle2" color={colors.grey[300]}>
+                      Total Evaluations Submitted
+                    </Typography>
+                  </Box>
 
-                    {/* Average Rating Given to SEs */}
-                    <Box
-                        flex="1 1 22%"
-                        backgroundColor={colors.primary[400]}
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        p="20px"
-                    >
-                        <StatBox
-                            title={mockStats.averageRating}
-                            subtitle="Average Rating Given to SEs"
-                            progress={mockStats.averageRating / 5}
-                            increase={`${((mockStats.averageRating / 5) * 100).toFixed(2)}%`}
-                            icon={<Star sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
-                        />
-                    </Box>
+                  {/* Average Rating Given to SEs */}
+                  <Box
+                    flex="1 1 22%"
+                    backgroundColor={colors.primary[400]}
+                    display="flex"
+                    flexDirection="column"
+                    alignItems="center"
+                    justifyContent="center"
+                    p="20px"
+                  >
+                    <Star sx={{ fontSize: 40, color: colors.blueAccent[500], mb: 1 }} />
+                    <Typography variant="h4" fontWeight="bold" color={colors.grey[100]}>
+                      {(mentorDashboardStats?.avgRatingGiven ?? 0).toFixed(2)}
+                    </Typography>
+                    <Typography variant="subtitle2" color={colors.grey[300]}>
+                      Average Rating Given to SEs
+                    </Typography>
+                  </Box>
 
-                    {/* Most Common Rating */}
-                    <Box
-                        flex="1 1 22%"
-                        backgroundColor={colors.primary[400]}
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        p="20px"
-                    >
-                        <StatBox
-                            title={mockStats.mostCommonRating}
-                            subtitle="Most Common Rating"
-                            progress={mockStats.mostCommonRating / 5}
-                            increase={`${((mockStats.mostCommonRating / 5) * 100).toFixed(2)}%`}
-                            icon={<Star sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
-                        />
-                    </Box>
+                  {/* Most Common Rating */}
+                  <Box
+                    flex="1 1 22%"
+                    backgroundColor={colors.primary[400]}
+                    display="flex"
+                    flexDirection="column"
+                    alignItems="center"
+                    justifyContent="center"
+                    p="20px"
+                  >
+                    <Star sx={{ fontSize: 40, color: colors.redAccent[500], mb: 1 }} />
+                    <Typography variant="h4" fontWeight="bold" color={colors.grey[100]}>
+                      {mentorDashboardStats?.mostCommonRating ?? 0}
+                    </Typography>
+                    <Typography variant="subtitle2" color={colors.grey[300]}>
+                      Most Common Rating
+                    </Typography>
+                  </Box>
 
-                    {/* Social Enterprises Handled */}
-                    <Box
-                        flex="1 1 22%"
-                        backgroundColor={colors.primary[400]}
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        p="20px"
-                    >
-                        <StatBox
-                            title={mockStats.socialEnterprisesHandled}
-                            subtitle="Social Enterprises Handled"
-                            progress={mockStats.socialEnterprisesHandled / 20}
-                            increase={`${((mockStats.socialEnterprisesHandled / 20) * 100).toFixed(2)}%`}
-                            icon={<Business sx={{ fontSize: "26px", color: colors.blueAccent[500] }} />}
-                        />
-                    </Box>
+                  {/* Social Enterprises Handled */}
+                  <Box
+                    flex="1 1 22%"
+                    backgroundColor={colors.primary[400]}
+                    display="flex"
+                    flexDirection="column"
+                    alignItems="center"
+                    justifyContent="center"
+                    p="20px"
+                  >
+                    <Diversity2OutlinedIcon sx={{ fontSize: 40, color: colors.blueAccent[500], mb: 1 }} />
+                    <Typography variant="h4" fontWeight="bold" color={colors.grey[100]}>
+                      {mentorDashboardStats?.mentorshipsCount ?? 0}
+                    </Typography>
+                    <Typography variant="subtitle2" color={colors.grey[300]}>
+                      Social Enterprises Handled
+                    </Typography>
+                  </Box>
                 </Box>
-
                 {/* Recent Evaluations */}
                 <Box
                     width="100%"

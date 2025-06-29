@@ -5,7 +5,7 @@ import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { TimePicker } from "@mui/x-date-pickers";
-import Calendar from "../../components/calendar";
+import Calendar from "../../components/Calendar";
 import {
   Box,
   Button,
@@ -58,6 +58,8 @@ const Scheduling = ({}) => {
   const colors = tokens(theme.palette.mode);
   const [selectedTime, setSelectedTime] = useState(dayjs().startOf("hour"));
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [zoomLink, setZoomLink] = useState("");
   const [startTime, setStartTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
@@ -77,6 +79,10 @@ const Scheduling = ({}) => {
   const [mentorSchedules, setMentorSchedules] = useState([]);
   const [mentorOwnHistory, setMentorOwnHistory] = useState([]);
   const [lseedHistory, setLseedHistory] = useState([]);
+  const allSchedules = [
+    ...mentorOwnHistory,
+    ...lseedHistory
+  ].filter(item => item.status === "Accepted");
 
 
   const generateTimeSlots = () => {
@@ -119,10 +125,13 @@ const Scheduling = ({}) => {
         throw new Error(`Failed to approve mentorship: ${errorMessage}`);
       }
 
-      console.log("Mentorship approved successfully");
-
       // Show success message
+      setSnackbarMessage("Mentoring session accepted. Awaiting SE confirmation.");
+      setSnackbarSeverity("success");
       setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (error) {
       console.error("Error approving mentorship:", error);
     }
@@ -204,6 +213,32 @@ const Scheduling = ({}) => {
     saveAs(blob, "mentorship_schedule.ics");
   };
 
+  function mapSchedulesToEvents(schedules) {
+    return schedules.map((item) => {
+      const [startTime, endTime] = item.mentoring_session_time.split(" - ");
+
+      const start = dayjs(`${item.mentoring_session_date} ${startTime}`).format();
+      const end = dayjs(`${item.mentoring_session_date} ${endTime}`).format();
+
+      return {
+        id: item.mentoring_session_id,
+        title: `Mentoring Session for ${item.team_name}`,
+        start,
+        end,
+        allDay: false,
+        extendedProps: {
+          zoom_link: item.zoom_link,
+          status: item.status,
+          team_name: item.team_name,         // ✅ Add this
+          mentor_name: item.mentor_name,     // ✅ Add this
+          program_name: item.program_name,   // ✅ Add this
+        },
+      };
+    });
+  }
+
+  const calendarEvents = mapSchedulesToEvents(allSchedules);
+
   const handleDeclineClick = async (schedule) => {
     try {
       const { id: mentoring_session_id } = schedule; // Extract ID
@@ -224,30 +259,29 @@ const Scheduling = ({}) => {
       console.log("Mentorship declined successfully");
 
       // Show success message
+      setSnackbarMessage("Mentoring session declined.");
+      setSnackbarSeverity("success");
       setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (error) {
       console.error("Error declining mentorship:", error);
     }
   };
 
-  const handleStartTimeChange = (newStartTime) => {
-    setStartTime(newStartTime);
-    if (endTime && newStartTime && newStartTime.isAfter(endTime)) {
-      setError("End time must be later than start time.");
-      setEndTime(null);
-    } else {
-      setError("");
-    }
-  };
 
-  const handleEndTimeChange = (newEndTime) => {
-    if (newEndTime && startTime && newEndTime.isBefore(startTime)) {
-      setError("End time must be later than start time.");
-    } else {
-      setError("");
-      setEndTime(newEndTime);
-    }
-  };
+const handleStartTimeChange = (newStartTimeRaw) => {
+  if (!newStartTimeRaw) return;
+  const newStartTime = dayjs(newStartTimeRaw);
+  setStartTime(newStartTime);
+  setEndTime(newStartTime.add(30, "minute"));
+};
+
+const handleEndTimeChange = (newEndTimeRaw) => {
+  if (!newEndTimeRaw) return;
+  setEndTime(dayjs(newEndTimeRaw));
+};
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
@@ -290,47 +324,6 @@ const Scheduling = ({}) => {
     fetchMentorshipDates();
   }, [user.id]); // Refetch when the user changes
 
-  // useEffect(() => {
-  //   const fetchScheduleHistory = async () => {
-  //     try {
-        
-  //       let response;
-        
-  //       if (user?.roles.includes("Mentor")) {
-  //         console.log("hello")
-  //         response = await axios.get("http://localhost:4000/api/mentorSchedulesByID", {
-  //           withCredentials: true, // Equivalent to credentials: "include"
-  //         });
-  //       } else if (user?.roles.some(role => role.startsWith("LSEED"))) {
-  //         if (user?.roles.includes("LSEED-Coordinator")) {
-  //           const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
-  //             withCredentials: true, // Equivalent to credentials: "include"
-  //           });
-
-  //           const program = res.data[0]?.name;
-           
-  //           response = await axios.get(
-  //             "http://localhost:4000/api/mentorSchedules",
-  //             { params: { program } }
-  //           );
-  //         }
-  //         else {
-  //           response = await axios.get(
-  //             "http://localhost:4000/api/mentorSchedules"
-  //           );
-  //         }
-  //       }
-
-  //       setMentorHistory(response.data || []);
-  //     } catch (error) {
-  //       console.error("❌ Error fetching mentor schedules:", error);
-  //       setMentorHistory([]);
-  //     }
-  //   };
-
-  //   fetchScheduleHistory();
-  // }, []); // Runs once when the component mounts
-
   useEffect(() => {
     const fetchScheduleHistory = async () => {
       try {
@@ -372,7 +365,6 @@ const Scheduling = ({}) => {
       fetchScheduleHistory();
     }
   }, [user]);
-
 
   const formatRows = (data) =>
     data.map((mentorship) => ({
@@ -499,7 +491,9 @@ const Scheduling = ({}) => {
         throw new Error(`Failed to update: ${JSON.stringify(errorMessage)}`);
       }
 
-      setSnackbarOpen(true); // ✅ Show success message
+      setSnackbarMessage("Scheduled successfully!");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true);
       handleCloseSEModal(); // ✅ Close modal
 
       setTimeout(() => {
@@ -507,7 +501,21 @@ const Scheduling = ({}) => {
       }, 500);
     } catch (error) {
       console.error("❌ Error updating mentorship date:", error.message);
-      alert(error.message);
+      let message = error.message;
+      try {
+        // Try to parse JSON inside message
+        const parsed = JSON.parse(message.replace(/^Failed to update: /, ""));
+        if (parsed && parsed.error) {
+          message = parsed.error;
+        }
+      } catch (err) {
+        // leave message as-is
+      }
+
+      setSnackbarMessage(message);
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+
     } finally {
       setIsLoading(false);
     }
@@ -656,16 +664,7 @@ const Scheduling = ({}) => {
       )}
 
       <Box width="100%" backgroundColor={colors.primary[400]} padding="20px">
-        <Typography
-          variant="h3"
-          fontWeight="bold"
-          color={colors.greenAccent[500]}
-          marginBottom="15px"
-        >
-          Mentor Scheduling Calendar
-        </Typography>
-
-        <Calendar isDashboard={true} />
+        <Calendar events={calendarEvents} isDashboard={true} />
       </Box>
 
       {user.roles?.some(r => r.startsWith("LSEED")) && (
@@ -709,90 +708,110 @@ const Scheduling = ({}) => {
                 <DataGrid
                   rows={mentorSchedules.map((schedule) => ({
                     id: schedule.mentoring_session_id,
-                    mentor_name: schedule.mentor_name || "Unknown Mentor",
+                    sessionDetails: `Mentoring Session for ${
+                        schedule.team_name || "Unknown SE"
+                    } with Mentor ${
+                        schedule.mentor_name || "Unknown Mentor"
+                    }`,
+                    date: `${schedule.mentoring_session_date}, ${schedule.mentoring_session_time}` || "N/A",
+                    time: schedule.mentoring_session_time || "N/A",
+                    zoom: schedule.zoom_link || "N/A",
                     mentorship_id: schedule.mentorship_id,
-                    se_name: schedule.team_name || "Unknown SE",
-                    mentorship_date: schedule.mentoring_session_date,
-                    mentorship_time: schedule.mentoring_session_time,
-                    telegramstatus: schedule.status || "Pending",
-                    zoom_link: schedule.zoom_link || "N/A",
+                    status: schedule.status || "Pending",
                   }))}
                   columns={[
                     {
-                      field: "mentor_name",
-                      headerName: "Mentor Name",
+                      field: "sessionDetails",
+                      headerName: "Mentoring Session Information",
                       flex: 1,
                       minWidth: 200,
+                      renderCell: (params) => (
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            lineHeight: 1.4,
+                            width: "100%",
+                          }}
+                        >
+                          {params.value}
+                        </Typography>
+                      ),
                     },
                     {
-                      field: "se_name",
-                      headerName: "Social Enterprise",
+                      field: "date",
+                      headerName: "Scheduled Date",
                       flex: 1,
                       minWidth: 200,
+                      renderCell: (params) => (
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            lineHeight: 1.4,
+                            width: "100%",
+                          }}
+                        >
+                          {params.value}
+                        </Typography>
+                      ),
                     },
                     {
-                      field: "mentorship_date",
-                      headerName: "Mentoring Session Date",
-                      flex: 1,
-                      minWidth: 200,
-                    },
-                    {
-                      field: "mentorship_time",
-                      headerName: "Mentoring Session Time",
-                      flex: 1,
-                      minWidth: 150,
-                    },
-                    {
-                      field: "telegramstatus",
+                      field: "status",
                       headerName: "Status",
                       flex: 1,
-                      minWidth: 100,
+                      minWidth: 150,
+                      renderCell: (params) => (
+                        <Box
+                          sx={{
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Chip
+                            label={params.value}
+                            color={
+                              params.value === "Pending" ? "warning" : colors.greenAccent[600]
+                            }
+                            sx={{ width: "fit-content" }}
+                          />
+                        </Box>
+                      ),
                     },
                     {
-                      field: "zoom_link",
-                      headerName: "Zoom Link",
-                      flex: 1,
-                      minWidth: 200,
-                      renderCell: (params) => {
-                        const { row } = params;
-                        return row.zoom_link && row.zoom_link !== "N/A" ? (
-                          <a
-                            href={row.zoom_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <Chip label="Join" color="primary" clickable />
-                          </a>
-                        ) : (
-                          "No Link"
-                        );
-                      },
-                    },
-
-                    {
-                      field: "action",
+                      field: "actions",
                       headerName: "Action",
                       flex: 1,
                       minWidth: 200,
                       renderCell: (params) => (
                         <Box
-                          display="flex"
-                          justifyContent="center" // Centers horizontally
-                          alignItems="center" // Centers vertically
-                          width="100%" // Ensures it spans full width of the column
-                          height="100%" // Ensures it spans full height of the cell
-                          gap={1} // Adds spacing between buttons
+                          sx={{
+                            width: "100%",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            gap: 1,
+                          }}
                         >
                           <Button
                             variant="contained"
-                            sx={{ backgroundColor: colors.greenAccent[500] }}
+                            sx={{
+                              backgroundColor: colors.greenAccent[500],
+                              "&:hover": { backgroundColor: colors.greenAccent[600] },
+                            }}
                             onClick={() => handleAcceptClick(params.row)}
                           >
                             Accept
                           </Button>
                           <Button
                             variant="contained"
-                            sx={{ backgroundColor: colors.redAccent[500] }}
+                            sx={{
+                              backgroundColor: colors.redAccent[500],
+                              "&:hover": { backgroundColor: colors.redAccent[600] },
+                            }}
                             onClick={() => handleDeclineClick(params.row)}
                           >
                             Decline
@@ -802,6 +821,19 @@ const Scheduling = ({}) => {
                     },
                   ]}
                   pageSize={5}
+                  sx={{
+                    "& .MuiDataGrid-cell": {
+                      display: "flex",
+                      alignItems: "center",
+                      paddingTop: "12px",
+                      paddingBottom: "12px",
+                    },
+                    "& .MuiDataGrid-cellContent": {
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                    },
+                  }}
+                  getRowHeight={() => 'auto'}
                   rowsPerPageOptions={[5, 10]}
                 />
               ) : (
@@ -1090,7 +1122,7 @@ const Scheduling = ({}) => {
             fontWeight: "bold",
           }}
         >
-          Select a Social Enterprise
+          Appoint a Mentoring Session
         </DialogTitle>
 
         {/* Dialog Content */}
@@ -1112,34 +1144,49 @@ const Scheduling = ({}) => {
               <CircularProgress />
             </Box>
           ) : (
-            <List>
-              {socialEnterprises.map((se) => (
-                <ListItem key={se.id} disablePadding>
-                  <ListItemButton
-                    onClick={() => handleSelectSE(se)}
-                    sx={{
-                      marginBottom: "6px", // Add spacing between items
-                      border:
-                        selectedSE?.id === se.id ? "2px solid #000" : "none", // Add black outline for selected SE
-                      borderRadius: "4px", // Rounded corners for better aesthetics
-                      "&:hover": {
-                        backgroundColor: "#f0f0f0", // Hover effect
-                      },
-                    }}
-                  >
-                    <ListItemText
-                      primary={se.team_name}
-                      secondary={se.program_name}
-                      primaryTypographyProps={{
-                        fontWeight:
-                          selectedSE?.id === se.id ? "bold" : "normal", // Bold text for selected SE
+            <Box>
+              {/* Heading - only show if not yet selected */}
+              {!selectedSE && (
+                <Typography
+                  variant="h6"
+                  sx={{
+                    mb: 2,
+                    fontWeight: "bold",
+                    color: "#1E4D2B"
+                  }}
+                >
+                  Select a Social Enterprise for Mentoring Session
+                </Typography>
+              )}
+
+              <List>
+                {socialEnterprises.map((se) => (
+                  <ListItem key={se.id} disablePadding>
+                    <ListItemButton
+                      onClick={() => handleSelectSE(se)}
+                      sx={{
+                        marginBottom: "6px",
+                        border: selectedSE?.id === se.id ? "2px solid #000" : "none",
+                        borderRadius: "4px",
+                        "&:hover": {
+                          backgroundColor: "#f0f0f0",
+                        },
                       }}
-                    />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
+                    >
+                      <ListItemText
+                        primary={se.team_name}
+                        secondary={se.program_name}
+                        primaryTypographyProps={{
+                          fontWeight: selectedSE?.id === se.id ? "bold" : "normal",
+                        }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
           )}
+
 
           {/* Date & Time Selection Section */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -1379,21 +1426,22 @@ const Scheduling = ({}) => {
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Snackbar for Success Alert */}
+
       <Snackbar
-        open={snackbarOpen} // Controlled by state
-        autoHideDuration={3000} // Automatically close after 3 seconds
-        onClose={() => setSnackbarOpen(false)} // Close on click or timeout
-        anchorOrigin={{ vertical: "top", horizontal: "center" }} // Position of the popup
+        open={snackbarOpen}
+        autoHideDuration={5000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert
           onClose={() => setSnackbarOpen(false)}
-          severity="success"
+          severity={snackbarSeverity} 
           sx={{ width: "100%" }}
         >
-          Scheduled successfully!
+          {snackbarMessage}            
         </Alert>
       </Snackbar>
+
     </Box>
   );
 };

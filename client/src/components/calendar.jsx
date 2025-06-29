@@ -1,89 +1,108 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
-import { formatDate } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
+import dayjs from "dayjs";
 import {
   Box,
+  Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
   List,
   ListItem,
   ListItemText,
-  Typography,
   useTheme,
 } from "@mui/material";
 import Header from "./Header";
 import { tokens } from "../theme";
 
-const Calendar = ({ isDashboard = false }) => {
+const Calendar = ({ events }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-  const [currentEvents, setCurrentEvents] = useState([]);
 
-  const handleDateClick = (selected) => {
-    if (!isDashboard) {
-      const title = prompt("Please enter a new title for your event");
-      const calendarApi = selected.view.calendar;
-      calendarApi.unselect();
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const calendarRef = useRef(null);
 
-      if (title) {
-        calendarApi.addEvent({
-          id: `${selected.dateStr}-${title}`,
-          title,
-          start: selected.startStr,
-          end: selected.endStr,
-          allDay: selected.allDay,
-        });
-      }
-    }
+  // Event click in the calendar
+  const handleEventClick = (clickInfo) => {
+    setSelectedEvent(clickInfo.event);
   };
 
-  const handleEventClick = (selected) => {
-    if (
-      !isDashboard &&
-      window.confirm(
-        `Are you sure you want to delete the event '${selected.event.title}'`
-      )
-    ) {
-      selected.event.remove();
+  // Sidebar item click
+  const handleSidebarEventClick = (event) => {
+    // Navigate calendar to date
+    if (calendarRef.current) {
+      const api = calendarRef.current.getApi();
+      api.gotoDate(event.start); // Jump to the date
     }
+    setSelectedEvent({ ...event }); // Open details
+  };
+
+  // Close dialog
+  const handleCloseDialog = () => {
+    setSelectedEvent(null);
   };
 
   return (
     <Box m="20px">
-      {!isDashboard && (
-        <Header title="Calendar" subtitle="Full Calendar Interactive Page" />
-      )}
+      <Header
+        title="Calendar"
+        subtitle="View, plan, and track all your mentoring sessions"
+      />
 
-      <Box
-        display="flex"
-        justifyContent={isDashboard ? "center" : "space-between"}
-      >
-        {/* CALENDAR SIDEBAR */}
-        {!isDashboard && (
-          <Box
-            flex="1 1 20%"
-            backgroundColor={colors.primary[400]}
-            p="15px"
-            borderRadius="4px"
+      <Box display="flex" gap="20px" mt="20px">
+        {/* Sidebar */}
+        <Box
+          flex="1 1 25%"
+          backgroundColor={colors.primary[400]}
+          p="16px"
+          borderRadius="8px"
+          height="80vh"
+          sx={{
+            overflowY: "auto",
+          }}
+        >
+          <Typography
+            variant="h5"
+            fontWeight="bold"
+            color={colors.grey[100]}
+            mb={2}
           >
-            <Typography variant="h5">Events</Typography>
+            Events
+          </Typography>
+
+          {events.length === 0 ? (
+            <Typography variant="body2" color={colors.grey[300]}>
+              No events added.
+            </Typography>
+          ) : (
             <List>
-              {currentEvents.map((event) => (
+              {events.map((event) => (
                 <ListItem
+                  button
                   key={event.id}
+                  onClick={() => handleSidebarEventClick(event)}
                   sx={{
                     backgroundColor: colors.greenAccent[500],
-                    margin: "10px 0",
-                    borderRadius: "2px",
+                    borderRadius: "4px",
+                    mb: "8px",
+                    px: "8px",
                   }}
                 >
                   <ListItemText
                     primary={event.title}
+                    primaryTypographyProps={{
+                      fontWeight: "bold",
+                      color: colors.grey[900],
+                    }}
                     secondary={
-                      <Typography>
-                        {formatDate(event.start, {
+                      <Typography variant="body2" color={colors.grey[900]}>
+                        {new Date(event.start).toLocaleDateString(undefined, {
                           year: "numeric",
                           month: "short",
                           day: "numeric",
@@ -94,55 +113,162 @@ const Calendar = ({ isDashboard = false }) => {
                 </ListItem>
               ))}
             </List>
-          </Box>
-        )}
+          )}
+        </Box>
 
-        {/* CALENDAR */}
-        <Box flex="1 1 100%" ml={isDashboard ? "0" : "15px"}>
+        {/* Calendar */}
+        <Box
+          flex="1 1 75%"
+          backgroundColor={colors.primary[400]}
+          borderRadius="8px"
+          p="16px"
+        >
           <FullCalendar
-            height={isDashboard ? "50vh" : "75vh"}
-            plugins={[
-              dayGridPlugin,
-              timeGridPlugin,
-              interactionPlugin,
-              listPlugin,
-            ]}
-            headerToolbar={
-              isDashboard
-                ? {
-                    left: "prev,next",
-                    center: "title",
-                    right: "",
-                  }
-                : {
-                    left: "prev,next today",
-                    center: "title",
-                    right: "dayGridMonth,timeGridWeek,timeGridDay,listMonth",
-                  }
-            }
+            ref={calendarRef}
+            height="80vh"
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
             initialView="dayGridMonth"
-            editable={!isDashboard}
-            selectable={!isDashboard}
-            selectMirror={!isDashboard}
-            dayMaxEvents={true}
-            select={handleDateClick}
+            headerToolbar={{
+              left: "prev,next today",
+              center: "title",
+              right: "dayGridMonth,timeGridWeek,timeGridDay,listMonth",
+            }}
+            events={events}
             eventClick={handleEventClick}
-            eventsSet={(events) => setCurrentEvents(events)}
-            initialEvents={[
-              {
-                id: "12315",
-                title: "All-day event",
-                date: "2022-09-14",
-              },
-              {
-                id: "5123",
-                title: "Timed event",
-                date: "2022-09-28",
-              },
-            ]}
+            editable={false}
+            selectable={false}
+            dayMaxEvents
           />
         </Box>
       </Box>
+
+      {/* Event Detail Dialog */}
+      <Dialog
+        open={!!selectedEvent}
+        onClose={handleCloseDialog}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          style: {
+            backgroundColor: "#fff",
+            color: "#000",
+            border: "1px solid #000",
+          },
+        }}
+      >
+        {selectedEvent && (
+          <>
+            <DialogTitle
+              sx={{
+                backgroundColor: "#1E4D2B", // DLSU Green header
+                color: "#fff",
+                textAlign: "center",
+                fontSize: "1.5rem",
+                fontWeight: "bold",
+              }}
+            >
+              {selectedEvent.title}
+            </DialogTitle>
+            <DialogContent
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+                padding: "24px",
+              }}
+            >
+              {/* WHEN */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                  When:
+                </Typography>
+                <Typography>
+                  {dayjs(selectedEvent.start).format("MMMM D, YYYY⋅h:mm A")} – {dayjs(selectedEvent.end).format("h:mm A")}
+                </Typography>
+              </Box>
+
+              {/* ZOOM LINK */}
+              {selectedEvent.extendedProps?.zoom_link && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                    Zoom Link:
+                  </Typography>
+                  <Typography>
+                    <a
+                      href={selectedEvent.extendedProps.zoom_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: "#1E4D2B", textDecoration: "underline" }}
+                    >
+                      {selectedEvent.extendedProps.zoom_link}
+                    </a>
+                  </Typography>
+                </Box>
+              )}
+
+              {/* STATUS */}
+              {selectedEvent.extendedProps?.status && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                    Status:
+                  </Typography>
+                  <Typography>{selectedEvent.extendedProps.status}</Typography>
+                </Box>
+              )}
+
+              {/* TEAM */}
+              {selectedEvent.extendedProps?.team_name && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                    Team:
+                  </Typography>
+                  <Typography>{selectedEvent.extendedProps.team_name}</Typography>
+                </Box>
+              )}
+
+              {/* MENTOR */}
+              {selectedEvent.extendedProps?.mentor_name && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                    Mentor:
+                  </Typography>
+                  <Typography>{selectedEvent.extendedProps.mentor_name}</Typography>
+                </Box>
+              )}
+
+              {/* PROGRAM */}
+              {selectedEvent.extendedProps?.program_name && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                    Program:
+                  </Typography>
+                  <Typography>{selectedEvent.extendedProps.program_name}</Typography>
+                </Box>
+              )}
+            </DialogContent>
+            <DialogActions
+              sx={{
+                padding: "16px",
+                borderTop: "1px solid #000",
+                justifyContent: "space-between",
+              }}
+            >
+              <Button
+                onClick={handleCloseDialog}
+                sx={{
+                  color: "#000",
+                  border: "1px solid #000",
+                  "&:hover": {
+                    backgroundColor: "#f0f0f0",
+                  },
+                }}
+              >
+                Close
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Box>
   );
 };

@@ -1676,6 +1676,8 @@ const SocialEnterprise = ({ }) => {
                   "& .MuiDataGrid-cell": {
                     display: "flex",
                     alignItems: "center", // vertical centering
+                    paddingTop: "12px",
+                    paddingBottom: "12px",
                   },
                   "& .MuiDataGrid-columnHeader": {
                     alignItems: "center", // optional: center header label vertically

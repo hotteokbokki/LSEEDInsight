@@ -46,6 +46,8 @@ const ProgramPage = () => {
         }));
         setPrograms(mappedPrograms);
 
+        console.log(mappedPrograms)
+
         const lseedCoordinatorsResponse = await fetch(`http://localhost:4000/api/get-lseed-coordinators`);
         if (!lseedCoordinatorsResponse.ok) throw new Error("Failed to fetch LSEED coordinators");
         const lseedCoordinatorsData = await lseedCoordinatorsResponse.json();

@@ -134,7 +134,6 @@ const SEPerformanceTrendChart = ({selectedSEId = null}) => {
     });
   };
 
-
   const chartData = formatChartData(topPerformers);
 
   console.log("Chart Data: ", chartData)

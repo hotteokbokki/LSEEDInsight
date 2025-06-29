@@ -1517,6 +1517,8 @@ const Mentors = ( {} ) => {
                   "& .MuiDataGrid-cell": {
                     display: "flex",
                     alignItems: "center",
+                    paddingTop: "12px",
+                    paddingBottom: "12px",
                   },
                   "& .MuiDataGrid-cellContent": {
                     whiteSpace: "normal",

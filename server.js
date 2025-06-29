@@ -23,7 +23,7 @@ const { getSocialEnterprisesByProgram,
         getAreasOfFocus,
         getSuggestedMentors} = require("./controllers/socialenterprisesController");
 require("dotenv").config();
-const { getUsers, getUserName } = require("./controllers/usersController");
+const { getUsers, getUserName, getLSEEDCoordinators } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const pgSession = require("connect-pg-simple")(session);
 const cookieParser = require("cookie-parser");
@@ -49,6 +49,7 @@ const { getMentorshipsByMentorId,
         getHandledSEsCountByMentor,
         getMentorshipsForScheduling,
         getSchedulingHistoryByMentorID,
+        getMentorshipCountByMentorID,
        } = require("./controllers/mentorshipsController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getEvaluationsByMentorID, 
@@ -75,11 +76,12 @@ const { getEvaluationsByMentorID,
         getEvaluationDetailsForMentorEvaluation,
         getEvaluationsMadeByMentor,
         getAllMentorTypeEvaluations,
-        getRecentEvaluationsMadeByMentor} = require("./controllers/evaluationsController.js");
+        getRecentEvaluationsMadeByMentor,
+        getEvaluationSubmittedCount} = require("./controllers/evaluationsController.js");
 const { getActiveMentors } = require("./controllers/mentorsController");
 const { getSocialEnterprisesWithoutMentor } = require("./controllers/socialenterprisesController");
 const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprisesController");
-const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution, compareSocialEnterprisesPerformance, getMentorAvgRating, getMentorFrequentRating, getAvgRatingForMentor, getPerformanceOverviewForMentor } = require("./controllers/evaluationcategoriesController.js");
+const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution, compareSocialEnterprisesPerformance, getMentorAvgRating, getMentorFrequentRating, getAvgRatingForMentor, getPerformanceOverviewForMentor, getAvgRatingGivenByMentor, getCommonRatingGiven } = require("./controllers/evaluationcategoriesController.js");
 const { getMentorQuestions } = require("./controllers/mentorEvaluationsQuestionsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
 const { getUpcomingSchedulesForMentor } = require("./controllers/mentoringSessionController.js");
@@ -88,7 +90,6 @@ const cashflowRoutes = require("./routes/cashflowRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
 const { getProgramCoordinators, 
         getProgramAssignment, 
-        getLSEEDCoordinators,
         assignProgramCoordinator } = require("./controllers/programAssignmentController.js");
 const { getApplicationList } = require("./controllers/menteesFormSubmissionsController.js");
 const { getMentorFormApplications } = require("./controllers/mentorFormApplicationController.js");
@@ -258,6 +259,41 @@ cron.schedule('0 8 * * 1', async () => {
     console.log(`✅ New signup password generated: ${newPassword}`);
   } catch (err) {
     console.error('❌ Error rotating signup password:', err);
+  }
+});
+
+cron.schedule('* * * * *', async () => {
+  console.log('⏰ Running mentoring session status updater');
+
+  try {
+    // 1. Auto-decline Pending SE sessions that are overdue
+    await pgDatabase.query(`
+      UPDATE mentoring_session
+      SET status = 'Declined'
+      WHERE status IN ('Pending SE', 'Pending')
+        AND start_time < NOW()
+    `);
+
+    // 2. Move Accepted sessions to In Progress
+    await pgDatabase.query(`
+      UPDATE mentoring_session
+      SET status = 'In Progress'
+      WHERE status = 'Accepted'
+        AND start_time <= NOW()
+        AND end_time > NOW()
+    `);
+
+    // 3. Move Accepted or In Progress sessions to Completed
+    await pgDatabase.query(`
+      UPDATE mentoring_session
+      SET status = 'Completed'
+      WHERE status IN ('Accepted', 'In Progress')
+        AND end_time <= NOW()
+    `);
+
+    console.log('✅ Mentoring session statuses updated');
+  } catch (err) {
+    console.error('❌ Error updating mentoring session statuses:', err);
   }
 });
 
@@ -999,6 +1035,30 @@ app.get("/api/analytics-stats", async (req, res) => {
 
   } catch (error) {
     console.error("❌ Error fetching dashboard stats:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/fetch-mentor-dashboard-stats", async (req, res) => {
+  try {
+    const mentorID = req.session.user?.id
+
+    // ✅ Fetch data
+    const totalEvalMade = await getEvaluationSubmittedCount(mentorID);
+    const avgRatingGiven = await getAvgRatingGivenByMentor(mentorID);
+    const mostCommonRating = await getCommonRatingGiven(mentorID);
+    const mentorshipsCount = await getMentorshipCountByMentorID(mentorID);
+
+    // ✅ Return Response
+    res.json({
+      totalEvalMade,
+      avgRatingGiven,
+      mostCommonRating,
+      mentorshipsCount,
+    });
+
+  } catch (error) {
+    console.error("❌ Error fetching mentor dashboard stats:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
@@ -3016,12 +3076,6 @@ app.post("/updateMentorshipDate", async (req, res) => {
     return res.status(400).json({ error: "Mentorship ID, date, start time, and end time are required" });
   }
 
-  console.log("📌 Mentorship ID:", mentorship_id);
-  console.log("📅 Date:", mentoring_session_date);
-  console.log("⏰ Start Time:", start_time);
-  console.log("⏳ End Time:", end_time);
-  console.log("🔗 Zoom Link:", zoom_link);
-
   try {
     const query = `
       INSERT INTO mentoring_session (
@@ -3051,7 +3105,7 @@ app.post("/updateMentorshipDate", async (req, res) => {
     res.json({ message: "Mentorship date updated", mentorship: rows[0] });
   } catch (error) {
     console.error("❌ Database error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: error.message });
   }
 });
 

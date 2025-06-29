@@ -99,7 +99,7 @@ const MainContent = () => {
           {/* ⭐️ Use nested routes for the dashboards */}
           <Route path="/dashboard" element={<Navigate to={isMentorView ? "/dashboard/mentor" : "/dashboard/lseed"} replace />} />
           <Route path="/dashboard/lseed" element={<Dashboard />} />
-          <Route path="/dashboard/mentor" element={<MentorDashboard />} />
+          <Route path="/dashboard/mentor" element={<Dashboard />} />
 
           {/* ⭐️ Use ProtectedRoute for all protected routes */}
           <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director", "LSEED-Coordinator"]} />}>
@@ -119,7 +119,7 @@ const MainContent = () => {
             <Route path="/mentor-analytics/:id" element={<MentorAnalytics />} />
             <Route path="/assess" element={<EvaluatePage />} />
           </Route>
-
+          
           {/* This route should be available to both */}
           <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator", "Mentor", "Guest User"]} />}>
             <Route path="/se-analytics/:id" element={<SEAnalytics />} />

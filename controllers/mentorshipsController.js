@@ -317,4 +317,24 @@ exports.getSchedulingHistoryByMentorID = async (mentor_id) => {
       return [];
     }
 };
+
+exports.getMentorshipCountByMentorID = async (mentor_id) => {
+    try {
+      const query = `
+        SELECT COUNT(DISTINCT se_id) AS mentorship_count
+        FROM mentorships
+        WHERE mentor_id = $1;
+      `;
+      const result = await pgDatabase.query(query, [mentor_id]);
+      if (!result.rows.length) {
+        console.log("No Schedules found.");
+        return [];
+      }
+  
+      return result.rows;
+    } catch (error) {
+      console.error("❌ Error fetching scheduling history by mentor schedules:", error);
+      return [];
+    }
+};
   

@@ -1091,3 +1091,19 @@ exports.avgRatingPerSE= async (se_id) => {
         return [];
     }
 };
+
+exports.getEvaluationSubmittedCount= async (mentor_id) => {
+    try {
+        const query = `
+            SELECT COUNT(*) AS evaluation_count
+            FROM evaluations
+            WHERE mentor_id = $1;
+        `;
+        const values = [mentor_id];
+        const result = await pgDatabase.query(query, values);
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching submitted evaluations count:", error);
+        return [];
+    }
+};
