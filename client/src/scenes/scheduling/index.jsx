@@ -44,7 +44,7 @@ import { saveAs } from "file-saver";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-const Scheduling = ({  }) => {
+const Scheduling = ({}) => {
   const [openModal, setOpenModal] = useState(false);
   const [openSEModal, setOpenSEModal] = useState(false);
   const [mentors, setMentors] = useState([]);
@@ -75,10 +75,9 @@ const Scheduling = ({  }) => {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedRowId, setSelectedRowId] = useState(null);
   const [mentorSchedules, setMentorSchedules] = useState([]);
-  const [mentorHistory, setMentorHistory] = useState([]);
+  const [mentorOwnHistory, setMentorOwnHistory] = useState([]);
+  const [lseedHistory, setLseedHistory] = useState([]);
 
-  const isLSEEDUser = user?.roles?.some(role => role?.startsWith("LSEED"));
-  const hasMentorRole = user?.roles?.includes("Mentor");
 
   const generateTimeSlots = () => {
     const slots = [];
@@ -291,86 +290,108 @@ const Scheduling = ({  }) => {
     fetchMentorshipDates();
   }, [user.id]); // Refetch when the user changes
 
+  // useEffect(() => {
+  //   const fetchScheduleHistory = async () => {
+  //     try {
+        
+  //       let response;
+        
+  //       if (user?.roles.includes("Mentor")) {
+  //         console.log("hello")
+  //         response = await axios.get("http://localhost:4000/api/mentorSchedulesByID", {
+  //           withCredentials: true, // Equivalent to credentials: "include"
+  //         });
+  //       } else if (user?.roles.some(role => role.startsWith("LSEED"))) {
+  //         if (user?.roles.includes("LSEED-Coordinator")) {
+  //           const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
+  //             withCredentials: true, // Equivalent to credentials: "include"
+  //           });
+
+  //           const program = res.data[0]?.name;
+           
+  //           response = await axios.get(
+  //             "http://localhost:4000/api/mentorSchedules",
+  //             { params: { program } }
+  //           );
+  //         }
+  //         else {
+  //           response = await axios.get(
+  //             "http://localhost:4000/api/mentorSchedules"
+  //           );
+  //         }
+  //       }
+
+  //       setMentorHistory(response.data || []);
+  //     } catch (error) {
+  //       console.error("❌ Error fetching mentor schedules:", error);
+  //       setMentorHistory([]);
+  //     }
+  //   };
+
+  //   fetchScheduleHistory();
+  // }, []); // Runs once when the component mounts
+
   useEffect(() => {
     const fetchScheduleHistory = async () => {
       try {
-        
-        let response;
-        if (hasMentorRole) {
-          response = await axios.get("http://localhost:4000/api/mentorSchedulesByID", {
-            withCredentials: true, // Equivalent to credentials: "include"
-          });
-        } else if (isLSEEDUser ) {
-          if (user?.roles?.includes('LSEED-Coordinator')) {
-            const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
-              withCredentials: true, // Equivalent to credentials: "include"
-            });
+        const roles = user?.roles || [];
+        const isMentor = roles.includes("Mentor");
+        const isLSEEDUser = roles.some(role => role.startsWith("LSEED"));
 
-            const program = res.data[0]?.name;
-           
-            response = await axios.get(
+        if (isMentor) {
+          const mentorRes = await axios.get("http://localhost:4000/api/mentorSchedulesByID", {
+            withCredentials: true,
+          });
+          setMentorOwnHistory(mentorRes.data || []);
+        }
+
+        if (isLSEEDUser) {
+          let lseedResponse;
+          if (roles.includes("LSEED-Coordinator")) {
+            const programRes = await axios.get("http://localhost:4000/api/get-program-coordinator", {
+              withCredentials: true,
+            });
+            const program = programRes.data[0]?.name;
+            lseedResponse = await axios.get(
               "http://localhost:4000/api/mentorSchedules",
               { params: { program } }
             );
+          } else {
+            lseedResponse = await axios.get("http://localhost:4000/api/mentorSchedules");
           }
-          else {
-            response = await axios.get(
-              "http://localhost:4000/api/mentorSchedules"
-            );
-          }
+          setLseedHistory(lseedResponse.data || []);
         }
-
-        setMentorHistory(response.data || []);
       } catch (error) {
         console.error("❌ Error fetching mentor schedules:", error);
-        setMentorHistory([]);
+        setMentorOwnHistory([]);
+        setLseedHistory([]);
       }
     };
 
-    fetchScheduleHistory();
-  }, []); // Runs once when the component mounts
+    if (user) {
+      fetchScheduleHistory();
+    }
+  }, [user]);
 
-  const rows = mentorshipDates.map((mentorship) => {
-    const formattedDate = new Date(
-      mentorship.mentoring_session_date
-    ).toLocaleDateString("en-US", {
-      month: "long",
-      day: "2-digit",
-      year: "numeric",
-    });
 
-    return {
-      id: mentorship.mentoring_session_id, // Unique identifier (session-based)
+  const formatRows = (data) =>
+    data.map((mentorship) => ({
+      id: mentorship.mentoring_session_id,
       team_name: mentorship.team_name || "N/A",
       mentor_name: mentorship.mentor_name || "N/A",
       program_name: mentorship.program_name || "N/A",
-      mentoring_session_date: formattedDate,
+      mentoring_session_date: new Date(
+        mentorship.mentoring_session_date
+      ).toLocaleDateString("en-US", {
+        month: "long",
+        day: "2-digit",
+        year: "numeric",
+      }),
       mentoring_session_time: mentorship.mentoring_session_time || "N/A",
       status: mentorship.status || "N/A",
       zoom_link: mentorship.zoom_link || "N/A",
-    };
-  });
+  }));
 
-  const historyRows = mentorHistory.map((mentorship) => {
-    const formattedDate = new Date(
-      mentorship.mentoring_session_date
-    ).toLocaleDateString("en-US", {
-      month: "long",
-      day: "2-digit",
-      year: "numeric",
-    });
-
-    return {
-      id: mentorship.mentoring_session_id, // Unique identifier (session-based)
-      team_name: mentorship.team_name || "N/A",
-      mentor_name: mentorship.mentor_name || "N/A",
-      program_name: mentorship.program_name || "N/A",
-      mentoring_session_date: formattedDate,
-      mentoring_session_time: mentorship.mentoring_session_time || "N/A",
-      status: mentorship.status || "N/A",
-      zoom_link: mentorship.zoom_link || "N/A",
-    };
-  });
 
   const fetchSocialEnterprises = async () => {
     try {
@@ -512,7 +533,7 @@ const Scheduling = ({  }) => {
       try {
         let response;
 
-        if (user?.roles?.includes('LSEED-Coordinator')) {
+        if (user?.roles.includes("LSEED-Coordinator")) {
           const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
             withCredentials: true, // Equivalent to credentials: "include"
           });
@@ -553,13 +574,13 @@ const Scheduling = ({  }) => {
       <Header
         title="Scheduling Matrix"
         subtitle={
-          isLSEEDUser  
+          user?.roles.some(role => role.startsWith("LSEED"))
             ? "View and Manage the schedule of the mentors"
             : "Find the Appropriate Schedule"
         }
       />
 
-      { hasMentorRole ? (
+      {user?.roles.includes("Mentor") ? (
         <Box
           display="flex"
           flexDirection="column"
@@ -647,7 +668,7 @@ const Scheduling = ({  }) => {
         <Calendar isDashboard={true} />
       </Box>
 
-      {user.role?.startsWith("LSEED") && (
+      {user.roles?.some(r => r.startsWith("LSEED")) && (
         <Box mt={4} display="flex" flexDirection="column" gap={2}>
           {/* Mentor Schedules */}
           <Box
@@ -806,7 +827,7 @@ const Scheduling = ({  }) => {
               Mentoring Sessions History
             </Typography>
 
-            {mentorHistory.length > 0 ? (
+            {lseedHistory.length > 0 ? (
               <Box
                 width="100%"
                 height="400px"
@@ -832,7 +853,7 @@ const Scheduling = ({  }) => {
                 }}
               >
                 <DataGrid
-                  rows={historyRows}
+                  rows={formatRows(lseedHistory)}
                   columns={[
                     {
                       field: "team_name",
@@ -924,7 +945,7 @@ const Scheduling = ({  }) => {
         </DialogActions>
       </Dialog>
 
-      {hasMentorRole  && (
+      {user?.roles.includes("Mentor") && (
         <Box mt={4}>
           {/* Export Button Positioned Outside DataGrid */}
           <Box mb={2}>
@@ -955,7 +976,7 @@ const Scheduling = ({  }) => {
               Mentoring Sessions History
             </Typography>
 
-            {mentorshipDates.length > 0 ? (
+            {mentorOwnHistory.length > 0 ? (
               <Box
                 sx={{
                   height: 400,
@@ -977,7 +998,7 @@ const Scheduling = ({  }) => {
                 }}
               >
                 <DataGrid
-                  rows={historyRows}
+                  rows={formatRows(mentorOwnHistory)}
                   columns={[
                     {
                       field: "team_name",

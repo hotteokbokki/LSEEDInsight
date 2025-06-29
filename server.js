@@ -92,6 +92,7 @@ const { getProgramCoordinators,
         assignProgramCoordinator } = require("./controllers/programAssignmentController.js");
 const { getApplicationList } = require("./controllers/menteesFormSubmissionsController.js");
 const { getMentorFormApplications } = require("./controllers/mentorFormApplicationController.js");
+const { getSignUpPassword } = require("./controllers/signuppasswordsController.js");
 const app = express();
 
 
@@ -860,10 +861,6 @@ app.post("/toggle-mentor-availability", async (req, res) => {
 app.get("/get-mentor-availability", async (req, res) => {
   const user = req.session.user;
 
-  if (!user || user.role !== "Mentor") {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
   const mentorId = user.id;
 
   try {
@@ -1515,14 +1512,24 @@ app.get("/api/mentorSchedulesByID", async (req, res) => {
       return res.status(400).json({ message: "mentor_id is required" });
     }
 
+    console.log("DEBUG: ",mentor_id)
+
     const result = await getSchedulingHistoryByMentorID(mentor_id); // Fetch SEs from DB
-    if (!result || result.length === 0) {
-      return res.status(404).json({ message: "No evaluations found" });
-    }
     res.json(result);
   } catch (error) {
     console.error("Error fetching social enterprises:", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.post("/show-signup-password", async (req, res) => {
+  try {
+    const otp = await getSignUpPassword();
+
+    res.json({ otp });
+  } catch (error) {
+    console.error("Error generating OTP:", error);
+    res.status(500).json({ message: "Error generating OTP" });
   }
 });
 
@@ -1995,7 +2002,9 @@ app.get("/api/active-mentors", async (req, res) => {
 // Fetch active mentors
 app.get("/getAllEvaluations", async (req, res) => {
   try {
-    const result = await getEvaluations();
+    const program = req.query.program || null; // Optional program param
+
+    const result = await getEvaluations(program);
     res.json(result);
   } catch (error) {
     console.error("Error fetching active mentors:", error);

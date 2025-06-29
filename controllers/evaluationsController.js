@@ -1,32 +1,45 @@
 const pgDatabase = require('../database.js'); // Import PostgreSQL client
 
-exports.getEvaluations = async () => {
-    try {
-        const query = `
-            SELECT 
-                e.evaluation_id,
-                m.mentor_firstname || ' ' || m.mentor_lastname AS evaluator_name,
-                se.team_name AS social_enterprise,
-                TO_CHAR(e.created_at, 'FMMonth DD, YYYY') AS evaluation_date, -- ✅ Formatted date
-                e."isAcknowledge" AS acknowledged,
-				e.evaluation_type
-            FROM 
-                evaluations AS e
-            JOIN 
-                mentors AS m ON e.mentor_id = m.mentor_id
-            JOIN 
-                socialenterprises AS se ON e.se_id = se.se_id
-            WHERE 
-                e.evaluation_type = 'Social Enterprise'
-        `;
+exports.getEvaluations = async (program = null) => {
+  try {
+    const values = [];
+    let programJoin = '';
+    let programFilter = '';
 
-        const result = await pgDatabase.query(query);
-
-        return result.rows;
-    } catch (error) {
-        console.error("❌ Error fetching evaluations:", error);
-        return [];
+    if (program && program !== "null") {
+      programJoin = `JOIN programs AS p ON p.program_id = se.program_id`;
+      programFilter = `AND p.name = $1`;
+      values.push(program);
     }
+
+    const query = `
+      SELECT 
+          e.evaluation_id,
+          m.mentor_firstname || ' ' || m.mentor_lastname AS evaluator_name,
+          se.team_name AS social_enterprise,
+          TO_CHAR(e.created_at, 'FMMonth DD, YYYY') AS evaluation_date,
+          e."isAcknowledge" AS acknowledged,
+          e.evaluation_type
+      FROM 
+          evaluations AS e
+      JOIN 
+          mentors AS m ON e.mentor_id = m.mentor_id
+      JOIN 
+          socialenterprises AS se ON e.se_id = se.se_id
+      ${programJoin}
+      WHERE 
+          e.evaluation_type = 'Social Enterprise'
+          ${programFilter}
+      ORDER BY e.created_at DESC;
+    `;
+
+    const result = await pgDatabase.query(query, values);
+
+    return result.rows;
+  } catch (error) {
+    console.error("❌ Error fetching evaluations:", error);
+    return [];
+  }
 };
 
 exports.getEvaluationsByMentorID = async (mentor_id) => {

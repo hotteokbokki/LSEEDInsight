@@ -162,12 +162,35 @@ const EvaluatePage = ({ }) => {
         }
 
         if (isLSEEDUser) {
-          const lseedResponse = await axios.get(
-            "http://localhost:4000/getAllEvaluations",
+      
+        let lseedResponse;
+
+        if(user?.roles.includes("LSEED-Coordinator")) {
+          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+            method: "GET",
+            credentials: "include", // Required to send session cookie
+          });
+
+          if (!res.ok) {
+            throw new Error("Failed to fetch program coordinator");
+          }
+
+          const data = await res.json();
+          const program = data[0]?.name;
+
+          if (!program) {
+            throw new Error("No program found for this coordinator");
+          }
+          lseedResponse = await axios.get(
+            `http://localhost:4000/getAllEvaluations?program=${program}`,
             { withCredentials: true }
           );
-
-          console.log("SE Eval Data: ", lseedResponse)
+        } else {
+            lseedResponse = await axios.get(
+              "http://localhost:4000/getAllEvaluations",
+              { withCredentials: true }
+            );
+        }
 
           const formattedLseedData = (lseedResponse.data || []).map(evaluation => ({
             id: evaluation.evaluation_id,

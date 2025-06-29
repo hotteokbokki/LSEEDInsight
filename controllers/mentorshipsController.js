@@ -231,7 +231,7 @@ exports.getPendingSchedules = async (program = null) => {
 
         return result.rows;
     } catch (error) {
-      console.error("❌ Error fetching mentor schedules:", error);
+      console.error("❌ Error fetching pending schedules:", error);
       return [];
     }
 };
@@ -273,7 +273,7 @@ exports.getSchedulingHistory = async (program = null) => {
 
         return result.rows;
     } catch (error) {
-        console.error("❌ Error fetching mentor schedules:", error);
+        console.error("❌ Error fetching scheduling history schedules:", error);
         return [];
     }
 };
@@ -304,15 +304,16 @@ exports.getSchedulingHistoryByMentorID = async (mentor_id) => {
           ORDER BY ms.mentoring_session_date, ms.start_time;
       `;
 
+      
       const result = await pgDatabase.query(query, [mentor_id]);
       if (!result.rows.length) {
-        console.log("No Pending Schedules found.");
+        console.log("No Schedules found.");
         return [];
       }
   
       return result.rows;
     } catch (error) {
-      console.error("❌ Error fetching mentor schedules:", error);
+      console.error("❌ Error fetching scheduling history by mentor schedules:", error);
       return [];
     }
 };
