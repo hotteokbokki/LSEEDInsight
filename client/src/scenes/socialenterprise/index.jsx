@@ -1430,6 +1430,7 @@ const SocialEnterprise = ({ }) => {
                 }}
                 onRowClick={handleRowClick}
                 editMode="row"
+                // REFERERENCE for GridToolbar
                 sx={{
                   "& .MuiDataGrid-cell": {
                     display: "flex",

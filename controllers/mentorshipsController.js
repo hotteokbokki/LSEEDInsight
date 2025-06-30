@@ -55,7 +55,8 @@ exports.getMentorshipsForScheduling = async (mentor_id) => {
             se.se_id,
             se.team_name AS SE, 
             p."name" AS Program, 
-            STRING_AGG(sdg."name", ', ') AS SDGs -- Aggregating SDGs into one column
+            STRING_AGG(sdg."name", ', ') AS SDGs, -- Aggregating SDGs into one column
+            se.preferred_mentoring_time
         FROM mentorships AS ms 
         JOIN socialenterprises AS se ON ms."se_id" = se."se_id"
         JOIN mentors AS m ON m."mentor_id" = ms."mentor_id"

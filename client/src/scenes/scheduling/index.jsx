@@ -5,7 +5,7 @@ import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { TimePicker } from "@mui/x-date-pickers";
-import Calendar from "../../components/calendar";
+import Calendar from "../../components/Calendar";
 import {
   Box,
   Button,
@@ -405,7 +405,6 @@ const handleEndTimeChange = (newEndTimeRaw) => {
     try {
       setIsLoading(true);
 
-      console.log("Fetching SEs for Mentor ID:", user?.id);
       const response = await fetch(
         `http://localhost:4000/getMentorshipsbyID?mentor_id=${encodeURIComponent(
           user.id
@@ -422,12 +421,13 @@ const handleEndTimeChange = (newEndTimeRaw) => {
       }
 
       const updatedSocialEnterprises = data.map((se) => ({
-        id: se.id, // Correctly map `se_id` from API response
+        id: se.id,
         mentor_id: se.mentor_id,
-        se_id: se.se_id, // Ensure this is correctly assigned
+        se_id: se.se_id,
         team_name: se.se || "Unknown Team",
         program_name: se.program || "Unknown Program",
         sdg_name: se.sdgs || "No SDG Name",
+        preferred_times: se.preferred_mentoring_time || [],
       }));
 
       setSocialEnterprises(updatedSocialEnterprises);
@@ -1408,9 +1408,19 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                     >
                       <ListItemText
                         primary={se.team_name}
-                        secondary={se.program_name}
+                        secondary={
+                          <>
+                            {se.program_name}
+                            <br />
+                            Preferred Times: {se.preferred_times.join(", ") || "None"}
+                          </>
+                        }
                         primaryTypographyProps={{
-                          fontWeight: selectedSE?.id === se.id ? "bold" : "normal",
+                          fontWeight: selectedSE?.id === se.id ? 'bold' : 'normal',
+                          color: 'black',
+                        }}
+                        secondaryTypographyProps={{
+                          color: 'black',
                         }}
                       />
                     </ListItemButton>
@@ -1420,16 +1430,15 @@ const handleEndTimeChange = (newEndTimeRaw) => {
             </Box>
           )}
 
-
           {/* Date & Time Selection Section */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {/* Date Selection */}
-            {/* Date Selection Section */}
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
                 label="Select Date"
                 value={selectedDate}
                 onChange={(newDate) => setSelectedDate(newDate)}
+                minDate={dayjs()}
                 slotProps={{
                   textField: {
                     sx: {

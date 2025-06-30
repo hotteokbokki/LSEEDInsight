@@ -814,9 +814,9 @@ app.post("/accept-mentor-application", async (req, res) => {
 
     // 4. Insert into mentors
     await pgDatabase.query(
-      `INSERT INTO mentors (mentor_id, mentor_firstname, mentor_lastname, email, contactnum, critical_areas)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [userId, app.first_name, app.last_name, app.email, app.contact_no, app.business_areas]
+      `INSERT INTO mentors (mentor_id, mentor_firstname, mentor_lastname, email, contactnum, critical_areas, preferred_mentoring_time)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userId, app.first_name, app.last_name, app.email, app.contact_no, app.business_areas, app.preferred_time]
     );
 
     // 5. Update application status

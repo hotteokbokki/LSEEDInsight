@@ -66,8 +66,6 @@ const Mentors = ( {} ) => {
   const [loading, setLoading] = useState(true); // Loading state for API call
   const [mentors, setMentors] = useState([]);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
-  const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
-  const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
   const [stats, setStats] = useState(null);
   const [selectedRowId, setSelectedRowId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -75,6 +73,8 @@ const Mentors = ( {} ) => {
   const [mentorSearch, setMentorSearch] = useState(""); // For autocomplete input
   const [selectedSE, setSelectedSE] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const hasMentorRole = user?.roles?.includes("Mentor");
   const isLSEEDCoordinator = user?.roles?.includes("LSEED-Coordinator");
 
@@ -144,6 +144,15 @@ const Mentors = ( {} ) => {
 
     if (action === "Accept") {
       handleAcceptMentor(row);
+
+      // Show success message
+      setSnackbarMessage("Accepted Application! Mentor Added Successfully");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 3500); // Adjust delay if needed
     }
 
     if (action === "Decline") {
@@ -167,6 +176,15 @@ const Mentors = ( {} ) => {
       } catch (error) {
         console.error("❌ Network or server error:", error);
       }
+
+      // Show success message
+      setSnackbarMessage("Declined Application!");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 3500); // Adjust delay if needed
 
       handleCloseMenu(); // Close the dropdown
     }
@@ -414,7 +432,11 @@ const Mentors = ( {} ) => {
       );
 
       if (response.ok) {
-        setSnackbarOpen(true);
+        // Show success message
+        setSnackbarMessage("Successfully Removed!");
+        setSnackbarSeverity("success");
+        setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
+
         setTimeout(() => {
           window.location.reload();
         }, 500); // Adjust delay if needed
@@ -459,7 +481,9 @@ const Mentors = ( {} ) => {
         setMentorshipData({ selectedMentor: "", selectedSocialEnterprise: "" });
 
         // Show success popup
-        setIsSuccessPopupOpen(true);
+        setSnackbarMessage("Mentorship added successfully!");
+        setSnackbarSeverity("success");
+        setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
 
         // Fetch latest data
         await fetchLatestMentorships();
@@ -943,22 +967,6 @@ const Mentors = ( {} ) => {
             </DialogActions>
           </Dialog>
 
-          {/* Snackbar for success message */}
-          <Snackbar
-            open={snackbarOpen}
-            autoHideDuration={3000} // Closes after 3 seconds
-            onClose={() => setSnackbarOpen(false)}
-            anchorOrigin={{ vertical: "top", horizontal: "center" }}
-          >
-            <Alert
-              onClose={() => setSnackbarOpen(false)}
-              severity="success"
-              sx={{ width: "100%" }}
-            >
-              Successfully removed!
-            </Alert>
-          </Snackbar>
-
           {!showEditButtons && (
             <Button
               variant="contained"
@@ -1022,10 +1030,18 @@ const Mentors = ( {} ) => {
                     }
                     setIsEditing(false);
                     setShowEditButtons(false);
-                    setIsSuccessEditPopupOpen(true);
+                    // Snackbar
+                    setSnackbarMessage("Successfully saved!");
+                    setSnackbarSeverity("success");
+                    setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
+
                   } catch (error) {
                     console.error("Failed to update mentor:", error);
-                    alert("Failed to save changes. Please try again.");
+                    // Snackbar
+                    setSnackbarMessage("Failed to save changes. Please try again.");
+                    setSnackbarSeverity("error");
+                    setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
+
                   }
                   setTimeout(() => {
                     window.location.reload();
@@ -1037,20 +1053,6 @@ const Mentors = ( {} ) => {
             </>
           )}
         </Box>
-        <Snackbar
-          open={isSuccessEditPopupOpen}
-          autoHideDuration={3000} // Automatically close after 3 seconds
-          onClose={() => setIsSuccessEditPopupOpen(false)} // Close on click or timeout
-          anchorOrigin={{ vertical: "top", horizontal: "center" }} // Position of the popup
-        >
-          <Alert
-            onClose={() => setIsSuccessEditPopupOpen(false)}
-            severity="success"
-            sx={{ width: "100%" }}
-          >
-            Successfully saved!
-          </Alert>
-        </Snackbar>
       </Box>
       
       {/* Add Mentorship Dialog */}
@@ -1453,21 +1455,6 @@ const Mentors = ( {} ) => {
         </DialogActions>
       </Dialog>
 
-      <Snackbar
-        open={isSuccessPopupOpen} // Controlled by state
-        autoHideDuration={3000} // Automatically close after 3 seconds
-        onClose={() => setIsSuccessPopupOpen(false)} // Close on click or timeout
-        anchorOrigin={{ vertical: "top", horizontal: "center" }} // Position of the popup
-      >
-        <Alert
-          onClose={() => setIsSuccessPopupOpen(false)}
-          severity="success"
-          sx={{ width: "100%" }}
-        >
-          Mentorship added successfully!
-        </Alert>
-      </Snackbar>
-
       <Box display="flex" gap="20px" width="100%" mt="20px">
         {/* MENTORS TABLE */}
         <Box
@@ -1768,6 +1755,22 @@ const Mentors = ( {} ) => {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={5000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity} 
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}            
+        </Alert>
+      </Snackbar>
+
     </Box>
   );
 };
