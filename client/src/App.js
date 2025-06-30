@@ -19,7 +19,7 @@ import Mentorships from "./scenes/mentorships";
 import Sidebar from "./scenes/global/Sidebar";
 import Topbar from "./scenes/global/Topbar";
 import Unauthorized from "./scenes/unauthorized";
-import Signup from "./scenes/signup";
+import ProfilePage from "./scenes/profile";
 import { ColorModeContext, useMode } from "./theme";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -106,7 +106,7 @@ const MainContent = () => {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/profile" element={<ProfilePage />} />
 
           {/* ⭐️ Use nested routes for the dashboards */}
           <Route path="/dashboard" element={<Navigate to={isMentorView ? "/dashboard/mentor" : "/dashboard/lseed"} replace />} />

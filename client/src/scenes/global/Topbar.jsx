@@ -223,11 +223,13 @@ const Topbar = ({ }) => {
           open={Boolean(anchorEl)}
           onClose={handleMenuClose}
         >
-          <MenuItem onClick={handleMenuClose}>Profile</MenuItem>
+          <MenuItem onClick={() => navigate("/profile")}>
+            Profile
+          </MenuItem>
           <MenuItem
             onClick={() => {
-              logout(); // Logout user
-              navigate("/"); // Redirect to login
+              logout();
+              navigate("/");
             }}
             icon={<ExitToAppOutlinedIcon />}
             style={{
