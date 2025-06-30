@@ -647,62 +647,6 @@ const handleEndTimeChange = (newEndTimeRaw) => {
     },
   ];
 
-  // Define DataGrid columns
-  const pendingSessionsColumns = [
-    {
-      field: "sessionDetails",
-      headerName: "Mentoring Session Information",
-      flex: 1,
-      minWidth: 250,
-      renderCell: (params) => (
-        <Typography
-          variant="body2"
-          sx={{
-            whiteSpace: "normal",
-            wordBreak: "break-word",
-            lineHeight: 1.4,
-            width: "100%",
-          }}
-        >
-          {params.value}
-        </Typography>
-      ),
-    },
-    {
-      field: "date",
-      headerName: "Scheduled Date",
-      width: 250,
-      renderCell: (params) => (
-        <Typography
-          variant="body2"
-          sx={{
-            whiteSpace: "normal",
-            wordBreak: "break-word",
-            lineHeight: 1.4,
-            width: "100%",
-          }}
-        >
-          {params.value}
-        </Typography>
-      ),
-    },
-    {
-      field: "status",
-      headerName: "Status",
-      width: 200,
-      renderCell: (params) => {
-        let color = "default";
-        if (params.value === "Pending SE") color = "warning";
-        if (params.value === "Accepted") color = "success";
-        if (params.value === "Declined") color = "error";
-        if (params.value === "Evaluated") color = "info";
-        if (params.value === "Completed") color = "primary";
-
-        return <Chip label={params.value} color={color} />;
-      },
-    },
-  ];
-  
   useEffect(() => {
     fetch("/auth/session-check", {
       method: "GET",

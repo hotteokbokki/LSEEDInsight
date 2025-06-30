@@ -26,7 +26,7 @@ import {
   Grid
 } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
 import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
@@ -1444,7 +1444,11 @@ const SocialEnterprise = ({ }) => {
                     whiteSpace: "normal", // allow line wrap
                     wordBreak: "break-word",
                   },
+                  "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+                  color: `${colors.grey[100]} !important`,
+                  },
                 }}
+                slots={{ toolbar: GridToolbar }}
               />
             )}
           </Box>

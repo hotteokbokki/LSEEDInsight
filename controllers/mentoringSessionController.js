@@ -5,15 +5,14 @@ exports.getUpcomingSchedulesForMentor = async (mentor_id) => {
         const query = `
             SELECT 
                 ms.mentoring_session_id,
-                m.mentor_firstname || ' ' || m.mentor_lastname AS mentor_name, -- ✅ Mentor leading the session
-                se.team_name AS social_enterprise, -- ✅ SE being mentored
+                CONCAT(m.mentor_firstname, ' ', m.mentor_lastname) AS mentor_name,  
+                mps.mentorship_id,               
+                se.team_name AS social_enterprise, 
+                TO_CHAR(ms.mentoring_session_date, 'FMMonth DD, YYYY') AS mentoring_session_date,
                 CONCAT(
-                    TO_CHAR(ms.mentoring_session_date, 'FMMonth DD, YYYY'),
-                    ' at ',
-                    TO_CHAR(ms.start_time, 'HH12:MI AM'),
-                    ' - ',
-                    TO_CHAR(ms.end_time, 'HH12:MI AM')
-                ) AS session_datetime, -- ✅ Formatted session schedule
+                        TO_CHAR(ms.start_time, 'HH24:MI'), ' - ', 
+                        TO_CHAR(ms.end_time, 'HH24:MI')
+                        ) AS mentoring_session_time,
 				ms.zoom_link,
                 ms.status -- ✅ (e.g., Scheduled, Pending, Confirmed)
             FROM 

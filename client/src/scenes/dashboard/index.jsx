@@ -254,15 +254,8 @@ const Dashboard = ({ }) => {
           setmentorEvaluations([]); // clear any old data
           return;
         }
-        // Ensure evaluation_id is included and set as `id`
-        const formattedData = response.data.map((schedule) => ({
-          id: schedule.mentoring_session_id, // Use evaluation_id as the unique ID
-          team_name: schedule.social_enterprise, // Use evaluation_id as the unique ID
-          date: schedule.session_datetime, // Use evaluation_id as the unique ID
-          link: schedule.zoom_link, // Use evaluation_id as the unique ID
-          status: schedule.status, // Use evaluation_id as the unique ID
-        }));
-        setupcomingSchedules(formattedData);
+
+        setupcomingSchedules(response.data);
       } catch (error) {
         console.error("❌ Error fetching evaluations:", error);
       } finally {
@@ -465,6 +458,84 @@ const Dashboard = ({ }) => {
             Decline
           </Button>
         </Box>
+      ),
+    },
+  ];
+
+  const upcomingAcceptedSchedColumn = [
+    {
+      field: "sessionDetails",
+      headerName: "Mentoring Session Information",
+      flex: 1,
+      minWidth: 200,
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          sx={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            lineHeight: 1.4,
+            width: "100%",
+          }}
+        >
+          {params.value}
+        </Typography>
+      ),
+    },
+    {
+      field: "date",
+      headerName: "Scheduled Date",
+      flex: 1,
+      minWidth: 200,
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          sx={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            lineHeight: 1.4,
+            width: "100%",
+          }}
+        >
+          {params.value}
+        </Typography>
+      ),
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      width: 150,
+      renderCell: (params) => {
+        let color = "default";
+        if (params.value === "Pending SE") color = "warning";
+        if (params.value === "Accepted") color = "success";
+        if (params.value === "Declined") color = "error";
+        if (params.value === "Evaluated") color = "info";
+        if (params.value === "Completed") color = "primary";
+
+        return <Chip label={params.value} color={color} />;
+      },
+    },
+    {
+      field: "zoom",
+      headerName: "Zoom Link",
+      flex: 1,
+      minWidth: 150,
+      renderCell: (params) => (
+        params.value && params.value !== "N/A" ? (
+          <a
+            href={params.value}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: "none" }}
+          >
+            <Chip label="Join" color="primary" clickable />
+          </a>
+        ) : (
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            N/A
+          </Typography>
+        )
       ),
     },
   ];
@@ -1466,38 +1537,64 @@ const Dashboard = ({ }) => {
                     >
                         Upcoming Mentoring Sessions
                     </Typography>
-
-                    {upcomingSchedules.length > 0 ? (
-                        <Box
-                            height="400px"
-                            minHeight="400px"
-                            sx={{
-                                "& .MuiDataGrid-root": { border: "none" },
-                                "& .MuiDataGrid-cell": { borderBottom: "none" },
-                                "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-                                    backgroundColor: colors.blueAccent[700] + " !important",
-                                },
-                                "& .MuiDataGrid-virtualScroller": {
-                                    backgroundColor: colors.primary[400],
-                                },
-                                "& .MuiDataGrid-footerContainer": {
-                                    borderTop: "none",
-                                    backgroundColor: colors.blueAccent[700],
-                                    color: colors.grey[100],
-                                },
-                            }}
-                        >
+                    <Box
+                        sx={{
+                            height: "400px",
+                            minHeight: "400px",
+                            backgroundColor: colors.primary[400],
+                            "& .MuiDataGrid-root": { border: "none" },
+                            "& .MuiDataGrid-cell": { borderBottom: "none" },
+                            "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                                backgroundColor: colors.blueAccent[700] + " !important",
+                            },
+                            "& .MuiDataGrid-virtualScroller": {
+                                backgroundColor: colors.primary[400],
+                            },
+                            "& .MuiDataGrid-footerContainer": {
+                                borderTop: "none",
+                                backgroundColor: colors.blueAccent[700],
+                                color: colors.grey[100],
+                            },
+                        }}
+                    >
+                        {loading ? (
+                            <Typography>Loading...</Typography>
+                        ) : upcomingSchedules.length > 0 ? (
                             <DataGrid
-                                rows={upcomingSchedules}
-                                columns={pendingScheduleColumns}
+                                rows={upcomingSchedules.map((schedule) => ({
+                                    id: schedule.mentoring_session_id,
+                                    sessionDetails: `Mentoring Session for ${
+                                        schedule.team_name || "Unknown SE"
+                                    } with Mentor ${
+                                        schedule.mentor_name || "Unknown Mentor"
+                                    }`,
+                                    date: `${schedule.mentoring_session_date}, ${schedule.mentoring_session_time}` || "N/A",
+                                    time: schedule.mentoring_session_time || "N/A",
+                                    zoom: schedule.zoom_link || "N/A",
+                                    mentorship_id: schedule.mentorship_id,
+                                    status: schedule.status || "Pending",
+                                }))}
+                                sx={{
+                                  "& .MuiDataGrid-cell": {
+                                    display: "flex",
+                                    alignItems: "center",
+                                    paddingTop: "12px",
+                                    paddingBottom: "12px",
+                                  },
+                                  "& .MuiDataGrid-cellContent": {
+                                    whiteSpace: "normal",
+                                    wordBreak: "break-word",
+                                  },
+                                }}
+                                getRowHeight={() => 'auto'}
+                                columns={upcomingAcceptedSchedColumn}
                                 pageSize={5}
                                 rowsPerPageOptions={[5, 10]}
-                                checkboxSelection={false}
                             />
-                        </Box>
-                    ) : (
-                        <Typography>No upcoming sessions available.</Typography>
-                    )}
+                        ) : (
+                            <Typography>No pending schedules available.</Typography>
+                        )}
+                    </Box>
                 </Box>
             </>
         )}

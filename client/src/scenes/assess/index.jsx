@@ -17,7 +17,7 @@ import {
   Snackbar,
 } from "@mui/material";
 import { tokens } from "../../theme";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import Header from "../../components/Header";
 import { useAuth } from "../../context/authContext";
 
@@ -216,10 +216,70 @@ const EvaluatePage = ({ }) => {
   }, [user]);
 
   const columns = [
-    { field: "social_enterprise", headerName: "Social Enterprise", flex: 1 },
-    { field: "evaluator_name", headerName: "Evaluator", flex: 1 },
-    { field: "acknowledged", headerName: "Acknowledged", flex: 1 },
-    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
+    { 
+      field: "social_enterprise", 
+      headerName: "Social Enterprise", 
+      flex: 1,
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          sx={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+          }}
+        >
+          {params.row.social_enterprise}
+        </Typography>
+      ),
+    },
+    { 
+      field: "evaluator_name", 
+      headerName: "Evaluator", 
+      flex: 1,
+      renderCell: (params) => (
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="body2">{params.row.evaluator_name}</Typography>
+        </Box>
+      ),
+    },
+    { 
+      field: "acknowledged", 
+      headerName: "Acknowledged", 
+      flex: 1,
+      renderCell: (params) => (
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="body2">{params.row.acknowledged}</Typography>
+        </Box>
+      ),
+    },
+    { 
+      field: "evaluation_date", 
+      headerName: "Evaluation Date", 
+      flex: 1,
+      renderCell: (params) => (
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="body2">{params.row.evaluation_date}</Typography>
+        </Box>
+      ),
+    },
     {
       field: "action",
       headerName: "Action",
@@ -736,9 +796,8 @@ const EvaluatePage = ({ }) => {
               Evaluate SE
             </Button>
           )}
-          {/* CHANGE */}
           {/* Show this button only if userRole is LSEED */}
-          {/* {user?.roles.some(role => role.startsWith("LSEED"))  && (
+          {user?.roles.some(role => role.startsWith("LSEED"))  && (
             <Button
               onClick={handleOpenMentorshipDialog}
               variant="contained"
@@ -752,7 +811,7 @@ const EvaluatePage = ({ }) => {
             >
               Mentorship Assessment
             </Button>
-          )} */}
+          )}
         </Box>
 
         {/* Mentorship Assessment Dialog */}
@@ -908,14 +967,31 @@ const EvaluatePage = ({ }) => {
               height="400px"
               minHeight="400px" // Ensures it does not shrink with missing data
               sx={{
-                "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header":
-                  {
-                    backgroundColor: colors.blueAccent[700] + " !important",
-                  },
-                "& .MuiDataGrid-root": { border: "none" },
-                "& .MuiDataGrid-cell": { borderBottom: "none" },
-                "& .name-column--cell": { color: colors.greenAccent[300] },
-                "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                "& .MuiDataGrid-cell": {
+                  display: "flex",
+                  alignItems: "center",            // vertical centering
+                  paddingTop: "12px",
+                  paddingBottom: "12px",
+                  borderBottom: "none",            // remove bottom border
+                },
+                "& .MuiDataGrid-columnHeader": {
+                  alignItems: "center",            // center header label vertically
+                  backgroundColor: colors.blueAccent[700] + " !important",
+                },
+                "& .MuiDataGrid-cellContent": {
+                  whiteSpace: "normal",            // allow line wrap
+                  wordBreak: "break-word",
+                },
+                "& .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header": {
+                  backgroundColor: colors.blueAccent[700] + " !important",
+                },
+                "& .MuiDataGrid-root": {
+                  border: "none",
+                },
+                "& .name-column--cell": {
+                  color: colors.greenAccent[300],
+                },
+                "& .MuiDataGrid-columnHeaders": {
                   backgroundColor: colors.blueAccent[700] + " !important",
                 },
                 "& .MuiDataGrid-virtualScroller": {
@@ -925,12 +1001,16 @@ const EvaluatePage = ({ }) => {
                   borderTop: "none",
                   backgroundColor: colors.blueAccent[700],
                 },
+                "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+                  color: `${colors.grey[100]} !important`,
+                },
               }}
             >
               <DataGrid
                 rows={mentorEvaluations}
                 columns={columns}
                 getRowId={(row) => row.id}
+                slots={{ toolbar: GridToolbar }}
               />
             </Box>
           </Box>
