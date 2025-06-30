@@ -5,7 +5,7 @@ import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { TimePicker } from "@mui/x-date-pickers";
-import Calendar from "../../components/calendar";
+import Calendar from "../../components/Calendar";
 import {
   Box,
   Button,
@@ -48,6 +48,7 @@ const Scheduling = ({}) => {
   const [openModal, setOpenModal] = useState(false);
   const [openSEModal, setOpenSEModal] = useState(false);
   const [mentors, setMentors] = useState([]);
+  const [mentorPendingSessions, setMentorPendingSessions] = useState([]);
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [selectedSE, setSelectedSE] = useState(null);
   const [selectedDate, setSelectedDate] = useState(dayjs());
@@ -325,6 +326,24 @@ const handleEndTimeChange = (newEndTimeRaw) => {
   }, [user.id]); // Refetch when the user changes
 
   useEffect(() => {
+    const fetchMentorPendingSessions = async () => {
+      try {
+        const res = await axios.get("http://localhost:4000/api/get-mentor-pending-sessions", {
+          withCredentials: true,
+        });
+        setMentorPendingSessions(res.data || []);
+      } catch (error) {
+        console.error("❌ Error fetching mentor pending sessions:", error);
+        setMentorPendingSessions([]);
+      }
+    };
+
+    if (user?.roles.includes("Mentor")) {
+      fetchMentorPendingSessions();
+    }
+  }, [user]);
+
+  useEffect(() => {
     const fetchScheduleHistory = async () => {
       try {
         const roles = user?.roles || [];
@@ -443,6 +462,11 @@ const handleEndTimeChange = (newEndTimeRaw) => {
     try {
       setIsLoading(true);
 
+      const teamName = selectedSE?.team_name || "Selected SE";
+      const displayDate = selectedDate?.format("MMMM D, YYYY") || "selected date";
+      const displayStartTime = startTime?.format("HH:mm") || "start time";
+      const displayEndTime = endTime?.format("HH:mm") || "end time";
+
       // ✅ Ensure `selectedDate`, `startTime`, and `endTime` are dayjs objects before formatting
       const formattedDate = selectedDate?.isValid?.()
         ? selectedDate.format("YYYY-MM-DD")
@@ -488,14 +512,16 @@ const handleEndTimeChange = (newEndTimeRaw) => {
         throw new Error(`Failed to update: ${JSON.stringify(errorMessage)}`);
       }
 
-      setSnackbarMessage("Scheduled successfully!");
+      setSnackbarMessage(
+        `Mentoring Session with ${teamName} on ${displayDate} at ${displayStartTime} - ${displayEndTime} scheduled successfully!`
+      );      
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
       handleCloseSEModal(); // ✅ Close modal
 
       setTimeout(() => {
         window.location.reload();
-      }, 500);
+      }, 5000);
     } catch (error) {
       console.error("❌ Error updating mentorship date:", error.message);
       let message = error.message;
@@ -517,7 +543,166 @@ const handleEndTimeChange = (newEndTimeRaw) => {
       setIsLoading(false);
     }
   };
+  
+  // Define DataGrid columns
+  const mentorOwnSessionHistory = [
+    {
+      field: "sessionDetails",
+      headerName: "Mentoring Session Information",
+      flex: 1,
+      minWidth: 250,
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          sx={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            lineHeight: 1.4,
+            width: "100%",
+          }}
+        >
+          {params.value}
+        </Typography>
+      ),
+    },
+    {
+      field: "date",
+      headerName: "Scheduled Date",
+      width: 200,
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          sx={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            lineHeight: 1.4,
+            width: "100%",
+          }}
+        >
+          {params.value}
+        </Typography>
+      ),
+    },
+    {
+      field: "program_name",
+      headerName: "Program",
+      width: 100,
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          sx={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            lineHeight: 1.4,
+            width: "100%",
+          }}
+        >
+          {params.value}
+        </Typography>
+      ),
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      width: 100,
+      renderCell: (params) => {
+        let color = "default";
+        if (params.value === "Pending SE") color = "warning";
+        if (params.value === "Accepted") color = "success";
+        if (params.value === "Declined") color = "error";
+        if (params.value === "Evaluated") color = "info";
+        if (params.value === "Completed") color = "primary";
 
+        return <Chip label={params.value} color={color} />;
+      },
+    },
+    {
+      field: "zoom_link",
+      headerName: "Zoom Link",
+      flex: 1,
+      minWidth: 150,
+      renderCell: (params) => {
+        const { row } = params;
+        const allowedStatuses = ["Accepted", "In Progress"];
+
+        if (
+          allowedStatuses.includes(row.status) &&
+          row.zoom_link &&
+          row.zoom_link !== "N/A"
+        ) {
+          return (
+            <a
+              href={row.zoom_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: "none" }}
+            >
+              <Chip label="Join" color="primary" clickable />
+            </a>
+          );
+        }
+
+        return "N/A";
+      },
+    },
+  ];
+
+  // Define DataGrid columns
+  const pendingSessionsColumns = [
+    {
+      field: "sessionDetails",
+      headerName: "Mentoring Session Information",
+      flex: 1,
+      minWidth: 250,
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          sx={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            lineHeight: 1.4,
+            width: "100%",
+          }}
+        >
+          {params.value}
+        </Typography>
+      ),
+    },
+    {
+      field: "date",
+      headerName: "Scheduled Date",
+      width: 250,
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          sx={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            lineHeight: 1.4,
+            width: "100%",
+          }}
+        >
+          {params.value}
+        </Typography>
+      ),
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      width: 200,
+      renderCell: (params) => {
+        let color = "default";
+        if (params.value === "Pending SE") color = "warning";
+        if (params.value === "Accepted") color = "success";
+        if (params.value === "Declined") color = "error";
+        if (params.value === "Evaluated") color = "info";
+        if (params.value === "Completed") color = "primary";
+
+        return <Chip label={params.value} color={color} />;
+      },
+    },
+  ];
+  
   useEffect(() => {
     fetch("/auth/session-check", {
       method: "GET",
@@ -959,22 +1144,32 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                       field: "zoom_link",
                       headerName: "Zoom Link",
                       flex: 1,
-                      minWidth: 50,
+                      minWidth: 150,
                       renderCell: (params) => {
                         const { row } = params;
-                        return row.zoom_link && row.zoom_link !== "N/A" ? (
-                          <a
-                            href={row.zoom_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <Chip label="Join" color="primary" clickable />
-                          </a>
-                        ) : (
-                          "N/A"
-                        );
+                        const allowedStatuses = ["Accepted", "In Progress"];
+
+                        if (
+                          allowedStatuses.includes(row.status) &&
+                          row.zoom_link &&
+                          row.zoom_link !== "N/A"
+                        ) {
+                          return (
+                            <a
+                              href={row.zoom_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ textDecoration: "none" }}
+                            >
+                              <Chip label="Join" color="primary" clickable />
+                            </a>
+                          );
+                        }
+
+                        return "N/A";
                       },
                     },
+
                   ]}
                   sx={{
                     "& .MuiDataGrid-cell": {
@@ -1034,155 +1229,155 @@ const handleEndTimeChange = (newEndTimeRaw) => {
             </Button>
           </Box>
 
-          <Box
-            width="100%"
-            backgroundColor={colors.primary[400]}
-            padding="20px"
-          >
-            <Typography
-              variant="h3"
-              fontWeight="bold"
-              color={colors.greenAccent[500]}
-              marginBottom="15px"
+          <Box display="flex" gap="20px" width="100%" mt="20px">
+            
+            {/* Mentoring Sessions History (wider, flex=2) */}
+            <Box
+              flex="2"
+              backgroundColor={colors.primary[400]}
+              padding="20px"
+              overflow="auto"
             >
-              Mentoring Sessions History
-            </Typography>
-
-            {mentorOwnHistory.length > 0 ? (
-              <Box
-                sx={{
-                  height: 400,
-                  width: "100%",
-                  overflowX: "auto",
-                  "& .MuiDataGrid-root": { border: "none" },
-                  "& .MuiDataGrid-cell": { borderBottom: "none" },
-                  "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-                    backgroundColor: colors.blueAccent[700] + " !important",
-                  },
-                  "& .MuiDataGrid-virtualScroller": {
-                    backgroundColor: colors.primary[400],
-                  },
-                  "& .MuiDataGrid-footerContainer": {
-                    borderTop: "none",
-                    backgroundColor: colors.blueAccent[700],
-                    color: colors.grey[100],
-                  },
-                }}
+              <Typography
+                variant="h3"
+                fontWeight="bold"
+                color={colors.greenAccent[500]}
+                marginBottom="15px"
               >
-                <DataGrid
-                  rows={formatRows(mentorOwnHistory)}
-                  columns={[
-                    {
-                      field: "sessionDetails",
-                      headerName: "Mentoring Session Information",
-                      flex: 1,
-                      minWidth: 250,
-                      renderCell: (params) => (
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            whiteSpace: "normal",
-                            wordBreak: "break-word",
-                            lineHeight: 1.4,
-                            width: "100%",
-                          }}
-                        >
-                          {params.value}
-                        </Typography>
-                      ),
-                    },
-                    {
-                      field: "date",
-                      headerName: "Scheduled Date",
-                      width: 250,
-                      renderCell: (params) => (
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            whiteSpace: "normal",
-                            wordBreak: "break-word",
-                            lineHeight: 1.4,
-                            width: "100%",
-                          }}
-                        >
-                          {params.value}
-                        </Typography>
-                      ),
-                    },
-                    {
-                      field: "program_name",
-                      headerName: "Program",
-                      width: 250,
-                      renderCell: (params) => (
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            whiteSpace: "normal",
-                            wordBreak: "break-word",
-                            lineHeight: 1.4,
-                            width: "100%",
-                          }}
-                        >
-                          {params.value}
-                        </Typography>
-                      ),
-                    },
-                    {
-                      field: "status",
-                      headerName: "Status",
-                      width: 200,
-                      renderCell: (params) => {
-                        let color = "default";
-                        if (params.value === "Pending SE") color = "warning";
-                        if (params.value === "Accepted") color = "success";
-                        if (params.value === "Declined") color = "error";
-                        if (params.value === "Evaluated") color = "info";
-                        if (params.value === "Completed") color = "primary";
+                My Mentoring Sessions History
+              </Typography>
 
-                        return <Chip label={params.value} color={color} />;
-                      },
-                    },
-                    {
-                      field: "zoom_link",
-                      headerName: "Zoom Link",
-                      flex: 1,
-                      minWidth: 50,
-                      renderCell: (params) => {
-                        const { row } = params;
-                        return row.zoom_link && row.zoom_link !== "N/A" ? (
-                          <a
-                            href={row.zoom_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <Chip label="Join" color="primary" clickable />
-                          </a>
-                        ) : (
-                          "N/A"
-                        );
-                      },
-                    },
-                  ]}
+              {mentorOwnHistory.length > 0 ? (
+                <Box
                   sx={{
-                    "& .MuiDataGrid-cell": {
-                      display: "flex",
-                      alignItems: "center",
-                      paddingTop: "12px",
-                      paddingBottom: "12px",
+                    height: 400,
+                    width: "100%",
+                    overflowX: "auto",
+                    "& .MuiDataGrid-root": { border: "none" },
+                    "& .MuiDataGrid-cell": { borderBottom: "none" },
+                    "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
+                      backgroundColor: colors.blueAccent[700] + " !important",
                     },
-                    "& .MuiDataGrid-cellContent": {
-                      whiteSpace: "normal",
-                      wordBreak: "break-word",
+                    "& .MuiDataGrid-virtualScroller": {
+                      backgroundColor: colors.primary[400],
+                    },
+                    "& .MuiDataGrid-footerContainer": {
+                      borderTop: "none",
+                      backgroundColor: colors.blueAccent[700],
+                      color: colors.grey[100],
                     },
                   }}
-                  pageSize={5}
-                  getRowHeight={() => 'auto'}
-                  rowsPerPageOptions={[5, 10]}
-                />
-              </Box>
-            ) : (
-              <Typography>No mentorship history available.</Typography>
-            )}
+                >
+                  <DataGrid
+                    rows={formatRows(mentorOwnHistory)}
+                    columns={mentorOwnSessionHistory}
+                    sx={{
+                      "& .MuiDataGrid-cell": {
+                        display: "flex",
+                        alignItems: "center",
+                        paddingTop: "12px",
+                        paddingBottom: "12px",
+                      },
+                      "& .MuiDataGrid-cellContent": {
+                        whiteSpace: "normal",
+                        wordBreak: "break-word",
+                      },
+                    }}
+                    pageSize={5}
+                    getRowHeight={() => 'auto'}
+                    rowsPerPageOptions={[5, 10]}
+                  />
+                </Box>
+              ) : (
+                <Typography>No mentorship history available.</Typography>
+              )}
+            </Box>
+
+            {/* My Pending Sessions (narrower, flex=1) */}
+            <Box
+              flex="1"
+              backgroundColor={colors.primary[400]}
+              padding="20px"
+              overflow="auto"
+            >
+              <Typography
+                variant="h3"
+                fontWeight="bold"
+                color={colors.greenAccent[500]}
+                marginBottom="15px"
+              >
+                My Pending Sessions
+              </Typography>
+
+              {mentorPendingSessions.length > 0 ? (
+                mentorPendingSessions.map((session, i) => (
+                  <Box
+                    key={session.mentoring_session_id || i}
+                    display="flex"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    borderBottom={`4px solid ${colors.primary[500]}`}
+                    p="15px"
+                    sx={{ minHeight: "72px", backgroundColor: colors.primary[400] }}
+                  >
+                    {/* Left: Mentoring Session Information */}
+                    <Box
+                      sx={{
+                        flex: 1,
+                        overflowWrap: "break-word",
+                        whiteSpace: "normal",
+                      }}
+                    >
+                      <Typography
+                        color={colors.greenAccent[500]}
+                        variant="h5"
+                        fontWeight="600"
+                        sx={{
+                          whiteSpace: "normal",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {session.team_name}
+                      </Typography>
+                      <Typography
+                        color={colors.grey[100]}
+                        sx={{
+                          whiteSpace: "normal",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        Pending Mentoring Session on {session.mentoring_session_date}, {session.mentoring_session_time}
+                      </Typography>
+                    </Box>
+
+                    {/* Right: Status */}
+                    <Box
+                      sx={{
+                        flexShrink: 0,
+                        minWidth: "120px",
+                        display: "flex",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Chip
+                        label={session.status}
+                        color={
+                          session.status === "Pending SE" ? "warning"
+                          : session.status === "Accepted" ? "success"
+                          : session.status === "Declined" ? "error"
+                          : session.status === "Evaluated" ? "info"
+                          : session.status === "Completed" ? "primary"
+                          : "default"
+                        }
+                      />
+                    </Box>
+                  </Box>
+                ))
+              ) : (
+                <Typography>No pending mentoring sessions available.</Typography>
+              )}
+            </Box>
+
           </Box>
         </Box>
       )}

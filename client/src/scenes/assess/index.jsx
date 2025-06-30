@@ -736,8 +736,9 @@ const EvaluatePage = ({ }) => {
               Evaluate SE
             </Button>
           )}
+          {/* CHANGE */}
           {/* Show this button only if userRole is LSEED */}
-          {user?.roles.some(role => role.startsWith("LSEED"))  && (
+          {/* {user?.roles.some(role => role.startsWith("LSEED"))  && (
             <Button
               onClick={handleOpenMentorshipDialog}
               variant="contained"
@@ -751,7 +752,7 @@ const EvaluatePage = ({ }) => {
             >
               Mentorship Assessment
             </Button>
-          )}
+          )} */}
         </Box>
 
         {/* Mentorship Assessment Dialog */}

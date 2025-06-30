@@ -50,6 +50,7 @@ const { getMentorshipsByMentorId,
         getMentorshipsForScheduling,
         getSchedulingHistoryByMentorID,
         getMentorshipCountByMentorID,
+        getPendingSchedulesForMentor,
        } = require("./controllers/mentorshipsController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getEvaluationsByMentorID, 
@@ -1577,6 +1578,22 @@ app.get("/api/mentorSchedulesByID", async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error("Error fetching social enterprises:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/get-mentor-pending-sessions", async (req, res) => {
+  try {
+    const mentor_id = req.session.user?.id; // Safely extract from session
+
+    if (!mentor_id) {
+      return res.status(400).json({ message: "mentor_id is required" });
+    }
+
+    const result = await getPendingSchedulesForMentor(mentor_id); // Fetch SEs from DB
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching pending mentor schedules:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });

@@ -272,7 +272,7 @@ exports.getSchedulingHistory = async (program = null) => {
             JOIN programs p ON p.program_id = se.program_id
             WHERE ms.status <> 'Pending'  -- ❌ Exclude pending sessions
             ${programFilter}
-            ORDER BY ms.mentoring_session_date, ms.start_time;
+            ORDER BY ms.mentoring_session_date DESC, ms.start_time DESC;
         `;
 
         const result = await pgDatabase.query(query);
@@ -312,6 +312,46 @@ exports.getSchedulingHistoryByMentorID = async (mentor_id) => {
           WHERE ms.status <> 'Pending'  -- ❌ Exclude pending sessions
           AND mt.mentor_id = $1
           ORDER BY ms.mentoring_session_date, ms.start_time;
+      `;
+
+      
+      const result = await pgDatabase.query(query, [mentor_id]);
+      if (!result.rows.length) {
+        console.log("No Schedules found.");
+        return [];
+      }
+  
+      return result.rows;
+    } catch (error) {
+      console.error("❌ Error fetching scheduling history by mentor schedules:", error);
+      return [];
+    }
+};
+
+exports.getPendingSchedulesForMentor = async (mentor_id) => {
+    try {
+      const query = `
+        SELECT 
+            ms.mentoring_session_id,
+            m.mentorship_id, 
+            se.team_name, 
+            CONCAT(mt.mentor_firstname, ' ', mt.mentor_lastname) AS mentor_name,
+            p.name AS program_name,
+            TO_CHAR(ms.mentoring_session_date, 'FMMonth DD, YYYY') AS mentoring_session_date,
+            CONCAT(
+                TO_CHAR(ms.start_time, 'HH24:MI'), ' - ', 
+                TO_CHAR(ms.end_time, 'HH24:MI')
+            ) AS mentoring_session_time,
+            ms.status,
+            ms.zoom_link
+        FROM mentorships m
+        JOIN mentoring_session ms ON m.mentorship_id = ms.mentorship_id
+        JOIN mentors mt ON m.mentor_id = mt.mentor_id
+        JOIN socialenterprises se ON m.se_id = se.se_id
+        JOIN programs p ON p.program_id = se.program_id
+        WHERE ms.status IN ('Pending', 'Pending SE')
+          AND mt.mentor_id = $1
+        ORDER BY ms.mentoring_session_date DESC, ms.start_time DESC;
       `;
 
       
