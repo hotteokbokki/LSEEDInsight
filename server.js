@@ -781,6 +781,9 @@ app.post("/accept-mentor-application", async (req, res) => {
   const { applicationId } = req.body;
 
   try {
+    // Start a transaction for atomicity
+    await pgDatabase.query('BEGIN');
+
     // 1. Get application
     const result = await pgDatabase.query(
       `SELECT * FROM mentor_form_application WHERE id = $1`,
@@ -788,6 +791,7 @@ app.post("/accept-mentor-application", async (req, res) => {
     );
 
     if (result.rowCount === 0) {
+      await pgDatabase.query('ROLLBACK');
       return res.status(404).json({ message: "Application not found." });
     }
 
@@ -800,6 +804,7 @@ app.post("/accept-mentor-application", async (req, res) => {
     );
 
     if (existingUser.rowCount > 0) {
+      await pgDatabase.query('ROLLBACK'); // Rollback if user already exists
       return res.status(409).json({ message: "A user with this email already exists." });
     }
 
@@ -811,6 +816,11 @@ app.post("/accept-mentor-application", async (req, res) => {
     );
 
     const userId = userResult.rows[0].user_id;
+
+    await pgDatabase.query(
+      `INSERT INTO users_has_role (user_id, role_name) VALUES ($1, 'Mentor')`,
+      [userId, mentorRoleId]
+    );
 
     // 4. Insert into mentors
     await pgDatabase.query(
@@ -825,8 +835,12 @@ app.post("/accept-mentor-application", async (req, res) => {
       [applicationId]
     );
 
+    // Commit the transaction if all operations were successful
+    await pgDatabase.query('COMMIT');
+
     res.status(201).json({ message: "Mentor successfully accepted and account created." });
   } catch (err) {
+    await pgDatabase.query('ROLLBACK');
     console.error("❌ Error processing mentor application:", err);
     res.status(500).json({ message: "Failed to create mentor account." });
   }
