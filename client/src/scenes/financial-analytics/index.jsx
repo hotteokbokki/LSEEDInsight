@@ -50,6 +50,7 @@ const FinancialAnalytics = ({ }) => {
         const response = await axios.get(
           "http://localhost:4000/api/inventory-distribution"
         );
+        console.log("1. Raw Inventory Data Fetched from API:", response.data);
         setInventoryData(response.data);
       } catch (error) {
         console.error("Error fetching inventory data:", error);
@@ -57,42 +58,40 @@ const FinancialAnalytics = ({ }) => {
     };
 
     fetchData();
-  }, []);
-  // Mock inventory data
-  const mockInventoryData = [
-    { se_id: "SE01", item_name: "T-shirt", qty: 10, price: 100 },
-    { se_id: "SE02", item_name: "Notebook", qty: 5, price: 200 },
-    { se_id: "SE01", item_name: "Cap", qty: 2, price: 150 },
-    { se_id: "SE03", item_name: "Coffee", qty: 20, price: 50 },
-    { se_id: "SE02", item_name: "Pen", qty: 10, price: 20 },
-  ];
+  }, []); // The empty dependency array ensures this runs once on component mount
 
-  // Compute totals
+  // Compute totals for inventory based on fetched data
   const inventoryBySE = {};
 
-  mockInventoryData.forEach(({ se_id, qty, price }) => {
-    const amount = qty * price;
-    if (!inventoryBySE[se_id]) {
-      inventoryBySE[se_id] = { totalValue: 0 };
-    }
-    inventoryBySE[se_id].totalValue += amount;
-  });
+  inventoryData.forEach(({ se_abbr, qty, price, amount }) => {
+  const priceNum = Number(price);
+  const amountNum = Number(amount);
+  if (!inventoryBySE[se_abbr]) {
+    inventoryBySE[se_abbr] = { totalValue: 0, totalCOGS: 0 };
+  }
+  inventoryBySE[se_abbr].totalValue += (qty * priceNum);
+  inventoryBySE[se_abbr].totalCOGS += amountNum;
+});
 
-  // Format data for charts
-  const inventoryValueData = Object.entries(inventoryBySE).map(
-    ([se_id, data]) => ({
-      name: se_id,
-      value: data.totalValue,
-    })
-  );
 
-  const inventoryTurnoverData = inventoryValueData.map(({ name, value }) => {
-    const cogs = value * 0.7; // Assume COGS = 70% of value
-    const avgInventory = value;
-    const turnover =
-      avgInventory === 0 ? 0 : parseFloat((cogs / avgInventory).toFixed(2));
-    return { name, turnover };
-  });
+  // Format data for charts (These should replace your existing mock data calculations)
+  const inventoryValueData = Object.entries(inventoryBySE)
+  .map(([se_id, data]) => ({
+    id: se_id,
+    value: data.totalValue,
+  }))
+  .sort((a, b) => b.value - a.value) 
+  .slice(0, 5);                        
+
+  const inventoryTurnoverData = Object.entries(inventoryBySE)
+  .map(([se_id, data]) => {
+    const cogs = data.totalCOGS;
+    const avgInventory = data.totalValue;
+    const turnover = avgInventory === 0 ? 0 : parseFloat((cogs / avgInventory).toFixed(2));
+    return { name: se_id, turnover };
+  })
+  .sort((a, b) => b.turnover - a.turnover) 
+  .slice(0, 5);                    
 
   const seMap = new Map();
   financialData.forEach((item) => {
@@ -376,25 +375,6 @@ const FinancialAnalytics = ({ }) => {
     .sort((a, b) => b.profit - a.profit)
     .slice(0, 3);
 
-  const mockPrograms = [
-    { id: 1, name: "AgriBiz", mentor: "John Doe", status: "Active" },
-    { id: 2, name: "EcoCrafts", mentor: "Jane Smith", status: "Pending" },
-    // more mock entries...
-  ];
-
-  const mockProgramColumns = [
-    { field: "name", headerName: "Program", flex: 1 },
-    { field: "mentor", headerName: "Assigned Mentor", flex: 1 },
-    { field: "status", headerName: "Status", flex: 1 },
-  ];
-
-  const profitOverTimeData = [
-    { name: "Jan", profit: 50000 },
-    { name: "Feb", profit: 60000 },
-    { name: "Mar", profit: 45000 },
-    // ...more monthly data
-  ];
-
   const individualInventoryData = Object.entries(
     inventoryData.reduce((acc, { item_name, qty }) => {
       if (item_name && typeof qty === "number" && !isNaN(qty)) {
@@ -538,20 +518,6 @@ const FinancialAnalytics = ({ }) => {
               />
             }
           />
-        </Box>
-      </Box>
-      {/* Row 2 - LSEED Programs DataGrid */}
-      <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
-        <Typography
-          variant="h3"
-          fontWeight="bold"
-          color={colors.greenAccent[500]}
-          mb="10px"
-        >
-          LSEED Programs Overview
-        </Typography>
-        <Box height="400px">
-          <DataGrid rows={mockPrograms} columns={mockProgramColumns} />
         </Box>
       </Box>
       {/* Row 3 - Profit Over Time */}

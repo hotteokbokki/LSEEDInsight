@@ -5,7 +5,7 @@ import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { TimePicker } from "@mui/x-date-pickers";
-import Calendar from "../../components/Calendar";
+import Calendar from "../../components/calendar";
 import {
   Box,
   Button,

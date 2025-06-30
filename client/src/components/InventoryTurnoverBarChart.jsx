@@ -2,22 +2,15 @@ import { useTheme } from "@mui/material";
 import { ResponsiveBar } from "@nivo/bar";
 import { tokens } from "../theme";
 
-// 🔹 Mock Data
-const inventoryTurnoverData = [
-  { se: "SE01", turnover: 3.5 },
-  { se: "SE02", turnover: 5.2 },
-  { se: "SE03", turnover: 2.1 },
-];
-
-const InventoryTurnoverBar = () => {
+const InventoryTurnoverBar = ({ data }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
   return (
     <ResponsiveBar
-      data={inventoryTurnoverData}
+      data={data}
       keys={["turnover"]}
-      indexBy="se"
+      indexBy="name"   // note: use "name" instead of "se" to match your data
       margin={{ top: 40, right: 20, bottom: 70, left: 60 }}
       padding={0.3}
       colors={colors.greenAccent[500]}
