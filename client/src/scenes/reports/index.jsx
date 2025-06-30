@@ -135,7 +135,6 @@ const Reports = () => {
   }, []);
 
   const reportTables = [
-  "reports",
   "financial_statements",
   "cash_in",
   "cash_out",
@@ -150,7 +149,6 @@ const formatTableName = (name) => {
 };
 
 const expectedColumns = {
-  reports: ["reportType","dateCreated", "companyName", "month"],
   financial_statements: ["date","total_revenue","total_expenses","net_income","total_assets","total_liabilities","owner_equity"],
   inventory_report: ["item_name", "qty", "price", "amount"],
   cash_in: ["date", "sales", "otherRevenue", "assets", "liability", "ownerCapital", "notes", "cash"],

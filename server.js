@@ -180,25 +180,25 @@ console.log("First row preview:", data[0]);
   ),
 
       inventory_report: async (row) =>
-        await pgDatabase.query(
-          `INSERT INTO inventory_report (se_id, user_id, item_name, qty, price, amount)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [seId, userId, row.item_name, row.qty, row.price, row.amount]
-        ),
+    await pgDatabase.query(
+      `INSERT INTO inventory_report (se_id, entered_by, item_name, qty, price, amount)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [seId, userId, row.item_name, row.qty, row.price, row.amount]
+    ),
 
-      cash_in: async (row) =>
-        await pgDatabase.query(
-          `INSERT INTO cash_in (se_id, user_id, date, sales, otherRevenue, assets, liability, ownerCapital, notes, cash)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-          [seId, userId, row.date, row.sales, row.otherRevenue, row.assets, row.liability, row.ownerCapital, row.notes, row.cash]
-        ),
+  cash_in: async (row) =>
+    await pgDatabase.query(
+      `INSERT INTO cash_in (se_id, "enteredBy", date, sales, "otherRevenue", assets, liability, "ownerCapital", notes, cash)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [seId, userId, row.date, row.sales, row.otherRevenue, row.assets, row.liability, row.ownerCapital, row.notes, row.cash]
+    ),
 
-      cash_out: async (row) =>
-        await pgDatabase.query(
-          `INSERT INTO cash_out (se_id, user_id, date, cash, expenses, assets, inventory, liability, ownerWithdrawal, notes)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-          [seId, userId, row.date, row.cash, row.expenses, row.assets, row.inventory, row.liability, row.ownerWithdrawal, row.notes]
-        ),
+  cash_out: async (row) =>
+    await pgDatabase.query(
+      `INSERT INTO cash_out (se_id, "enteredBy", date, cash, expenses, assets, inventory, liability, "ownerWithdrawal", notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [seId, userId, row.date, row.cash, row.expenses, row.assets, row.inventory, row.liability, row.ownerWithdrawal, row.notes]
+    ),
     };
 
     const insertFn = insertFunctions[reportType];
