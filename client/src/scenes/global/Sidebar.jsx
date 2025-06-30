@@ -71,6 +71,7 @@ const Sidebar = ({ }) => {
   const hasMentorRole = userRoles.includes("Mentor");
   const isAdministrator = userRoles.includes("Administrator");
   const isLSEEDUser = userRoles.some(role => role.startsWith("LSEED"));
+  const isLSEEDDirector = userRoles.includes("LSEED-Director");
 
   // ⭐️ Add this useEffect hook for debugging
   useEffect(() => {
@@ -216,7 +217,7 @@ const Sidebar = ({ }) => {
                 fontWeight="bold"
                 mt={1}
               >
-                {user.firstName || "User"} {user.lastame || "User"}
+                {user.firstName || "User"} {user.lastName || "User"}
               </Typography>
               <Typography variant="body2" color={colors.greenAccent[500]}>
                 {user.roles && user.roles.length > 0 ? user.roles.join(" / ") : "No Role Assigned"}
@@ -238,7 +239,9 @@ const Sidebar = ({ }) => {
                 <Item title="Financial Analytics" to="/financial-analytics" icon={<AccountBalanceOutlinedIcon />} selected={selected} setSelected={setSelected} />
                 <Item title="Show Reports" to="/reports" icon={<GradingOutlinedIcon />} selected={selected} setSelected={setSelected} />
                 <Item title="Scheduling Matrix" to="/scheduling" icon={<CalendarMonthOutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="Manage Programs" to="/programs" icon={<FactCheckOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                {isLSEEDDirector && (
+                  <Item title="Manage Programs" to="/programs" icon={<FactCheckOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                )}
                 {isAdministrator && (
                   <Item title="Manage Users" to="/admin" icon={<AdminPanelSettingsOutlinedIcon />} selected={selected} setSelected={setSelected} />
                 )}

@@ -910,7 +910,7 @@ const Dashboard = ({ }) => {
                         : "Welcome to Mentor Dashboard"
                 }
             />
-            {/* ⭐️ STEP 4: Render the toggle switch only if the user has both roles */}
+            {/* ⭐️ STEP 4: Render the toggle switch only if the user has both roles
             {hasBothRoles && (
               <FormControlLabel
                 control={
@@ -923,7 +923,7 @@ const Dashboard = ({ }) => {
                 label={isMentorView ? "Mentor View" : "LSEED Coordinator View"}
                 labelPlacement="start"
               />
-            )}
+            )} */}
         </Box>
 
         {/* --- */}

@@ -5,7 +5,7 @@ import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { TimePicker } from "@mui/x-date-pickers";
-import Calendar from "../../components/Calendar";
+import Calendar from "../../components/calendar";
 import {
   Box,
   Button,
@@ -54,7 +54,7 @@ const Scheduling = ({}) => {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [isLoading, setIsLoading] = useState(false);
   const [mentorshipDates, setMentorshipDates] = useState([]);
-  const { user } = useAuth();
+  const { user, isMentorView, toggleView } = useAuth();
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [selectedTime, setSelectedTime] = useState(dayjs().startOf("hour"));
@@ -715,23 +715,26 @@ const handleEndTimeChange = (newEndTimeRaw) => {
         }
       />
 
-      {user?.roles.includes("Mentor") ? (
+      {/* --- Buttons Section --- */}
+      <Box
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        gap={2}
+        mt={2}
+        marginBottom="20px"
+      >
         <Box
+          width="100%"
+          p={3}
+          bgcolor={colors.primary[400]}
           display="flex"
-          flexDirection="column"
-          alignItems="center"
           gap={2}
-          mt={2}
-          marginBottom="20px"
+          flexDirection={{ xs: "column", md: "row" }} // For responsiveness
         >
-          <Box
-            width="100%"
-            p={3}
-            bgcolor={colors.primary[400]}
-            display="flex"
-            gap={2}
-          >
-            {/* Open LSEED Calendar Button */}
+          {/* Open LSEED Calendar Button */}
+          {/* Visible if user has any LSEED role AND (is not a mentor OR is in coordinator view) */}
+          {user?.roles.some(r => r.startsWith("LSEED")) && (!user?.roles.includes("Mentor") || (user?.roles.includes("Mentor") && !isMentorView)) && (
             <Button
               variant="contained"
               color="secondary"
@@ -740,8 +743,11 @@ const handleEndTimeChange = (newEndTimeRaw) => {
             >
               Open LSEED Calendar
             </Button>
+          )}
 
-            {/* Schedule a Mentoring Session Button */}
+          {/* Schedule a Mentoring Session Button */}
+          {/* Visible if user has Mentor role AND (is not an LSEED user OR is in mentor view) */}
+          {user?.roles.includes("Mentor") && (!user?.roles.some(r => r.startsWith("LSEED")) || (user?.roles.some(r => r.startsWith("LSEED")) && isMentorView)) && (
             <Button
               variant="contained"
               color="secondary"
@@ -750,9 +756,10 @@ const handleEndTimeChange = (newEndTimeRaw) => {
             >
               Schedule a Mentoring Session
             </Button>
-          </Box>
+          )}
         </Box>
-      ) : (
+      </Box>
+
         <Box mt={2}>
           <List>
             {mentors.map((mentor) => (
@@ -788,15 +795,14 @@ const handleEndTimeChange = (newEndTimeRaw) => {
             ))}
           </List>
         </Box>
-      )}
 
       <Box width="100%" backgroundColor={colors.primary[400]} padding="20px">
         <Calendar events={calendarEvents} isDashboard={true} />
       </Box>
 
-      {user.roles?.some(r => r.startsWith("LSEED")) && (
+      {(!isMentorView && user?.roles.some(r => r.startsWith("LSEED"))) && (
         <Box mt={4} display="flex" flexDirection="column" gap={2}>
-          {/* Mentor Schedules */}
+          {/* Pending Schedules for Coordinator View */}
           <Box
             width="100%"
             backgroundColor={colors.primary[400]}
@@ -1156,7 +1162,7 @@ const handleEndTimeChange = (newEndTimeRaw) => {
         </DialogActions>
       </Dialog>
 
-      {user?.roles.includes("Mentor") && (
+      {(isMentorView && user?.roles.includes("Mentor")) && (
         <Box mt={4}>
           {/* Export Button Positioned Outside DataGrid */}
           <Box mb={2}>

@@ -58,7 +58,19 @@ const ProtectedRoute = ({ allowedRoles }) => {
   
   // Assuming user.roles is an array from the backend
   const userRoles = Array.isArray(user.roles) ? user.roles : user.roles.split(',').map(role => role.trim());
-  const isAllowed = userRoles.some(role => allowedRoles.includes(role));
+  
+
+  // Define roles that have full access to all protected routes
+  const privilegedRoles = ["Administrator", "LSEED-Director"];
+
+  const hasPrivilegedAccess = userRoles.some((role) =>
+    privilegedRoles.includes(role)
+  );
+
+  const isAllowed = hasPrivilegedAccess || userRoles.some((role) =>
+    allowedRoles.includes(role)
+  );
+
 
   if (!isAllowed) {
     return <Navigate to="/unauthorized" replace />;
@@ -107,7 +119,6 @@ const MainContent = () => {
             <Route path="/mentors" element={<Mentors />} />
             <Route path="/programs" element={<ProgramPage />} />
             <Route path="/reports" element={<Reports />} />
-            <Route path="/scheduling" element={<Scheduling />} />
             <Route path="/evaluate" element={<EvaluatePage />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/financial-analytics" element={<FinancialAnalytics />} />
@@ -119,9 +130,19 @@ const MainContent = () => {
             <Route path="/mentor-analytics/:id" element={<MentorAnalytics />} />
             <Route path="/assess" element={<EvaluatePage />} />
           </Route>
+
+          <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director", "LSEED-Coordinator", "Mentor"]} />}>
+            <Route path="/scheduling" element={<Scheduling />} />
+          </Route>
           
           {/* This route should be available to both */}
-          <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator", "Mentor", "Guest User"]} />}>
+          <Route
+            element={
+              <ProtectedRoute
+                allowedRoles={["LSEED-Coordinator", "Mentor", "Guest User", "LSEED-Director", "Administrator"]}
+              />
+            }
+          >
             <Route path="/se-analytics/:id" element={<SEAnalytics />} />
           </Route>
 

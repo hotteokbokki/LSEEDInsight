@@ -27,7 +27,7 @@ const EvaluatePage = ({ }) => {
   const [openSelectDialog, setOpenSelectDialog] = useState(false); // For SE selection dialog
   const [openEvaluateDialog, setOpenEvaluateDialog] = useState(false); // For evaluation dialog
   const dialogContentRef = useRef(null); // Ref for the dialog content
-  const { user } = useAuth();
+  const { user, isMentorView, toggleView } = useAuth();
   const [selectedSEs, setSelectedSEs] = useState([]); // Selected SEs for evaluation
   const [currentSEIndex, setCurrentSEIndex] = useState(0); // Index of the current SE being evaluated
   const [evaluations, setEvaluations] = useState({}); // Store evaluations for all SEs
@@ -781,7 +781,7 @@ const EvaluatePage = ({ }) => {
           gap={2} // Adds spacing between buttons
         >
           {/* Show this button only if userRole is Mentor */}
-          {user?.roles?.includes("Mentor") && (
+          {(isMentorView && user?.roles.includes("Mentor")) && (
             <Button
               variant="contained"
               color="secondary"
@@ -797,7 +797,7 @@ const EvaluatePage = ({ }) => {
             </Button>
           )}
           {/* Show this button only if userRole is LSEED */}
-          {user?.roles.some(role => role.startsWith("LSEED"))  && (
+          {(!isMentorView && user?.roles.some(r => r.startsWith("LSEED"))) && (
             <Button
               onClick={handleOpenMentorshipDialog}
               variant="contained"
@@ -948,7 +948,7 @@ const EvaluatePage = ({ }) => {
         </Snackbar>
 
         {/* Show DataGrid only if userRole is Mentor */}
-        {user?.roles?.includes("Mentor") && (
+        {(isMentorView && user?.roles.includes("Mentor")) && (
           <Box
             width="100%"
             backgroundColor={colors.primary[400]}
@@ -1016,7 +1016,7 @@ const EvaluatePage = ({ }) => {
           </Box>
         )}
         {/* Show DataGrid only if userRole is LSEED */}
-        {user?.roles.some(role => role.startsWith("LSEED"))  && (
+        {(!isMentorView && user?.roles.some(r => r.startsWith("LSEED"))) && (
           <Box
             width="100%"
             backgroundColor={colors.primary[400]}
@@ -1063,7 +1063,7 @@ const EvaluatePage = ({ }) => {
           </Box>
         )}
 
-        {user?.roles.some(role => role.startsWith("LSEED"))  && (
+        {(!isMentorView && user?.roles.some(r => r.startsWith("LSEED"))) && (
           <Box
             width="100%"
             backgroundColor={colors.primary[400]}
