@@ -60,7 +60,7 @@ const Mentorships = () => {
   useEffect(() => {
     const fetchAvailability = async () => {
       try {
-        const response = await axios.get("http://localhost:4000/get-mentor-availability", {
+        const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/get-mentor-availability`, {
           withCredentials: true, // If session/cookie-based auth
         });
         setIsAvailable(response.data.isAvailable);
@@ -77,7 +77,7 @@ const Mentorships = () => {
       const newValue = !isAvailable;
       setIsLoadingToggle(true);
       await axios.post(
-        "http://localhost:4000/toggle-mentor-availability",
+        `${process.env.REACT_APP_API_BASE_URL}/toggle-mentor-availability`,
         { isAvailable: newValue },
         { withCredentials: true } // ✅ ensure cookie is sent
       );
@@ -91,7 +91,7 @@ const Mentorships = () => {
 
   const handleGenerateOTP = async () => {
     try {
-      const response = await fetch("http://localhost:4000/show-signup-password", {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/show-signup-password`, {
         method: "POST",
         credentials: "include",  // if you need session
         headers: {
@@ -119,7 +119,7 @@ const Mentorships = () => {
         const mentor_id = userSession.id; // Replace with actual mentor ID
 
         const response = await axios.get(
-          "http://localhost:4000/getAllSocialEnterpriseswithMentorID",
+          `${process.env.REACT_APP_API_BASE_URL}/getAllSocialEnterpriseswithMentorID`,
           { params: { mentor_id } } // Pass mentor_id as a query parameter
         );
 

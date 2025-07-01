@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base URL for API
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000';
+const API_URL = process.env.REACT_APP_API_BASE_URL;
 
 // Access protected resource
 export const getProtectedResource = async () => {

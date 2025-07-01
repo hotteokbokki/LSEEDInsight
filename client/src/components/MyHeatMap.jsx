@@ -20,7 +20,7 @@ const HeatmapWrapper = ( {} ) => {
         let response;
 
         if (isLSEEDCoordinator) {
-          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+          const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
             method: "GET",
             credentials: "include", // Required to send session cookie
           });
@@ -29,11 +29,11 @@ const HeatmapWrapper = ( {} ) => {
           const program = data[0]?.name; 
 
           response = await fetch(
-            `http://localhost:4000/heatmap-stats?period=${period}&program=${program}`
+            `${process.env.REACT_APP_API_BASE_URL}/heatmap-stats?period=${period}&program=${program}`
           );
         } else {
           response = await fetch(
-            `http://localhost:4000/heatmap-stats?period=${period}`
+            `${process.env.REACT_APP_API_BASE_URL}/heatmap-stats?period=${period}`
           );
         }
         const data = await response.json();

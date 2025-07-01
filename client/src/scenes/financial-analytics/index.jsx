@@ -30,8 +30,8 @@ const FinancialAnalytics = ({}) => {
     const fetchData = async () => {
       try {
         const [financialResponse, cashFlowResponse] = await Promise.all([
-          axios.get("http://localhost:4000/api/financial-statements"),
-          axios.get("http://localhost:4000/api/cashflow"),
+          axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/financial-statements`),
+          axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/cashflow`),
         ]);
         setFinancialData(financialResponse.data);
         setCashFlowRaw(cashFlowResponse.data);
@@ -49,7 +49,7 @@ const FinancialAnalytics = ({}) => {
     const fetchData = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:4000/api/inventory-distribution"
+          `${process.env.REACT_APP_API_BASE_URL}/api/inventory-distribution`
         );
         console.log("1. Raw Inventory Data Fetched from API:", response.data);
         setInventoryData(response.data);

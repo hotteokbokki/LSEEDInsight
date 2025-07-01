@@ -40,7 +40,7 @@ const MentorAnalytics = () => {
     const fetchStats = async () => {
       try {
         const response = await fetch(
-          `http://localhost:4000/api/mentor-analytics/${selectedMentorId}`
+          `${process.env.REACT_APP_API_BASE_URL}/api/mentor-analytics/${selectedMentorId}`
         );
         const data = await response.json();
 
@@ -69,7 +69,7 @@ const MentorAnalytics = () => {
         setIsLoadingEvaluations(true);
 
         const response = await axios.get(
-          "http://localhost:4000/getMentorEvaluationsByMentorID",
+          `${process.env.REACT_APP_API_BASE_URL}/getMentorEvaluationsByMentorID`,
           { params: { mentor_id: id } } // ✅ Correct query parameter usage
         );
 
@@ -127,7 +127,7 @@ const MentorAnalytics = () => {
 
     try {
       const response = await axios.get(
-        "http://localhost:4000/getEvaluationDetailsForMentorEvaluation",
+        `${process.env.REACT_APP_API_BASE_URL}/getEvaluationDetailsForMentorEvaluation`,
         { params: { evaluation_id } }
       );
 

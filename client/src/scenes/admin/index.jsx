@@ -30,7 +30,7 @@ const AdminPage = () => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:4000/api/admin/users`);
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/admin/users`);
         if (!response.ok) {
           throw new Error("Failed to fetch users");
         }
@@ -163,7 +163,7 @@ const AdminPage = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:4000/api/admin/users/${updatedRow.user_id}`, // ✅ Use `user_id`
+        `${process.env.REACT_APP_API_BASE_URL}/api/admin/users/${updatedRow.user_id}`, // ✅ Use `user_id`
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

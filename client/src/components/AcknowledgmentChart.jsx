@@ -20,7 +20,7 @@ const AcknowledgmentChart = ({}) => {
       try {
 
         if (isCoordinator) {
-          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+          const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
             method: "GET",
             credentials: "include", // Required to send session cookie
           });
@@ -37,12 +37,12 @@ const AcknowledgmentChart = ({}) => {
           }
 
           response = await fetch(
-            `http://localhost:4000/ack-data?program=${program}`
+            `${process.env.REACT_APP_API_BASE_URL}/ack-data?program=${program}`
           );
         }
         else {
           response = await fetch(
-            "http://localhost:4000/ack-data"
+            `${process.env.REACT_APP_API_BASE_URL}/ack-data`
           );
         }
 

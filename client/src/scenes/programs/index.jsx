@@ -40,7 +40,7 @@ const ProgramPage = () => {
         setLoading(true);
         setError(null);
 
-        const programsResponse = await fetch(`http://localhost:4000/api/get-programs`);
+        const programsResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-programs`);
         if (!programsResponse.ok) throw new Error("Failed to fetch programs");
         const programsData = await programsResponse.json();
 
@@ -55,7 +55,7 @@ const ProgramPage = () => {
 
         console.log(mappedPrograms)
 
-        const lseedCoordinatorsResponse = await fetch(`http://localhost:4000/api/get-lseed-coordinators`);
+        const lseedCoordinatorsResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-lseed-coordinators`);
         if (!lseedCoordinatorsResponse.ok) throw new Error("Failed to fetch LSEED coordinators");
         const lseedCoordinatorsData = await lseedCoordinatorsResponse.json();
         setAvailableLSEEDCoordinators(lseedCoordinatorsData);
@@ -103,7 +103,7 @@ const ProgramPage = () => {
       };
 
       const response = await fetch(
-        `http://localhost:4000/api/assign-program-coordinator`,
+        `${process.env.REACT_APP_API_BASE_URL}/api/assign-program-coordinator`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -165,7 +165,7 @@ const ProgramPage = () => {
 
       // Send the program data to the backend
       const response = await axios.post(
-        "http://localhost:4000/api/programs",
+        `${process.env.REACT_APP_API_BASE_URL}/api/programs`,
         programFormData
       );
 

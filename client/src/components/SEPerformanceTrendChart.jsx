@@ -21,7 +21,7 @@ const SEPerformanceTrendChart = ({selectedSEId = null}) => {
         let response;
 
         if (isCoordinator) {
-          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+          const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
             method: "GET",
             credentials: "include", // Required to send session cookie
           });
@@ -29,11 +29,11 @@ const SEPerformanceTrendChart = ({selectedSEId = null}) => {
           const data = await res.json();
           const program = data[0]?.name; 
           response = await fetch(
-            `http://localhost:4000/api/top-se-performance?period=${period}&program=${program}`
+            `${process.env.REACT_APP_API_BASE_URL}/api/top-se-performance?period=${period}&program=${program}`
           );
         } else {
           response = await fetch(
-            `http://localhost:4000/api/top-se-performance?period=${period}&se_id=${selectedSEId}`, {
+            `${process.env.REACT_APP_API_BASE_URL}/api/top-se-performance?period=${period}&se_id=${selectedSEId}`, {
             method: "GET",
             credentials: "include", // Required to send session cookie
           });

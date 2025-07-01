@@ -109,7 +109,7 @@ const Scheduling = ({}) => {
         zoom_link,
       } = schedule; // Rename for clarity
 
-      const response = await fetch("http://localhost:4000/approveMentorship", {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/approveMentorship`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -246,7 +246,7 @@ const Scheduling = ({}) => {
 
       console.log("Declining schedule with ID:", mentoring_session_id);
 
-      const response = await fetch("http://localhost:4000/declineMentorship", {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/declineMentorship`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mentoring_session_id }),
@@ -309,7 +309,7 @@ const handleEndTimeChange = (newEndTimeRaw) => {
       try {
         console.log("mentor_id: ", user.id);
         const response = await axios.get(
-          "http://localhost:4000/getMentorshipDates",
+          `${process.env.REACT_APP_API_BASE_URL}/getMentorshipDates`,
           {
             params: { mentor_id: user.id }, // Fetch mentorships for this mentor
           }
@@ -328,7 +328,7 @@ const handleEndTimeChange = (newEndTimeRaw) => {
   useEffect(() => {
     const fetchMentorPendingSessions = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/get-mentor-pending-sessions", {
+        const res = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/get-mentor-pending-sessions`, {
           withCredentials: true,
         });
         setMentorPendingSessions(res.data || []);
@@ -351,7 +351,7 @@ const handleEndTimeChange = (newEndTimeRaw) => {
         const isLSEEDUser = roles.some(role => role.startsWith("LSEED"));
 
         if (isMentor) {
-          const mentorRes = await axios.get("http://localhost:4000/api/mentorSchedulesByID", {
+          const mentorRes = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/mentorSchedulesByID`, {
             withCredentials: true,
           });
           setMentorOwnHistory(mentorRes.data || []);
@@ -360,16 +360,16 @@ const handleEndTimeChange = (newEndTimeRaw) => {
         if (isLSEEDUser) {
           let lseedResponse;
           if (roles.includes("LSEED-Coordinator")) {
-            const programRes = await axios.get("http://localhost:4000/api/get-program-coordinator", {
+            const programRes = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
               withCredentials: true,
             });
             const program = programRes.data[0]?.name;
             lseedResponse = await axios.get(
-              "http://localhost:4000/api/mentorSchedules",
+              `${process.env.REACT_APP_API_BASE_URL}/api/mentorSchedules`,
               { params: { program } }
             );
           } else {
-            lseedResponse = await axios.get("http://localhost:4000/api/mentorSchedules");
+            lseedResponse = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/mentorSchedules`);
           }
           setLseedHistory(lseedResponse.data || []);
         }
@@ -406,7 +406,7 @@ const handleEndTimeChange = (newEndTimeRaw) => {
       setIsLoading(true);
 
       const response = await fetch(
-        `http://localhost:4000/getMentorshipsbyID?mentor_id=${encodeURIComponent(
+        `${process.env.REACT_APP_API_BASE_URL}/getMentorshipsbyID?mentor_id=${encodeURIComponent(
           user.id
         )}`
       );
@@ -498,7 +498,7 @@ const handleEndTimeChange = (newEndTimeRaw) => {
       console.log("📤 Sending Data:", requestBody);
 
       const response = await fetch(
-        "http://localhost:4000/updateMentorshipDate",
+        `${process.env.REACT_APP_API_BASE_URL}/updateMentorshipDate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -668,21 +668,21 @@ const handleEndTimeChange = (newEndTimeRaw) => {
         let response;
 
         if (user?.roles.includes("LSEED-Coordinator")) {
-          const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
+          const res = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
             withCredentials: true, // Equivalent to credentials: "include"
           });
 
           const program = res.data[0]?.name;
 
           response = await axios.get(
-            "http://localhost:4000/api/pending-schedules",
+            `${process.env.REACT_APP_API_BASE_URL}/api/pending-schedules`,
             { params: { program },
               withCredentials: true }
           );
         }
         else {
           response = await axios.get(
-            "http://localhost:4000/api/pending-schedules"
+            `${process.env.REACT_APP_API_BASE_URL}/api/pending-schedules`
           );
         }
         const data = response.data; // no need for .json() when using axios

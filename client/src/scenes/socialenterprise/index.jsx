@@ -133,7 +133,7 @@ const SocialEnterprise = ({ }) => {
       const applicationId = row.id; // Ensure `row.id` is defined
 
       try {
-        const response = await fetch(`http://localhost:4000/api/application/${applicationId}/status`, {
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/application/${applicationId}/status`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -175,18 +175,18 @@ const SocialEnterprise = ({ }) => {
         let response;
 
         if (user?.roles?.includes('LSEED-Coordinator')) {
-          const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
+          const res = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
             withCredentials: true, // Equivalent to credentials: "include"
           });
 
           const program = res.data[0]?.name;
 
           response = await axios.get(
-            `http://localhost:4000/getAllSocialEnterprisesWithMentorship`,
+            `${process.env.REACT_APP_API_BASE_URL}/getAllSocialEnterprisesWithMentorship`,
             { params: { program } }
           );
         } else {
-          response = await axios.get("http://localhost:4000/getAllSocialEnterprisesWithMentorship");
+          response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/getAllSocialEnterprisesWithMentorship`);
         }
         
         const updatedSocialEnterprises = response.data.map((se) => ({
@@ -208,7 +208,7 @@ const SocialEnterprise = ({ }) => {
 
     const fetchMentors = async () => {
       try {
-        const response = await axios.get("http://localhost:4000/api/mentors"); // Fetch mentors from API
+        const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/mentors`); // Fetch mentors from API
         setMentors(response.data);
         console.log("mentorsdata", response.data);
       } catch (error) {
@@ -223,7 +223,7 @@ const SocialEnterprise = ({ }) => {
   useEffect(() => {
     const fetchSDGs = async () => {
       try {
-        const response = await fetch("http://localhost:4000/getAllSDG"); // Call the API endpoint
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/getAllSDG`); // Call the API endpoint
         const data = await response.json();
         setSdgs(data); // Update the state with the fetched SDGs
       } catch (error) {
@@ -236,7 +236,7 @@ const SocialEnterprise = ({ }) => {
   useEffect(() => {
     const fetchApplications = async () => {
       try {
-        const response = await fetch("http://localhost:4000/list-se-applications"); // adjust endpoint as needed
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/list-se-applications`); // adjust endpoint as needed
         const data = await response.json()
         
         // Format date_applied in all items
@@ -262,7 +262,7 @@ const SocialEnterprise = ({ }) => {
   useEffect(() => {
     const fetchPrograms = async () => {
       try {
-        const response = await fetch("http://localhost:4000/getAllPrograms"); // Call the API endpoint
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/getAllPrograms`); // Call the API endpoint
         const data = await response.json();
         setPrograms(data); // Update the state with the fetched programs
       } catch (error) {
@@ -298,7 +298,7 @@ const SocialEnterprise = ({ }) => {
   const handleSERowUpdate = async (updatedRow) => {
     try {
       const response = await axios.put(
-        `http://localhost:4000/updateSocialEnterprise/${updatedRow.id}`,
+        `${process.env.REACT_APP_API_BASE_URL}/updateSocialEnterprise/${updatedRow.id}`,
         updatedRow
       );
 
@@ -358,7 +358,7 @@ const SocialEnterprise = ({ }) => {
       };
 
       const response = await fetch(
-        "http://localhost:4000/api/social-enterprises",
+        `${process.env.REACT_APP_API_BASE_URL}/api/social-enterprises`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -376,7 +376,7 @@ const SocialEnterprise = ({ }) => {
         // 🔄 Update the application status to "Accepted"
         if (socialEnterpriseData.applicationId) {
           await fetch(
-            `http://localhost:4000/api/application/${socialEnterpriseData.applicationId}/status`,
+            `${process.env.REACT_APP_API_BASE_URL}/api/application/${socialEnterpriseData.applicationId}/status`,
             {
               method: "PUT",
               headers: { "Content-Type": "application/json" },

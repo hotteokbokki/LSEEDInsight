@@ -76,7 +76,7 @@ const Reports = () => {
 
   // Proceed to API call with selectedSE and parsedData
   axios.post(
-  `http://localhost:4000/api/import/${selectedReportType}`,
+  `${process.env.REACT_APP_API_BASE_URL}/api/import/${selectedReportType}`,
   {
     se_id: selectedSE,
     data: parsedData,
@@ -124,7 +124,7 @@ const Reports = () => {
   useEffect(() => {
     const fetchSEs = async () => {
       try {
-        const response = await axios.get("http://localhost:4000/getAllSocialEnterprisesForComparison");
+        const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/getAllSocialEnterprisesForComparison`);
         setSocialEnterprises(response.data); // Assuming response contains [{ se_id, abbr }, ...]
       } catch (error) {
         console.error("Error fetching SE list:", error);
