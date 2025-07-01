@@ -11,11 +11,22 @@ import {
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
 import { DataGrid } from "@mui/x-data-grid";
-import { Snackbar, Alert, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Grid} from "@mui/material";
+import {
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  TextField,
+  DialogActions,
+  Grid,
+} from "@mui/material";
 
 const ProgramPage = () => {
   const [programs, setPrograms] = useState([]);
-  const [availableLSEEDCoordinators, setAvailableLSEEDCoordinators] = useState([]);
+  const [availableLSEEDCoordinators, setAvailableLSEEDCoordinators] = useState(
+    []
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -40,26 +51,31 @@ const ProgramPage = () => {
         setLoading(true);
         setError(null);
 
-        const programsResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-programs`);
+        const programsResponse = await fetch(
+          `${process.env.REACT_APP_API_BASE_URL}/api/get-programs`
+        );
         if (!programsResponse.ok) throw new Error("Failed to fetch programs");
         const programsData = await programsResponse.json();
 
         const mappedPrograms = programsData.map((item) => ({
           ...item,
-          coordinator_name: item.program_coordinator?.trim() || "-- No Coordinator Assigned --",
+          coordinator_name:
+            item.program_coordinator?.trim() || "-- No Coordinator Assigned --",
           program_description: item.description || "—",
           coordinator_email: item.coordinator_email || "—",
           current_coordinator_id: item.coordinator_id, // Keep this to track the currently assigned ID
         }));
         setPrograms(mappedPrograms);
 
-        console.log(mappedPrograms)
+        console.log(mappedPrograms);
 
-        const lseedCoordinatorsResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-lseed-coordinators`);
-        if (!lseedCoordinatorsResponse.ok) throw new Error("Failed to fetch LSEED coordinators");
+        const lseedCoordinatorsResponse = await fetch(
+          `${process.env.REACT_APP_API_BASE_URL}/api/get-lseed-coordinators`
+        );
+        if (!lseedCoordinatorsResponse.ok)
+          throw new Error("Failed to fetch LSEED coordinators");
         const lseedCoordinatorsData = await lseedCoordinatorsResponse.json();
         setAvailableLSEEDCoordinators(lseedCoordinatorsData);
-
       } catch (error) {
         setSnackbarMessage(error.message || "Error fetching data");
         setSnackbarOpen(true);
@@ -82,19 +98,25 @@ const ProgramPage = () => {
   };
 
   const handleRowUpdate = async (newRow) => {
-    const oldRow = programs.find(p => p.program_id === newRow.id);
+    const oldRow = programs.find((p) => p.program_id === newRow.id);
 
     try {
       let coordinatorIdToAssign = null;
 
       // Determine the user_id based on the selected value
-      if (newRow.coordinator_name === "-- No Coordinator Assigned --" || newRow.coordinator_name === "-- No Coordinator Assigned --") {
+      if (
+        newRow.coordinator_name === "-- No Coordinator Assigned --" ||
+        newRow.coordinator_name === "-- No Coordinator Assigned --"
+      ) {
         coordinatorIdToAssign = null; // Set to null for unassigning
       } else {
         const selectedCoordinator = availableLSEEDCoordinators.find(
-          (coord) => `${coord.first_name} ${coord.last_name}` === newRow.coordinator_name
+          (coord) =>
+            `${coord.first_name} ${coord.last_name}` === newRow.coordinator_name
         );
-        coordinatorIdToAssign = selectedCoordinator ? selectedCoordinator.user_id : null;
+        coordinatorIdToAssign = selectedCoordinator
+          ? selectedCoordinator.user_id
+          : null;
       }
 
       const payload = {
@@ -113,14 +135,16 @@ const ProgramPage = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to update program assignment: ${response.status} ${response.statusText}`);
+        throw new Error(
+          errorData.message ||
+            `Failed to update program assignment: ${response.status} ${response.statusText}`
+        );
       }
 
       // Find the actual coordinator object if assigned, to get their email
       const assignedCoordDetails = availableLSEEDCoordinators.find(
         (coord) => coord.user_id === coordinatorIdToAssign
       );
-
 
       setPrograms((prevPrograms) =>
         prevPrograms.map((program) =>
@@ -129,7 +153,9 @@ const ProgramPage = () => {
                 ...program,
                 coordinator_name: newRow.coordinator_name,
                 coordinator_id: coordinatorIdToAssign,
-                coordinator_email: assignedCoordDetails ? assignedCoordDetails.email : '—', // Update email dynamically
+                coordinator_email: assignedCoordDetails
+                  ? assignedCoordDetails.email
+                  : "—", // Update email dynamically
               }
             : program
         )
@@ -205,16 +231,20 @@ const ProgramPage = () => {
           }}
           fullWidth
           sx={{
-            "& .MuiOutlinedInput-notchedOutline": { border: 'none' },
-            "& .MuiSelect-select": { padding: '8px 14px' },
+            "& .MuiOutlinedInput-notchedOutline": { border: "none" },
+            "& .MuiSelect-select": { padding: "8px 14px" },
           }}
         >
           {/* CONDITIONAL MENU ITEM FOR UNASSIGN/NO COORDINATOR */}
           {params.row.coordinator_id ? ( // Check if a coordinator IS currently assigned to this program (using the 'coordinator_id' from the row data)
-            <MenuItem value="-- No Coordinator Assigned--" sx={{ color: colors.redAccent[500] }}>
+            <MenuItem
+              value="-- No Coordinator Assigned--"
+              sx={{ color: colors.redAccent[500] }}
+            >
               Remove Coordinator
             </MenuItem>
-          ) : ( // If NO coordinator IS currently assigned to this program
+          ) : (
+            // If NO coordinator IS currently assigned to this program
             <MenuItem value="-- No Coordinator Assigned --">
               -- No Coordinator Assigned --
             </MenuItem>
@@ -269,10 +299,13 @@ const ProgramPage = () => {
   return (
     <Box m="20px">
       <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Header title="PROGRAMS PAGE" subtitle="View and Manage program assignment" />
+        <Header
+          title="PROGRAMS PAGE"
+          subtitle="View and Manage program assignment"
+        />
       </Box>
 
-      <Box display="flex" gap="10px" mt="20px">
+      <Box display="flex" gap="10px" mt="20px" mb="20px">
         <Button
           variant="contained"
           sx={{ backgroundColor: colors.greenAccent[500], color: "black" }}
@@ -588,9 +621,11 @@ const ProgramPage = () => {
             getRowId={(row) => row.id}
             processRowUpdate={handleRowUpdate}
             onProcessRowUpdateError={(error) => {
-                console.error("DataGrid row update error:", error);
-                setSnackbarMessage(error.message || "Failed to update row in DataGrid.");
-                setSnackbarOpen(true);
+              console.error("DataGrid row update error:", error);
+              setSnackbarMessage(
+                error.message || "Failed to update row in DataGrid."
+              );
+              setSnackbarOpen(true);
             }}
             experimentalFeatures={{ newEditingApi: true }}
             disableSelectionOnClick
@@ -602,7 +637,11 @@ const ProgramPage = () => {
             onClose={handleSnackbarClose}
             anchorOrigin={{ vertical: "top", horizontal: "center" }}
           >
-            <Alert onClose={handleSnackbarClose} severity={"success"} sx={{ width: "100%" }}>
+            <Alert
+              onClose={handleSnackbarClose}
+              severity={"success"}
+              sx={{ width: "100%" }}
+            >
               {snackbarMessage}
             </Alert>
           </Snackbar>
