@@ -231,9 +231,6 @@ exports.getPendingSchedules = async (program = null, mentor_id) => {
       ORDER BY ms.mentoring_session_date, ms.start_time;
     `;
 
-    console.log("Query:", query);
-    console.log("Params:", params);
-
     const result = await pgDatabase.query(query, params);
     if (!result.rows.length) {
       console.log("No Pending Schedules found.");

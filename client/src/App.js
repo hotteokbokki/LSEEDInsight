@@ -25,10 +25,13 @@ import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import MentorshipAnalytics from "./scenes/analytics-mentorship";
 import MentorDashboard from "./scenes/mentordashboard";
+import CoordinatorSignup from "./scenes/coordinator-signup";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import ForgotPassword from "./scenes/forgotpassword";
 import ResetPassword from "./scenes/resetpassword";
 import FinancialAnalytics from "./scenes/financial-analytics";
+import PublicLayout from "./layouts/PublicLayout";
+import AppLayout from "./layouts/AppLayout";
 
 const App = () => {
   const [theme, colorMode] = useMode();
@@ -80,78 +83,60 @@ const ProtectedRoute = ({ allowedRoles }) => {
 };
 
 const MainContent = () => {
-  const { user, loading, isMentorView } = useAuth(); // ⭐️ Get isMentorView from context
-  
-  if (loading) return <div>Loading...</div>; // Show a loader while the user context loads
+  const { user, loading, isMentorView } = useAuth();
+  if (loading) return <div>Loading...</div>;
 
   return (
-    <Box sx={{ display: "flex", width: "100%", minHeight: "100vh" }}>
-      {user && <Sidebar isMentorView={isMentorView} />} {/* ⭐️ Pass isMentorView from context */}
-      <Box
-        id="main-content"
-        sx={{
-          flexGrow: 1,
-          display: "flex",
-          flexDirection: "column",
-          height: "100vh",
-          overflowY: "auto",
-          padding: "20px",
-        }}
-      >
-        {user && <Topbar />} {/* ⭐️ No props needed anymore! */}
-        <ScrollToTop />
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={user ? <Navigate to="/dashboard/lseed" /> : <Login />} /> {/* ⭐️ Redirect to LSEED dashboard by default */}
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/unauthorized" element={<Unauthorized />} />
-          <Route path="/profile" element={<ProfilePage />} />
+    <Routes>
 
-          {/* ⭐️ Use nested routes for the dashboards */}
-          <Route path="/dashboard" element={<Navigate to={isMentorView ? "/dashboard/mentor" : "/dashboard/lseed"} replace />} />
-          <Route path="/dashboard/lseed" element={<Dashboard />} />
-          <Route path="/dashboard/mentor" element={<Dashboard />} />
+      {/* PUBLIC ROUTES WITHOUT SIDEBAR/TOPBAR */}
+      <Route element={<PublicLayout />}>
+        <Route path="/coordinator-signup" element={<CoordinatorSignup />} />
+        <Route path="/" element={user ? <Navigate to="/dashboard/lseed" /> : <Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
+      </Route>
 
-          {/* ⭐️ Use ProtectedRoute for all protected routes */}
-          <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director", "LSEED-Coordinator"]} />}>
-            <Route path="/socialenterprise" element={<SocialEnterprise />} />
-            <Route path="/mentors" element={<Mentors />} />
-            <Route path="/programs" element={<ProgramPage />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/evaluate" element={<EvaluatePage />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/financial-analytics" element={<FinancialAnalytics />} />
-            <Route path="/admin" element={<Admin />} />
-          </Route>
-          
-          <Route element={<ProtectedRoute allowedRoles={["Mentor"]} />}>
-            <Route path="/mentorships" element={<Mentorships />} />
-            <Route path="/mentor-analytics/:id" element={<MentorAnalytics />} />
-            <Route path="/assess" element={<EvaluatePage />} />
-          </Route>
+      {/* PROTECTED ROUTES WITH SIDEBAR/TOPBAR */}
+      <Route element={<AppLayout />}>
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/dashboard" element={<Navigate to={isMentorView ? "/dashboard/mentor" : "/dashboard/lseed"} replace />} />
+        <Route path="/dashboard/lseed" element={<Dashboard />} />
+        <Route path="/dashboard/mentor" element={<Dashboard />} />
 
-          <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director", "LSEED-Coordinator", "Mentor"]} />}>
-            <Route path="/scheduling" element={<Scheduling />} />
-          </Route>
-          
-          {/* This route should be available to both */}
-          <Route
-            element={
-              <ProtectedRoute
-                allowedRoles={["LSEED-Coordinator", "Mentor", "Guest User", "LSEED-Director", "Administrator"]}
-              />
-            }
-          >
-            <Route path="/se-analytics/:id" element={<SEAnalytics />} />
-          </Route>
+        <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director", "LSEED-Coordinator"]} />}>
+          <Route path="/socialenterprise" element={<SocialEnterprise />} />
+          <Route path="/mentors" element={<Mentors />} />
+          <Route path="/programs" element={<ProgramPage />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/evaluate" element={<EvaluatePage />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/financial-analytics" element={<FinancialAnalytics />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/assess" element={<EvaluatePage />} />
+        </Route>
 
-          {/* Catch-all route for unmatched paths */}
-          <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} />} />
-        </Routes>
-      </Box>
-    </Box>
+        <Route element={<ProtectedRoute allowedRoles={["Mentor"]} />}>
+          <Route path="/mentorships" element={<Mentorships />} />
+          <Route path="/mentor-analytics/:id" element={<MentorAnalytics />} />
+          <Route path="/assess" element={<EvaluatePage />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director", "LSEED-Coordinator", "Mentor"]} />}>
+          <Route path="/scheduling" element={<Scheduling />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator", "Mentor", "Guest User", "LSEED-Director", "Administrator"]} />}>
+          <Route path="/se-analytics/:id" element={<SEAnalytics />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} />} />
+      </Route>
+
+    </Routes>
   );
 };
+
 
 export default App;

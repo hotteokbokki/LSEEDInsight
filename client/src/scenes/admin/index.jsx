@@ -7,10 +7,11 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
+import axios from "axios";
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
 import { DataGrid } from "@mui/x-data-grid";
-import { Snackbar, Alert } from "@mui/material";
+import { Snackbar, Alert, Dialog, DialogTitle, DialogContent, TextField, DialogActions } from "@mui/material";
 
 const AdminPage = () => {
   const [users, setUsers] = useState([]);
@@ -21,10 +22,17 @@ const AdminPage = () => {
   const colors = tokens(theme.palette.mode);
   const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
   const [showEditButtons, setShowEditButtons] = useState(false);
-
+  const [inviteCoordinatorFormData, setInviteCoordinatorFormData] = useState({
+      email: "",
+  });
+  const [emailError, setEmailError] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [selectedUser, setSelectedUser] = useState(null); // Track selected user
+  const [openInviteCoordinator, setOpenInviteCoordinator] = useState(false);
+  const handleOpenInviteCoordinator = () => setOpenInviteCoordinator(true);
+  const handleCloseInviteCoordinator = () => setOpenInviteCoordinator(false);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -62,6 +70,74 @@ const AdminPage = () => {
       </Box>
     );
   }
+
+  const validateEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+  };
+
+  const handleInviteCoordinatorSubmit = async () => {
+    try {
+      // Basic validation - empty
+      if (!inviteCoordinatorFormData.email || !inviteCoordinatorFormData.email.trim()) {
+        setSnackbarMessage("Please input email");
+        setSnackbarSeverity("error");
+        setSnackbarOpen(true);
+        return;
+      }
+
+      // Email format validation
+      if (!validateEmail(inviteCoordinatorFormData.email.trim())) {
+        setSnackbarMessage("Please enter a valid email address");
+        setSnackbarSeverity("error");
+        setSnackbarOpen(true);
+        return;
+      }
+
+      // Send the invite request
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_BASE_URL}/invite-coordinator`,
+        { email: inviteCoordinatorFormData.email.trim() }
+      );
+
+      if (response.status === 201) {
+        console.log("Coordinator invited successfully: ", response.data);
+        setSnackbarMessage("Invite sent successfully");
+        setSnackbarSeverity("success");
+        setSnackbarOpen(true);
+
+        handleCloseInviteCoordinator();
+        setInviteCoordinatorFormData({ email: "" });
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
+      }
+    } catch (error) {
+      console.error("Failed to invite coordinator:", error);
+      setSnackbarMessage("Failed to send invite");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+    }
+  };
+
+  const handleInviteCoordinatorInputChange = (e) => {
+    const { value } = e.target;
+
+    setInviteCoordinatorFormData(prev => ({
+      ...prev,
+      email: value
+    }));
+
+    if (value === "") {
+      // If field is empty, clear error
+      setEmailError("");
+    } else if (!validateEmail(value)) {
+      setEmailError("Please enter a valid email address");
+    } else {
+      setEmailError("");
+    }
+  };
 
   // Define DataGrid columns
   const columns = [
@@ -201,6 +277,7 @@ const AdminPage = () => {
       </Box>
 
       <Box display="flex" alignItems="center" gap={2} mb={2}>
+        {/* Enable Editing Button */}
         {!showEditButtons && (
           <Button
             variant="contained"
@@ -216,7 +293,25 @@ const AdminPage = () => {
             Enable Editing
           </Button>
         )}
-        {/* Cancel and Save Changes Buttons */}
+
+        {/* Create LSEED-Coordinator Button */}
+        {!showEditButtons && (
+          <Button
+            variant="contained"
+            sx={{
+              backgroundColor: colors.greenAccent[500],
+              color: "black",
+              "&:hover": {
+                backgroundColor: colors.greenAccent[600],
+              },
+            }}
+            onClick={handleOpenInviteCoordinator} 
+          >
+            Create LSEED-Coordinator
+          </Button>
+        )}
+
+        {/* Cancel and Save Buttons */}
         {showEditButtons && (
           <>
             <Button
@@ -229,11 +324,9 @@ const AdminPage = () => {
                 },
               }}
               onClick={() => {
-                setIsEditing(false); // Disable editing mode
+                setIsEditing(false);
                 setShowEditButtons(false);
-                setTimeout(() => {
-                  window.location.reload();
-                }, 500); // Adjust delay if needed
+                setTimeout(() => window.location.reload(), 500);
               }}
             >
               Cancel
@@ -249,12 +342,10 @@ const AdminPage = () => {
                 },
               }}
               onClick={() => {
-                setIsEditing(false); // Disable editing mode
+                setIsEditing(false);
                 setShowEditButtons(false);
                 setIsSuccessEditPopupOpen(true);
-                setTimeout(() => {
-                  window.location.reload();
-                }, 500); // Adjust delay if needed
+                setTimeout(() => window.location.reload(), 500);
               }}
             >
               Save Changes
@@ -262,6 +353,139 @@ const AdminPage = () => {
           </>
         )}
       </Box>
+
+      <Dialog
+        open={openInviteCoordinator}
+        onClose={handleCloseInviteCoordinator}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          style: {
+            backgroundColor: "#fff", // White background
+            color: "#000", // Black text
+            border: "1px solid #000", // Black border for contrast
+            borderRadius: "4px", // Rounded corners for the dialog
+          },
+        }}
+      >
+        {/* Dialog Title */}
+        <DialogTitle
+          sx={{
+            backgroundColor: "#1E4D2B", // DLSU Green header
+            color: "#fff", // White text
+            textAlign: "center",
+            fontSize: "1.5rem",
+            fontWeight: "bold",
+            borderBottom: "1px solid #000", // Separator line below the title
+          }}
+        >
+          Invite Coordinator
+        </DialogTitle>
+
+        {/* Dialog Content */}
+        <DialogContent
+          sx={{
+            padding: "24px",
+            maxHeight: "70vh", // Ensure it doesn't overflow the screen
+            overflowY: "auto", // Enable scrolling if content is too long
+          }}
+        >
+          {/* Input Fields */}
+          <Box display="flex" flexDirection="column" gap={2}>
+            {/* Email Field */}
+            <Box>
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  fontWeight: "bold",
+                  marginBottom: "8px", // Space between label and input
+                }}
+              >
+                Email
+              </Typography>
+
+              <TextField
+                name="email"
+                type="email"
+                label="Enter Email Address"
+                fullWidth
+                margin="dense"
+                value={inviteCoordinatorFormData.email}
+                onChange={handleInviteCoordinatorInputChange}
+                sx={{
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#000", // Consistent border color
+                    borderWidth: "1px", // Solid 1px border
+                  },
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#000", // Darken border on hover
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#000", // Consistent border color when focused
+                  },
+                  "& .MuiInputBase-input": {
+                    color: "#000", // Set text color to black
+                  },
+                }}
+                error={Boolean(emailError)}
+                helperText={emailError}
+              />
+            </Box>
+          </Box>
+        </DialogContent>
+
+        {/* Dialog Actions */}
+        <DialogActions
+          sx={{
+            padding: "16px",
+            borderTop: "1px solid #000", // Separator line above the actions
+          }}
+        >
+          {/* Cancel Button */}
+          <Button
+            onClick={() => {
+              handleCloseInviteCoordinator(); // ✅ Closes after timeout
+              setTimeout(() => {
+                window.location.reload();
+              }, 500); // Adjust delay if needed
+            }}
+            sx={{
+              color: "#000",
+              border: "1px solid #000",
+              borderRadius: "4px", // Rounded corners
+              "&:hover": {
+                backgroundColor: "#f0f0f0", // Hover effect
+              },
+            }}
+          >
+            Cancel
+          </Button>
+
+          {/* Add Button */}
+          <Button
+            onClick={handleInviteCoordinatorSubmit}
+            variant="contained"
+            disabled={!inviteCoordinatorFormData.email} 
+            sx={{
+              backgroundColor:
+                inviteCoordinatorFormData.email
+                  ? "#1E4D2B"
+                  : "#A0A0A0", // Gray if disabled
+              color: "#fff",
+              borderRadius: "4px", // Rounded corners
+              "&:hover": {
+                backgroundColor:
+                  inviteCoordinatorFormData.email
+                    ? "#145A32"
+                    : "#A0A0A0", // Keep gray on hover when disabled
+              },
+            }}
+          >
+            Send Invite
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar
         open={isSuccessEditPopupOpen}
         autoHideDuration={3000} // Automatically close after 3 seconds
@@ -332,7 +556,7 @@ const AdminPage = () => {
           >
             <Alert
               onClose={handleSnackbarClose}
-              severity="warning"
+              severity={snackbarSeverity}
               sx={{ width: "100%" }}
             >
               {snackbarMessage}

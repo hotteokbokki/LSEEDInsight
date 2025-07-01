@@ -58,6 +58,7 @@ const Scheduling = ({}) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [selectedTime, setSelectedTime] = useState(dayjs().startOf("hour"));
+  {/* REFERENCE DELETE THIS LATER ON FOR SNACKBAR */}
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");

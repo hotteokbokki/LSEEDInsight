@@ -242,7 +242,7 @@ const Sidebar = ({ }) => {
                 {isLSEEDDirector && (
                   <Item title="Manage Programs" to="/programs" icon={<FactCheckOutlinedIcon />} selected={selected} setSelected={setSelected} />
                 )}
-                {isAdministrator && (
+                {isLSEEDDirector && (
                   <Item title="Manage Users" to="/admin" icon={<AdminPanelSettingsOutlinedIcon />} selected={selected} setSelected={setSelected} />
                 )}
               </>

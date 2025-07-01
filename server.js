@@ -3,6 +3,8 @@ const session = require("express-session");
 const { v4: uuidv4 } = require('uuid');
 
 const cors = require("cors");
+const { v4: uuidv4 } = require('uuid');
+const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt'); // For password hashing
 const cron = require('node-cron'); // For automating password changing
 const crypto = require('crypto'); // FOr generating passwords for sign up
@@ -123,6 +125,7 @@ app.use("/api/inventory-distribution", inventoryRoutes);
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+const inviteToken = uuidv4();
 
 //MAYBE REMOVE
 app.set('trust proxy', 1); // 🔒 Required when behind reverse proxies like Nginx or Heroku
@@ -263,6 +266,13 @@ cron.schedule('* * * * *', async () => {
   } catch (err) {
     console.error('❌ Error rotating signup password:', err);
   }
+});
+
+cron.schedule('0 3 * * *', async () => {
+  // runs daily at 3AM
+  await pool.query(
+    'DELETE FROM coordinator_invites WHERE expires_at <= NOW()'
+  );
 });
 
 cron.schedule('* * * * *', async () => {
@@ -814,6 +824,70 @@ try {
   }
 });
 
+app.post("/signup-LSEEDCoordinator", async (req, res) => {
+  const { firstName, lastName, email, contactno, password, token } = req.body;
+
+  // Validate required fields
+  if (!firstName || !lastName || !email || !contactno  || !password || !token) {
+    return res.status(400).json({ message: "All fields and token are required." });
+  }
+
+  try {
+    // 1️⃣ Validate the invite token
+    const inviteResult = await pgDatabase.query(
+      `SELECT * FROM coordinator_invites WHERE token = $1 AND expires_at > NOW()`,
+      [token]
+    );
+
+    if (inviteResult.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid or expired invite token." });
+    }
+
+    // 2️⃣ Check if email already exists
+    const existingUser = await pgDatabase.query(
+      `SELECT * FROM users WHERE email = $1`,
+      [email]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({ message: "A user with this email already exists." });
+    }
+
+    // 3️⃣ Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 4️⃣ Insert new coordinator into users table
+    const userResult = await pgDatabase.query(
+      `
+      INSERT INTO users (first_name, last_name, email, password, contactnum, roles, isactive)
+      VALUES ($1, $2, $3, $4, $5, 'LSEED-Coordinator', true)
+      RETURNING user_id
+      `,
+      [firstName, lastName, email, hashedPassword, contactno]
+    );
+
+    const userId = userResult.rows[0].user_id;
+
+    await pgDatabase.query(
+      `INSERT INTO user_has_roles (user_id, role_name) VALUES ($1, $2)`,
+      [userId, 'LSEED-Coordinator']
+    );
+
+    // 5️⃣ Optionally: delete or mark invite as used
+    await pgDatabase.query(
+      `DELETE FROM coordinator_invites WHERE token = $1`,
+      [token]
+    );
+
+    console.log(`✅ New LSEED-Coordinator registered: ${email}`);
+    res.status(201).json({ message: "Coordinator account created successfully." });
+
+  } catch (err) {
+    console.error("❌ Error in /signup-LSEEDCoordinator:", err);
+    res.status(500).json({ message: "Server error. Please try again." });
+  }
+});
+
 app.post("/accept-mentor-application", async (req, res) => {
   const { applicationId } = req.body;
 
@@ -855,8 +929,8 @@ app.post("/accept-mentor-application", async (req, res) => {
     const userId = userResult.rows[0].user_id;
 
     await pgDatabase.query(
-      `INSERT INTO users_has_role (user_id, role_name) VALUES ($1, 'Mentor')`,
-      [userId, mentorRoleId]
+      `INSERT INTO user_has_roles (user_id, role_name) VALUES ($1, $2)`,
+      [userId, 'Mentor']
     );
 
     // 4. Insert into mentors
@@ -943,6 +1017,84 @@ app.post("/toggle-mentor-availability", async (req, res) => {
   }
 });
 
+app.post("/invite-coordinator", async (req, res) => {
+  const { email } = req.body;
+  console.log('POST /invite-coordinator - Inviting email:', email);
+
+  if (!email) {
+    return res.status(400).json({ message: 'Email is required.' });
+  }
+
+  try {
+    // 1. Optional: check if the email already belongs to an existing user
+    const existingUser = await pgDatabase.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({ message: 'A user with this email already exists.' });
+    }
+
+    // 3. Store in DB
+    await pgDatabase.query(
+      'INSERT INTO coordinator_invites (email, token) VALUES ($1, $2)',
+      [email, inviteToken]
+    );
+
+    // 4. Prepare sign-up page link with token
+    const signUpLink = `${process.env.REACT_APP_API_FRONTEND_URL}/coordinator-signup?token=${inviteToken}`;
+    console.log('✅ Sign-up link:', signUpLink);
+
+    // 5. Send the invitation email
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"LSEED Support" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'You have been invited to join LSEED as a Coordinator',
+      html: `
+        <p>Hi,</p>
+        <p>The LSEED Director has invited you to join as a Coordinator on the LSEED platform.</p>
+        <p>Click the link below to set up your account:</p>
+        <a href="${signUpLink}">${signUpLink}</a>
+        <p>This link will expire in 7 days.</p>
+      `,
+    });
+
+    res.status(201).json({ message: 'Invitation email sent successfully.' });
+
+  } catch (err) {
+    console.error('❌ Error inviting coordinator:', err);
+    res.status(500).json({ message: 'Something went wrong.' });
+  }
+});
+
+app.get('/validate-invite-token', async (req, res) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.status(400).json({ message: 'Token is required.' });
+  }
+
+  const result = await pgDatabase.query(
+    'SELECT * FROM coordinator_invites WHERE token = $1 AND expires_at > NOW()',
+    [token]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(400).json({ message: 'Invalid or expired token.' });
+  }
+
+  res.json({ valid: true });
+});
+
 // Returns mentor availability for mentorship
 app.get("/get-mentor-availability", async (req, res) => {
   const user = req.session.user;
@@ -997,8 +1149,6 @@ app.get("/api/pending-schedules", async (req, res) => {
   try {
     const program = req.query.program || null; // Optional program param
     const mentorID = req.session.user?.id;
-
-    console.log("Mentor: ",mentorID)
 
     const result = await getPendingSchedules(program, mentorID);
 
