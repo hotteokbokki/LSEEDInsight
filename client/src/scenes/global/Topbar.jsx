@@ -223,7 +223,12 @@ const Topbar = ({ }) => {
           open={Boolean(anchorEl)}
           onClose={handleMenuClose}
         >
-          <MenuItem onClick={() => navigate("/profile")}>
+          <MenuItem 
+            onClick={() => {
+              handleMenuClose();
+              navigate("/profile");
+            }}
+          >
             Profile
           </MenuItem>
           <MenuItem
