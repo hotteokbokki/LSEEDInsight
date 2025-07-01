@@ -74,7 +74,6 @@ const FinancialAnalytics = ({}) => {
     inventoryBySE[se_abbr].totalCOGS += amountNum;
   });
 
-  // Format data for charts (These should replace your existing mock data calculations)
   const inventoryValueData = Object.entries(inventoryBySE)
     .map(([se_id, data]) => ({
       id: se_id,
@@ -93,6 +92,17 @@ const FinancialAnalytics = ({}) => {
     })
     .sort((a, b) => b.turnover - a.turnover)
     .slice(0, 5);
+
+    const worstinventoryTurnoverData = Object.entries(inventoryBySE)
+    .map(([se_id, data]) => {
+      const cogs = data.totalCOGS;
+      const avgInventory = data.totalValue;
+      const turnover =
+        avgInventory === 0 ? 0 : parseFloat((cogs / avgInventory).toFixed(2));
+      return { name: se_id, turnover };
+    })
+    .sort((a, b) => a.turnover - b.turnover) // Change to ascending order
+    .slice(0, 5); // Keep the slice to get the bottom 5 (worst)
 
   const seMap = new Map();
   financialData.forEach((item) => {
@@ -376,7 +386,11 @@ const FinancialAnalytics = ({}) => {
 
   const topRevenueSEsData = [...aggregatedLatestSEs.values()]
     .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 10);
+    .slice(0, 5);
+
+    const worstRevenueSEsData = [...aggregatedLatestSEs.values()]
+    .sort((a, b) => a.revenue - b.revenue)
+    .slice(0, 5);
 
   const latestProfitRecords = latestRecords.map((item) => ({
     name: item.se_abbr ?? item.se_id,
@@ -597,7 +611,7 @@ const FinancialAnalytics = ({}) => {
           Inventory Turnover Ratio (Worst 5)
         </Typography>
         <Box height="400px">
-          <InventoryTurnoverBar data={inventoryTurnoverData} />
+          <InventoryTurnoverBar data={worstinventoryTurnoverData} />
         </Box>
       </Box>
 
@@ -615,14 +629,14 @@ const FinancialAnalytics = ({}) => {
         </Box>
       </Box>
 
-      {/* Top 10 SEs by Revenue */}
+      {/* Top 5 SEs by Revenue */}
       <Box backgroundColor={colors.primary[400]} p="40px" mt="20px">
         <Typography
           variant="h3"
           fontWeight="bold"
           color={colors.greenAccent[500]}
         >
-          Top 10 Social Enterprises by Revenue
+          Top 5 Social Enterprises by Revenue
         </Typography>
         <Box height="400px">
           <FinancialBarChart
@@ -633,18 +647,18 @@ const FinancialAnalytics = ({}) => {
         </Box>
       </Box>
 
-      {/* Worst 10 SEs by Revenue */}
+      {/* Worst 5 SEs by Revenue */}
       <Box backgroundColor={colors.primary[400]} p="40px" mt="20px">
         <Typography
           variant="h3"
           fontWeight="bold"
           color={colors.greenAccent[500]}
         >
-          Worst 10 Social Enterprises by Revenue
+          Worst 5 Social Enterprises by Revenue
         </Typography>
         <Box height="400px">
           <FinancialBarChart
-            data={topRevenueSEsData}
+            data={worstRevenueSEsData}
             dataKey="revenue"
             label="Worst Revenue"
           />
