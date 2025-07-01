@@ -70,19 +70,19 @@ const BarChart = ( {} ) => {
       
       try {
         if (isLSEEDCoordinator) {
-          const res = await axios.get("http://localhost:4000/api/get-program-coordinator", {
+          const res = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
             withCredentials: true, // Equivalent to credentials: "include"
           });
           
           const program = res.data[0]?.name;
             
           response = await axios.get(
-            "http://localhost:4000/getAllSocialEnterprisesForComparison",
+            `${process.env.REACT_APP_API_BASE_URL}/getAllSocialEnterprisesForComparison`,
             { params: { program } }
           );
         } else {
           response = await axios.get(
-            "http://localhost:4000/getAllSocialEnterprisesForComparison"
+            `${process.env.REACT_APP_API_BASE_URL}/getAllSocialEnterprisesForComparison`
           );
         }
         setSeList(response.data);
@@ -103,7 +103,7 @@ const BarChart = ( {} ) => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `http://localhost:4000/comparePerformanceScore/${se1}/${se2}`
+        `${process.env.REACT_APP_API_BASE_URL}/comparePerformanceScore/${se1}/${se2}`
       );
       console.log("Fetched Comparison Data:", response.data);
 

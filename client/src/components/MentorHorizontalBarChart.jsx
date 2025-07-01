@@ -13,7 +13,7 @@ const MentorHorizontalBarChart = ({ mentorId, categoryType }) => {
       if (!mentorId) return; 
   
       try {
-        const response = await fetch(`http://localhost:4000/api/mentor-analytics/${mentorId}`);
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/mentor-analytics/${mentorId}`);
         const data = await response.json();
   
         if (!data.avgRatingPerCategory || !Array.isArray(data.avgRatingPerCategory)) {

@@ -15,7 +15,7 @@ export const createCalendarEvents = async (googleUser, user) => {
 
   try {
     const mentorshipResponse = await axios.get(
-      `http://localhost:4000/api/mentorships/${mentorId}`
+      `${process.env.REACT_APP_API_BASE_URL}/api/mentorships/${mentorId}`
     );
 
     const mentorships = mentorshipResponse.data;

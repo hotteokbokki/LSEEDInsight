@@ -99,7 +99,7 @@ const Dashboard = ({ }) => {
     const fetchMentorDashboardStats = async () => {
       try {
 
-        const response = await axios.get("http://localhost:4000/fetch-mentor-dashboard-stats", {
+        const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/fetch-mentor-dashboard-stats`, {
           withCredentials: true,
         });
 
@@ -205,7 +205,7 @@ const Dashboard = ({ }) => {
         let response;
         
         if (hasMentorRole) {
-          response = await axios.get("http://localhost:4000/getRecentMentorEvaluations", {
+          response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/getRecentMentorEvaluations`, {
             withCredentials: true,
           });
         } else {
@@ -246,7 +246,7 @@ const Dashboard = ({ }) => {
         let response;
         
         if (hasMentorRole) {
-          response = await axios.get("http://localhost:4000/getUpcomingSchedulesForMentor", {
+          response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/getUpcomingSchedulesForMentor`, {
             withCredentials: true,
           });
         } else {
@@ -308,7 +308,7 @@ const Dashboard = ({ }) => {
         zoom_link,
       });
 
-      const response = await fetch("http://localhost:4000/approveMentorship", {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/approveMentorship`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -340,7 +340,7 @@ const Dashboard = ({ }) => {
 
       console.log("Declining schedule with ID:", mentoring_session_id);
 
-      const response = await fetch("http://localhost:4000/declineMentorship", {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/declineMentorship`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mentoring_session_id }),
@@ -591,7 +591,7 @@ const Dashboard = ({ }) => {
         let response;
 
         if (isCoordinator) {
-          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+          const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
             method: "GET",
             credentials: "include", // Required to send session cookie
           });
@@ -599,11 +599,11 @@ const Dashboard = ({ }) => {
           const program = data[0]?.name;
 
           response = await fetch(
-            `http://localhost:4000/api/flagged-ses?program=${program}`
+            `${process.env.REACT_APP_API_BASE_URL}/api/flagged-ses?program=${program}`
           );
         } else {
           response = await fetch(
-            "http://localhost:4000/api/flagged-ses"
+            `${process.env.REACT_APP_API_BASE_URL}/api/flagged-ses`
           );
         }
         const data = await response.json(); // No need for .json() with axios
@@ -635,7 +635,7 @@ const Dashboard = ({ }) => {
         let response;
 
         if (isCoordinator) {
-          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+          const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
             method: "GET",
             credentials: "include", // Required to send session cookie
           });
@@ -644,12 +644,12 @@ const Dashboard = ({ }) => {
           const program = data[0]?.name;
 
           response = await fetch(
-            `http://localhost:4000/api/pending-schedules?program=${program}`
+            `${process.env.REACT_APP_API_BASE_URL}/api/pending-schedules?program=${program}`
           );
         }
         else {
           response = await fetch(
-            "http://localhost:4000/api/pending-schedules"
+            `${process.env.REACT_APP_API_BASE_URL}/api/pending-schedules`
           );
         }
         const data = await response.json();
@@ -695,7 +695,7 @@ const Dashboard = ({ }) => {
 
     try {
       const response = await axios.get(
-        "http://localhost:4000/getEvaluationDetails",
+        `${process.env.REACT_APP_API_BASE_URL}/getEvaluationDetails`,
         {
           params: { evaluation_id },
         }
@@ -755,7 +755,7 @@ const Dashboard = ({ }) => {
         let response;
         
         if (isCoordinator) {
-          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+          const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}0/api/get-program-coordinator`, {
             method: "GET",
             credentials: "include", // Required to send session cookie
           });
@@ -764,12 +764,12 @@ const Dashboard = ({ }) => {
           const program = data[0]?.name;
 
           response = await fetch(
-            `http://localhost:4000/api/evaluation-stats?program=${program}`
+            `${process.env.REACT_APP_API_BASE_URL}/api/evaluation-stats?program=${program}`
           );
         }
         else {
           response = await fetch(
-            "http://localhost:4000/api/evaluation-stats"
+            `${process.env.REACT_APP_API_BASE_URL}/api/evaluation-stats`
           );
         }
         const data = await response.json();
@@ -806,7 +806,7 @@ const Dashboard = ({ }) => {
 
         let response;
         if (isCoordinator) {
-          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+          const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
             method: "GET",
             credentials: "include", // Required to send session cookie
           });
@@ -814,12 +814,12 @@ const Dashboard = ({ }) => {
           const program = data[0]?.name;
 
           response = await fetch(
-          `http://localhost:4000/api/dashboard-stats?program=${program}`
+          `${process.env.REACT_APP_API_BASE_URL}/api/dashboard-stats?program=${program}`
           );
         }
         else {
           response = await fetch(
-            "http://localhost:4000/api/dashboard-stats"
+            `${process.env.REACT_APP_API_BASE_URL}/api/dashboard-stats`
           );
         }
         if (!response.ok) {
@@ -844,7 +844,7 @@ const Dashboard = ({ }) => {
     const fetchSocialEnterprises = async () => {
       try {
         const response = await fetch(
-          "http://localhost:4000/getAllSocialEnterprisesWithMentorship"
+          `${process.env.REACT_APP_API_BASE_URL}/getAllSocialEnterprisesWithMentorship`
         );
         const data = await response.json();
 

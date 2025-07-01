@@ -81,7 +81,7 @@ const Mentors = ( {} ) => {
   // Fetch mentors from the database
   const fetchMentors = async () => {
     try {
-      const response = await axios.get("http://localhost:4000/api/mentors"); // ✅ Fixed URL
+      const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/mentors`); // ✅ Fixed URL
       console.log("📥 API Response:", response.data); // ✅ Debugging Log
 
       const formattedData = response.data.map((mentor) => ({
@@ -119,7 +119,7 @@ const Mentors = ( {} ) => {
 
   const handleAcceptMentor = async (row) => {
     try {
-      const res = await fetch("http://localhost:4000/accept-mentor-application", {
+      const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/accept-mentor-application`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -159,7 +159,7 @@ const Mentors = ( {} ) => {
       const applicationId = row.id; // Ensure `row.id` is defined
 
       try {
-        const response = await fetch(`http://localhost:4000/mentor-application/${applicationId}/status`, {
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/mentor-application/${applicationId}/status`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -201,7 +201,7 @@ const Mentors = ( {} ) => {
   useEffect(() => {
     const fetchMentorApplications = async () => {
       try {
-        const response = await fetch("http://localhost:4000/list-mentor-applications"); // adjust endpoint as needed
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/list-mentor-applications`); // adjust endpoint as needed
         const data = await response.json()
 
         console.log("Raw date_applied:", data[0]?.date_applied);
@@ -236,7 +236,7 @@ const Mentors = ( {} ) => {
   const fetchSocialEnterprises = async (mentorId) => {
     try {
       const response = await fetch(
-        `http://localhost:4000/api/mentors/${mentorId}/social-enterprises`
+        `${process.env.REACT_APP_API_BASE_URL}/api/mentors/${mentorId}/social-enterprises`
       );
 
       if (!response.ok) {
@@ -274,7 +274,7 @@ const Mentors = ( {} ) => {
 
     try {
       const response = await axios.put(
-        `http://localhost:4000/api/mentors/${params.id}`,
+        `${process.env.REACT_APP_API_BASE_URL}/api/mentors/${params.id}`,
         updatedMentorData,
         { headers: { "Content-Type": "application/json" } }
       );
@@ -294,16 +294,16 @@ const Mentors = ( {} ) => {
       try {
         let response;
         if (isLSEEDCoordinator) {
-          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+          const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
             method: "GET",
             credentials: "include", // Required to send session cookie
           });
           const data = await res.json();
           const program = data[0]?.name;
 
-          response = await fetch(`http://localhost:4000/api/mentor-stats?program=${program}`);
+          response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/mentor-stats?program=${program}`);
         } else {
-          response = await fetch(`http://localhost:4000/api/mentor-stats`);
+          response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/mentor-stats`);
         }
         const data = await response.json();
         setStats(data);
@@ -319,14 +319,14 @@ const Mentors = ( {} ) => {
       try {
         // Fetch active mentors
         const mentorsResponse = await fetch(
-          "http://localhost:4000/api/mentors"
+          `${process.env.REACT_APP_API_BASE_URL}/api/mentors`
         );
         const mentorsData = await mentorsResponse.json();
         setMentors(mentorsData);
 
         // Fetch social enterprises without mentors
         const seResponse = await fetch(
-          "http://localhost:4000/api/social-enterprises-without-mentor"
+          `${process.env.REACT_APP_API_BASE_URL}/api/social-enterprises-without-mentor`
         );
         const seData = await seResponse.json();
         setSocialEnterprises(
@@ -389,7 +389,7 @@ const Mentors = ( {} ) => {
 
   const matchMentors = async (selectedSeId) => {
     try {
-      const response = await fetch(`http://localhost:4000/suggested-mentors`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/suggested-mentors`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -420,7 +420,7 @@ const Mentors = ( {} ) => {
     console.log("mentorId: ", selectedMentor.mentor_id, " seId: ", selectedSE);
     try {
       const response = await fetch(
-        `http://localhost:4000/api/remove-mentorship`,
+        `${process.env.REACT_APP_API_BASE_URL}/api/remove-mentorship`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -462,7 +462,7 @@ const Mentors = ( {} ) => {
     }
 
     try {
-      const response = await fetch("http://localhost:4000/api/mentorships", {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/mentorships`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -502,7 +502,7 @@ const Mentors = ( {} ) => {
 
   const fetchLatestMentorships = async () => {
     try {
-      const response = await fetch("http://localhost:4000/api/mentorships"); // Adjust the endpoint as needed
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/mentorships`); // Adjust the endpoint as needed
       if (response.ok) {
         const updatedMentorships = await response.json();
         // Update the state with the latest mentorship data

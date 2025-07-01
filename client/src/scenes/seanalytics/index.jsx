@@ -65,7 +65,7 @@ const SEAnalytics = () => {
     const fetchData = async () => {
       try {
         // Fetch social enterprises list
-        const seResponse = await fetch("http://localhost:4000/getAllSocialEnterprises");
+        const seResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL}/getAllSocialEnterprises`);
         const seData = await seResponse.json();
         const formattedSEData = seData.map((se) => ({
           id: se.se_id,
@@ -83,9 +83,9 @@ const SEAnalytics = () => {
 
         // Fetch financial statements, cash flow, and inventory data
         const [financialResponse, cashFlowResponse, inventoryResponse] = await Promise.all([
-          axios.get("http://localhost:4000/api/financial-statements"),
-          axios.get("http://localhost:4000/api/cashflow"),
-          axios.get("http://localhost:4000/api/inventory-distribution"),
+          axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/financial-statements`),
+          axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/cashflow`),
+          axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/inventory-distribution`),
         ]);
         setFinancialData(financialResponse.data);
         setCashFlowRaw(cashFlowResponse.data);
@@ -94,12 +94,12 @@ const SEAnalytics = () => {
         // Fetch SE-specific analytics data
         if (id) {
           const [statsResponse, criticalAreasResponse, pieResponse, likertResponse, radarResponse, evaluationsResponse] = await Promise.all([
-            fetch(`http://localhost:4000/api/se-analytics-stats/${id}`),
-            fetch(`http://localhost:4000/api/critical-areas/${id}`),
-            fetch(`http://localhost:4000/api/common-challenges/${id}`),
-            fetch(`http://localhost:4000/api/likert-data/${id}`),
-            fetch(`http://localhost:4000/api/radar-data/${id}`),
-            axios.get("http://localhost:4000/getMentorEvaluationsBySEID", { params: { se_id: id } }),
+            fetch(`${process.env.REACT_APP_API_BASE_URL}/api/se-analytics-stats/${id}`),
+            fetch(`${process.env.REACT_APP_API_BASE_URL}/api/critical-areas/${id}`),
+            fetch(`${process.env.REACT_APP_API_BASE_URL}/api/common-challenges/${id}`),
+            fetch(`${process.env.REACT_APP_API_BASE_URL}/api/likert-data/${id}`),
+            fetch(`${process.env.REACT_APP_API_BASE_URL}/api/radar-data/${id}`),
+            axios.get(`${process.env.REACT_APP_API_BASE_URL}/getMentorEvaluationsBySEID`, { params: { se_id: id } }),
           ]);
 
           const statsData = await statsResponse.json();
@@ -348,7 +348,7 @@ const SEAnalytics = () => {
 
     try {
       const response = await axios.get(
-        "http://localhost:4000/getEvaluationDetails",
+        `${process.env.REACT_APP_API_BASE_URL}/getEvaluationDetails`,
         {
           params: { evaluation_id },
         }

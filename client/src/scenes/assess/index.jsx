@@ -70,7 +70,7 @@ const EvaluatePage = ({ }) => {
     try {
       console.log("📤 Submitting evaluations for programs:", selectedPrograms);
 
-      await axios.post("http://localhost:4000/evaluate-mentor", {
+      await axios.post(`${process.env.REACT_APP_API_BASE_URL}/evaluate-mentor`, {
         programs: selectedPrograms, // Send selected program IDs
       });
 
@@ -102,7 +102,7 @@ const EvaluatePage = ({ }) => {
     const fetchPrograms = async () => {
       try {
         setIsLoadingPrograms(true);
-        const response = await axios.get("http://localhost:4000/getPrograms");
+        const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/getPrograms`);
         setPrograms(response.data); // Store fetched programs in state
       } catch (error) {
         console.error("❌ Error fetching programs:", error);
@@ -120,7 +120,7 @@ const EvaluatePage = ({ }) => {
     const fetchPredefinedComments = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:4000/getPreDefinedComments"
+          `${process.env.REACT_APP_API_BASE_URL}/getPreDefinedComments`
         );
         setEvaluationCriteria(response.data); // Store fetched data in state
         console.log("📥 Predefined Comments Fetched:", response.data);
@@ -143,7 +143,7 @@ const EvaluatePage = ({ }) => {
 
         if (isMentor) {
           const mentorResponse = await axios.get(
-            "http://localhost:4000/getMentorEvaluations",
+            `${process.env.REACT_APP_API_BASE_URL}/getMentorEvaluations`,
             { withCredentials: true }
           );
 
@@ -166,7 +166,7 @@ const EvaluatePage = ({ }) => {
         let lseedResponse;
 
         if(user?.roles.includes("LSEED-Coordinator")) {
-          const res = await fetch("http://localhost:4000/api/get-program-coordinator", {
+          const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
             method: "GET",
             credentials: "include", // Required to send session cookie
           });
@@ -182,12 +182,12 @@ const EvaluatePage = ({ }) => {
             throw new Error("No program found for this coordinator");
           }
           lseedResponse = await axios.get(
-            `http://localhost:4000/getAllEvaluations?program=${program}`,
+            `${process.env.REACT_APP_API_BASE_URL}/getAllEvaluations?program=${program}`,
             { withCredentials: true }
           );
         } else {
             lseedResponse = await axios.get(
-              "http://localhost:4000/getAllEvaluations",
+              `${process.env.REACT_APP_API_BASE_URL}/getAllEvaluations`,
               { withCredentials: true }
             );
         }
@@ -302,7 +302,7 @@ const EvaluatePage = ({ }) => {
         setIsLoadingEvaluations(true);
 
         const response = await axios.get(
-          "http://localhost:4000/getAllMentorEvaluationType"
+          `${process.env.REACT_APP_API_BASE_URL}/getAllMentorEvaluationType`
         );
 
         const data = response.data; // ✅ Axios already returns JSON, no need for .json()
@@ -356,7 +356,7 @@ const EvaluatePage = ({ }) => {
 
     try {
       const response = await axios.get(
-        "http://localhost:4000/getEvaluationDetailsForMentorEvaluation",
+        `${process.env.REACT_APP_API_BASE_URL}/getEvaluationDetailsForMentorEvaluation`,
         { params: { evaluation_id } }
       );
 
@@ -418,7 +418,7 @@ const EvaluatePage = ({ }) => {
 
     try {
       const response = await axios.get(
-        "http://localhost:4000/getEvaluationDetails",
+        `${process.env.REACT_APP_API_BASE_URL}/getEvaluationDetails`,
         {
           params: { evaluation_id },
         }
@@ -548,7 +548,7 @@ const EvaluatePage = ({ }) => {
           setIsLoadingSocialEnterprises(true); // Start loading
 
           const mentorshipsResponse = await axios.get(
-            "http://localhost:4000/getAvailableEvaluations", {
+            `${process.env.REACT_APP_API_BASE_URL}/getAvailableEvaluations`, {
               withCredentials: true, // Equivalent to credentials: "include"
             });
           console.log("📥 Mentorship Response:", mentorshipsResponse.data);
@@ -668,7 +668,7 @@ const EvaluatePage = ({ }) => {
     console.log("📤 Sending Evaluation to Backend:", formData);
 
     try {
-      await axios.post("http://localhost:4000/evaluate", formData);
+      await axios.post(`${process.env.REACT_APP_API_BASE_URL}/evaluate`, formData);
 
       if (currentSEIndex < selectedSEs.length - 1) {
         setCurrentSEIndex((prevIndex) => prevIndex + 1); // Move to the next SE

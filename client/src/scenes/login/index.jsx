@@ -125,7 +125,7 @@ const Login = () => {
     setErrorMessage("");
 
     try {
-      const response = await fetch("http://localhost:4000/login", {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -199,7 +199,7 @@ const Login = () => {
     console.log("Success");
 
     try {
-      const response = await fetch("http://localhost:4000/signup", {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

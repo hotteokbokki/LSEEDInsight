@@ -23,7 +23,7 @@ const MentorshipAnalytics = () => {
     const fetchStats = async () => {
       try {
         const response = await fetch(
-          `http://localhost:4000/api/analytics-stats`
+          `${process.env.REACT_APP_API_BASE_URL}/api/analytics-stats`
         );
         const data = await response.json();
 
