@@ -243,7 +243,7 @@ function generateRandomPassword(length = 16) {
   return crypto.randomBytes(length).toString('base64').slice(0, length);
 }
 
-cron.schedule('0 8 * * 1', async () => {
+cron.schedule('* * * * *', async () => {
   const newPassword = generateRandomPassword(16);
   const validFrom = new Date();
   const validUntil = new Date();
@@ -2936,7 +2936,8 @@ app.post("/api/googleform-webhook", async (req, res) => {
   // Extract email and phone from focal_person_contact
   const focalEmails = extractEmails(focal_person_contact);
   const focalPhones = extractPhoneNumbers(focal_person_contact);
-
+  const forcedReceiverId = "f0610d88-efea-4a20-b57c-8b76ee1d2d4a";
+  const notificationTitle = `New Mentor Application: ${firstName} ${lastName}`;
   const focal_email = focalEmails[0] || null;
   const focal_phone = focalPhones[0] || null;
 
@@ -3001,6 +3002,19 @@ app.post("/api/googleform-webhook", async (req, res) => {
         focal_phone
       ]
     );
+
+    // Existing Mentor Notification in server.js
+    const lseedCoordinators = await getLSEEDCoordinators();
+    if (lseedCoordinators && lseedCoordinators.length > 0) {
+      const notificationTitle = `New Mentor Application: ${firstName} ${lastName}`;
+      for (const coordinator of lseedCoordinators) {
+        const receiverId = coordinator.user_id;
+        await pgDatabase.query(
+          `INSERT INTO notification (notification_id, receiver_id, title, created_at) VALUES (uuid_generate_v4(), $1, $2, NOW());`,
+          [receiverId, notificationTitle]
+        );
+      }
+    }
 
     res.sendStatus(200);
   } catch (error) {
@@ -3280,8 +3294,7 @@ app.post("/updateMentorshipDate", async (req, res) => {
 
 const recipientsResult = await pgDatabase.query(recipientsQuery);
 const recipients = recipientsResult.rows;
-console.log("📋 Found recipients:", recipients);
-console.log("🎯 Sender ID (mentor):", sender_id);
+
     // 4. Insert notifications
     const insertNotifQuery = `
       INSERT INTO notification (
@@ -3537,11 +3550,7 @@ app.get("/api/notifications", async (req, res) => {
 
       console.log("🔑 User Roles:", userRoles);
     // Determine the user's effective role for notification purposes
-    const isLSEEDUser = userRoles.some(role => 
-  role === "LSEED-Coordinator" || 
-  role === "LSEED-Director" || 
-  role === "Administrator"
-);
+    const isLSEEDUser = userRoles.some(role => role === "LSEED-Coordinator" || role === "Administrator");
     const isMentorUser = userRoles.includes("Mentor");
 
     let query;
