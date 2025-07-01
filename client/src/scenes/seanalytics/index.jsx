@@ -28,9 +28,6 @@ import StatBox from "../../components/StatBox";
 import DualAxisLineChart from "../../components/DualAxisLineChart";
 import ScatterPlot from "../../components/ScatterPlot";
 import PeopleIcon from "@mui/icons-material/People";
-import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import TrafficIcon from "@mui/icons-material/Traffic";
 import InventoryValuePie from "../../components/TotalInventoryPieChart.jsx";
 import InventoryTurnoverBar from "../../components/InventoryTurnoverBarChart.jsx";
 
@@ -40,7 +37,7 @@ const SEAnalytics = () => {
   const { id } = useParams(); // Extract the `id` from the URL
   const [selectedSEId, setSelectedSEId] = useState(id); // State to manage selected SE
   const [socialEnterprises, setSocialEnterprises] = useState([]); // List of all social enterprises
-  const [selectedSE, setSelectedSE] = useState(null); // Selected social enterprise
+  const [selectedSE, setSelectedSE] = useState(null); // Selected social enterprise object
   const [pieData, setPieData] = useState([]); // Real common challenges data
   const [likertData, setLikertData] = useState([]); // Real Likert scale data
   const [radarData, setRadarData] = useState([]); // Real radar chart data
@@ -58,189 +55,267 @@ const SEAnalytics = () => {
   });
   const [criticalAreas, setCriticalAreas] = useState([]);
 
+  // Financial Analytics States
+  const [financialData, setFinancialData] = useState([]);
+  const [cashFlowRaw, setCashFlowRaw] = useState([]);
+  const [inventoryData, setInventoryData] = useState([]);
+
+  // Fetch all necessary data for the page
   useEffect(() => {
-    const fetchSocialEnterprises = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:4000/getAllSocialEnterprises"
-        );
-        const data = await response.json();
-
-        // Format the data for the dropdown
-        const formattedData = data.map((se) => ({
-          id: se.se_id, // Keep as string (since UUIDs are strings)
+        // Fetch social enterprises list
+        const seResponse = await fetch("http://localhost:4000/getAllSocialEnterprises");
+        const seData = await seResponse.json();
+        const formattedSEData = seData.map((se) => ({
+          id: se.se_id,
           name: se.team_name,
+          abbr: se.abbr // Ensure abbreviation is available for financial data processing
         }));
-
-        setSocialEnterprises(formattedData);
+        setSocialEnterprises(formattedSEData);
 
         // Set the initial selected SE if `id` is provided
         if (id) {
-          const initialSE = formattedData.find((se) => se.id === id);
-          console.log("Matched SE:", initialSE);
-
+          const initialSE = formattedSEData.find((se) => se.id === id);
           setSelectedSE(initialSE);
-          setSelectedSEId(id);
+          setSelectedSEId(id); // Ensure selectedSEId is set from URL param
         }
-      } catch (error) {
-        console.error("Error fetching social enterprises:", error);
-      }
-    };
 
-    fetchSocialEnterprises();
-  }, [id]);
+        // Fetch financial statements, cash flow, and inventory data
+        const [financialResponse, cashFlowResponse, inventoryResponse] = await Promise.all([
+          axios.get("http://localhost:4000/api/financial-statements"),
+          axios.get("http://localhost:4000/api/cashflow"),
+          axios.get("http://localhost:4000/api/inventory-distribution"),
+        ]);
+        setFinancialData(financialResponse.data);
+        setCashFlowRaw(cashFlowResponse.data);
+        setInventoryData(inventoryResponse.data);
 
-  useEffect(() => {
-    const fetchCriticalAreas = async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:4000/api/critical-areas/${selectedSEId}`
-        );
-        const data = await response.json();
-        setCriticalAreas(data);
-      } catch (error) {
-        console.error("Failed to fetch critical areas:", error);
-      }
-    };
+        // Fetch SE-specific analytics data
+        if (id) {
+          const [statsResponse, criticalAreasResponse, pieResponse, likertResponse, radarResponse, evaluationsResponse] = await Promise.all([
+            fetch(`http://localhost:4000/api/se-analytics-stats/${id}`),
+            fetch(`http://localhost:4000/api/critical-areas/${id}`),
+            fetch(`http://localhost:4000/api/common-challenges/${id}`),
+            fetch(`http://localhost:4000/api/likert-data/${id}`),
+            fetch(`http://localhost:4000/api/radar-data/${id}`),
+            axios.get("http://localhost:4000/getMentorEvaluationsBySEID", { params: { se_id: id } }),
+          ]);
 
-    fetchCriticalAreas();
-  }, [selectedSEId]);
+          const statsData = await statsResponse.json();
+          setStats({
+            registeredUsers: Number(statsData.registeredUsers?.[0]?.total_users) || 0,
+            totalEvaluations: statsData.totalEvaluations?.[0]?.total_evaluations || "0",
+            pendingEvaluations: statsData.pendingEvaluations?.[0]?.pending_evaluations || "0",
+            acknowledgedEvaluations: statsData.acknowledgedEvaluations?.[0]?.acknowledged_evaluations || "0",
+            avgRating: statsData.avgRating?.[0]?.avg_rating || "N/A",
+          });
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:4000/api/se-analytics-stats/${selectedSEId}`
-        );
-        const data = await response.json();
+          const criticalAreasData = await criticalAreasResponse.json();
+          setCriticalAreas(criticalAreasData);
 
-        // Extract values correctly
-        setStats({
-          registeredUsers: Number(data.registeredUsers?.[0]?.total_users) || 0,
-          totalEvaluations:
-            data.totalEvaluations?.[0]?.total_evaluations || "0",
-          pendingEvaluations:
-            data.pendingEvaluations?.[0]?.pending_evaluations || "0",
-          acknowledgedEvaluations:
-            data.acknowledgedEvaluations?.[0]?.acknowledged_evaluations || "0",
-          avgRating: data.avgRating?.[0]?.avg_rating || "N/A", // If multiple SEs exist, adjust accordingly
-        });
-      } catch (error) {
-        console.error("Error fetching analytics stats:", error);
-      }
-    };
+          const rawPieData = await pieResponse.json();
+          const formattedPieData = Array.from(
+            new Map(
+              rawPieData.map((item, index) => [
+                item.category || `Unknown-${index}`,
+                {
+                  id: item.category || `Unknown-${index}`,
+                  label: item.percentage && !isNaN(item.percentage) ? `${parseInt(item.percentage, 10)}%` : "0%",
+                  value: item.count && !isNaN(item.count) ? parseInt(item.count, 10) : 0,
+                  comment: item.comment || "No comment available",
+                },
+              ])
+            ).values()
+          );
+          setPieData(formattedPieData);
 
-    fetchStats();
-  }, [selectedSEId]); // ✅ Include dependency to refetch when SE changes
+          const rawLikertData = await likertResponse.json();
+          setLikertData(rawLikertData);
 
-  // Fetch analytics data for the selected social enterprise
-  useEffect(() => {
-    const fetchAnalyticsData = async () => {
-      // Reset all chart data before fetching new data
-      setPieData([]);
-      setLikertData([]);
-      setRadarData([]);
-
-      if (!selectedSEId) return;
-
-      try {
-        // Fetch common challenges data
-        const pieResponse = await fetch(
-          `http://localhost:4000/api/common-challenges/${selectedSEId}`
-        );
-        const rawPieData = await pieResponse.json();
-
-        // ✅ Ensure unique IDs and remove duplicates by category
-        const formattedPieData = Array.from(
-          new Map(
-            rawPieData.map((item, index) => [
-              item.category || `Unknown-${index}`, // ✅ Unique key per category
-              {
-                id: item.category || `Unknown-${index}`, // ✅ Category as the unique ID
-                label:
-                  item.percentage && !isNaN(item.percentage)
-                    ? `${parseInt(item.percentage, 10)}%`
-                    : "0%",
-                value:
-                  item.count && !isNaN(item.count)
-                    ? parseInt(item.count, 10)
-                    : 0,
-                comment: item.comment || "No comment available", // ✅ Keep comment for tooltip
-              },
-            ])
-          ).values()
-        );
-
-        console.log("Formatted Pie Data:", formattedPieData);
-
-        formattedPieData.forEach((item, index) => {
-          if (isNaN(item.value)) {
-            console.error(`NaN detected in value at index ${index}:`, item);
+          const radarChartData = await radarResponse.json();
+          if (Array.isArray(radarChartData)) {
+            setRadarData(radarChartData);
+          } else {
+            console.error("Invalid radar data format", radarChartData);
           }
-        });
 
-        setPieData(formattedPieData);
-
-        // Fetch Likert scale data
-        const likertResponse = await fetch(
-          `http://localhost:4000/api/likert-data/${selectedSEId}`
-        );
-        const rawLikertData = await likertResponse.json();
-        setLikertData(rawLikertData);
-
-        // Fetch radar chart data
-        const radarResponse = await fetch(
-          `http://localhost:4000/api/radar-data/${selectedSEId}`
-        );
-        const radarData = await radarResponse.json();
-        if (Array.isArray(radarData)) {
-          setRadarData(radarData);
-        } else {
-          console.error("Invalid radar data format", radarData);
+          const formattedEvaluationsData = evaluationsResponse.data.map((evaluation) => ({
+            id: evaluation.evaluation_id,
+            evaluation_id: evaluation.evaluation_id,
+            evaluator_name: evaluation.evaluator_name,
+            social_enterprise: evaluation.social_enterprise,
+            evaluation_date: evaluation.evaluation_date,
+            acknowledged: evaluation.acknowledged ? "Yes" : "No",
+          }));
+          setEvaluationsData(formattedEvaluationsData);
         }
+
       } catch (error) {
-        console.error("Error fetching analytics data:", error);
-      }
-    };
-
-    fetchAnalyticsData();
-  }, [selectedSEId]);
-
-  useEffect(() => {
-    const fetchEvaluations = async () => {
-      try {
-        setIsLoadingEvaluations(true);
-
-        const response = await axios.get(
-          "http://localhost:4000/getMentorEvaluationsBySEID",
-          {
-            params: { se_id: id },
-          }
-        );
-
-        // Ensure evaluation_id is included and set as `id`
-        const formattedData = response.data.map((evaluation) => ({
-          id: evaluation.evaluation_id, // Use evaluation_id as the unique ID
-          evaluation_id: evaluation.evaluation_id, // Explicitly include evaluation_id
-          evaluator_name: evaluation.evaluator_name,
-          social_enterprise: evaluation.social_enterprise,
-          evaluation_date: evaluation.evaluation_date,
-          acknowledged: evaluation.acknowledged ? "Yes" : "No",
-        }));
-
-        console.log("✅ Formatted EvaluationsData:", formattedData); // Debugging
-        setEvaluationsData(formattedData);
-      } catch (error) {
-        console.error("❌ Error fetching evaluations:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setIsLoadingEvaluations(false);
       }
     };
 
-    if (id) {
-      fetchEvaluations();
+    fetchData();
+  }, [id]); // Re-fetch all data when the ID changes
+
+  // Filter financial data for the currently selected SE
+  const selectedSEFinancialData = financialData.filter(
+    (item) => item.se_id === selectedSEId
+  );
+
+  // Process financial data for StatBoxes and charts specific to the selected SE
+  const currentSEFinancialMetrics = {
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netIncome: 0,
+    totalAssets: 0,
+    totalLiabilities: 0,
+    ownerEquity: 0,
+    revenueVsExpenses: [],
+    equityTrend: [],
+  };
+
+  selectedSEFinancialData.forEach((item) => {
+    const parsedDate = item.date
+      ? new Date(item.date).toLocaleDateString()
+      : "Unknown Date";
+
+    currentSEFinancialMetrics.totalRevenue += Number(item.total_revenue ?? 0);
+    currentSEFinancialMetrics.totalExpenses += Number(item.total_expenses ?? 0);
+    currentSEFinancialMetrics.netIncome += Number(item.net_income ?? 0);
+    currentSEFinancialMetrics.totalAssets += Number(item.total_assets ?? 0);
+    currentSEFinancialMetrics.totalLiabilities += Number(item.total_liabilities ?? 0);
+    currentSEFinancialMetrics.ownerEquity += Number(item.owner_equity ?? 0);
+
+    currentSEFinancialMetrics.revenueVsExpenses.push({
+      x: parsedDate,
+      revenue: Number(item.total_revenue ?? 0),
+      expenses: Number(item.total_expenses ?? 0),
+    });
+
+    currentSEFinancialMetrics.equityTrend.push({
+      x: parsedDate,
+      y: Number(item.owner_equity ?? 0),
+    });
+  });
+
+  // Calculate financial ratios for the selected SE
+  const netProfitMargin = currentSEFinancialMetrics.totalRevenue
+    ? ((currentSEFinancialMetrics.netIncome / currentSEFinancialMetrics.totalRevenue) * 100).toFixed(2)
+    : "0.00";
+  const grossProfitMargin = currentSEFinancialMetrics.totalRevenue
+    ? (
+        ((currentSEFinancialMetrics.totalRevenue - currentSEFinancialMetrics.totalExpenses) /
+          currentSEFinancialMetrics.totalRevenue) *
+        100
+      ).toFixed(2)
+    : "0.00";
+  const debtToAssetRatio = currentSEFinancialMetrics.totalAssets
+    ? (currentSEFinancialMetrics.totalLiabilities / currentSEFinancialMetrics.totalAssets).toFixed(2)
+    : "0.00";
+
+  // Format revenue vs expenses for DualAxisLineChart (for selected SE)
+  const selectedSERevenueVsExpensesData = [
+    {
+      id: "Revenue",
+      color: colors.greenAccent[500],
+      data: currentSEFinancialMetrics.revenueVsExpenses.map(d => ({ x: d.x, y: d.revenue }))
+    },
+    {
+      id: "Expenses",
+      color: colors.redAccent[500],
+      data: currentSEFinancialMetrics.revenueVsExpenses.map(d => ({ x: d.x, y: d.expenses }))
+    },
+  ];
+
+  // Format owner's equity for DualAxisLineChart (for selected SE)
+  const selectedSEEquityTrendData = [
+    {
+      id: "Owner's Equity",
+      color: colors.blueAccent[500],
+      data: currentSEFinancialMetrics.equityTrend.map(d => ({
+        x: new Date(d.x).toLocaleString('default', { month: 'short', year: 'numeric' }), // Format to "Mon YYYY"
+        y: d.y
+      }))
+    },
+  ];
+
+  // Process cash flow data for the selected SE for ScatterPlot
+  const selectedSECashFlowRaw = cashFlowRaw.filter(
+    (item) => item.se_id === selectedSEId
+  );
+
+  const selectedSECashFlowData = [
+    {
+      id: "Inflow",
+      data: selectedSECashFlowRaw.map(item => ({
+        x: new Date(item.date).toLocaleDateString(),
+        y: Number(item.inflow)
+      }))
+    },
+    {
+      id: "Outflow",
+      data: selectedSECashFlowRaw.map(item => ({
+        x: new Date(item.date).toLocaleDateString(),
+        y: Number(item.outflow)
+      }))
     }
-  }, [id]); // ✅ Add id as a dependency
+  ];
+
+  const filteredInventoryData = inventoryData.filter(
+  (item) => item.se_abbr === selectedSE?.abbr
+  );
+
+  // Total Inventory Value by Item (filtered by SE)
+  const allItemsInventoryTotalValue = {};
+  filteredInventoryData.forEach(({ item_name, qty, price }) => {
+    const priceNum = Number(price);
+    const qtyNum = Number(qty);
+    const totalValue = qtyNum * priceNum;
+
+    if (!allItemsInventoryTotalValue[item_name]) {
+      allItemsInventoryTotalValue[item_name] = { totalValue: 0, totalQty: 0 };
+    }
+    allItemsInventoryTotalValue[item_name].totalValue += totalValue;
+    allItemsInventoryTotalValue[item_name].totalQty += qtyNum;
+  });
+
+
+  const inventoryValueByItemData = Object.entries(allItemsInventoryTotalValue)
+    .map(([itemName, data]) => ({
+      id: itemName,
+      value: data.totalValue,
+      label: `${itemName} (₱${data.totalValue.toLocaleString()})`
+    }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10);
+
+  const allItemsInventoryTurnover = {};
+  filteredInventoryData.forEach(({ item_name, qty, price, amount }) => {
+    const priceNum = Number(price);
+    const qtyNum = Number(qty);
+    const totalValue = qtyNum * priceNum; // This is average inventory value for the item
+
+    if (!allItemsInventoryTurnover[item_name]) {
+      allItemsInventoryTurnover[item_name] = { totalCOGS: 0, totalInventoryValue: 0 };
+    }
+    allItemsInventoryTurnover[item_name].totalCOGS += Number(amount); // Sum of 'amount' as COGS
+    allItemsInventoryTurnover[item_name].totalInventoryValue += totalValue; // Sum of inventory value
+  });
+
+  const inventoryTurnoverByItemData = Object.entries(allItemsInventoryTurnover)
+    .map(([itemName, data]) => {
+      const cogs = data.totalCOGS;
+      const avgInventory = data.totalInventoryValue; // Using total inventory value as avg for simplicity
+      const turnover = avgInventory === 0 ? 0 : parseFloat((cogs / avgInventory).toFixed(2));
+      return { name: itemName, turnover };
+    })
+    .sort((a, b) => b.turnover - a.turnover)
+    .slice(0, 5); // Top 5 items by turnover
+
 
   const columns = [
     { field: "social_enterprise", headerName: "Social Enterprise", flex: 1 },
@@ -255,7 +330,7 @@ const SEAnalytics = () => {
         <Button
           variant="contained"
           style={{ backgroundColor: colors.primary[600], color: "white" }}
-          onClick={() => handleViewExistingEvaluation(params.row.evaluation_id)} // Pass only evaluation_id
+          onClick={() => handleViewExistingEvaluation(params.row.evaluation_id)}
         >
           View
         </Button>
@@ -264,7 +339,7 @@ const SEAnalytics = () => {
   ];
 
   const handleViewExistingEvaluation = async (evaluation_id) => {
-    console.log("📌 Evaluation ID Passed:", evaluation_id); // Debugging log
+    console.log("📌 Evaluation ID Passed:", evaluation_id);
 
     try {
       const response = await axios.get(
@@ -279,11 +354,10 @@ const SEAnalytics = () => {
         return;
       }
 
-      // Process evaluation details
       const groupedEvaluation = response.data.reduce((acc, evalItem) => {
         const {
           evaluation_date,
-          evaluator_name, // ✅ Added evaluator name
+          evaluator_name,
           social_enterprise,
           category_name,
           star_rating,
@@ -293,8 +367,8 @@ const SEAnalytics = () => {
 
         if (!acc.id) {
           acc.id = evaluation_id;
-          acc.evaluator_name = evaluator_name; // ✅ Store evaluator (SE) name
-          acc.social_enterprise = social_enterprise; // ✅ Store evaluated SE
+          acc.evaluator_name = evaluator_name;
+          acc.social_enterprise = social_enterprise;
           acc.evaluation_date = evaluation_date;
           acc.categories = [];
         }
@@ -304,7 +378,7 @@ const SEAnalytics = () => {
           star_rating,
           selected_comments: Array.isArray(selected_comments)
             ? selected_comments
-            : [], // Ensure selected_comments is always an array
+            : [],
           additional_comment,
         });
 
@@ -323,42 +397,6 @@ const SEAnalytics = () => {
   if (!selectedSE && socialEnterprises.length > 0) {
     return <Box>No Social Enterprise found</Box>;
   }
-
-  // Mock inventory data
-  const mockInventoryData = [
-    { se_id: "SE01", item_name: "T-shirt", qty: 10, price: 100 },
-    { se_id: "SE02", item_name: "Notebook", qty: 5, price: 200 },
-    { se_id: "SE01", item_name: "Cap", qty: 2, price: 150 },
-    { se_id: "SE03", item_name: "Coffee", qty: 20, price: 50 },
-    { se_id: "SE02", item_name: "Pen", qty: 10, price: 20 },
-  ];
-
-  // Compute totals
-  const inventoryBySE = {};
-
-  mockInventoryData.forEach(({ se_id, qty, price }) => {
-    const amount = qty * price;
-    if (!inventoryBySE[se_id]) {
-      inventoryBySE[se_id] = { totalValue: 0 };
-    }
-    inventoryBySE[se_id].totalValue += amount;
-  });
-
-  // Format data for charts
-  const inventoryValueData = Object.entries(inventoryBySE).map(
-    ([se_id, data]) => ({
-      name: se_id,
-      value: data.totalValue,
-    })
-  );
-
-  const inventoryTurnoverData = inventoryValueData.map(({ name, value }) => {
-    const cogs = value * 0.7; // Assume COGS = 70% of value
-    const avgInventory = value;
-    const turnover =
-      avgInventory === 0 ? 0 : parseFloat((cogs / avgInventory).toFixed(2));
-    return { name, turnover };
-  });
 
   return (
     <Box m="20px">
@@ -395,15 +433,15 @@ const SEAnalytics = () => {
             }`}
             icon={
               <PeopleIcon
-                sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // Force icon color
+                sx={{ fontSize: "26px", color: colors.greenAccent[500] }}
               />
             }
             sx={{
               fontSize: "20px",
               p: "10px",
-              backgroundColor: colors.primary[400], // Set background explicitly
+              backgroundColor: colors.primary[400],
               color: colors.grey[100],
-              "& .MuiChip-icon": { color: colors.greenAccent[500] }, // Ensure icon color is applied
+              "& .MuiChip-icon": { color: colors.greenAccent[500] },
             }}
           />
         </Box>
@@ -421,7 +459,7 @@ const SEAnalytics = () => {
             subtitle="Acknowledged Evaluations"
             progress={
               stats.acknowledgedEvaluations / (stats.totalEvaluations || 1)
-            } // Shows percentage filled
+            }
             increase={`${(
               (stats.acknowledgedEvaluations / (stats.totalEvaluations || 1)) *
               100
@@ -445,7 +483,7 @@ const SEAnalytics = () => {
           <StatBox
             title={stats.pendingEvaluations}
             subtitle="Pending Evaluations"
-            progress={stats.pendingEvaluations / (stats.totalEvaluations || 1)} // Avoid division by zero
+            progress={stats.pendingEvaluations / (stats.totalEvaluations || 1)}
             increase={`${(
               (stats.pendingEvaluations / (stats.totalEvaluations || 1)) *
               100
@@ -469,11 +507,11 @@ const SEAnalytics = () => {
           <StatBox
             title={stats.avgRating}
             subtitle="Average rating"
-            progress={null} // Ensure it's not defined
-            sx={{ "& .MuiBox-root.css-1ntui4p": { display: "none" } }} // Hide the circle
+            progress={null}
+            sx={{ "& .MuiBox-root.css-1ntui4p": { display: "none" } }}
             icon={
               <StarIcon
-                sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
+                sx={{ fontSize: "26px", color: colors.blueAccent[500]} }
               />
             }
           />
@@ -497,7 +535,7 @@ const SEAnalytics = () => {
             backgroundColor: colors.primary[400],
             padding: "20px",
             boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            minHeight: "400px", // Ensures DataGrid has enough space
+            minHeight: "400px",
             flex: "2",
             flexDirection: "column",
             overflow: "hidden",
@@ -583,17 +621,17 @@ const SEAnalytics = () => {
         fullWidth
         PaperProps={{
           style: {
-            backgroundColor: "#fff", // White background
-            color: "#000", // Black text
-            border: "1px solid #000", // Black border for contrast
+            backgroundColor: "#fff",
+            color: "#000",
+            border: "1px solid #000",
           },
         }}
       >
         {/* Title with DLSU Green Background */}
         <DialogTitle
           sx={{
-            backgroundColor: "#1E4D2B", // DLSU Green header
-            color: "#fff", // White text
+            backgroundColor: "#1E4D2B",
+            color: "#fff",
             textAlign: "center",
             fontSize: "1.5rem",
             fontWeight: "bold",
@@ -606,8 +644,8 @@ const SEAnalytics = () => {
         <DialogContent
           sx={{
             padding: "24px",
-            maxHeight: "70vh", // Ensure it doesn't overflow the screen
-            overflowY: "auto", // Enable scrolling if content is too long
+            maxHeight: "70vh",
+            overflowY: "auto",
           }}
         >
           {selectedEvaluation ? (
@@ -625,18 +663,17 @@ const SEAnalytics = () => {
                   variant="h6"
                   sx={{
                     fontWeight: "bold",
-                    borderBottom: "1px solid #000", // Separator line
+                    borderBottom: "1px solid #000",
                     paddingBottom: "8px",
                   }}
                 >
                   Evaluator: {selectedEvaluation.evaluator_name}{" "}
-                  {/* ✅ Added Evaluator Name */}
                 </Typography>
                 <Typography
                   variant="h6"
                   sx={{
                     fontWeight: "bold",
-                    borderBottom: "1px solid #000", // Separator line
+                    borderBottom: "1px solid #000",
                     paddingBottom: "8px",
                   }}
                 >
@@ -657,7 +694,7 @@ const SEAnalytics = () => {
                     sx={{
                       marginBottom: "24px",
                       padding: "16px",
-                      border: "1px solid #000", // Border for each category
+                      border: "1px solid #000",
                       borderRadius: "8px",
                     }}
                   >
@@ -712,7 +749,7 @@ const SEAnalytics = () => {
             sx={{
               color: "#000",
               border: "1px solid #000",
-              "&:hover": { backgroundColor: "#f0f0f0" }, // Hover effect
+              "&:hover": { backgroundColor: "#f0f0f0" },
             }}
           >
             Close
@@ -813,7 +850,7 @@ const SEAnalytics = () => {
           Financial Analytics
         </Typography>
 
-        {/* Stat Boxes */}
+        {/* Stat Boxes for Selected SE */}
         <Box
           display="flex"
           flexWrap="wrap"
@@ -829,10 +866,10 @@ const SEAnalytics = () => {
             p="20px"
           >
             <StatBox
-              title="₱120,000"
+              title={`₱${currentSEFinancialMetrics.totalRevenue.toLocaleString()}`}
               subtitle="Total Revenue"
               progress={1}
-              increase="↑ 8%"
+              increase="N/A" // Can calculate percentage change if historical data is available
             />
           </Box>
           <Box
@@ -844,10 +881,10 @@ const SEAnalytics = () => {
             p="20px"
           >
             <StatBox
-              title="₱80,000"
+              title={`₱${currentSEFinancialMetrics.totalExpenses.toLocaleString()}`}
               subtitle="Total Expenses"
-              progress={0.7}
-              increase="↑ 5%"
+              progress={1}
+              increase="N/A"
             />
           </Box>
           <Box
@@ -859,10 +896,11 @@ const SEAnalytics = () => {
             p="20px"
           >
             <StatBox
-              title="₱40,000"
+              title={`₱${currentSEFinancialMetrics.netIncome.toLocaleString()}`}
               subtitle="Net Income"
-              progress={0.33}
-              increase="↑ 15%"
+              progress={1}
+              increase="N/A"
+              icon={<></>}
             />
           </Box>
           <Box
@@ -874,15 +912,16 @@ const SEAnalytics = () => {
             p="20px"
           >
             <StatBox
-              title="₱250,000"
+              title={`₱${currentSEFinancialMetrics.totalAssets.toLocaleString()}`}
               subtitle="Total Assets"
               progress={1}
-              increase="↑ 10%"
+              increase="N/A"
+              icon={<></>}
             />
           </Box>
         </Box>
 
-        {/* Revenue vs Expenses Line Chart */}
+        {/* Revenue vs Expenses Line Chart for Selected SE */}
         <Box backgroundColor={colors.primary[400]} p="20px">
           <Typography
             variant="h3"
@@ -893,34 +932,17 @@ const SEAnalytics = () => {
             Revenue vs Expenses Over Time
           </Typography>
           <Box height="400px">
-            <DualAxisLineChart
-              data={[
-                {
-                  id: "Revenue",
-                  color: colors.greenAccent[500],
-                  data: [
-                    { x: "Jan", y: 15000 },
-                    { x: "Feb", y: 20000 },
-                    { x: "Mar", y: 18000 },
-                    { x: "Apr", y: 22000 },
-                  ],
-                },
-                {
-                  id: "Expenses",
-                  color: colors.redAccent[500],
-                  data: [
-                    { x: "Jan", y: 10000 },
-                    { x: "Feb", y: 15000 },
-                    { x: "Mar", y: 12000 },
-                    { x: "Apr", y: 16000 },
-                  ],
-                },
-              ]}
-            />
+            {selectedSERevenueVsExpensesData[0]?.data?.length > 0 ? (
+              <DualAxisLineChart data={selectedSERevenueVsExpensesData} />
+            ) : (
+              <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                No revenue vs expenses data available for this SE.
+              </Typography>
+            )}
           </Box>
         </Box>
 
-        {/* Cash Flow Scatter Plot */}
+        {/* Cash Flow Scatter Plot for Selected SE */}
         <Box backgroundColor={colors.primary[400]} p="20px">
           <Typography
             variant="h3"
@@ -931,32 +953,17 @@ const SEAnalytics = () => {
             Cash Flow (Inflow vs Outflow)
           </Typography>
           <Box height="400px">
-            <ScatterPlot
-              data={[
-                {
-                  id: "Inflow",
-                  data: [
-                    { x: "Jan", y: 15000 },
-                    { x: "Feb", y: 20000 },
-                    { x: "Mar", y: 18000 },
-                    { x: "Apr", y: 22000 },
-                  ],
-                },
-                {
-                  id: "Outflow",
-                  data: [
-                    { x: "Jan", y: 12000 },
-                    { x: "Feb", y: 17000 },
-                    { x: "Mar", y: 14000 },
-                    { x: "Apr", y: 18000 },
-                  ],
-                },
-              ]}
-            />
+            {selectedSECashFlowData[0]?.data?.length > 0 ? (
+              <ScatterPlot data={selectedSECashFlowData} />
+            ) : (
+              <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                No cash flow data available for this SE.
+              </Typography>
+            )}
           </Box>
         </Box>
 
-        {/* Owner’s Equity Trend */}
+        {/* Owner’s Equity Trend for Selected SE */}
         <Box backgroundColor={colors.primary[400]} p="20px">
           <Typography
             variant="h3"
@@ -967,24 +974,17 @@ const SEAnalytics = () => {
             Owner's Equity Over Time
           </Typography>
           <Box height="400px">
-            <DualAxisLineChart
-              data={[
-                {
-                  id: "Owner's Equity",
-                  color: colors.blueAccent[500],
-                  data: [
-                    { x: "Jan", y: 80000 },
-                    { x: "Feb", y: 90000 },
-                    { x: "Mar", y: 95000 },
-                    { x: "Apr", y: 100000 },
-                  ],
-                },
-              ]}
-            />
+            {selectedSEEquityTrendData[0]?.data?.length > 0 ? (
+              <DualAxisLineChart data={selectedSEEquityTrendData} />
+            ) : (
+              <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                No owner's equity data available for this SE.
+              </Typography>
+            )}
           </Box>
         </Box>
 
-        {/* Financial Ratios */}
+        {/* Financial Ratios for Selected SE */}
         <Box display="flex" flexWrap="wrap" gap="20px">
           <Box
             flex="1 1 30%"
@@ -1001,7 +1001,7 @@ const SEAnalytics = () => {
               Net Profit Margin
             </Typography>
             <Typography variant="h3" color={colors.grey[100]}>
-              33.33%
+              {netProfitMargin}%
             </Typography>
           </Box>
           <Box
@@ -1019,7 +1019,7 @@ const SEAnalytics = () => {
               Gross Profit Margin
             </Typography>
             <Typography variant="h3" color={colors.grey[100]}>
-              40.00%
+              {grossProfitMargin}%
             </Typography>
           </Box>
           <Box
@@ -1037,35 +1037,48 @@ const SEAnalytics = () => {
               Debt-to-Asset Ratio
             </Typography>
             <Typography variant="h3" color={colors.grey[100]}>
-              0.32
+              {debtToAssetRatio}
             </Typography>
           </Box>
         </Box>
-        {/* Total Inventory Value */}
+
+        {/* Total Inventory Value by Item (Across All SEs) */}
         <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
           <Typography
             variant="h3"
             fontWeight="bold"
             color={colors.greenAccent[500]}
           >
-            Total Inventory Value
+            Total Inventory Value by Item
           </Typography>
           <Box height="400px">
-            <InventoryValuePie data={inventoryValueData} />
+            {inventoryValueByItemData.length > 0 ? (
+              <InventoryValuePie data={inventoryValueByItemData} />
+            ) : (
+              <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                No inventory value data available for any item.
+              </Typography>
+            )}
           </Box>
         </Box>
 
-        {/* Inventory Turnover Ratio */}
+        {/* Inventory Turnover Ratio by Item (Across All SEs) */}
         <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
           <Typography
             variant="h3"
             fontWeight="bold"
             color={colors.greenAccent[500]}
           >
-            Inventory Turnover Ratio
+            Inventory Turnover Ratio by Item
           </Typography>
           <Box height="400px">
-            <InventoryTurnoverBar data={inventoryTurnoverData} />
+            {inventoryTurnoverByItemData.length > 0 ? (
+              <InventoryTurnoverBar data={inventoryTurnoverByItemData} />
+            ) : (
+              <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                No inventory turnover data available for any item.
+              </Typography>
+            )}
           </Box>
         </Box>
       </Box>
