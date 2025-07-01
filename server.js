@@ -2595,6 +2595,39 @@ app.post("/webhook-bot1", async (req, res) => {
           try {
               // Mark evaluation as acknowledged in the database
               await updateAcknowledgeEvaluation(evaluationId);
+
+              // 1. Get evaluation details to find mentor_id and se_id
+              const evaluationDetailsQuery = `
+                  SELECT mentor_id, se_id
+                  FROM evaluations
+                  WHERE evaluation_id = $1;
+              `;
+              const evalResult = await pgDatabase.query(evaluationDetailsQuery, [evaluationId]);
+
+              if (evalResult.rows.length > 0) {
+                  const { mentor_id, se_id } = evalResult.rows[0];
+
+                  // 2. Get social enterprise team name
+                  const seNameQuery = `
+                      SELECT team_name FROM socialenterprises WHERE se_id = $1;
+                  `;
+                  const seNameResult = await pgDatabase.query(seNameQuery, [se_id]);
+                  const seName = seNameResult.rows[0]?.team_name || "Unknown Social Enterprise";
+
+                  // 3. Construct notification title
+                  const notificationTitle = `Evaluation Acknowledged by ${seName}`;
+
+                  // 4. Insert notification for the mentor
+                  await pgDatabase.query(
+                      `INSERT INTO notification (notification_id, receiver_id, se_id, title, created_at)
+                       VALUES (uuid_generate_v4(), $1, $2, $3, NOW());`,
+                      [mentor_id, se_id, notificationTitle]
+                  );
+                  console.log(`🔔 Notification sent to mentor ${mentor_id}: Evaluation for ${seName} acknowledged.`);
+              } else {
+                  console.warn(`⚠️ Evaluation with ID ${evaluationId} not found for mentor notification.`);
+              }
+
       
               // Send confirmation message
               await sendMessage(chatId, "✅ Evaluation successfully acknowledged!");
