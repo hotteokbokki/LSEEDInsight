@@ -1,6 +1,5 @@
 const express = require("express");
 const session = require("express-session");
-const { v4: uuidv4 } = require('uuid');
 
 const cors = require("cors");
 const { v4: uuidv4 } = require('uuid');
@@ -3733,7 +3732,11 @@ app.get("/api/notifications", async (req, res) => {
 
       console.log("🔑 User Roles:", userRoles);
     // Determine the user's effective role for notification purposes
-    const isLSEEDUser = userRoles.some(role => role === "LSEED-Coordinator" || role === "Administrator");
+    const isLSEEDUser = userRoles.some(role => 
+  role === "LSEED-Coordinator" || 
+  role === "LSEED-Director" || 
+  role === "Administrator"
+);
     const isMentorUser = userRoles.includes("Mentor");
 
     let query;
