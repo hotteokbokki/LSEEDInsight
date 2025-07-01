@@ -11,7 +11,7 @@ const ScatterPlot = ({ data }) => {
     <ResponsiveScatterPlot
       data={data}
       margin={{ top: 40, right: 130, bottom: 70, left: 90 }}
-      xScale={{ type: "linear", min: "auto", max: "auto" }}
+      xScale={{ type: "point" }}
       yScale={{ type: "linear", min: "auto", max: "auto" }}
       blendMode="multiply"
       axisTop={null}

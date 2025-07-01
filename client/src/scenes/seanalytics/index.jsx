@@ -232,12 +232,17 @@ const SEAnalytics = () => {
   ];
 
   // Format owner's equity for DualAxisLineChart (for selected SE)
+  const sortedEquityTrend = [...currentSEFinancialMetrics.equityTrend].sort(
+    (a, b) => new Date(a.x) - new Date(b.x)
+  );
+
+  // Then format for the chart
   const selectedSEEquityTrendData = [
     {
       id: "Owner's Equity",
       color: colors.blueAccent[500],
-      data: currentSEFinancialMetrics.equityTrend.map(d => ({
-        x: new Date(d.x).toLocaleString('default', { month: 'short', year: 'numeric' }), // Format to "Mon YYYY"
+      data: sortedEquityTrend.map(d => ({
+        x: new Date(d.x).toLocaleString('default', { month: 'short', year: 'numeric' }),
         y: d.y
       }))
     },
@@ -252,14 +257,14 @@ const SEAnalytics = () => {
     {
       id: "Inflow",
       data: selectedSECashFlowRaw.map(item => ({
-        x: new Date(item.date).toLocaleDateString(),
+        x: new Date(item.date).toLocaleString('default', { month: 'short', year: 'numeric' }),
         y: Number(item.inflow)
       }))
     },
     {
       id: "Outflow",
       data: selectedSECashFlowRaw.map(item => ({
-        x: new Date(item.date).toLocaleDateString(),
+        x: new Date(item.date).toLocaleString('default', { month: 'short', year: 'numeric' }),
         y: Number(item.outflow)
       }))
     }

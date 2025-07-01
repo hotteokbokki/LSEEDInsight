@@ -243,10 +243,21 @@ const FinancialAnalytics = ({ }) => {
     );
 
   // Format equity trend per SE for line chart
-  const equityTrendData = socialEnterprises.map((se) => ({
+  const equityTrendData = socialEnterprises.map((se) => {
+  const sortedEquity = [...se.equityTrend].sort((a, b) => {
+    const dateA = new Date(a.x);
+    const dateB = new Date(b.x);
+    return dateA - dateB;
+  });
+
+  return {
     id: se.name,
-    data: se.equityTrend.map((point) => ({ x: point.x, y: point.equity })),
-  }));
+    data: sortedEquity.map((point) => ({
+      x: point.x,
+      y: point.equity,
+    })),
+  };
+});
 
   // For cash flow bar chart, similar approach:
   // Create two series: inflow and outflow per SE, combine as grouped bar chart
