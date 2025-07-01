@@ -1,5 +1,7 @@
 const express = require("express");
 const session = require("express-session");
+const { v4: uuidv4 } = require('uuid');
+
 const cors = require("cors");
 const bcrypt = require('bcrypt'); // For password hashing
 const cron = require('node-cron'); // For automating password changing
@@ -765,6 +767,41 @@ app.post("/signup", async (req, res) => {
     if (!newApplication) {
       return res.status(500).json({ message: "Failed to submit mentor application." });
     }
+// ✅ Notify the LSEED Director about new mentor application
+try {
+  // Get the LSEED Director and Coordinator user IDs
+  const lseedDirectorQuery = `
+    SELECT user_id FROM user_has_roles
+    WHERE role_name IN ('LSEED-Director', 'LSEED-Coordinator')
+  `;
+  const directorResult = await pgDatabase.query(lseedDirectorQuery);
+
+  if (directorResult.rows.length > 0) {
+    const mentorFullName = `${firstName} ${lastName}`;
+    const notificationTitle = `New Mentor Application`;
+    const notificationBody = `A new mentor application was submitted by ${mentorFullName}.`;
+
+    for (const director of directorResult.rows) {
+      await pgDatabase.query(
+  `INSERT INTO notification (
+    notification_id,
+    receiver_id,
+    se_id,
+    title,
+    mentoring_session_id,
+    created_at,
+    sender_id
+  ) VALUES ($1, $2, NULL, $3, NULL, NOW(), NULL)`,
+  [uuidv4(), director.user_id, notificationTitle]
+);
+
+    }
+  }
+} catch (notifyError) {
+  console.error("❌ Failed to notify LSEED Director/Coordinator:", notifyError);
+  // Safe to continue even if notification fails
+}
+
 
     res.status(201).json({
       message: "Mentor application submitted successfully.",
@@ -3015,127 +3052,279 @@ app.post("/api/mentorships", async (req, res) => {
 });
 
 app.post("/approveMentorship", async (req, res) => {
-  const { mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link } = req.body;
+  const {
+    mentoring_session_id,
+    mentorship_id,
+    mentorship_date,
+    mentorship_time,
+    zoom_link,
+    sender_id,
+  } = req.body;
 
-  console.log("Date: ", mentorship_date)
-  console.log("Time: ", mentorship_time)
-  console.log("Zoom: ", zoom_link)
+  if (!sender_id) return res.status(400).json({ error: "Missing sender_id" });
 
   try {
-    const query = `
+    // 1. Role check
+    const roleQuery = `
+      SELECT 1 FROM user_has_roles
+      WHERE user_id = $1 AND role_name = 'LSEED-Director';
+    `;
+    const roleCheck = await pgDatabase.query(roleQuery, [sender_id]);
+    if (roleCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Only LSEED-Director can approve sessions" });
+    }
+
+    // 2. Approve session
+    const updateQuery = `
       UPDATE mentoring_session
-      SET status = 'Pending SE'  -- Change this to the desired status
+      SET status = 'Pending SE'
       WHERE mentoring_session_id = $1
       RETURNING *;
     `;
+    const { rows } = await pgDatabase.query(updateQuery, [mentoring_session_id]);
+    if (rows.length === 0) return res.status(404).json({ error: "Session not found" });
 
-    const { rows } = await pgDatabase.query(query, [mentoring_session_id]);
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Mentorship not found" });
-    }
-
-    // Retrieve chat IDs for the mentorship
-    const chatQuery = `
-        SELECT se.chatid AS chatid
-        FROM telegrambot AS mentor
-        JOIN mentorships ON mentorships.mentor_id = mentor.mentor_id
-        JOIN telegrambot AS se ON mentorships.se_id = se."se_ID"  
-        WHERE mentorships.mentorship_id = $1;
+    // 3. Get mentor and SE info
+    const infoQuery = `
+      SELECT m.mentor_id AS receiver_id, m.se_id
+      FROM mentorships m
+      WHERE m.mentorship_id = $1;
     `;
+    const infoResult = await pgDatabase.query(infoQuery, [mentorship_id]);
+    const { receiver_id, se_id } = infoResult.rows[0];
 
-    const chatResult = await pgDatabase.query(chatQuery, [mentorship_id]);
+    // 4. Get sender's name
+    const senderQuery = `SELECT first_name, last_name FROM users WHERE user_id = $1;`;
+    const senderResult = await pgDatabase.query(senderQuery, [sender_id]);
+    const senderName = `${senderResult.rows[0].first_name} ${senderResult.rows[0].last_name}`;
 
-    if (chatResult.rows.length > 0) {
-      console.log(`📩 Sending Mentorship Message to ${chatResult.rows.length} Chat IDs`);
+    // 5. Format session date/time
+    const sessionQuery = `SELECT start_time FROM mentoring_session WHERE mentoring_session_id = $1;`;
+    const sessionResult = await pgDatabase.query(sessionQuery, [mentoring_session_id]);
+    const startTime = new Date(sessionResult.rows[0].start_time);
+    const formattedStart = startTime.toLocaleString("en-US", { timeZone: "Asia/Manila" });
 
-      // Loop through all chat IDs and send the message
-      for (const row of chatResult.rows) {
-        const chatId = row.chatid;
+    // 6. Send notification
+    const title = `Session approved by ${senderName} on ${formattedStart}`;
+    const notifQuery = `
+      INSERT INTO notification (
+        notification_id,
+        receiver_id,
+        se_id,
+        title,
+        mentoring_session_id,
+        created_at,
+        sender_id
+      )
+      VALUES (
+        uuid_generate_v4(), $1, $2, $3, $4, NOW(), $5
+      );
+    `;
+    await pgDatabase.query(notifQuery, [receiver_id, se_id, title, mentoring_session_id, sender_id]);
 
-        console.log(`📤 Sending Mentorship Message to Chat ID: ${chatId}`);
-
-        // Send the mentorship invitation
-        sendMentorshipMessage(chatId, mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link);
-      }
-    } else {
-      console.warn(`⚠️ No chat IDs found for mentorship ${mentorship_id}`);
-    }
-        
-    res.json({ message: "Mentorship approved", mentorship: rows[0] });
+    res.json({ message: "Mentorship approved and mentor notified", mentorship: rows[0] });
   } catch (error) {
-    console.error("Database error:", error);
+    console.error("❌ Approve Error:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
+
+
+
+
+
 
 app.post("/declineMentorship", async (req, res) => {
-  const { mentoring_session_id } = req.body;
+  const { mentoring_session_id, sender_id } = req.body;
 
-  console.log("Declining mentorship with ID:", mentoring_session_id);
+  if (!sender_id) return res.status(400).json({ error: "Missing sender_id" });
 
   try {
-    const query = `
-      UPDATE mentoring_session
-      SET status = 'Declined'  -- Use 'Declined' instead of 'Decline'
-      WHERE mentoring_session_id = $1
-      RETURNING *;
+    // 1. Role check
+    const roleQuery = `
+      SELECT 1 FROM user_has_roles
+      WHERE user_id = $1 AND role_name = 'LSEED-Director';
     `;
-
-    const { rows } = await pgDatabase.query(query, [mentoring_session_id]);
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Mentorship session not found" });
+    const roleCheck = await pgDatabase.query(roleQuery, [sender_id]);
+    if (roleCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Only LSEED-Director can decline sessions" });
     }
 
-    res.json({ message: "Mentorship declined", mentorship: rows[0] });
+    // 2. Decline session
+    const updateQuery = `
+      UPDATE mentoring_session
+      SET status = 'Declined'
+      WHERE mentoring_session_id = $1
+      RETURNING mentorship_id, start_time;
+    `;
+    const { rows } = await pgDatabase.query(updateQuery, [mentoring_session_id]);
+    if (rows.length === 0) return res.status(404).json({ error: "Session not found" });
+
+    const { mentorship_id, start_time } = rows[0];
+    const formattedStart = new Date(start_time).toLocaleString("en-US", { timeZone: "Asia/Manila" });
+
+    // 3. Get mentor and SE info
+    const infoQuery = `
+      SELECT m.mentor_id AS receiver_id, m.se_id
+      FROM mentorships m
+      WHERE m.mentorship_id = $1;
+    `;
+    const infoResult = await pgDatabase.query(infoQuery, [mentorship_id]);
+    const { receiver_id, se_id } = infoResult.rows[0];
+
+    // 4. Get sender's name
+    const senderQuery = `SELECT first_name, last_name FROM users WHERE user_id = $1;`;
+    const senderResult = await pgDatabase.query(senderQuery, [sender_id]);
+    const senderName = `${senderResult.rows[0].first_name} ${senderResult.rows[0].last_name}`;
+
+    // 5. Send notification
+    const title = `Session request declined`;
+    const notifQuery = `
+      INSERT INTO notification (
+        notification_id,
+        receiver_id,
+        se_id,
+        title,
+        mentoring_session_id,
+        created_at,
+        sender_id
+      )
+      VALUES (
+        uuid_generate_v4(), $1, $2, $3, $4, NOW(), $5
+      );
+    `;
+    await pgDatabase.query(notifQuery, [
+      receiver_id,
+      se_id,
+      `${title} by ${senderName} on ${formattedStart}`,
+      mentoring_session_id,
+      sender_id,
+    ]);
+
+    res.json({ message: "Mentorship declined and mentor notified" });
   } catch (error) {
-    console.error("Database error:", error.message);
+    console.error("❌ Decline Error:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
+
+
+
 
 app.post("/updateMentorshipDate", async (req, res) => {
   console.log("🔹 Received request at /updateMentorshipDate");
 
-  let { mentorship_id, mentoring_session_date, start_time, end_time, zoom_link } = req.body;
+  const {
+    mentorship_id,
+    mentoring_session_date,
+    start_time,
+    end_time,
+    zoom_link,
+  } = req.body;
 
   if (!mentorship_id || !mentoring_session_date || !start_time || !end_time) {
-    return res.status(400).json({ error: "Mentorship ID, date, start time, and end time are required" });
+    return res.status(400).json({
+      error: "Mentorship ID, date, start time, and end time are required",
+    });
   }
 
   try {
-    const query = `
+    // 1. Insert mentoring session
+    const insertSessionQuery = `
       INSERT INTO mentoring_session (
-          start_time,
-          end_time,
-          zoom_link,
-          mentoring_session_date,
-          mentorship_id
+        start_time, end_time, zoom_link, mentoring_session_date, mentorship_id
       )
       VALUES ($1, $2, $3, $4, $5)
-      RETURNING *;
+      RETURNING mentoring_session_id;
     `;
 
-    const { rows } = await pgDatabase.query(query, [
+    const sessionResult = await pgDatabase.query(insertSessionQuery, [
       start_time,
       end_time,
       zoom_link,
       mentoring_session_date,
-      mentorship_id
+      mentorship_id,
     ]);
 
-    if (rows.length === 0) {
+    const newSession = sessionResult.rows[0];
+    const mentoringSessionId = newSession.mentoring_session_id;
+
+    // 2. Get mentor (sender_id), se_id, team_name
+    const mentorshipQuery = `
+      SELECT m.mentor_id AS sender_id, m.se_id, se.team_name
+      FROM mentorships m
+      JOIN socialenterprises se ON m.se_id = se.se_id
+      WHERE m.mentorship_id = $1;
+    `;
+
+    const mentorshipResult = await pgDatabase.query(mentorshipQuery, [
+      mentorship_id,
+    ]);
+
+    if (mentorshipResult.rows.length === 0) {
       return res.status(404).json({ error: "Mentorship not found" });
     }
 
-    console.log(`✅ Mentorship ${mentorship_id} scheduled successfully.`);
-    res.json({ message: "Mentorship date updated", mentorship: rows[0] });
+    const { sender_id, se_id, team_name } = mentorshipResult.rows[0];
+
+    // 3. Get LSEED-Coordinator and LSEED-Director users
+  const recipientsQuery = `
+  SELECT user_id, role_name
+  FROM user_has_roles
+  WHERE role_name IN ('LSEED-Coordinator', 'LSEED-Director');
+`;
+
+const recipientsResult = await pgDatabase.query(recipientsQuery);
+const recipients = recipientsResult.rows;
+
+    // 4. Insert notifications
+    const insertNotifQuery = `
+      INSERT INTO notification (
+        notification_id,
+        receiver_id,
+        se_id,
+        title,
+        mentoring_session_id,
+        created_at,
+        sender_id
+      )
+      VALUES (
+        uuid_generate_v4(),
+        $1, $2, 'Scheduling Approval Needed', $3, NOW(), $4
+      );
+    `;
+
+    for (const recipient of recipients) {
+      const { user_id: receiver_id, role_name } = recipient;
+
+      // Skip LSEED-Coordinator if they are also the mentor
+      if (receiver_id === sender_id && role_name === "LSEED-Coordinator") {
+        console.log("⚠️ Skipped notifying coordinator (same as mentor):", receiver_id);
+        continue;
+      }
+
+      await pgDatabase.query(insertNotifQuery, [
+        receiver_id,
+        se_id,
+        mentoringSessionId,
+        sender_id,
+      ]);
+
+      console.log(`🔔 Notification sent to ${receiver_id} (${role_name})`);
+    }
+
+    console.log(`✅ Mentorship ${mentorship_id} scheduled. Notifications sent.`);
+    res.json({ message: "Mentorship date updated", mentorship: newSession });
   } catch (error) {
-    console.error("❌ Database error:", error);
+    console.error("❌ Error in /updateMentorshipDate:", error);
     res.status(500).json({ error: error.message });
   }
 });
+
 
 app.get("/getMentorshipDates", async (req, res) => {
   const { mentor_id } = req.query;
@@ -3313,6 +3502,8 @@ async function updateUser(id, updatedUser) {
 app.get("/api/notifications", async (req, res) => {
   try {
       const { receiver_id } = req.query;
+      console.log("🧾 Receiver ID from query:", receiver_id);
+
       if (!receiver_id) {
           return res.status(400).json({ message: "Receiver ID is required" });
       }
@@ -3338,9 +3529,12 @@ app.get("/api/notifications", async (req, res) => {
 
     // Extract roles array, handling [null] if no roles are assigned
     const userRoles = userResult.rows[0].roles && userResult.rows[0].roles[0] !== null
+    
+
       ? userResult.rows[0].roles
       : [];
 
+      console.log("🔑 User Roles:", userRoles);
     // Determine the user's effective role for notification purposes
     const isLSEEDUser = userRoles.some(role => role === "LSEED-Coordinator" || role === "Administrator");
     const isMentorUser = userRoles.includes("Mentor");
@@ -3353,14 +3547,16 @@ app.get("/api/notifications", async (req, res) => {
       // LSEED users (including Administrators) get scheduling notifications
       query = `
           SELECT n.notification_id, n.title, n.created_at,
-                  u.first_name || ' ' || u.last_name AS sender_name,
-                  n.se_id, se.team_name AS se_name, ms.status
-          FROM notification n
-          JOIN users u ON n.sender_id = u.user_id
-          JOIN socialenterprises se ON n.se_id = se.se_id
-          JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
-          WHERE n.receiver_id = $1 AND n.title = 'Scheduling Approval Needed'
-          ORDER BY n.created_at DESC;
+       COALESCE(u.first_name || ' ' || u.last_name, 'System') AS sender_name,
+       n.se_id, se.team_name AS se_name, ms.status
+FROM notification n
+LEFT JOIN users u ON n.sender_id = u.user_id
+LEFT JOIN socialenterprises se ON n.se_id = se.se_id
+LEFT JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
+WHERE n.receiver_id = $1
+  AND (n.title = 'Scheduling Approval Needed' OR n.title = 'New Mentor Application')
+ORDER BY n.created_at DESC;
+
       `;
     } else if (isMentorUser) { // If not LSEED, check if they are a Mentor
       // Mentors only get status change notifications
@@ -3380,6 +3576,9 @@ app.get("/api/notifications", async (req, res) => {
     }
 
     const result = await pgDatabase.query(query, queryParams); // Use queryParams for the SQL values
+console.log("📤 Running notification query for:", isLSEEDUser ? "LSEED" : isMentorUser ? "Mentor" : "None");
+console.log("🧵 Final SQL:", query);
+console.log("📩 Notifications fetched:", result.rows.length);
 
     if (result.rows.length === 0) {
       return res.status(200).json([]); // Return empty array if no notifications

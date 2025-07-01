@@ -80,11 +80,9 @@ const Scheduling = ({}) => {
   const [mentorSchedules, setMentorSchedules] = useState([]);
   const [mentorOwnHistory, setMentorOwnHistory] = useState([]);
   const [lseedHistory, setLseedHistory] = useState([]);
-  const allSchedules = [
-    ...mentorOwnHistory,
-    ...lseedHistory
-  ].filter(item => item.status === "Accepted");
-
+  const allSchedules = [...mentorOwnHistory, ...lseedHistory].filter(
+    (item) => item.status === "Accepted"
+  );
 
   const generateTimeSlots = () => {
     const slots = [];
@@ -107,29 +105,34 @@ const Scheduling = ({}) => {
         mentorship_date,
         mentorship_time,
         zoom_link,
-      } = schedule; // Rename for clarity
+      } = schedule;
 
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/approveMentorship`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mentoring_session_id,
-          mentorship_id,
-          mentorship_date,
-          mentorship_time,
-          zoom_link,
-        }), // Ensure backend expects this key
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE_URL}/approveMentorship`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mentoring_session_id,
+            mentorship_id,
+            mentorship_date,
+            mentorship_time,
+            zoom_link,
+            sender_id: user.id, // 👈 Add this line
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorMessage = await response.text();
         throw new Error(`Failed to approve mentorship: ${errorMessage}`);
       }
 
-      // Show success message
-      setSnackbarMessage("Mentoring session accepted. Awaiting SE confirmation.");
+      setSnackbarMessage(
+        "Mentoring session accepted. Awaiting SE confirmation."
+      );
       setSnackbarSeverity("success");
-      setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
+      setSnackbarOpen(true);
       setTimeout(() => {
         window.location.reload();
       }, 500);
@@ -218,7 +221,9 @@ const Scheduling = ({}) => {
     return schedules.map((item) => {
       const [startTime, endTime] = item.mentoring_session_time.split(" - ");
 
-      const start = dayjs(`${item.mentoring_session_date} ${startTime}`).format();
+      const start = dayjs(
+        `${item.mentoring_session_date} ${startTime}`
+      ).format();
       const end = dayjs(`${item.mentoring_session_date} ${endTime}`).format();
 
       return {
@@ -230,9 +235,9 @@ const Scheduling = ({}) => {
         extendedProps: {
           zoom_link: item.zoom_link,
           status: item.status,
-          team_name: item.team_name,         // ✅ Add this
-          mentor_name: item.mentor_name,     // ✅ Add this
-          program_name: item.program_name,   // ✅ Add this
+          team_name: item.team_name, // ✅ Add this
+          mentor_name: item.mentor_name, // ✅ Add this
+          program_name: item.program_name, // ✅ Add this
         },
       };
     });
@@ -242,27 +247,28 @@ const Scheduling = ({}) => {
 
   const handleDeclineClick = async (schedule) => {
     try {
-      const { id: mentoring_session_id } = schedule; // Extract ID
+      const { id: mentoring_session_id } = schedule;
 
-      console.log("Declining schedule with ID:", mentoring_session_id);
-
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/declineMentorship`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mentoring_session_id }),
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE_URL}/declineMentorship`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mentoring_session_id,
+            sender_id: user.id, // 👈 Add this line
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorMessage = await response.text();
         throw new Error(`Failed to decline mentorship: ${errorMessage}`);
       }
 
-      console.log("Mentorship declined successfully");
-
-      // Show success message
       setSnackbarMessage("Mentoring session declined.");
       setSnackbarSeverity("success");
-      setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
+      setSnackbarOpen(true);
       setTimeout(() => {
         window.location.reload();
       }, 500);
@@ -271,18 +277,17 @@ const Scheduling = ({}) => {
     }
   };
 
+  const handleStartTimeChange = (newStartTimeRaw) => {
+    if (!newStartTimeRaw) return;
+    const newStartTime = dayjs(newStartTimeRaw);
+    setStartTime(newStartTime);
+    setEndTime(newStartTime.add(30, "minute"));
+  };
 
-const handleStartTimeChange = (newStartTimeRaw) => {
-  if (!newStartTimeRaw) return;
-  const newStartTime = dayjs(newStartTimeRaw);
-  setStartTime(newStartTime);
-  setEndTime(newStartTime.add(30, "minute"));
-};
-
-const handleEndTimeChange = (newEndTimeRaw) => {
-  if (!newEndTimeRaw) return;
-  setEndTime(dayjs(newEndTimeRaw));
-};
+  const handleEndTimeChange = (newEndTimeRaw) => {
+    if (!newEndTimeRaw) return;
+    setEndTime(dayjs(newEndTimeRaw));
+  };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
@@ -328,9 +333,12 @@ const handleEndTimeChange = (newEndTimeRaw) => {
   useEffect(() => {
     const fetchMentorPendingSessions = async () => {
       try {
-        const res = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/get-mentor-pending-sessions`, {
-          withCredentials: true,
-        });
+        const res = await axios.get(
+          `${process.env.REACT_APP_API_BASE_URL}/api/get-mentor-pending-sessions`,
+          {
+            withCredentials: true,
+          }
+        );
         setMentorPendingSessions(res.data || []);
       } catch (error) {
         console.error("❌ Error fetching mentor pending sessions:", error);
@@ -348,28 +356,36 @@ const handleEndTimeChange = (newEndTimeRaw) => {
       try {
         const roles = user?.roles || [];
         const isMentor = roles.includes("Mentor");
-        const isLSEEDUser = roles.some(role => role.startsWith("LSEED"));
+        const isLSEEDUser = roles.some((role) => role.startsWith("LSEED"));
 
         if (isMentor) {
-          const mentorRes = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/mentorSchedulesByID`, {
-            withCredentials: true,
-          });
+          const mentorRes = await axios.get(
+            `${process.env.REACT_APP_API_BASE_URL}/api/mentorSchedulesByID`,
+            {
+              withCredentials: true,
+            }
+          );
           setMentorOwnHistory(mentorRes.data || []);
         }
 
         if (isLSEEDUser) {
           let lseedResponse;
           if (roles.includes("LSEED-Coordinator")) {
-            const programRes = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
-              withCredentials: true,
-            });
+            const programRes = await axios.get(
+              `${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`,
+              {
+                withCredentials: true,
+              }
+            );
             const program = programRes.data[0]?.name;
             lseedResponse = await axios.get(
               `${process.env.REACT_APP_API_BASE_URL}/api/mentorSchedules`,
               { params: { program } }
             );
           } else {
-            lseedResponse = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/mentorSchedules`);
+            lseedResponse = await axios.get(
+              `${process.env.REACT_APP_API_BASE_URL}/api/mentorSchedules`
+            );
           }
           setLseedHistory(lseedResponse.data || []);
         }
@@ -389,26 +405,25 @@ const handleEndTimeChange = (newEndTimeRaw) => {
     data.map((mentorship) => ({
       id: mentorship.mentoring_session_id,
       sessionDetails: `${mentorship.status} Mentoring Session for ${
-          mentorship.team_name || "Unknown SE"
-      } with Mentor ${
-          mentorship.mentor_name || "Unknown Mentor"
-      }`,
+        mentorship.team_name || "Unknown SE"
+      } with Mentor ${mentorship.mentor_name || "Unknown Mentor"}`,
       program_name: mentorship.program_name || "N/A",
-      date: `${mentorship.mentoring_session_date}, ${mentorship.mentoring_session_time}` || "N/A",
+      date:
+        `${mentorship.mentoring_session_date}, ${mentorship.mentoring_session_time}` ||
+        "N/A",
       mentoring_session_time: mentorship.mentoring_session_time || "N/A",
       status: mentorship.status || "N/A",
       zoom_link: mentorship.zoom_link || "N/A",
-  }));
-
+    }));
 
   const fetchSocialEnterprises = async () => {
     try {
       setIsLoading(true);
 
       const response = await fetch(
-        `${process.env.REACT_APP_API_BASE_URL}/getMentorshipsbyID?mentor_id=${encodeURIComponent(
-          user.id
-        )}`
+        `${
+          process.env.REACT_APP_API_BASE_URL
+        }/getMentorshipsbyID?mentor_id=${encodeURIComponent(user.id)}`
       );
       const data = await response.json();
 
@@ -463,7 +478,8 @@ const handleEndTimeChange = (newEndTimeRaw) => {
       setIsLoading(true);
 
       const teamName = selectedSE?.team_name || "Selected SE";
-      const displayDate = selectedDate?.format("MMMM D, YYYY") || "selected date";
+      const displayDate =
+        selectedDate?.format("MMMM D, YYYY") || "selected date";
       const displayStartTime = startTime?.format("HH:mm") || "start time";
       const displayEndTime = endTime?.format("HH:mm") || "end time";
 
@@ -514,7 +530,7 @@ const handleEndTimeChange = (newEndTimeRaw) => {
 
       setSnackbarMessage(
         `Mentoring Session with ${teamName} on ${displayDate} at ${displayStartTime} - ${displayEndTime} scheduled successfully!`
-      );      
+      );
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
       handleCloseSEModal(); // ✅ Close modal
@@ -538,12 +554,11 @@ const handleEndTimeChange = (newEndTimeRaw) => {
       setSnackbarMessage(message);
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
-
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   // Define DataGrid columns
   const mentorOwnSessionHistory = [
     {
@@ -668,19 +683,20 @@ const handleEndTimeChange = (newEndTimeRaw) => {
         let response;
 
         if (user?.roles.includes("LSEED-Coordinator")) {
-          const res = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
-            withCredentials: true, // Equivalent to credentials: "include"
-          });
+          const res = await axios.get(
+            `${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`,
+            {
+              withCredentials: true, // Equivalent to credentials: "include"
+            }
+          );
 
           const program = res.data[0]?.name;
 
           response = await axios.get(
             `${process.env.REACT_APP_API_BASE_URL}/api/pending-schedules`,
-            { params: { program },
-              withCredentials: true }
+            { params: { program }, withCredentials: true }
           );
-        }
-        else {
+        } else {
           response = await axios.get(
             `${process.env.REACT_APP_API_BASE_URL}/api/pending-schedules`
           );
@@ -709,7 +725,7 @@ const handleEndTimeChange = (newEndTimeRaw) => {
       <Header
         title="Scheduling Matrix"
         subtitle={
-          user?.roles.some(role => role.startsWith("LSEED"))
+          user?.roles.some((role) => role.startsWith("LSEED"))
             ? "View and Manage the schedule of the mentors"
             : "Find the Appropriate Schedule"
         }
@@ -734,73 +750,78 @@ const handleEndTimeChange = (newEndTimeRaw) => {
         >
           {/* Open LSEED Calendar Button */}
           {/* Visible if user has any LSEED role AND (is not a mentor OR is in coordinator view) */}
-          {user?.roles.some(r => r.startsWith("LSEED")) && (!user?.roles.includes("Mentor") || (user?.roles.includes("Mentor") && !isMentorView)) && (
-            <Button
-              variant="contained"
-              color="secondary"
-              sx={{ fontSize: "16px", py: "10px", flexGrow: 1, minWidth: 0 }}
-              onClick={handleRedirect}
-            >
-              Open LSEED Calendar
-            </Button>
-          )}
+          {user?.roles.some((r) => r.startsWith("LSEED")) &&
+            (!user?.roles.includes("Mentor") ||
+              (user?.roles.includes("Mentor") && !isMentorView)) && (
+              <Button
+                variant="contained"
+                color="secondary"
+                sx={{ fontSize: "16px", py: "10px", flexGrow: 1, minWidth: 0 }}
+                onClick={handleRedirect}
+              >
+                Open LSEED Calendar
+              </Button>
+            )}
 
           {/* Schedule a Mentoring Session Button */}
           {/* Visible if user has Mentor role AND (is not an LSEED user OR is in mentor view) */}
-          {user?.roles.includes("Mentor") && (!user?.roles.some(r => r.startsWith("LSEED")) || (user?.roles.some(r => r.startsWith("LSEED")) && isMentorView)) && (
-            <Button
-              variant="contained"
-              color="secondary"
-              sx={{ fontSize: "16px", py: "10px", flexGrow: 1, minWidth: 0 }}
-              onClick={handleOpenSEModal}
-            >
-              Schedule a Mentoring Session
-            </Button>
-          )}
+          {user?.roles.includes("Mentor") &&
+            (!user?.roles.some((r) => r.startsWith("LSEED")) ||
+              (user?.roles.some((r) => r.startsWith("LSEED")) &&
+                isMentorView)) && (
+              <Button
+                variant="contained"
+                color="secondary"
+                sx={{ fontSize: "16px", py: "10px", flexGrow: 1, minWidth: 0 }}
+                onClick={handleOpenSEModal}
+              >
+                Schedule a Mentoring Session
+              </Button>
+            )}
         </Box>
       </Box>
 
-        <Box mt={2}>
-          <List>
-            {mentors.map((mentor) => (
-              <ListItem key={mentor.mentor_id}>
-                <ListItemText primary={mentor.name} />
-                <Button
-                  variant="contained"
-                  color={mentor.calendarlink ? "secondary" : "inherit"}
-                  sx={{
-                    fontSize: "16px",
-                    padding: "10px",
+      <Box mt={2}>
+        <List>
+          {mentors.map((mentor) => (
+            <ListItem key={mentor.mentor_id}>
+              <ListItemText primary={mentor.name} />
+              <Button
+                variant="contained"
+                color={mentor.calendarlink ? "secondary" : "inherit"}
+                sx={{
+                  fontSize: "16px",
+                  padding: "10px",
+                  backgroundColor: mentor.calendarlink
+                    ? colors.primary[500]
+                    : "#B0B0B0",
+                  color: "white",
+                  "&:hover": {
                     backgroundColor: mentor.calendarlink
-                      ? colors.primary[500]
-                      : "#B0B0B0",
-                    color: "white",
-                    "&:hover": {
-                      backgroundColor: mentor.calendarlink
-                        ? colors.primary[700]
-                        : "#A0A0A0",
-                    },
-                  }}
-                  onClick={() =>
-                    mentor.calendarlink &&
-                    window.open(mentor.calendarlink, "_blank")
-                  }
-                  disabled={!mentor.calendarlink}
-                >
-                  {mentor.calendarlink
-                    ? "View Calendar"
-                    : "No Calendar Available"}
-                </Button>
-              </ListItem>
-            ))}
-          </List>
-        </Box>
+                      ? colors.primary[700]
+                      : "#A0A0A0",
+                  },
+                }}
+                onClick={() =>
+                  mentor.calendarlink &&
+                  window.open(mentor.calendarlink, "_blank")
+                }
+                disabled={!mentor.calendarlink}
+              >
+                {mentor.calendarlink
+                  ? "View Calendar"
+                  : "No Calendar Available"}
+              </Button>
+            </ListItem>
+          ))}
+        </List>
+      </Box>
 
       <Box width="100%" backgroundColor={colors.primary[400]} padding="20px">
         <Calendar events={calendarEvents} isDashboard={true} />
       </Box>
 
-      {(!isMentorView && user?.roles.some(r => r.startsWith("LSEED"))) && (
+      {!isMentorView && user?.roles.some((r) => r.startsWith("LSEED")) && (
         <Box mt={4} display="flex" flexDirection="column" gap={2}>
           {/* Pending Schedules for Coordinator View */}
           <Box
@@ -842,11 +863,11 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                   rows={mentorSchedules.map((schedule) => ({
                     id: schedule.mentoring_session_id,
                     sessionDetails: `Mentoring Session for ${
-                        schedule.team_name || "Unknown SE"
-                    } with Mentor ${
-                        schedule.mentor_name || "Unknown Mentor"
-                    }`,
-                    date: `${schedule.mentoring_session_date}, ${schedule.mentoring_session_time}` || "N/A",
+                      schedule.team_name || "Unknown SE"
+                    } with Mentor ${schedule.mentor_name || "Unknown Mentor"}`,
+                    date:
+                      `${schedule.mentoring_session_date}, ${schedule.mentoring_session_time}` ||
+                      "N/A",
                     time: schedule.mentoring_session_time || "N/A",
                     zoom: schedule.zoom_link || "N/A",
                     mentorship_id: schedule.mentorship_id,
@@ -907,7 +928,9 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                           <Chip
                             label={params.value}
                             color={
-                              params.value === "Pending" ? "warning" : colors.greenAccent[600]
+                              params.value === "Pending"
+                                ? "warning"
+                                : colors.greenAccent[600]
                             }
                             sx={{ width: "fit-content" }}
                           />
@@ -933,7 +956,9 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                             variant="contained"
                             sx={{
                               backgroundColor: colors.greenAccent[500],
-                              "&:hover": { backgroundColor: colors.greenAccent[600] },
+                              "&:hover": {
+                                backgroundColor: colors.greenAccent[600],
+                              },
                             }}
                             onClick={() => handleAcceptClick(params.row)}
                           >
@@ -943,7 +968,9 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                             variant="contained"
                             sx={{
                               backgroundColor: colors.redAccent[500],
-                              "&:hover": { backgroundColor: colors.redAccent[600] },
+                              "&:hover": {
+                                backgroundColor: colors.redAccent[600],
+                              },
                             }}
                             onClick={() => handleDeclineClick(params.row)}
                           >
@@ -966,7 +993,7 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                       wordBreak: "break-word",
                     },
                   }}
-                  getRowHeight={() => 'auto'}
+                  getRowHeight={() => "auto"}
                   rowsPerPageOptions={[5, 10]}
                 />
               ) : (
@@ -1119,7 +1146,6 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                         return "N/A";
                       },
                     },
-
                   ]}
                   sx={{
                     "& .MuiDataGrid-cell": {
@@ -1134,7 +1160,7 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                     },
                   }}
                   pageSize={5}
-                  getRowHeight={() => 'auto'}
+                  getRowHeight={() => "auto"}
                   rowsPerPageOptions={[5, 10]}
                 />
               </Box>
@@ -1162,7 +1188,7 @@ const handleEndTimeChange = (newEndTimeRaw) => {
         </DialogActions>
       </Dialog>
 
-      {(isMentorView && user?.roles.includes("Mentor")) && (
+      {isMentorView && user?.roles.includes("Mentor") && (
         <Box mt={4}>
           {/* Export Button Positioned Outside DataGrid */}
           <Box mb={2}>
@@ -1180,7 +1206,6 @@ const handleEndTimeChange = (newEndTimeRaw) => {
           </Box>
 
           <Box display="flex" gap="20px" width="100%" mt="20px">
-            
             {/* Mentoring Sessions History (wider, flex=2) */}
             <Box
               flex="2"
@@ -1205,9 +1230,10 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                     overflowX: "auto",
                     "& .MuiDataGrid-root": { border: "none" },
                     "& .MuiDataGrid-cell": { borderBottom: "none" },
-                    "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader": {
-                      backgroundColor: colors.blueAccent[700] + " !important",
-                    },
+                    "& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader":
+                      {
+                        backgroundColor: colors.blueAccent[700] + " !important",
+                      },
                     "& .MuiDataGrid-virtualScroller": {
                       backgroundColor: colors.primary[400],
                     },
@@ -1234,7 +1260,7 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                       },
                     }}
                     pageSize={5}
-                    getRowHeight={() => 'auto'}
+                    getRowHeight={() => "auto"}
                     rowsPerPageOptions={[5, 10]}
                   />
                 </Box>
@@ -1268,7 +1294,10 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                     alignItems="center"
                     borderBottom={`4px solid ${colors.primary[500]}`}
                     p="15px"
-                    sx={{ minHeight: "72px", backgroundColor: colors.primary[400] }}
+                    sx={{
+                      minHeight: "72px",
+                      backgroundColor: colors.primary[400],
+                    }}
                   >
                     {/* Left: Mentoring Session Information */}
                     <Box
@@ -1296,7 +1325,9 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                           wordBreak: "break-word",
                         }}
                       >
-                        Pending Mentoring Session on {session.mentoring_session_date}, {session.mentoring_session_time}
+                        Pending Mentoring Session on{" "}
+                        {session.mentoring_session_date},{" "}
+                        {session.mentoring_session_time}
                       </Typography>
                     </Box>
 
@@ -1312,22 +1343,28 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                       <Chip
                         label={session.status}
                         color={
-                          session.status === "Pending SE" ? "warning"
-                          : session.status === "Accepted" ? "success"
-                          : session.status === "Declined" ? "error"
-                          : session.status === "Evaluated" ? "info"
-                          : session.status === "Completed" ? "primary"
-                          : "default"
+                          session.status === "Pending SE"
+                            ? "warning"
+                            : session.status === "Accepted"
+                            ? "success"
+                            : session.status === "Declined"
+                            ? "error"
+                            : session.status === "Evaluated"
+                            ? "info"
+                            : session.status === "Completed"
+                            ? "primary"
+                            : "default"
                         }
                       />
                     </Box>
                   </Box>
                 ))
               ) : (
-                <Typography>No pending mentoring sessions available.</Typography>
+                <Typography>
+                  No pending mentoring sessions available.
+                </Typography>
               )}
             </Box>
-
           </Box>
         </Box>
       )}
@@ -1385,7 +1422,7 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                   sx={{
                     mb: 2,
                     fontWeight: "bold",
-                    color: "#1E4D2B"
+                    color: "#1E4D2B",
                   }}
                 >
                   Select a Social Enterprise for Mentoring Session
@@ -1399,7 +1436,8 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                       onClick={() => handleSelectSE(se)}
                       sx={{
                         marginBottom: "6px",
-                        border: selectedSE?.id === se.id ? "2px solid #000" : "none",
+                        border:
+                          selectedSE?.id === se.id ? "2px solid #000" : "none",
                         borderRadius: "4px",
                         "&:hover": {
                           backgroundColor: "#f0f0f0",
@@ -1412,15 +1450,17 @@ const handleEndTimeChange = (newEndTimeRaw) => {
                           <>
                             {se.program_name}
                             <br />
-                            Preferred Times: {se.preferred_times.join(", ") || "None"}
+                            Preferred Times:{" "}
+                            {se.preferred_times.join(", ") || "None"}
                           </>
                         }
                         primaryTypographyProps={{
-                          fontWeight: selectedSE?.id === se.id ? 'bold' : 'normal',
-                          color: 'black',
+                          fontWeight:
+                            selectedSE?.id === se.id ? "bold" : "normal",
+                          color: "black",
                         }}
                         secondaryTypographyProps={{
-                          color: 'black',
+                          color: "black",
                         }}
                       />
                     </ListItemButton>
@@ -1677,13 +1717,12 @@ const handleEndTimeChange = (newEndTimeRaw) => {
       >
         <Alert
           onClose={() => setSnackbarOpen(false)}
-          severity={snackbarSeverity} 
+          severity={snackbarSeverity}
           sx={{ width: "100%" }}
         >
-          {snackbarMessage}            
+          {snackbarMessage}
         </Alert>
       </Snackbar>
-
     </Box>
   );
 };
