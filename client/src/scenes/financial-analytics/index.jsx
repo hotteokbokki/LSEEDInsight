@@ -5,6 +5,7 @@ import LineChart from "../../components/LineChart";
 import BarChart from "../../components/BarChart";
 import FinancialBarChart from "../../components/FinancialBarChart";
 import CashFlowBarChart from "../../components/CashflowBarChart.jsx";
+import POTLineChart from "../../components/ProfitOTLineChart.jsx";
 import PieChart from "../../components/PieChart";
 import { tokens } from "../../theme";
 import React, { useEffect, useState } from "react";
@@ -16,7 +17,7 @@ import InventoryValuePie from "../../components/TotalInventoryPieChart.jsx";
 import InventoryTurnoverBar from "../../components/InventoryTurnoverBarChart.jsx";
 import { useAuth } from "../../context/authContext";
 
-const FinancialAnalytics = ({ }) => {
+const FinancialAnalytics = ({}) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [financialData, setFinancialData] = useState([]);
@@ -64,34 +65,34 @@ const FinancialAnalytics = ({ }) => {
   const inventoryBySE = {};
 
   inventoryData.forEach(({ se_abbr, qty, price, amount }) => {
-  const priceNum = Number(price);
-  const amountNum = Number(amount);
-  if (!inventoryBySE[se_abbr]) {
-    inventoryBySE[se_abbr] = { totalValue: 0, totalCOGS: 0 };
-  }
-  inventoryBySE[se_abbr].totalValue += (qty * priceNum);
-  inventoryBySE[se_abbr].totalCOGS += amountNum;
-});
-
+    const priceNum = Number(price);
+    const amountNum = Number(amount);
+    if (!inventoryBySE[se_abbr]) {
+      inventoryBySE[se_abbr] = { totalValue: 0, totalCOGS: 0 };
+    }
+    inventoryBySE[se_abbr].totalValue += qty * priceNum;
+    inventoryBySE[se_abbr].totalCOGS += amountNum;
+  });
 
   // Format data for charts (These should replace your existing mock data calculations)
   const inventoryValueData = Object.entries(inventoryBySE)
-  .map(([se_id, data]) => ({
-    id: se_id,
-    value: data.totalValue,
-  }))
-  .sort((a, b) => b.value - a.value) 
-  .slice(0, 5);                        
+    .map(([se_id, data]) => ({
+      id: se_id,
+      value: data.totalValue,
+    }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
 
   const inventoryTurnoverData = Object.entries(inventoryBySE)
-  .map(([se_id, data]) => {
-    const cogs = data.totalCOGS;
-    const avgInventory = data.totalValue;
-    const turnover = avgInventory === 0 ? 0 : parseFloat((cogs / avgInventory).toFixed(2));
-    return { name: se_id, turnover };
-  })
-  .sort((a, b) => b.turnover - a.turnover) 
-  .slice(0, 5);                    
+    .map(([se_id, data]) => {
+      const cogs = data.totalCOGS;
+      const avgInventory = data.totalValue;
+      const turnover =
+        avgInventory === 0 ? 0 : parseFloat((cogs / avgInventory).toFixed(2));
+      return { name: se_id, turnover };
+    })
+    .sort((a, b) => b.turnover - a.turnover)
+    .slice(0, 5);
 
   const seMap = new Map();
   financialData.forEach((item) => {
@@ -244,20 +245,20 @@ const FinancialAnalytics = ({ }) => {
 
   // Format equity trend per SE for line chart
   const equityTrendData = socialEnterprises.map((se) => {
-  const sortedEquity = [...se.equityTrend].sort((a, b) => {
-    const dateA = new Date(a.x);
-    const dateB = new Date(b.x);
-    return dateA - dateB;
-  });
+    const sortedEquity = [...se.equityTrend].sort((a, b) => {
+      const dateA = new Date(a.x);
+      const dateB = new Date(b.x);
+      return dateA - dateB;
+    });
 
-  return {
-    id: se.name,
-    data: sortedEquity.map((point) => ({
-      x: point.x,
-      y: point.equity,
-    })),
-  };
-});
+    return {
+      id: se.name,
+      data: sortedEquity.map((point) => ({
+        x: point.x,
+        y: point.equity,
+      })),
+    };
+  });
 
   // For cash flow bar chart, similar approach:
   // Create two series: inflow and outflow per SE, combine as grouped bar chart
@@ -433,7 +434,6 @@ const FinancialAnalytics = ({ }) => {
               .toLocaleString()}`}
             subtitle="Total Revenue (All SEs)"
             progress={1}
-            increase="N/A"
           />
         </Box>
         <Box
@@ -450,7 +450,6 @@ const FinancialAnalytics = ({ }) => {
               .toLocaleString()}`}
             subtitle="Total Expenses (All SEs)"
             progress={1}
-            increase="N/A"
           />
         </Box>
         <Box
@@ -467,8 +466,6 @@ const FinancialAnalytics = ({ }) => {
               .toLocaleString()}`}
             subtitle="Net Income (All SEs)"
             progress={1}
-            increase="N/A"
-            icon={<></>}
           />
         </Box>
         <Box
@@ -485,8 +482,6 @@ const FinancialAnalytics = ({ }) => {
               .toLocaleString()}`}
             subtitle="Total Assets (All SEs)"
             progress={1}
-            increase="N/A"
-            icon={<></>}
           />
         </Box>
 
@@ -541,7 +536,7 @@ const FinancialAnalytics = ({ }) => {
           Profit Over Time (by Social Enterprise)
         </Typography>
         <Box height="400px">
-          <LineChart data={profitOverTimeSeries} />
+          <POTLineChart data={profitOverTimeSeries} />
         </Box>
       </Box>
 
@@ -585,14 +580,28 @@ const FinancialAnalytics = ({ }) => {
           fontWeight="bold"
           color={colors.greenAccent[500]}
         >
-          Inventory Turnover Ratio by Social Enterprise
+          Inventory Turnover Ratio (Top 5)
         </Typography>
         <Box height="400px">
           <InventoryTurnoverBar data={inventoryTurnoverData} />
         </Box>
       </Box>
 
-      {/* Row 7 - Equity Trend Comparison */}
+      {/* Row 7 - Inventory Turnover Ratio by SE */}
+      <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
+        <Typography
+          variant="h3"
+          fontWeight="bold"
+          color={colors.greenAccent[500]}
+        >
+          Inventory Turnover Ratio (Worst 5)
+        </Typography>
+        <Box height="400px">
+          <InventoryTurnoverBar data={inventoryTurnoverData} />
+        </Box>
+      </Box>
+
+      {/* Row 8 - Equity Trend Comparison */}
       <Box backgroundColor={colors.primary[400]} p="20px" mt="20px">
         <Typography
           variant="h3"
@@ -620,6 +629,24 @@ const FinancialAnalytics = ({ }) => {
             data={topRevenueSEsData}
             dataKey="revenue"
             label="Top Revenue"
+          />
+        </Box>
+      </Box>
+
+      {/* Worst 10 SEs by Revenue */}
+      <Box backgroundColor={colors.primary[400]} p="40px" mt="20px">
+        <Typography
+          variant="h3"
+          fontWeight="bold"
+          color={colors.greenAccent[500]}
+        >
+          Worst 10 Social Enterprises by Revenue
+        </Typography>
+        <Box height="400px">
+          <FinancialBarChart
+            data={topRevenueSEsData}
+            dataKey="revenue"
+            label="Worst Revenue"
           />
         </Box>
       </Box>

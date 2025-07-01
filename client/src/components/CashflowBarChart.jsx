@@ -72,7 +72,7 @@ const CustomTooltip = ({ value, indexValue, id, data }) => {
   );
 };
 
-const CashFlowBarChart = ({  }) => {
+const CashFlowBarChart = ({}) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const { user } = useAuth();

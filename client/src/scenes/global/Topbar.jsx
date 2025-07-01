@@ -24,9 +24,8 @@ import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import { useAuth } from "../../context/authContext";
 import axios from "axios";
 
-
 // 3. Destructure the new props from the function signature
-const Topbar = ({ }) => {
+const Topbar = ({}) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const colorMode = useContext(ColorModeContext);
@@ -35,7 +34,7 @@ const Topbar = ({ }) => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
 
-  const { logout, user, isMentorView, toggleView } = useAuth(); 
+  const { logout, user, isMentorView, toggleView } = useAuth();
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
@@ -54,17 +53,19 @@ const Topbar = ({ }) => {
 
       const requestUrl = `${API_BASE_URL}/api/notifications?receiver_id=${user.id}`;
       console.log("🔍 Making request to:", requestUrl);
+      console.log("🔍 Current user:", user); // Add this line
+      console.log("🔍 User roles:", user.roles); // Add this line
 
       const response = await axios.get(requestUrl);
 
-      console.log("📩 Notifications received:", response.data); // ✅ Debugging API Response
-      setNotifications([...response.data]); // ✅ Force React to detect state change
-      console.log("🔔 Updated notifications state:", notifications); // ✅ Check if state updates
+      console.log("📩 Notifications received:", response.data);
+      console.log("📊 Number of notifications:", response.data.length); // Add this line
+      setNotifications([...response.data]);
+      console.log("🔔 Updated notifications state:", notifications);
     } catch (error) {
       console.error("❌ Error fetching notifications:", error);
     }
   };
-
 
   useEffect(() => {
     console.log("👤 User detected:", user); // ✅ Log user info
@@ -80,7 +81,9 @@ const Topbar = ({ }) => {
     console.log("🔥 Notifications state updated:", notifications);
   }, [notifications]); // ✅ Ensure React tracks updates
 
-  const hasBothRoles = user?.roles?.includes('LSEED-Coordinator') && user?.roles?.includes('Mentor');
+  const hasBothRoles =
+    user?.roles?.includes("LSEED-Coordinator") &&
+    user?.roles?.includes("Mentor");
 
   return (
     <Box display="flex" justifyContent="space-between" p={2}>
@@ -138,12 +141,12 @@ const Topbar = ({ }) => {
           onClose={handleNotifClose}
           sx={{
             "& .MuiPaper-root": {
-              width: "300px",
+              width: "400px", // ✅ Increased width for better content display
               backgroundColor: "#fff",
               color: "#000",
               border: "1px solid #000",
               boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)",
-              maxHeight: "300px", // ✅ This limits height before scrolling
+              maxHeight: "400px", // ✅ Increased height
               overflowY: "auto",
             },
           }}
@@ -157,6 +160,9 @@ const Topbar = ({ }) => {
               fontSize: "1.2rem",
               fontWeight: "bold",
               padding: "10px",
+              position: "sticky", // ✅ Keep header visible while scrolling
+              top: 0,
+              zIndex: 1,
             }}
           >
             Notifications
@@ -165,48 +171,100 @@ const Topbar = ({ }) => {
           {/* Debug JSX */}
           {console.log("🛠 Rendering Notifications:", notifications)}
 
-          {/* Notification Items */}
-          {notifications.length > 0 ? (
-            notifications.map((notif, index) => (
-              <Box key={notif.notification_id}>
-                <MenuItem
-                  onClick={handleNotifClose}
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    padding: "12px",
-                    "&:hover": { backgroundColor: "#f0f0f0" },
-                  }}
-                >
-                  <Typography sx={{ fontWeight: "bold" }}>
-                    {notif.title}
-                  </Typography>
+          {/* Notification Items Container with Horizontal Scroll */}
+          <Box
+            sx={{
+              maxHeight: "340px", // ✅ Container height for vertical scrolling
+              overflowY: "auto",
+            }}
+          >
+            {notifications.length > 0 ? (
+              notifications.map((notif, index) => (
+                <Box key={notif.notification_id}>
+                  <MenuItem
+                    onClick={handleNotifClose}
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      padding: "12px",
+                      "&:hover": { backgroundColor: "#f0f0f0" },
+                      minHeight: "auto", // ✅ Allow flexible height
+                    }}
+                  >
+                    {/* Notification Content with Horizontal Scroll */}
+                    <Box
+                      sx={{
+                        width: "100%",
+                        overflowX: "auto", // ✅ Enable horizontal scrolling
+                        overflowY: "hidden",
+                        "&::-webkit-scrollbar": {
+                          height: "6px", // ✅ Thin horizontal scrollbar
+                        },
+                        "&::-webkit-scrollbar-track": {
+                          backgroundColor: "#f1f1f1",
+                          borderRadius: "3px",
+                        },
+                        "&::-webkit-scrollbar-thumb": {
+                          backgroundColor: "#888",
+                          borderRadius: "3px",
+                          "&:hover": {
+                            backgroundColor: "#555",
+                          },
+                        },
+                      }}
+                    >
+                      <Box sx={{ minWidth: "300px", paddingBottom: "4px" }}>
+                        <Typography
+                          sx={{
+                            fontWeight: "bold",
+                            whiteSpace: "nowrap", // ✅ Prevent text wrapping for title
+                          }}
+                        >
+                          {notif.title}
+                        </Typography>
 
-                  {/* ✅ Display different messages based on status */}
-                  <Typography variant="body2">
-                    {notif.title === "Scheduling Approval Needed"
-                      ? `${notif.sender_name} created a schedule for ${notif.se_name}.` // ✅ LSEED users see this
-                      : notif.title === "LSEED Approval"
-                      ? `Your desired schedule for ${notif.se_name} is already accepted by the LSEED.`
-                      : notif.title === "Social Enterprise Approval"
-                      ? `The ${notif.se_name} has agreed to your desired schedule.`
-                      : notif.title}
-                  </Typography>
+                        {/* ✅ Display different messages based on status */}
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            whiteSpace: "nowrap", // ✅ Prevent text wrapping for content
+                            marginTop: "4px",
+                          }}
+                        >
+                          {notif.title === "Scheduling Approval Needed"
+                            ? `${notif.sender_name} created a schedule for ${notif.se_name}.` // ✅ LSEED users see this
+                            : notif.title === "LSEED Approval"
+                            ? `Your desired schedule for ${notif.se_name} is already accepted by the LSEED.`
+                            : notif.title === "Social Enterprise Approval"
+                            ? `The ${notif.se_name} has agreed to your desired schedule.`
+                            : notif.title}
+                        </Typography>
 
-                  <Typography variant="caption" color="gray">
-                    {new Date(notif.created_at).toLocaleString()}
-                  </Typography>
-                </MenuItem>
+                        <Typography
+                          variant="caption"
+                          color="gray"
+                          sx={{
+                            whiteSpace: "nowrap", // ✅ Prevent text wrapping for timestamp
+                            marginTop: "4px",
+                            display: "block",
+                          }}
+                        >
+                          {new Date(notif.created_at).toLocaleString()}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </MenuItem>
 
-                {index < notifications.length - 1 && <Divider />}
-              </Box>
-            ))
-          ) : (
-            <MenuItem sx={{ textAlign: "center", padding: "15px" }}>
-              No new notifications
-            </MenuItem>
-          )}
+                  {index < notifications.length - 1 && <Divider />}
+                </Box>
+              ))
+            ) : (
+              <MenuItem sx={{ textAlign: "center", padding: "15px" }}>
+                No new notifications
+              </MenuItem>
+            )}
+          </Box>
         </Menu>
 
         {/* <IconButton>
@@ -223,7 +281,7 @@ const Topbar = ({ }) => {
           open={Boolean(anchorEl)}
           onClose={handleMenuClose}
         >
-          <MenuItem 
+          <MenuItem
             onClick={() => {
               handleMenuClose();
               navigate("/profile");
