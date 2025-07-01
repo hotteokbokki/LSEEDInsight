@@ -15,6 +15,9 @@ import {
   Typography,
   Menu,
   Grid,
+  OutlinedInput,
+  Checkbox,
+  ListItemText,
 } from "@mui/material";
 import { tokens } from "../../theme";
 import Chip from '@mui/material/Chip';
@@ -44,6 +47,20 @@ const Mentors = ( {} ) => {
     selectedMentor: "",
     selectedSocialEnterprise: "",
   });
+  const [menuOpenBusiness, setMenuOpenBusiness] = useState(false);
+  const [menuOpenPreferredTime, setMenuOpenPreferredTime] = useState(false);
+  const [menuOpenCommunicationModes, setMenuOpenCommunicationModes] = useState(false);
+  const [openApplyDialog, setOpenApplyDialog] = useState(false);
+  const [formData, setFormData] = useState({
+    affiliation: "",
+    motivation: "",
+    expertise: "",
+    businessAreas: [],
+    preferredTime: [],
+    specificTime: "",
+    communicationMode: [],
+    // ...you can prefill these with user info from the backend if you fetch it
+  });
   const [mentorships, setMentorships] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
   const [menuRowId, setMenuRowId] = useState(null); 
@@ -72,11 +89,50 @@ const Mentors = ( {} ) => {
   const [selectedMentor, setSelectedMentor] = useState(null);
   const [mentorSearch, setMentorSearch] = useState(""); // For autocomplete input
   const [selectedSE, setSelectedSE] = useState("");
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const hasMentorRole = user?.roles?.includes("Mentor");
   const isLSEEDCoordinator = user?.roles?.includes("LSEED-Coordinator");
+
+  const businessAreasList = [
+    "Application Development",
+    "Business Registration Process",
+    "Community Development",
+    "Expansion/Acceleration",
+    "Finance",
+    "Human Resource",
+    "Intellectual Property",
+    "Legal Aspects and Compliance",
+    "Management",
+    "Marketing",
+    "Online engagement",
+    "Operations",
+    "Product Development",
+    "Sales",
+    "Supply Chain and Logistics",
+    "Technology Development",
+    "Social Impact",
+  ];
+
+  const preferredTimeList = [
+    "Weekday (Morning) 8AM - 12NN",
+    "Weekday (Afternoon) 1PM - 5PM",
+    "Other",
+  ];
+
+  const communicationModes = [
+    "Face to Face",
+    "Facebook Messenger",
+    "Google Meet",
+    "Zoom",
+    "Other",
+  ];
 
   // Fetch mentors from the database
   const fetchMentors = async () => {
@@ -115,6 +171,170 @@ const Mentors = ( {} ) => {
   const handleCloseMenu = () => {
     setAnchorEl(null);
     setMenuRowId(null);
+  };
+
+  const businessAreasSelect = () => (
+    <FormControl fullWidth sx={{ mt: 2 }}>
+      <InputLabel>Business Areas</InputLabel>
+      <Select
+        multiple
+        value={formData.businessAreas}
+        onChange={(e) =>
+          setFormData((prev) => ({
+            ...prev,
+            businessAreas: e.target.value.filter(Boolean),
+          }))
+        }
+        input={<OutlinedInput label="Business Areas" />}
+        renderValue={(selected) => selected.join(", ")}
+        open={menuOpenBusiness}
+        onOpen={() => setMenuOpenBusiness(true)}
+        onClose={() => setMenuOpenBusiness(false)}
+      >
+        {businessAreasList.map((area) => (
+          <MenuItem key={area} value={area}>
+            <Checkbox checked={formData.businessAreas.includes(area)} />
+            <ListItemText primary={area} />
+          </MenuItem>
+        ))}
+        <MenuItem disableRipple divider>
+          <Button
+            fullWidth
+            variant="contained"
+            color="primary"
+            onClick={() => setMenuOpenBusiness(false)}
+          >
+            Done
+          </Button>
+        </MenuItem>
+      </Select>
+    </FormControl>
+  );
+
+  const preferredTimeSelect = () => (
+    <FormControl fullWidth sx={{ mt: 2 }}>
+      <InputLabel>Preferred Time</InputLabel>
+      <Select
+        multiple
+        value={formData.preferredTime}
+        onChange={(e) =>
+          setFormData((prev) => ({
+            ...prev,
+            preferredTime: e.target.value.filter(Boolean),
+          }))
+        }
+        input={<OutlinedInput label="Preferred Time" />}
+        renderValue={(selected) => selected.join(", ")}
+        open={menuOpenPreferredTime}
+        onOpen={() => setMenuOpenPreferredTime(true)}
+        onClose={() => setMenuOpenPreferredTime(false)}
+      >
+        {preferredTimeList.map((time) => (
+          <MenuItem key={time} value={time}>
+            <Checkbox checked={formData.preferredTime.includes(time)} />
+            <ListItemText primary={time} />
+          </MenuItem>
+        ))}
+        <MenuItem disableRipple divider>
+          <Button
+            fullWidth
+            variant="contained"
+            color="primary"
+            onClick={() => setMenuOpenPreferredTime(false)}
+          >
+            Done
+          </Button>
+        </MenuItem>
+      </Select>
+    </FormControl>
+  );
+
+  const communicationModeSelect = () => (
+    <FormControl fullWidth sx={{ mt: 2 }}>
+      <InputLabel>Communication Modes</InputLabel>
+      <Select
+        multiple
+        value={formData.communicationMode}
+        onChange={(e) =>
+          setFormData((prev) => ({
+            ...prev,
+            communicationMode: e.target.value.filter(Boolean),
+          }))
+        }
+        input={<OutlinedInput label="Communication Modes" />}
+        renderValue={(selected) => selected.join(", ")}
+        open={menuOpenCommunicationModes}
+        onOpen={() => setMenuOpenCommunicationModes(true)}
+        onClose={() => setMenuOpenCommunicationModes(false)}
+      >
+        {communicationModes.map((mode) => (
+          <MenuItem key={mode} value={mode}>
+            <Checkbox checked={formData.communicationMode.includes(mode)} />
+            <ListItemText primary={mode} />
+          </MenuItem>
+        ))}
+        <MenuItem disableRipple divider>
+          <Button
+            fullWidth
+            variant="contained"
+            color="primary"
+            onClick={() => setMenuOpenCommunicationModes(false)}
+          >
+            Done
+          </Button>
+        </MenuItem>
+      </Select>
+    </FormControl>
+  );
+
+  const handleApplySubmit = async (e) => {
+    e.preventDefault();
+
+    console.log("DATA: ",formData)
+
+    try {
+      // You can POST this to your API
+      await fetch(`${process.env.REACT_APP_API_BASE_URL}/apply-as-mentor`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, userId: user.id, email: user.email }),
+        credentials: "include",  // ✅ this line ensures cookies/session are sent
+      });
+
+      setSnackbar({
+        open: true,
+        message: "Your mentor application was submitted!",
+        severity: "success",
+      });
+
+      setOpenApplyDialog(false);
+      setFormData({
+        affiliation: "",
+        motivation: "",
+        expertise: "",
+        businessAreas: [],
+        preferredTime: [],
+        specificTime: "",
+        communicationMode: [],
+      });
+       setTimeout(() => {
+        window.location.reload();
+      }, 2000); // Adjust delay if needed
+    } catch (error) {
+      console.error("Error submitting application:", error);
+      setSnackbar({
+        open: true,
+        message: "Error submitting application.",
+        severity: "error",
+      });
+    }
+  };
+
+  const handleMentorApplicationInputChange = (e, key) => {
+    setFormData((prev) => ({
+      ...prev,
+      [key]: e.target.value,
+    }));
   };
 
   const handleAcceptMentor = async (row) => {
@@ -519,6 +739,10 @@ const Mentors = ( {} ) => {
   const toggleEditing = () => {
     setIsEditing(true);
     setShowEditButtons(true); // Toggle button visibility
+  };
+
+  const handleApplyAsMentor = () => {
+    navigate("/mentor-application"); // Or open a dialog, depending on your design
   };
 
   const columns = [
@@ -1462,14 +1686,36 @@ const Mentors = ( {} ) => {
           backgroundColor={colors.primary[400]}
           padding="20px"
         >
-          <Typography
-            variant="h3"
-            fontWeight="bold"
-            color={colors.greenAccent[500]}
-            marginBottom="15px"
-          >
-            Mentors
-          </Typography>
+          {/* Top Row with Title and Button */}
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb="15px">
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+            >
+              Mentors
+            </Typography>
+
+            {user?.roles?.includes("LSEED-Coordinator") && (
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={() => setOpenApplyDialog(true)}
+                sx={{
+                  backgroundColor: colors.greenAccent[500],
+                  color: "#fff",
+                  textTransform: "none",
+                  "&:hover": {
+                    backgroundColor: colors.greenAccent[600],
+                  },
+                }}
+              >
+                Apply to Be a Mentor
+              </Button>
+            )}
+          </Box>
+
+          {/* DataGrid Box */}
           <Box
             width="100%"
             height="600px"
@@ -1490,29 +1736,29 @@ const Mentors = ( {} ) => {
               },
             }}
           >
-              <DataGrid
-                rows={rows}
-                columns={columns}
-                getRowId={(row) => row.id}
-                getRowHeight={() => 'auto'}
-                processRowUpdate={(params) => {
-                  handleMentorRowUpdate(params);
-                  return params;
-                }}
-                editMode="row"
-                sx={{
-                  "& .MuiDataGrid-cell": {
-                    display: "flex",
-                    alignItems: "center",
-                    paddingTop: "12px",
-                    paddingBottom: "12px",
-                  },
-                  "& .MuiDataGrid-cellContent": {
-                    whiteSpace: "normal",
-                    wordBreak: "break-word",
-                  },
-                }}
-              />
+            <DataGrid
+              rows={rows}
+              columns={columns}
+              getRowId={(row) => row.id}
+              getRowHeight={() => 'auto'}
+              processRowUpdate={(params) => {
+                handleMentorRowUpdate(params);
+                return params;
+              }}
+              editMode="row"
+              sx={{
+                "& .MuiDataGrid-cell": {
+                  display: "flex",
+                  alignItems: "center",
+                  paddingTop: "12px",
+                  paddingBottom: "12px",
+                },
+                "& .MuiDataGrid-cellContent": {
+                  whiteSpace: "normal",
+                  wordBreak: "break-word",
+                },
+              }}
+            />
           </Box>
         </Box>
 
@@ -1663,6 +1909,92 @@ const Mentors = ( {} ) => {
           </Box>
         )}
       </Box>
+
+      {/* MENTOR APPLICATIONS DIALOG BOX*/}
+      <Dialog
+        open={openApplyDialog}
+        onClose={() => setOpenApplyDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: colors.primary[400], color: colors.greenAccent[500] }}>
+          Apply to Be a Mentor
+        </DialogTitle>
+        <DialogContent sx={{ bgcolor: colors.primary[400] }}>
+          <form onSubmit={handleApplySubmit}>
+            {[
+              {
+                label: "Affiliation (Position/Organization)",
+                key: "affiliation",
+              },
+              {
+                label: "Reason/Motivation to volunteer",
+                key: "motivation",
+                multiline: true,
+              },
+              { label: "Areas of Expertise", key: "expertise" },
+            ].map((field) => (
+              <TextField
+                key={field.key}
+                name={field.key}
+                label={field.label}
+                fullWidth
+                required
+                multiline={field.multiline}
+                minRows={field.multiline ? 2 : undefined}
+                value={formData[field.key]}
+                onChange={(e) => handleMentorApplicationInputChange(e, field.key)}
+                sx={{ mt: 2 }}
+              />
+            ))}
+
+            {/* Business Areas */}
+            {businessAreasSelect()}
+
+            {/* Preferred Time */}
+            {preferredTimeSelect()}
+
+            {formData.preferredTime.includes("Other") && (
+              <TextField
+                label="Specify preferred time"
+                fullWidth
+                required
+                value={formData.specificTime}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    specificTime: e.target.value,
+                  }))
+                }
+                sx={{ mt: 2 }}
+              />
+            )}
+
+            {/* Communication Modes */}
+            {communicationModeSelect()}
+
+            <Box display="flex" justifyContent="flex-end" mt={3}>
+              <Button
+                onClick={() => setOpenApplyDialog(false)}
+                sx={{ mr: 2 }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                type="submit"
+                sx={{
+                  backgroundColor: colors.greenAccent[500],
+                  "&:hover": { backgroundColor: colors.greenAccent[600] },
+                  color: "#fff",
+                }}
+              >
+                Submit Application
+              </Button>
+            </Box>
+          </form>
+        </DialogContent>
+      </Dialog>
       {/* MENTOR APPLICATIONS VIEW BOX */}
       <Dialog
         open={openApplicationDialog}
@@ -1769,6 +2101,21 @@ const Mentors = ( {} ) => {
         >
           {snackbarMessage}            
         </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+      <Alert
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        severity={snackbar.severity}
+        sx={{ width: "100%" }}
+      >
+        {snackbar.message}
+      </Alert>
       </Snackbar>
 
     </Box>

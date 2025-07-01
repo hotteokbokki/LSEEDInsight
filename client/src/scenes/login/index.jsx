@@ -59,7 +59,9 @@ const Login = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState("success"); // or "error", "info", etc.
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
-
+  const [menuOpenBusiness, setMenuOpenBusiness] = useState(false);
+  const [menuOpenPreferredTime, setMenuOpenPreferredTime] = useState(false);
+  const [menuOpenCommunicationModes, setMenuOpenCommunicationModes] = useState(false);
   const businessAreasList = [
     "Application Development",
     "Business Registration Process",
@@ -94,11 +96,6 @@ const Login = () => {
     "Other",
   ];
 
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuOpenCommunicationModes, setMenuOpenCommunicationModes] =
-    useState(false);
-  const [menuOpenPreferredTime, setMenuOpenPreferredTime] = useState(false);
-
   const handleDonePreferredTime = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -109,12 +106,6 @@ const Login = () => {
     e.preventDefault();
     e.stopPropagation();
     setMenuOpenCommunicationModes(false);
-  };
-
-  const handleDoneClick = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setMenuOpen(false);
   };
 
   const handleFlip = () => {
@@ -196,6 +187,21 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setHasSubmitted(true); // Mark that the user tried submitting
+
+    // ✅ Check for weak password
+    if (
+        !passwordChecklist.length ||
+        !passwordChecklist.uppercase ||
+        !passwordChecklist.number ||
+        !passwordChecklist.specialChar
+    ) {
+        setSnackbarMessage(
+        "Password is too weak. Please follow the required rules."
+        );
+        setSnackbarSeverity("error");
+        setSnackbarOpen(true);
+        return;
+    }
 
     // Validate password match
     if (formData.password !== formData.confirmPassword) {
@@ -461,28 +467,21 @@ const Login = () => {
 
                     {/* Business Areas */}
                     <FormControl fullWidth sx={{ mt: 2 }}>
-                      <InputLabel sx={{ color: "#000" }}>
-                        Business Areas
-                      </InputLabel>
+                      <InputLabel>Business Areas</InputLabel>
                       <Select
                         multiple
                         value={formData.businessAreas}
-                        onChange={(e) => {
-                          const selected = e.target.value.filter(Boolean); // 💡 remove undefined/null/empty
+                        onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            businessAreas: selected,
-                          }));
-                        }}
+                            businessAreas: e.target.value.filter(Boolean),
+                          }))
+                        }
                         input={<OutlinedInput label="Business Areas" />}
-                        open={menuOpen}
-                        onOpen={() => setMenuOpen(true)}
-                        onClose={() => setMenuOpen(false)}
-                        renderValue={(selected) => (
-                          <span style={{ color: "#000" }}>
-                            {selected.join(", ")}
-                          </span>
-                        )}
+                        renderValue={(selected) => selected.join(", ")}
+                        open={menuOpenBusiness}
+                        onOpen={() => setMenuOpenBusiness(true)}
+                        onClose={() => setMenuOpenBusiness(false)}
                         sx={{
                           color: "#000", // Changed from "#fff" to "#000"
                           "& .MuiOutlinedInput-notchedOutline": {
@@ -490,33 +489,18 @@ const Login = () => {
                           },
                         }}
                       >
-                        {businessAreasList.filter(Boolean).map((area) => (
-                          <MenuItem
-                            key={area}
-                            value={area}
-                            onClick={() => setMenuOpen(true)}
-                          >
-                            <Checkbox
-                              checked={formData.businessAreas.includes(area)}
-                            />
-                            <ListItemText
-                              primary={area}
-                              sx={{ color: "white" }}
-                            />
+                        {businessAreasList.map((area) => (
+                          <MenuItem key={area} value={area}>
+                            <Checkbox checked={formData.businessAreas.includes(area)} />
+                            <ListItemText primary={area} />
                           </MenuItem>
                         ))}
-
-                        {/* Done Button */}
-                        <MenuItem
-                          disableRipple
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={handleDoneClick}
-                          sx={{ justifyContent: "center" }}
-                        >
+                        <MenuItem disableRipple divider>
                           <Button
+                            fullWidth
                             variant="contained"
                             color="primary"
-                            sx={{ width: "100%" }}
+                            onClick={() => setMenuOpenBusiness(false)}
                           >
                             Done
                           </Button>
@@ -525,28 +509,22 @@ const Login = () => {
                     </FormControl>
 
                     {/* Preferred Time Selection */}
-                    <FormControl fullWidth required sx={{ mt: 2 }}>
-                      <InputLabel sx={{ color: "#000" }}>
-                        Preferred Time
-                      </InputLabel>
+                    <FormControl fullWidth sx={{ mt: 2 }}>
+                      <InputLabel>Preferred Time</InputLabel>
                       <Select
                         multiple
                         value={formData.preferredTime}
                         onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            preferredTime: e.target.value.filter(Boolean), // filter out undefined
+                            preferredTime: e.target.value.filter(Boolean),
                           }))
                         }
                         input={<OutlinedInput label="Preferred Time" />}
+                        renderValue={(selected) => selected.join(", ")}
                         open={menuOpenPreferredTime}
                         onOpen={() => setMenuOpenPreferredTime(true)}
                         onClose={() => setMenuOpenPreferredTime(false)}
-                        renderValue={(selected) => (
-                          <span style={{ color: "#000" }}>
-                            {selected.join(", ")}
-                          </span>
-                        )}
                         sx={{
                           color: "#000", // Changed from "#fff" to "#000"
                           "& .MuiOutlinedInput-notchedOutline": {
@@ -554,26 +532,19 @@ const Login = () => {
                           },
                         }}
                       >
-                        {preferredTimeList.filter(Boolean).map((time) => (
+                        {preferredTimeList.map((time) => (
                           <MenuItem key={time} value={time}>
-                            <Checkbox
-                              checked={formData.preferredTime.includes(time)}
-                            />
-                            <ListItemText
-                              primary={time}
-                              sx={{ color: "white" }}
-                            />
+                            <Checkbox checked={formData.preferredTime.includes(time)} />
+                            <ListItemText primary={time} />
                           </MenuItem>
                         ))}
-
-                        {/* Done button */}
-                        <MenuItem
-                          disableRipple
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={handleDonePreferredTime}
-                          sx={{ justifyContent: "center" }}
-                        >
-                          <Button variant="contained" color="primary" fullWidth>
+                        <MenuItem disableRipple divider>
+                          <Button
+                            fullWidth
+                            variant="contained"
+                            color="primary"
+                            onClick={() => setMenuOpenPreferredTime(false)}
+                          >
                             Done
                           </Button>
                         </MenuItem>
@@ -606,15 +577,10 @@ const Login = () => {
                     )}
 
                     {/* Communication Modes */}
-                    <FormControl fullWidth required sx={{ mt: 2 }}>
-                      <InputLabel sx={{ color: "#000" }}>
-                        Communication Modes
-                      </InputLabel>
+                    <FormControl fullWidth sx={{ mt: 2 }}>
+                      <InputLabel>Communication Modes</InputLabel>
                       <Select
                         multiple
-                        open={menuOpenCommunicationModes}
-                        onOpen={() => setMenuOpenCommunicationModes(true)}
-                        onClose={() => setMenuOpenCommunicationModes(false)}
                         value={formData.communicationMode}
                         onChange={(e) =>
                           setFormData((prev) => ({
@@ -623,47 +589,29 @@ const Login = () => {
                           }))
                         }
                         input={<OutlinedInput label="Communication Modes" />}
-                        renderValue={(selected) => (
-                          <span style={{ color: "#000" }}>
-                            {selected.join(", ")}
-                          </span>
-                        )}
+                        renderValue={(selected) => selected.join(", ")}
+                        open={menuOpenCommunicationModes}
+                        onOpen={() => setMenuOpenCommunicationModes(true)}
+                        onClose={() => setMenuOpenCommunicationModes(false)}
                         sx={{
                           color: "#000", // Changed from "#fff" to "#000"
                           "& .MuiOutlinedInput-notchedOutline": {
                             borderColor: "#000",
                           },
-                          "&:hover .MuiOutlinedInput-notchedOutline": {
-                            borderColor: "#000",
-                          },
-                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                            borderColor: "#000",
-                          },
                         }}
                       >
-                        {communicationModes.filter(Boolean).map((mode) => (
+                        {communicationModes.map((mode) => (
                           <MenuItem key={mode} value={mode}>
-                            <Checkbox
-                              checked={formData.communicationMode.includes(
-                                mode
-                              )}
-                            />
-                            <ListItemText
-                              primary={mode}
-                              sx={{ color: "white" }}
-                            />
+                            <Checkbox checked={formData.communicationMode.includes(mode)} />
+                            <ListItemText primary={mode} />
                           </MenuItem>
                         ))}
-                        <MenuItem
-                          disableRipple
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={handleDoneCommunicationModes}
-                          sx={{ justifyContent: "center" }}
-                        >
+                        <MenuItem disableRipple divider>
                           <Button
+                            fullWidth
                             variant="contained"
                             color="primary"
-                            sx={{ width: "100%" }}
+                            onClick={() => setMenuOpenCommunicationModes(false)}
                           >
                             Done
                           </Button>

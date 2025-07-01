@@ -1,8 +1,11 @@
 const express = require("express");
 const session = require("express-session");
+<<<<<<< Updated upstream
 
-const cors = require("cors");
+=======
 const { v4: uuidv4 } = require('uuid');
+>>>>>>> Stashed changes
+const cors = require("cors");
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt'); // For password hashing
 const cron = require('node-cron'); // For automating password changing
@@ -699,6 +702,143 @@ app.post("/logout", (req, res) => {
   });
 });
 
+app.post("/apply-as-mentor", async (req, res) => {
+  const {
+    affiliation,
+    motivation,
+    expertise,
+    businessAreas,
+    preferredTime,
+    specificTime, // optional field for "Other"
+    communicationMode
+  } = req.body;
+
+  const mentorID = req.session.user?.id;
+
+  console.log("✅ [apply-as-mentor] Called with session.id:", mentorID);
+  console.log("✅ [apply-as-mentor] Body payload:", {
+    affiliation,
+    motivation,
+    expertise,
+    businessAreas,
+    preferredTime,
+    specificTime,
+    communicationMode
+  });
+
+  try {
+    // ✅ Validate required fields
+    if (
+      !affiliation || !motivation || !expertise ||
+      !Array.isArray(businessAreas) || businessAreas.length === 0 ||
+      !Array.isArray(preferredTime) || preferredTime.length === 0 ||
+      !Array.isArray(communicationMode) || communicationMode.length === 0
+    ) {
+      console.warn("⚠️ [apply-as-mentor] Missing required fields");
+      return res.status(400).json({ message: "All required fields must be provided." });
+    }
+
+    // ✅ Fetch user info from users table
+    console.log("🔍 [apply-as-mentor] Querying user info for user_id:", mentorID);
+    const userQuery = `
+      SELECT first_name, last_name, email, contactnum, password
+      FROM users
+      WHERE user_id = $1
+    `;
+    const userResult = await pgDatabase.query(userQuery, [mentorID]);
+
+    console.log("✅ [apply-as-mentor] User query result:", userResult.rows);
+
+    if (userResult.rows.length === 0) {
+      console.error("❌ [apply-as-mentor] User not found in DB");
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const {
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      contact_no: contactno,
+      password
+    } = userResult.rows[0];
+
+    console.log("✅ [apply-as-mentor] User details fetched:", {
+      firstName,
+      lastName,
+      email,
+      contactno
+    });
+
+    // ✅ Merge "Other" input into preferredTime array
+    let updatedPreferredTime = preferredTime.filter(Boolean);
+    if (updatedPreferredTime.includes("Other") && specificTime?.trim()) {
+      updatedPreferredTime = updatedPreferredTime.filter(t => t !== "Other");
+      updatedPreferredTime.push(`${specificTime.trim()}`);
+      console.log("✅ [apply-as-mentor] specificTime merged into preferredTime:", updatedPreferredTime);
+    } else {
+      console.log("✅ [apply-as-mentor] preferredTime:", updatedPreferredTime);
+    }
+
+    // ✅ Insert mentor application
+    console.log("📝 [apply-as-mentor] Inserting mentor application...");
+
+    const insertQuery = `
+      INSERT INTO mentor_form_application (
+        first_name,
+        last_name,
+        email,
+        password,
+        affiliation,
+        motivation,
+        expertise,
+        business_areas,
+        preferred_time,
+        communication_mode,
+        status,
+        contact_no
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'Pending',$11)
+      RETURNING *;
+    `;
+
+    const values = [
+      firstName,
+      lastName,
+      email,
+      password,
+      affiliation,
+      motivation,
+      expertise,
+      businessAreas,
+      updatedPreferredTime,
+      communicationMode,
+      contactno
+    ];
+
+    console.log("✅ [apply-as-mentor] Insert values:", values);
+
+    const result = await pgDatabase.query(insertQuery, values);
+    console.log("✅ [apply-as-mentor] Insert result:", result.rows);
+
+    const newApplication = result.rows[0];
+
+    if (!newApplication) {
+      console.error("❌ [apply-as-mentor] Insert returned no rows");
+      return res.status(500).json({ message: "Failed to submit mentor application." });
+    }
+
+    console.log("✅ [apply-as-mentor] Mentor application inserted successfully!");
+
+    res.status(201).json({
+      message: "Mentor application submitted successfully.",
+      application: newApplication,
+    });
+
+  } catch (err) {
+    console.error("❌ [apply-as-mentor] Error during mentor application:", err);
+    res.status(500).json({ message: "An error occurred during mentor application." });
+  }
+});
+
 app.post("/signup", async (req, res) => {
   const {
     firstName,
@@ -776,41 +916,6 @@ app.post("/signup", async (req, res) => {
     if (!newApplication) {
       return res.status(500).json({ message: "Failed to submit mentor application." });
     }
-// ✅ Notify the LSEED Director about new mentor application
-try {
-  // Get the LSEED Director and Coordinator user IDs
-  const lseedDirectorQuery = `
-    SELECT user_id FROM user_has_roles
-    WHERE role_name IN ('LSEED-Director', 'LSEED-Coordinator')
-  `;
-  const directorResult = await pgDatabase.query(lseedDirectorQuery);
-
-  if (directorResult.rows.length > 0) {
-    const mentorFullName = `${firstName} ${lastName}`;
-    const notificationTitle = `New Mentor Application`;
-    const notificationBody = `A new mentor application was submitted by ${mentorFullName}.`;
-
-    for (const director of directorResult.rows) {
-      await pgDatabase.query(
-  `INSERT INTO notification (
-    notification_id,
-    receiver_id,
-    se_id,
-    title,
-    mentoring_session_id,
-    created_at,
-    sender_id
-  ) VALUES ($1, $2, NULL, $3, NULL, NOW(), NULL)`,
-  [uuidv4(), director.user_id, notificationTitle]
-);
-
-    }
-  }
-} catch (notifyError) {
-  console.error("❌ Failed to notify LSEED Director/Coordinator:", notifyError);
-  // Safe to continue even if notification fails
-}
-
 
     res.status(201).json({
       message: "Mentor application submitted successfully.",
@@ -908,47 +1013,111 @@ app.post("/accept-mentor-application", async (req, res) => {
     const app = result.rows[0];
 
     // 2. Check if user email already exists
-    const existingUser = await pgDatabase.query(
+    const existingUserResult = await pgDatabase.query(
       `SELECT * FROM users WHERE email = $1`,
       [app.email]
     );
 
-    if (existingUser.rowCount > 0) {
-      await pgDatabase.query('ROLLBACK'); // Rollback if user already exists
-      return res.status(409).json({ message: "A user with this email already exists." });
+    if (existingUserResult.rowCount > 0) {
+      const existingUser = existingUserResult.rows[0];
+
+      // Check if they are an LSEED-Coordinator
+      const rolesResult = await pgDatabase.query(
+        `SELECT role_name FROM user_has_roles WHERE user_id = $1`,
+        [existingUser.user_id]
+      );
+
+      const roles = rolesResult.rows.map(r => r.role_name);
+      const isCoordinator = roles.includes('LSEED-Coordinator');
+
+      if (!isCoordinator) {
+        // ❌ User exists but is *not* a coordinator → reject
+        await pgDatabase.query('ROLLBACK');
+        return res.status(409).json({ message: "A user with this email already exists and is not a Coordinator." });
+      }
+
+      // ✅ User is Coordinator → add Mentor role
+      await pgDatabase.query(
+        `INSERT INTO user_has_roles (user_id, role_name) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [existingUser.user_id, 'Mentor']
+      );
+
+      // ✅ Insert into mentors table using existing user details + application areas
+      await pgDatabase.query(
+        `INSERT INTO mentors (
+          mentor_id,
+          mentor_firstname,
+          mentor_lastname,
+          email,
+          contactnum,
+          critical_areas,
+          preferred_mentoring_time
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          existingUser.user_id,
+          existingUser.first_name,
+          existingUser.last_name,
+          existingUser.email,
+          existingUser.contactnum,
+          app.business_areas,
+          app.preferred_time
+        ]
+      );
+
+      // ✅ Update application status
+      await pgDatabase.query(
+        `UPDATE mentor_form_application SET status = 'Approved' WHERE id = $1`,
+        [applicationId]
+      );
+
+      await pgDatabase.query('COMMIT');
+      return res.status(201).json({ message: "Coordinator successfully added as Mentor." });
     }
 
-    // 3. Insert into users
+    // 3. User doesn't exist → normal path, create user account
     const userResult = await pgDatabase.query(
       `INSERT INTO users (first_name, last_name, email, password, contactnum, roles, isactive)
-       VALUES ($1, $2, $3, $4, $5, 'Mentor', true) RETURNING user_id`,
+       VALUES ($1, $2, $3, $4, $5, 'Mentor', true)
+       RETURNING user_id`,
       [app.first_name, app.last_name, app.email, app.password, app.contact_no]
     );
 
-    const userId = userResult.rows[0].user_id;
+    const newUserId = userResult.rows[0].user_id;
 
     await pgDatabase.query(
       `INSERT INTO user_has_roles (user_id, role_name) VALUES ($1, $2)`,
-      [userId, 'Mentor']
+      [newUserId, 'Mentor']
     );
 
-    // 4. Insert into mentors
     await pgDatabase.query(
-      `INSERT INTO mentors (mentor_id, mentor_firstname, mentor_lastname, email, contactnum, critical_areas, preferred_mentoring_time)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [userId, app.first_name, app.last_name, app.email, app.contact_no, app.business_areas, app.preferred_time]
+      `INSERT INTO mentors (
+        mentor_id,
+        mentor_firstname,
+        mentor_lastname,
+        email,
+        contactnum,
+        critical_areas,
+        preferred_mentoring_time
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        newUserId,
+        app.first_name,
+        app.last_name,
+        app.email,
+        app.contact_no,
+        app.business_areas,
+        app.preferred_time
+      ]
     );
 
-    // 5. Update application status
     await pgDatabase.query(
       `UPDATE mentor_form_application SET status = 'Approved' WHERE id = $1`,
       [applicationId]
     );
 
-    // Commit the transaction if all operations were successful
     await pgDatabase.query('COMMIT');
+    return res.status(201).json({ message: "Mentor successfully accepted and account created." });
 
-    res.status(201).json({ message: "Mentor successfully accepted and account created." });
   } catch (err) {
     await pgDatabase.query('ROLLBACK');
     console.error("❌ Error processing mentor application:", err);
@@ -1940,7 +2109,7 @@ app.get("/getEvaluationDetailsForMentorEvaluation", async (req, res) => {
       res.status(500).json({ message: "Internal Server Error" });
   }
 });
-
+//DEBUG
 app.get("/api/top-se-performance", async (req, res) => {
   try {
     const period = req.query.period;

@@ -341,18 +341,18 @@ const CoordinatorSignup = () => {
         </div>
 
         <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        >
-        <Alert
+            open={snackbar.open}
+            autoHideDuration={4000}
             onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-            severity={snackbar.severity}
-            sx={{ width: "100%" }}
-        >
-            {snackbar.message}
-        </Alert>
+            anchorOrigin={{ vertical: "top", horizontal: "center" }}
+            >
+            <Alert
+                onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+                severity={snackbar.severity}
+                sx={{ width: "100%" }}
+            >
+                {snackbar.message}
+            </Alert>
         </Snackbar>
     </div>
     );

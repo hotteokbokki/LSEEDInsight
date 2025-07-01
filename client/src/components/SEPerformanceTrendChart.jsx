@@ -14,6 +14,10 @@ const SEPerformanceTrendChart = ({selectedSEId = null}) => {
   const [topPerformer, setTopPerformer] = useState(null);
   const { user } = useAuth();
   const isCoordinator = user?.roles?.includes("LSEED-Coordinator");
+  const isMentor = user?.roles?.includes("Mentor");
+
+  // KEN MAY BUG DITO
+  // Sa debug lumalabas na true kahit ung mode ko sa system is mentor mode, dapat false na yan 
 
   useEffect(() => {
     const fetchTopPerformers = async () => {
@@ -29,7 +33,11 @@ const SEPerformanceTrendChart = ({selectedSEId = null}) => {
           const data = await res.json();
           const program = data[0]?.name; 
           response = await fetch(
-            `${process.env.REACT_APP_API_BASE_URL}/api/top-se-performance?period=${period}&program=${program}`
+            `${process.env.REACT_APP_API_BASE_URL}/api/top-se-performance?period=${period}&program=${program}`,
+            {
+              method: "GET",
+              credentials: "include"
+            }
           );
         } else {
           response = await fetch(
