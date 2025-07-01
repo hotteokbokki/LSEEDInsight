@@ -46,13 +46,13 @@ const Login = () => {
     contactno: "",
 
     // Mentor-Specific Info
-    affiliation: "",           // Position/Organization
-    motivation: "",            // Reason to volunteer
-    expertise: "",             // Areas of Expertise
-    businessAreas: [],         // Multiple choice
-    preferredTime: [],         // Dropdown selection
-    specificTime: "",          // If preferredTime is "Other"
-    communicationMode: [],     // Multiple choice
+    affiliation: "", // Position/Organization
+    motivation: "", // Reason to volunteer
+    expertise: "", // Areas of Expertise
+    businessAreas: [], // Multiple choice
+    preferredTime: [], // Dropdown selection
+    specificTime: "", // If preferredTime is "Other"
+    communicationMode: [], // Multiple choice
   });
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -95,7 +95,8 @@ const Login = () => {
   ];
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuOpenCommunicationModes, setMenuOpenCommunicationModes] = useState(false);
+  const [menuOpenCommunicationModes, setMenuOpenCommunicationModes] =
+    useState(false);
   const [menuOpenPreferredTime, setMenuOpenPreferredTime] = useState(false);
 
   const handleDonePreferredTime = (e) => {
@@ -125,17 +126,20 @@ const Login = () => {
     setErrorMessage("");
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // 🔥 this enables sending/receiving cookies
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE_URL}/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // 🔥 this enables sending/receiving cookies
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        }
+      );
 
       const data = await response.json();
 
@@ -173,7 +177,12 @@ const Login = () => {
 
   const getPasswordStrength = (password) => {
     if (password.length < 6) return "Weak";
-    if (/[A-Z]/.test(password) && /[0-9]/.test(password) && /[\W_]/.test(password)) return "Strong";
+    if (
+      /[A-Z]/.test(password) &&
+      /[0-9]/.test(password) &&
+      /[\W_]/.test(password)
+    )
+      return "Strong";
     return "Moderate";
   };
 
@@ -190,7 +199,9 @@ const Login = () => {
 
     // Validate password match
     if (formData.password !== formData.confirmPassword) {
-      setSnackbarMessage("Passwords do not match. Please correct them before submitting.");
+      setSnackbarMessage(
+        "Passwords do not match. Please correct them before submitting."
+      );
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
       return;
@@ -199,17 +210,22 @@ const Login = () => {
     console.log("Success");
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/signup`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE_URL}/signup`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
 
       const data = await response.json();
       if (response.ok) {
-        setSnackbarMessage("Signup successful! Check email on application status");
+        setSnackbarMessage(
+          "Signup successful! Check email on application status"
+        );
         setSnackbarSeverity("success");
         setSnackbarOpen(true);
         setIsFlipped(false);
@@ -307,7 +323,7 @@ const Login = () => {
                 </div>
                 <form onSubmit={handleSubmit}>
                   <div className="input-boxes">
-                    {[ 
+                    {[
                       { label: "First Name", name: "firstName", type: "text" },
                       { label: "Last Name", name: "lastName", type: "text" },
                       { label: "Email", name: "email", type: "email" },
@@ -337,20 +353,43 @@ const Login = () => {
                     ))}
                     {formData.password && (
                       <Box sx={{ mt: 1, ml: 1 }}>
-                        <Typography variant="body2" sx={{ color: "#000", mb: 0.5 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "#000", mb: 0.5 }}
+                        >
                           Your password must contain:
                         </Typography>
                         <ul style={{ paddingLeft: "20px", marginTop: 0 }}>
-                          <li style={{ color: passwordChecklist.length ? "green" : "red" }}>
+                          <li
+                            style={{
+                              color: passwordChecklist.length ? "green" : "red",
+                            }}
+                          >
                             At least 8 characters
                           </li>
-                          <li style={{ color: passwordChecklist.uppercase ? "green" : "red" }}>
+                          <li
+                            style={{
+                              color: passwordChecklist.uppercase
+                                ? "green"
+                                : "red",
+                            }}
+                          >
                             At least one uppercase letter
                           </li>
-                          <li style={{ color: passwordChecklist.number ? "green" : "red" }}>
+                          <li
+                            style={{
+                              color: passwordChecklist.number ? "green" : "red",
+                            }}
+                          >
                             At least one number
                           </li>
-                          <li style={{ color: passwordChecklist.specialChar ? "green" : "red" }}>
+                          <li
+                            style={{
+                              color: passwordChecklist.specialChar
+                                ? "green"
+                                : "red",
+                            }}
+                          >
                             At least one special character (!@#$%^&*)
                           </li>
                         </ul>
@@ -364,9 +403,13 @@ const Login = () => {
                       required
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
-                      error={hasSubmitted && formData.password !== formData.confirmPassword}
+                      error={
+                        hasSubmitted &&
+                        formData.password !== formData.confirmPassword
+                      }
                       helperText={
-                        hasSubmitted && formData.password !== formData.confirmPassword
+                        hasSubmitted &&
+                        formData.password !== formData.confirmPassword
                           ? "Passwords do not match"
                           : ""
                       }
@@ -381,14 +424,21 @@ const Login = () => {
                         },
                       }}
                     />
-                    {[ 
-                      { label: "Affiliation (Position/Organization)", key: "affiliation" },
-                      { label: "Reason/Motivation to volunteer", key: "motivation", multiline: true },
+                    {[
+                      {
+                        label: "Affiliation (Position/Organization)",
+                        key: "affiliation",
+                      },
+                      {
+                        label: "Reason/Motivation to volunteer",
+                        key: "motivation",
+                        multiline: true,
+                      },
                       { label: "Areas of Expertise", key: "expertise" },
                     ].map((field) => (
                       <TextField
                         key={field.key}
-                        name={field.key} 
+                        name={field.key}
                         label={field.label}
                         fullWidth
                         required
@@ -411,7 +461,9 @@ const Login = () => {
 
                     {/* Business Areas */}
                     <FormControl fullWidth sx={{ mt: 2 }}>
-                      <InputLabel sx={{ color: "#000" }}>Business Areas</InputLabel>
+                      <InputLabel sx={{ color: "#000" }}>
+                        Business Areas
+                      </InputLabel>
                       <Select
                         multiple
                         value={formData.businessAreas}
@@ -427,27 +479,32 @@ const Login = () => {
                         onOpen={() => setMenuOpen(true)}
                         onClose={() => setMenuOpen(false)}
                         renderValue={(selected) => (
-                          <span style={{ color: "#fff" }}>{selected.join(", ")}</span>
+                          <span style={{ color: "#000" }}>
+                            {selected.join(", ")}
+                          </span>
                         )}
                         sx={{
-                          color: "#fff",
+                          color: "#000", // Changed from "#fff" to "#000"
                           "& .MuiOutlinedInput-notchedOutline": {
                             borderColor: "#000",
                           },
                         }}
                       >
-                        {businessAreasList
-                          .filter(Boolean)
-                          .map((area) => (
-                            <MenuItem
-                              key={area}
-                              value={area}
-                              onClick={() => setMenuOpen(true)}
-                            >
-                              <Checkbox checked={formData.businessAreas.includes(area)} />
-                              <ListItemText primary={area} sx={{ color: "#000" }} />
-                            </MenuItem>
-                          ))}
+                        {businessAreasList.filter(Boolean).map((area) => (
+                          <MenuItem
+                            key={area}
+                            value={area}
+                            onClick={() => setMenuOpen(true)}
+                          >
+                            <Checkbox
+                              checked={formData.businessAreas.includes(area)}
+                            />
+                            <ListItemText
+                              primary={area}
+                              sx={{ color: "white" }}
+                            />
+                          </MenuItem>
+                        ))}
 
                         {/* Done Button */}
                         <MenuItem
@@ -456,17 +513,22 @@ const Login = () => {
                           onClick={handleDoneClick}
                           sx={{ justifyContent: "center" }}
                         >
-                          <Button variant="contained" color="primary" sx={{ width: "100%" }}>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            sx={{ width: "100%" }}
+                          >
                             Done
                           </Button>
                         </MenuItem>
                       </Select>
                     </FormControl>
 
-
                     {/* Preferred Time Selection */}
                     <FormControl fullWidth required sx={{ mt: 2 }}>
-                      <InputLabel sx={{ color: "#000" }}>Preferred Time</InputLabel>
+                      <InputLabel sx={{ color: "#000" }}>
+                        Preferred Time
+                      </InputLabel>
                       <Select
                         multiple
                         value={formData.preferredTime}
@@ -481,21 +543,26 @@ const Login = () => {
                         onOpen={() => setMenuOpenPreferredTime(true)}
                         onClose={() => setMenuOpenPreferredTime(false)}
                         renderValue={(selected) => (
-                          <span style={{ color: "#fff" }}>{selected.join(", ")}</span>
+                          <span style={{ color: "#000" }}>
+                            {selected.join(", ")}
+                          </span>
                         )}
                         sx={{
-                          color: "#fff",
+                          color: "#000", // Changed from "#fff" to "#000"
                           "& .MuiOutlinedInput-notchedOutline": {
                             borderColor: "#000",
                           },
                         }}
                       >
-                        {preferredTimeList
-                          .filter(Boolean)
-                          .map((time) => (
+                        {preferredTimeList.filter(Boolean).map((time) => (
                           <MenuItem key={time} value={time}>
-                            <Checkbox checked={formData.preferredTime.includes(time)} />
-                            <ListItemText primary={time} sx={{ color: "#000" }} />
+                            <Checkbox
+                              checked={formData.preferredTime.includes(time)}
+                            />
+                            <ListItemText
+                              primary={time}
+                              sx={{ color: "white" }}
+                            />
                           </MenuItem>
                         ))}
 
@@ -519,10 +586,12 @@ const Login = () => {
                         fullWidth
                         required
                         value={formData.specificTime}
-                        onChange={(e) => setFormData((prev) => ({
-                          ...prev,
-                          specificTime: e.target.value,
-                        }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            specificTime: e.target.value,
+                          }))
+                        }
                         InputProps={{ style: { color: "#000" } }}
                         InputLabelProps={{ style: { color: "#000" } }}
                         sx={{
@@ -538,39 +607,52 @@ const Login = () => {
 
                     {/* Communication Modes */}
                     <FormControl fullWidth required sx={{ mt: 2 }}>
-                      <InputLabel sx={{ color: "#000" }}>Communication Modes</InputLabel>
+                      <InputLabel sx={{ color: "#000" }}>
+                        Communication Modes
+                      </InputLabel>
                       <Select
                         multiple
                         open={menuOpenCommunicationModes}
                         onOpen={() => setMenuOpenCommunicationModes(true)}
                         onClose={() => setMenuOpenCommunicationModes(false)}
                         value={formData.communicationMode}
-                        onChange={(e) => setFormData((prev) => ({
-                          ...prev,
-                          communicationMode: e.target.value.filter(Boolean),
-                        }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            communicationMode: e.target.value.filter(Boolean),
+                          }))
+                        }
                         input={<OutlinedInput label="Communication Modes" />}
                         renderValue={(selected) => (
-                          <span style={{ color: "#fff" }}>{selected.join(", ")}</span>
+                          <span style={{ color: "#000" }}>
+                            {selected.join(", ")}
+                          </span>
                         )}
                         sx={{
-                          color: "#fff",
+                          color: "#000", // Changed from "#fff" to "#000"
                           "& .MuiOutlinedInput-notchedOutline": {
                             borderColor: "#000",
                           },
                           "&:hover .MuiOutlinedInput-notchedOutline": {
-                            borderColor: "#000" },
+                            borderColor: "#000",
+                          },
                           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                            borderColor: "#000" },
+                            borderColor: "#000",
+                          },
                         }}
                       >
-                        {communicationModes
-                          .filter(Boolean)
-                          .map((mode) => (
-                            <MenuItem key={mode} value={mode}>
-                              <Checkbox checked={formData.communicationMode.includes(mode)} />
-                              <ListItemText primary={mode} sx={{ color: "#000" }} />
-                            </MenuItem>
+                        {communicationModes.filter(Boolean).map((mode) => (
+                          <MenuItem key={mode} value={mode}>
+                            <Checkbox
+                              checked={formData.communicationMode.includes(
+                                mode
+                              )}
+                            />
+                            <ListItemText
+                              primary={mode}
+                              sx={{ color: "white" }}
+                            />
+                          </MenuItem>
                         ))}
                         <MenuItem
                           disableRipple
@@ -578,17 +660,26 @@ const Login = () => {
                           onClick={handleDoneCommunicationModes}
                           sx={{ justifyContent: "center" }}
                         >
-                          <Button variant="contained" color="primary" sx={{ width: "100%" }}>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            sx={{ width: "100%" }}
+                          >
                             Done
                           </Button>
                         </MenuItem>
                       </Select>
                     </FormControl>
-
                     {/* Terms and Submit */}
-                    <div className="checkbox-wrapper terms-checkbox" style={{ marginTop: "30px" }}>
+                    <div
+                      className="checkbox-wrapper terms-checkbox"
+                      style={{ marginTop: "30px" }}
+                    >
                       <input type="checkbox" id="terms" name="terms" required />
-                      <label htmlFor="terms" onClick={() => setOpenDialog(true)}>
+                      <label
+                        htmlFor="terms"
+                        onClick={() => setOpenDialog(true)}
+                      >
                         Terms and Conditions
                       </label>
                     </div>
@@ -602,8 +693,12 @@ const Login = () => {
                     )}
 
                     <div className="separator">OR</div>
-                    <div className="text sign-up-text" style={{ marginBottom: "40px" }}>
-                      Already have an account? <label htmlFor="flip">Login now</label>
+                    <div
+                      className="text sign-up-text"
+                      style={{ marginBottom: "40px" }}
+                    >
+                      Already have an account?{" "}
+                      <label htmlFor="flip">Login now</label>
                     </div>
                   </div>
                 </form>
@@ -627,27 +722,53 @@ const Login = () => {
             </Typography>
 
             <Typography variant="body1" paragraph>
-              Thank you once again for your interest in joining our panel of mentors for <strong>LSEED Mentoring</strong>. We truly appreciate it!
+              Thank you once again for your interest in joining our panel of
+              mentors for <strong>LSEED Mentoring</strong>. We truly appreciate
+              it!
             </Typography>
 
             <Typography variant="body1" paragraph>
-              For an overview, LSEED Mentoring is a three-phase online coaching & mentoring initiative of the <strong>Lasallian Social Enterprise for Economic Development (LSEED) Center</strong>, for Lasallian social entrepreneurs and partners. It also serves as a strategy to help Lasallian social enterprises develop new mechanisms to adapt to the ever-changing landscape of social entrepreneurship in the country.
+              For an overview, LSEED Mentoring is a three-phase online coaching
+              & mentoring initiative of the{" "}
+              <strong>
+                Lasallian Social Enterprise for Economic Development (LSEED)
+                Center
+              </strong>
+              , for Lasallian social entrepreneurs and partners. It also serves
+              as a strategy to help Lasallian social enterprises develop new
+              mechanisms to adapt to the ever-changing landscape of social
+              entrepreneurship in the country.
             </Typography>
 
             <Typography variant="body1" paragraph>
-              In order to properly coordinate mentoring session schedules, we would like to inquire about your availability this Academic Year. Your response to this survey will serve as available options for our students/mentees when selecting mentoring session schedules.
+              In order to properly coordinate mentoring session schedules, we
+              would like to inquire about your availability this Academic Year.
+              Your response to this survey will serve as available options for
+              our students/mentees when selecting mentoring session schedules.
             </Typography>
 
             <Typography variant="body1" paragraph>
-              For questions and/or clarifications, you may get in touch with us through email: <a href="mailto:lseed@dlsu.edu.ph">lseed@dlsu.edu.ph</a> or <a href="mailto:norby.salonga@dlsu.edu.ph">norby.salonga@dlsu.edu.ph</a>.
+              For questions and/or clarifications, you may get in touch with us
+              through email:{" "}
+              <a href="mailto:lseed@dlsu.edu.ph">lseed@dlsu.edu.ph</a> or{" "}
+              <a href="mailto:norby.salonga@dlsu.edu.ph">
+                norby.salonga@dlsu.edu.ph
+              </a>
+              .
             </Typography>
 
             <Typography variant="body1" paragraph>
-              <strong>Privacy and Confidentiality Note:</strong> All collected information through this form will only be used for LSEED Online Mentoring.
+              <strong>Privacy and Confidentiality Note:</strong> All collected
+              information through this form will only be used for LSEED Online
+              Mentoring.
             </Typography>
 
             <Typography variant="body1" paragraph>
-              By filling out this form, I understand that I have the responsibility as a volunteer mentor to keep all information (shared and entrusted to me) with utmost confidentiality—specifically the SE ideas and information of students/social entrepreneurs participating in LSEED Mentoring.
+              By filling out this form, I understand that I have the
+              responsibility as a volunteer mentor to keep all information
+              (shared and entrusted to me) with utmost
+              confidentiality—specifically the SE ideas and information of
+              students/social entrepreneurs participating in LSEED Mentoring.
             </Typography>
 
             <Typography variant="body1">

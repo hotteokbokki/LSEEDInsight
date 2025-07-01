@@ -3280,7 +3280,8 @@ app.post("/updateMentorshipDate", async (req, res) => {
 
 const recipientsResult = await pgDatabase.query(recipientsQuery);
 const recipients = recipientsResult.rows;
-
+console.log("📋 Found recipients:", recipients);
+console.log("🎯 Sender ID (mentor):", sender_id);
     // 4. Insert notifications
     const insertNotifQuery = `
       INSERT INTO notification (
@@ -3536,7 +3537,11 @@ app.get("/api/notifications", async (req, res) => {
 
       console.log("🔑 User Roles:", userRoles);
     // Determine the user's effective role for notification purposes
-    const isLSEEDUser = userRoles.some(role => role === "LSEED-Coordinator" || role === "Administrator");
+    const isLSEEDUser = userRoles.some(role => 
+  role === "LSEED-Coordinator" || 
+  role === "LSEED-Director" || 
+  role === "Administrator"
+);
     const isMentorUser = userRoles.includes("Mentor");
 
     let query;
