@@ -95,3 +95,24 @@ exports.getLSEEDCoordinators = async () => {
     return [];
   }
 };
+
+exports.getLSEEDDirectors = async () => {
+  try {
+    const query = `
+      SELECT u.user_id, u.first_name, u.last_name, u.email
+      FROM users u
+      JOIN user_has_roles ur ON u.user_id = ur.user_id
+      WHERE ur.role_name = 'LSEED-Director';
+    `;
+    const result = await pgDatabase.query(query);
+
+    if (result.rows.length === 0) {
+      return [];
+    }
+
+    return result.rows;
+  } catch (error) {
+    console.error("Error fetching LSEED coordinators:", error);
+    return [];
+  }
+};

@@ -64,24 +64,34 @@ const SEAnalytics = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch social enterprises list
+        // Fetch SE list
         const seResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL}/getAllSocialEnterprises`);
         const seData = await seResponse.json();
         const formattedSEData = seData.map((se) => ({
           id: se.se_id,
           name: se.team_name,
-          abbr: se.abbr // Ensure abbreviation is available for financial data processing
+          abbr: se.abbr,
         }));
         setSocialEnterprises(formattedSEData);
 
-        // Set the initial selected SE if `id` is provided
+        // Set selected SE
         if (id) {
+          console.log("[DEBUG] ID param detected:", id);
           const initialSE = formattedSEData.find((se) => se.id === id);
           setSelectedSE(initialSE);
-          setSelectedSEId(id); // Ensure selectedSEId is set from URL param
+          setSelectedSEId(id);
         }
+        // JM Check mo toh, kasi sa current Promise mo once nag error ung isang API error na kaagad yung whole code.
 
-        // Fetch financial statements, cash flow, and inventory data
+        // ✅ Use Promise.all when the calls are all required together and you want to stop if any fails:
+
+        // "I can't render the financial section unless all parts load successfully."
+
+        // ✅ Use Promise.allSettled when partial data is OK:
+
+        // "If cash flow fails, show inventory and financial statements anyway."
+
+        // Fetch financial-related data (still use Promise.all since all must succeed)
         const [financialResponse, cashFlowResponse, inventoryResponse] = await Promise.all([
           axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/financial-statements`),
           axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/cashflow`),
@@ -91,66 +101,101 @@ const SEAnalytics = () => {
         setCashFlowRaw(cashFlowResponse.data);
         setInventoryData(inventoryResponse.data);
 
-        // Fetch SE-specific analytics data
+        // Fetch SE-specific analytics (with fallbacks)
         if (id) {
-          const [statsResponse, criticalAreasResponse, pieResponse, likertResponse, radarResponse, evaluationsResponse] = await Promise.all([
+          const analyticsResults = await Promise.allSettled([
             fetch(`${process.env.REACT_APP_API_BASE_URL}/api/se-analytics-stats/${id}`),
             fetch(`${process.env.REACT_APP_API_BASE_URL}/api/critical-areas/${id}`),
             fetch(`${process.env.REACT_APP_API_BASE_URL}/api/common-challenges/${id}`),
             fetch(`${process.env.REACT_APP_API_BASE_URL}/api/likert-data/${id}`),
             fetch(`${process.env.REACT_APP_API_BASE_URL}/api/radar-data/${id}`),
-            axios.get(`${process.env.REACT_APP_API_BASE_URL}/getMentorEvaluationsBySEID`, { params: { se_id: id } }),
+            axios.get(`${process.env.REACT_APP_API_BASE_URL}/getMentorEvaluationsBySEID`, {
+              params: { se_id: id }
+            }),
           ]);
 
-          const statsData = await statsResponse.json();
-          setStats({
-            registeredUsers: Number(statsData.registeredUsers?.[0]?.total_users) || 0,
-            totalEvaluations: statsData.totalEvaluations?.[0]?.total_evaluations || "0",
-            pendingEvaluations: statsData.pendingEvaluations?.[0]?.pending_evaluations || "0",
-            acknowledgedEvaluations: statsData.acknowledgedEvaluations?.[0]?.acknowledged_evaluations || "0",
-            avgRating: statsData.avgRating?.[0]?.avg_rating || "N/A",
-          });
+          const [
+            statsResult,
+            criticalAreasResult,
+            pieResult,
+            likertResult,
+            radarResult,
+            evaluationsResult
+          ] = analyticsResults;
 
-          const criticalAreasData = await criticalAreasResponse.json();
-          setCriticalAreas(criticalAreasData);
-
-          const rawPieData = await pieResponse.json();
-          const formattedPieData = Array.from(
-            new Map(
-              rawPieData.map((item, index) => [
-                item.category || `Unknown-${index}`,
-                {
-                  id: item.category || `Unknown-${index}`,
-                  label: item.percentage && !isNaN(item.percentage) ? `${parseInt(item.percentage, 10)}%` : "0%",
-                  value: item.count && !isNaN(item.count) ? parseInt(item.count, 10) : 0,
-                  comment: item.comment || "No comment available",
-                },
-              ])
-            ).values()
-          );
-          setPieData(formattedPieData);
-
-          const rawLikertData = await likertResponse.json();
-          setLikertData(rawLikertData);
-
-          const radarChartData = await radarResponse.json();
-          if (Array.isArray(radarChartData)) {
-            setRadarData(radarChartData);
+          // Stats
+          if (statsResult.status === "fulfilled") {
+            const statsData = await statsResult.value.json();
+            console.log("Stats Data", statsData);
+            setStats({
+              registeredUsers: Number(statsData.registeredUsers?.[0]?.total_users) || 0,
+              totalEvaluations: statsData.totalEvaluations?.[0]?.total_evaluations || "0",
+              pendingEvaluations: statsData.pendingEvaluations?.[0]?.pending_evaluations || "0",
+              acknowledgedEvaluations: statsData.acknowledgedEvaluations?.[0]?.acknowledged_evaluations || "0",
+              avgRating: statsData.avgRating?.[0]?.avg_rating || "N/A",
+            });
           } else {
-            console.error("Invalid radar data format", radarChartData);
+            console.warn("Stats data failed:", statsResult.reason);
           }
 
-          const formattedEvaluationsData = evaluationsResponse.data.map((evaluation) => ({
-            id: evaluation.evaluation_id,
-            evaluation_id: evaluation.evaluation_id,
-            evaluator_name: evaluation.evaluator_name,
-            social_enterprise: evaluation.social_enterprise,
-            evaluation_date: evaluation.evaluation_date,
-            acknowledged: evaluation.acknowledged ? "Yes" : "No",
-          }));
-          setEvaluationsData(formattedEvaluationsData);
-        }
+          // Critical Areas
+          if (criticalAreasResult.status === "fulfilled") {
+            const criticalAreasData = await criticalAreasResult.value.json();
+            console.log("Critical Areas", criticalAreasData);
+            setCriticalAreas(criticalAreasData);
+          }
 
+          // Pie Chart
+          if (pieResult.status === "fulfilled") {
+            const rawPieData = await pieResult.value.json();
+            const formattedPieData = Array.from(
+              new Map(
+                rawPieData.map((item, index) => [
+                  item.category || `Unknown-${index}`,
+                  {
+                    id: item.category || `Unknown-${index}`,
+                    label: item.percentage && !isNaN(item.percentage) ? `${parseInt(item.percentage, 10)}%` : "0%",
+                    value: item.count && !isNaN(item.count) ? parseInt(item.count, 10) : 0,
+                    comment: item.comment || "No comment available",
+                  },
+                ])
+              ).values()
+            );
+            setPieData(formattedPieData);
+          }
+
+          // Likert
+          if (likertResult.status === "fulfilled") {
+            const rawLikertData = await likertResult.value.json();
+            setLikertData(rawLikertData);
+          }
+
+          // Radar
+          if (radarResult.status === "fulfilled") {
+            const radarChartData = await radarResult.value.json();
+            if (Array.isArray(radarChartData)) {
+              setRadarData(radarChartData);
+            } else {
+              console.error("Invalid radar data format", radarChartData);
+            }
+          }
+
+          // Evaluations
+          if (evaluationsResult.status === "fulfilled") {
+            const rawEvaluations = evaluationsResult.value.data;
+            const formattedEvaluationsData = rawEvaluations.map((evaluation) => ({
+              id: evaluation.evaluation_id,
+              evaluation_id: evaluation.evaluation_id,
+              evaluator_name: evaluation.evaluator_name,
+              social_enterprise: evaluation.social_enterprise,
+              evaluation_date: evaluation.evaluation_date,
+              acknowledged: evaluation.acknowledged ? "Yes" : "No",
+            }));
+            setEvaluationsData(formattedEvaluationsData);
+          } else {
+            console.warn("No evaluations found or failed to fetch.");
+          }
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -159,7 +204,7 @@ const SEAnalytics = () => {
     };
 
     fetchData();
-  }, [id]); // Re-fetch all data when the ID changes
+  }, [id]);
 
   // Filter financial data for the currently selected SE
   const selectedSEFinancialData = financialData.filter(
@@ -465,10 +510,11 @@ const SEAnalytics = () => {
             progress={
               stats.acknowledgedEvaluations / (stats.totalEvaluations || 1)
             }
-            increase={`${(
-              (stats.acknowledgedEvaluations / (stats.totalEvaluations || 1)) *
-              100
-            ).toFixed(2)}%`}
+            increase={
+              isNaN(stats.acknowledgedEvaluations / stats.totalEvaluations)
+                ? "0%"
+                : `${((stats.acknowledgedEvaluations / stats.totalEvaluations) * 100).toFixed(2)}%`
+            }
             icon={
               <AssignmentIcon
                 sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
@@ -488,11 +534,16 @@ const SEAnalytics = () => {
           <StatBox
             title={stats.pendingEvaluations}
             subtitle="Pending Evaluations"
-            progress={stats.pendingEvaluations / (stats.totalEvaluations || 1)}
-            increase={`${(
-              (stats.pendingEvaluations / (stats.totalEvaluations || 1)) *
-              100
-            ).toFixed(2)}%`}
+            progress={
+              stats.totalEvaluations > 0
+                ? stats.pendingEvaluations / stats.totalEvaluations
+                : 0
+            }
+            increase={
+              stats.totalEvaluations > 0
+                ? `${((stats.pendingEvaluations / stats.totalEvaluations) * 100).toFixed(2)}%`
+                : "0%"
+            }
             icon={
               <AssignmentIcon
                 sx={{ fontSize: "26px", color: colors.redAccent[500] }}

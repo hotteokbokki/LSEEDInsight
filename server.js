@@ -26,7 +26,7 @@ const { getSocialEnterprisesByProgram,
         getAreasOfFocus,
         getSuggestedMentors} = require("./controllers/socialenterprisesController");
 require("dotenv").config();
-const { getUsers, getUserName, getLSEEDCoordinators } = require("./controllers/usersController");
+const { getUsers, getUserName, getLSEEDCoordinators, getLSEEDDirectors } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const pgSession = require("connect-pg-simple")(session);
 const cookieParser = require("cookie-parser");
@@ -99,29 +99,18 @@ const { getApplicationList } = require("./controllers/menteesFormSubmissionsCont
 const { getMentorFormApplications } = require("./controllers/mentorFormApplicationController.js");
 const { getSignUpPassword } = require("./controllers/signuppasswordsController.js");
 const app = express();
-
-
-app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "https://polished-moth-usefully.ngrok-free.app"
-  ],
-  credentials: true
-}));
-
-app.use(express.json());
-
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 const inviteToken = uuidv4();
 
 app.use(cors({
   origin: [
-    "http://localhost:3000",
-    "https://polished-moth-usefully.ngrok-free.app"
+    "http://localhost:3000"
   ],
   credentials: true
 }));
+
+//"https://polished-moth-usefully.ngrok-free.app" include this if for production
 
 app.use(cookieParser());
 
@@ -139,9 +128,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,       // true if HTTPS only in production
+    secure: false,       // true if HTTPS only in production
     httpOnly: true,
-    sameSite: 'none',
+    sameSite: 'lax',     // none only in production
     maxAge: 1000 * 60 * 60 * 24,
   },
 }));
@@ -3307,8 +3296,6 @@ app.post("/api/googleform-webhook", async (req, res) => {
   // Extract email and phone from focal_person_contact
   const focalEmails = extractEmails(focal_person_contact);
   const focalPhones = extractPhoneNumbers(focal_person_contact);
-  const forcedReceiverId = "f0610d88-efea-4a20-b57c-8b76ee1d2d4a";
-  const notificationTitle = `New Mentor Application: ${firstName} ${lastName}`;
   const focal_email = focalEmails[0] || null;
   const focal_phone = focalPhones[0] || null;
 
@@ -3374,14 +3361,18 @@ app.post("/api/googleform-webhook", async (req, res) => {
       ]
     );
 
-    // Existing Mentor Notification in server.js
-    const lseedCoordinators = await getLSEEDCoordinators();
-    if (lseedCoordinators && lseedCoordinators.length > 0) {
-      const notificationTitle = `New Mentor Application: ${firstName} ${lastName}`;
-      for (const coordinator of lseedCoordinators) {
-        const receiverId = coordinator.user_id;
+    // Fetch LSEED-Directors from DB
+    const lseedDirectors = await getLSEEDDirectors(); // change your function if needed
+
+    if (lseedDirectors && lseedDirectors.length > 0) {
+      const notificationTitle = `New Mentor Application: ${team_name}`;
+      
+      for (const director of lseedDirectors) {
+        const receiverId = director.user_id;
+        
         await pgDatabase.query(
-          `INSERT INTO notification (notification_id, receiver_id, title, created_at) VALUES (uuid_generate_v4(), $1, $2, NOW());`,
+          `INSERT INTO notification (notification_id, receiver_id, title, created_at) 
+          VALUES (uuid_generate_v4(), $1, $2, NOW());`,
           [receiverId, notificationTitle]
         );
       }
@@ -3943,7 +3934,6 @@ LEFT JOIN users u ON n.sender_id = u.user_id
 LEFT JOIN socialenterprises se ON n.se_id = se.se_id
 LEFT JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
 WHERE n.receiver_id = $1
-  AND (n.title = 'Scheduling Approval Needed' OR n.title = 'New Mentor Application')
 ORDER BY n.created_at DESC;
 
       `;
