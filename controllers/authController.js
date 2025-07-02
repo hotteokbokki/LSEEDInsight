@@ -102,10 +102,21 @@ exports.forgotPassword = async (req, res) => {
       to: user.email,
       subject: 'Password Reset Request',
       html: `
-        <p>Hi,</p>
-        <p>You requested a password reset. Click the link below to reset your password:</p>
-        <a href="${resetLink}">${resetLink}</a>
-        <p>This link will expire in 15 minutes. Do not reply this is an automated message.</p>
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+          <p style="margin: 0 0 16px;">Hi,</p>
+
+          <p style="margin: 0 0 16px;">
+            You requested a password reset. Click the link below to reset your password:
+          </p>
+
+          <p style="margin: 0 0 16px;">
+            <a href="${resetLink}" style="color: #1a73e8;">${resetLink}</a>
+          </p>
+
+          <p style="margin: 0;">
+            This link will expire in 15 minutes. Do not reply—this is an automated message.
+          </p>
+        </div>
       `,
     });
 

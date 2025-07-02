@@ -444,6 +444,7 @@ const Scheduling = ({}) => {
         program_name: se.program || "Unknown Program",
         sdg_name: se.sdgs || "No SDG Name",
         preferred_times: se.preferred_mentoring_time || [],
+        time_note: se.mentoring_time_note || "No Time Note",
       }));
 
       setSocialEnterprises(updatedSocialEnterprises);
@@ -1448,16 +1449,16 @@ const Scheduling = ({}) => {
                       <ListItemText
                         primary={se.team_name}
                         secondary={
-                          <>
+                          <Box component="span" sx={{ display: "block" }}>
                             {se.program_name}
                             <br />
-                            Preferred Times:{" "}
-                            {se.preferred_times.join(", ") || "None"}
-                          </>
+                            <strong>Preferred Times:</strong> {se.preferred_times.length > 0 ? se.preferred_times.join(", ") : "None"}
+                            <br />
+                            <strong>Time Notes:</strong> {se.time_note}
+                          </Box>
                         }
                         primaryTypographyProps={{
-                          fontWeight:
-                            selectedSE?.id === se.id ? "bold" : "normal",
+                          fontWeight: selectedSE?.id === se.id ? "bold" : "normal",
                           color: "black",
                         }}
                         secondaryTypographyProps={{

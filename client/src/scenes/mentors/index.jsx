@@ -363,22 +363,43 @@ const Mentors = ( {} ) => {
     console.log(`Action: ${action}`, row);
 
     if (action === "Accept") {
-      handleAcceptMentor(row);
+      try {
+        // 1️⃣ Call your existing function to add the mentor (presumably inserts them in the users table)
+        await handleAcceptMentor(row);
 
-      // Show success message
-      setSnackbarMessage("Accepted Application! Mentor Added Successfully");
-      setSnackbarSeverity("success");
-      setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
+        // 2️⃣ Notify the applicant by email
+        await fetch(`${process.env.REACT_APP_API_BASE_URL}/notify-mentor-application-status`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            applicationId: row.id,
+            status: "Accepted",
+          }),
+        });
 
-      setTimeout(() => {
-        window.location.reload();
-      }, 3500); // Adjust delay if needed
+        // 3️⃣ Show success message
+        setSnackbarMessage("Accepted Application! Mentor Added Successfully");
+        setSnackbarSeverity("success");
+        setSnackbarOpen(true);
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 3500);
+      } catch (error) {
+        console.error("❌ Error accepting mentor:", error);
+        setSnackbarMessage("Error processing acceptance. Please try again.");
+        setSnackbarSeverity("error");
+        setSnackbarOpen(true);
+      }
     }
 
     if (action === "Decline") {
-      const applicationId = row.id; // Ensure `row.id` is defined
+      const applicationId = row.id;
 
       try {
+        // 1️⃣ Update application status in DB
         const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/mentor-application/${applicationId}/status`, {
           method: "PUT",
           headers: {
@@ -387,26 +408,38 @@ const Mentors = ( {} ) => {
           body: JSON.stringify({ status: "Declined" }),
         });
 
-        if (response.ok) {
-          console.log("Status updated to Declined.");
-          // Optional: show toast, refresh table, etc.
-        } else {
-          console.error("❌ Failed to decline the application. Response not ok.");
+        if (!response.ok) {
+          throw new Error("Failed to update status in database");
         }
+
+        // 2️⃣ Notify the applicant by email
+        await fetch(`${process.env.REACT_APP_API_BASE_URL}/notify-mentor-application-status`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            applicationId,
+            status: "Declined",
+          }),
+        });
+
+        // 3️⃣ Show success message
+        setSnackbarMessage("Declined Application!");
+        setSnackbarSeverity("success");
+        setSnackbarOpen(true);
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 3500);
       } catch (error) {
-        console.error("❌ Network or server error:", error);
+        console.error("❌ Error declining mentor:", error);
+        setSnackbarMessage("Error processing decline. Please try again.");
+        setSnackbarSeverity("error");
+        setSnackbarOpen(true);
       }
 
-      // Show success message
-      setSnackbarMessage("Declined Application!");
-      setSnackbarSeverity("success");
-      setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
-
-      setTimeout(() => {
-        window.location.reload();
-      }, 3500); // Adjust delay if needed
-
-      handleCloseMenu(); // Close the dropdown
+      handleCloseMenu();
     }
 
     if (action === "View") {

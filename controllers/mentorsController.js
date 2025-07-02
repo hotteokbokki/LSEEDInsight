@@ -50,6 +50,25 @@ exports.getMentorById = async (mentor_id) => {
   }
 };
 
+exports.getCriticalAreasByMentorID = async (mentor_id) => {
+  try {
+    const query = `
+      SELECT DISTINCT unnest(m.critical_areas) AS area
+      FROM mentors m
+      WHERE m.mentor_id = $1;
+    `;
+    const values = [mentor_id];
+
+    const result = await pgDatabase.query(query, values);
+
+    // Extract the 'area' values from result rows
+    return result.rows.map((row) => row.area);
+  } catch (error) {
+    console.error("Error fetching critical areas by mentor ID:", error);
+    return [];
+  }
+};
+
 exports.getActiveMentors = async () => {
   try {
     const query = `

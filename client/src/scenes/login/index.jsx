@@ -36,7 +36,7 @@ const Login = () => {
     number: false,
     specialChar: false,
   });
-  const [formData, setFormData] = useState({
+  const emptyFormData = {
     // General Sign-Up Info
     firstName: "",
     lastName: "",
@@ -46,14 +46,15 @@ const Login = () => {
     contactno: "",
 
     // Mentor-Specific Info
-    affiliation: "", // Position/Organization
-    motivation: "", // Reason to volunteer
-    expertise: "", // Areas of Expertise
-    businessAreas: [], // Multiple choice
-    preferredTime: [], // Dropdown selection
-    specificTime: "", // If preferredTime is "Other"
-    communicationMode: [], // Multiple choice
-  });
+    affiliation: "",
+    motivation: "",
+    expertise: "",
+    businessAreas: [],
+    preferredTime: [],
+    specificTime: "",
+    communicationMode: [],
+  };
+  const [formData, setFormData] = useState(emptyFormData);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success"); // or "error", "info", etc.
@@ -235,6 +236,8 @@ const Login = () => {
         setSnackbarSeverity("success");
         setSnackbarOpen(true);
         setIsFlipped(false);
+
+        setFormData(emptyFormData);
       } else {
         setErrorMessage(data.message || "Signup failed");
       }

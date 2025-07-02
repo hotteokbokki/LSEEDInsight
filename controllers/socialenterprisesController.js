@@ -337,6 +337,7 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
       criticalAreas = [],
       description,
       preferred_mentoring_time = [],
+      mentoring_time_note,
     } = socialEnterpriseData;
 
     if (!sdg_ids || !Array.isArray(sdg_ids) || sdg_ids.length === 0) {
@@ -359,9 +360,10 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
         numMember,
         critical_areas,
         description,
-        preferred_mentoring_time
+        preferred_mentoring_time,
+        mentoring_time_note
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING se_id;
     `;
 
@@ -376,6 +378,7 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
       criticalAreas,
       description,
       preferred_mentoring_time,
+      mentoring_time_note
     ];
 
     const result = await pgDatabase.query(query, values);

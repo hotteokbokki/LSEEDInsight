@@ -41,7 +41,8 @@ const { getMentorsBySocialEnterprises,
         getLeastAssignedMentor, 
         getMostAssignedMentor, 
         getMentorDetails, 
-        getMentorCount } = require("./controllers/mentorsController.js");
+        getMentorCount, 
+        getCriticalAreasByMentorID} = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
 const { getMentorshipsByMentorId, 
         getMentorBySEID, 
@@ -111,7 +112,7 @@ app.use(cors({
 }));
 
 //"http://localhost:3000" include this if for testing
-// "https://polished-moth-usefully.ngrok-free.app" include this if for deployment
+//"https://polished-moth-usefully.ngrok-free.app" include this if for deployment
 app.use(cookieParser());
 
 app.use(express.json());
@@ -311,6 +312,23 @@ async function sendMessage(chatId, message) {
     console.error("❌ Failed to send message:", error.response?.data || error.message);
     throw new Error(`Failed to send message: ${error.message}`);
   }
+}
+
+function extractEmailFromContactnum(contactnum) {
+  if (!contactnum) return "";
+
+  // Split into parts by "/"
+  const parts = contactnum.split("/").map(p => p.trim());
+
+  // Look for the part that has an "@"
+  for (const part of parts) {
+    if (part.includes("@")) {
+      return part;
+    }
+  }
+
+  // Fallback if no email found
+  return "";
 }
 
 async function submitMentorEvaluation(chatId, responses) {
@@ -909,9 +927,145 @@ app.post("/signup", async (req, res) => {
       application: newApplication,
     });
 
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"LSEED Center" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Thank you for your application to LSEED',
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+          <p>Dear ${firstName},</p>
+
+          <p>
+            Thank you for applying to become a mentor at the <strong>LSEED Center</strong>. 
+            We truly appreciate your willingness to share your expertise and support aspiring social entrepreneurs.
+          </p>
+
+          <p>
+            We will review your application and you will be notified of its status via email. 
+            Please make sure to check your email regularly for updates regarding your application.
+          </p>
+
+          <p>
+            Additionally, please take note of the credentials you submitted in this application. 
+            If you are accepted, you will use these details to log in to your mentor account on the platform.
+          </p>
+
+          <p>
+            Warm regards,<br/>
+            The LSEED Team
+          </p>
+        </div>
+      `,
+    });
+
   } catch (err) {
     console.error("Error during mentor signup:", err);
     res.status(500).json({ message: "An error occurred during mentor signup." });
+  }
+});
+
+app.post("/notify-mentor-application-status", async (req, res) => {
+  const { applicationId, status } = req.body;
+
+  if (!applicationId || !status) {
+    return res.status(400).json({ message: "applicationId and status are required." });
+  }
+
+  try {
+    // 🔍 Get mentor application record
+    const { rows } = await pgDatabase.query(
+      `SELECT first_name, last_name, email FROM mentor_form_application WHERE id = $1`,
+      [applicationId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Application not found." });
+    }
+
+    const { first_name, last_name, email } = rows[0];
+
+    // ✉️ Set up email transport
+    const transporter = nodemailer.createTransport({
+      service: "Gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    let subject;
+    let html;
+
+    // ✨ Compose email based on status
+    if (status === "Accepted") {
+      subject = "Your LSEED Mentor Application Has Been Accepted";
+      html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+          <p style="margin: 0 0 16px;">Dear ${first_name},</p>
+
+          <p style="margin: 0 0 16px;">
+            Congratulations! Your application to become a mentor at the <strong>LSEED Center</strong> has been accepted.
+          </p>
+
+          <p style="margin: 0 0 16px;">
+            You may now log in using the credentials you submitted during signup.
+          </p>
+
+          <p style="margin: 0;">
+            Warm regards,<br/>
+            The LSEED Team
+          </p>
+        </div>
+      `;
+    } else if (status === "Declined") {
+      subject = "Your LSEED Mentor Application Status";
+      html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+          <p style="margin: 0 0 16px;">Dear ${first_name},</p>
+
+          <p style="margin: 0 0 16px;">
+            Thank you for your interest in becoming a mentor at the <strong>LSEED Center</strong>.
+          </p>
+
+          <p style="margin: 0 0 16px;">
+            After careful consideration, we regret to inform you that your application has not been approved at this time.
+          </p>
+
+          <p style="margin: 0;">
+            We encourage you to stay connected and consider applying again in the future.
+          </p>
+
+          <p style="margin: 0;">
+            Warm regards,<br/>
+            The LSEED Team
+          </p>
+        </div>
+      `;
+    } else {
+      return res.status(400).json({ message: "Invalid status value." });
+    }
+
+    // ✉️ Send email
+    await transporter.sendMail({
+      from: `"LSEED Center" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject,
+      html,
+    });
+
+    console.log(`✅ Status email sent to ${email} (${status})`);
+    res.json({ message: "Email notification sent successfully." });
+  } catch (err) {
+    console.error("❌ Error sending email:", err);
+    res.status(500).json({ message: "Failed to send email notification." });
   }
 });
 
@@ -1198,7 +1352,7 @@ app.post("/invite-coordinator", async (req, res) => {
     );
 
     // 4. Prepare sign-up page link with token
-    const signUpLink = `${process.env.REACT_APP_API_FRONTEND_URL}/coordinator-signup?token=${inviteToken}`;
+    const signUpLink = `${process.env.WEBHOOK_BASE_URL}/coordinator-signup?token=${inviteToken}`;
     console.log('✅ Sign-up link:', signUpLink);
 
     // 5. Send the invitation email
@@ -1215,11 +1369,25 @@ app.post("/invite-coordinator", async (req, res) => {
       to: email,
       subject: 'You have been invited to join LSEED as a Coordinator',
       html: `
-        <p>Hi,</p>
-        <p>The LSEED Director has invited you to join as a Coordinator on the LSEED platform.</p>
-        <p>Click the link below to set up your account:</p>
-        <a href="${signUpLink}">${signUpLink}</a>
-        <p>This link will expire in 7 days.</p>
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+          <p style="margin: 0 0 16px;">Hi,</p>
+
+          <p style="margin: 0 0 16px;">
+            The <strong>LSEED Director</strong> has invited you to join as a Coordinator on the <strong>LSEED platform</strong>.
+          </p>
+
+          <p style="margin: 0 0 16px;">
+            Click the link below to set up your account:
+          </p>
+
+          <p style="margin: 0 0 16px;">
+            <a href="${signUpLink}" style="color: #1a73e8;">${signUpLink}</a>
+          </p>
+
+          <p style="margin: 0;">
+            This link will expire in 24 hours.
+          </p>
+        </div>
       `,
     });
 
@@ -2146,6 +2314,23 @@ app.get("/api/top-se-performance", async (req, res) => {
   }
 });
 
+app.get("/api/mentor-critical-areas/:mentor_id", async (req, res) => {
+  try {
+    const { mentor_id } = req.params;
+
+    if (!mentor_id) {
+      return res.status(400).json({ message: "Mentor ID is required" });
+    }
+
+    const criticalAreas = await getCriticalAreasByMentorID(mentor_id);
+
+    res.json({ criticalAreas });
+  } catch (error) {
+    console.error("❌ Error fetching mentor critical areas:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.get("/api/mentor-analytics/:mentor_id", async (req, res) => {
   try {
     const { mentor_id } = req.params;
@@ -2381,13 +2566,67 @@ app.get("/list-mentor-applications", async (req, res) => {
 // PUT route to update application status
 app.put("/api/application/:id/status", async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, email, team_name } = req.body;
 
   try {
     await pgDatabase.query(
       `UPDATE mentees_form_submissions SET status = $1 WHERE id = $2`,
       [status, id]
     );
+
+    if (status.toLowerCase() === 'declined') {
+      if (email) {
+        const transporter = nodemailer.createTransport({
+          service: 'Gmail',
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+          },
+        });
+        await transporter.sendMail({
+          from: `"LSEED Center" <${process.env.EMAIL_USER}>`,
+          to: email,
+          subject: 'Update on Your Application to the LSEED Program',
+          html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+              <p>Dear ${team_name || "Your"} Team,</p>
+  
+              <p>
+                Thank you for your interest in the <strong>LSEED Center’s Social Enterprise Development Program</strong>.
+              </p>
+  
+              <p>
+                After careful review of your application, we regret to inform you that your team was not selected for this program cycle.
+              </p>
+  
+              <p>
+                This decision was not easy given the number of inspiring applications we received. While we are unable to offer a spot at this time, we sincerely appreciate the effort you put into your submission and your dedication to creating social impact.
+              </p>
+  
+              <p>
+                We encourage you to stay connected with us for future opportunities, workshops, and program cycles that may be a better fit.
+              </p>
+  
+              <p>
+                If you have any questions or would like feedback on your application, please feel free to reply to this email.
+              </p>
+  
+              <p>
+                Thank you again for your interest and commitment to meaningful change.
+              </p>
+  
+              <p>
+                Warm regards,<br/>
+                The LSEED Team
+              </p>
+            </div>
+          `,
+        });
+      } else {
+        console.warn("⚠️ No focal_email provided; skipping email send.");
+      }
+    }
+
     res.sendStatus(200);
   } catch (error) {
     console.error("❌ Failed to update status:", error);
@@ -2508,6 +2747,60 @@ app.post("/api/social-enterprises", async (req, res) => {
       message: "Social Enterprise added successfully",
       data: newSocialEnterprise,
     });
+
+    const rawContact = socialEnterpriseData.contactnum;
+    const extractedEmail = extractEmailFromContactnum(rawContact);
+    if (extractedEmail) {
+      const transporter = nodemailer.createTransport({
+        service: 'Gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+      await transporter.sendMail({
+        from: `"LSEED Center" <${process.env.EMAIL_USER}>`,
+        to: extractedEmail,
+        subject: 'Congratulations! Your Application to the LSEED Program Has Been Accepted',
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+            <p>Dear ${socialEnterpriseData.team_name || "Your"} Team,</p>
+
+            <p>
+              Congratulations! Your application to join the <strong>LSEED Center’s Social Enterprise Development Program</strong> has been <strong>accepted</strong>.
+            </p>
+
+            <p>
+              We are thrilled to welcome you to our community of changemakers and look forward to supporting your enterprise journey. As part of your onboarding, you will soon be assigned mentors, and we’ll coordinate your first mentorship sessions.
+            </p>
+
+            <p>
+              Please keep an eye on your email for further instructions regarding:
+            </p>
+
+            <ul>
+              <li>Joining the official <strong>Telegram group</strong> for communications</li>
+              <li>Details about your <strong>onboarding session</strong></li>
+            </ul>
+
+            <p>
+              If you have any questions or updates regarding your team, please don't hesitate to contact us at this email address.
+            </p>
+
+            <p>
+              Once again, congratulations and welcome to the LSEED family!
+            </p>
+
+            <p>
+              Warm regards,<br/>
+              The LSEED Team
+            </p>
+          </div>
+        `,
+      });
+    } else {
+      console.warn("⚠️ No focal_email provided; skipping email send.");
+    }
   } catch (error) {
     console.error("Error adding social enterprise:", error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -3364,7 +3657,7 @@ app.post("/api/googleform-webhook", async (req, res) => {
     const lseedDirectors = await getLSEEDDirectors(); // change your function if needed
 
     if (lseedDirectors && lseedDirectors.length > 0) {
-      const notificationTitle = `New Mentor Application: ${team_name}`;
+      const notificationTitle = `New Social Enterprise Application: ${team_name}`;
       
       for (const director of lseedDirectors) {
         const receiverId = director.user_id;
@@ -3378,6 +3671,57 @@ app.post("/api/googleform-webhook", async (req, res) => {
     }
 
     res.sendStatus(200);
+
+    if(focal_email) {
+
+      const transporter = nodemailer.createTransport({
+        service: 'Gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+      await transporter.sendMail({
+        from: `"LSEED Center" <${process.env.EMAIL_USER}>`,
+        to: focal_email,
+        subject: 'Thank you for your application to the LSEED Program',
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+            <p>Dear ${team_name} Team,</p>
+
+            <p>
+              Thank you for submitting your application to the <strong>LSEED Center</strong> 
+              to be part of our social enterprise development program. We greatly appreciate your 
+              interest in creating meaningful change and addressing important social challenges.
+            </p>
+
+            <p>
+              Our team will carefully review your submission, including your enterprise idea, team 
+              details, and mentoring preferences. You will be notified of your application status 
+              through this email address. Please ensure you regularly check your inbox (and spam folder) 
+              for updates.
+            </p>
+
+            <p>
+              Should your application be successful, you will receive further instructions regarding 
+              onboarding, mentorship coordination, and registration to Telegram.
+            </p>
+
+            <p>
+              If you have any questions or wish to update any details, feel free to contact us at this address.
+            </p>
+
+            <p>
+              Warm regards,<br/>
+              The LSEED Team
+            </p>
+          </div>
+        `,
+      });
+    } else {
+      console.log(`⚠️ No focal_email provided for ${team_name}. Skipping email.`);
+    }
+
   } catch (error) {
     console.error("❌ Insert error:", error);
     res.sendStatus(500);

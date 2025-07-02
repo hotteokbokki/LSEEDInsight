@@ -51,6 +51,7 @@ const SocialEnterprise = ({ }) => {
     criticalAreas: [],
     description: "",
     preferred_mentoring_time: [],
+    mentoring_time_note:"",
   });
 
   const predefinedTimes = [
@@ -87,6 +88,11 @@ const SocialEnterprise = ({ }) => {
   const [menuRowId, setMenuRowId] = useState(null); 
   const [openApplicationDialog, setOpenApplicationDialog] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
   // State for fetched data
   const [socialEnterprises, setSocialEnterprises] = useState([]);
   const [loading, setLoading] = useState(true); // Loading state for API call
@@ -125,12 +131,15 @@ const SocialEnterprise = ({ }) => {
         criticalAreas: row.critical_areas,
         description: row.se_description,
         preferred_mentoring_time: row.preferred_mentoring_time,
+        mentoring_time_note: row.mentoring_time_note,
       }));
       setOpenAddSE(true); // Open the dialog
     }
 
     if (action === "Decline") {
-      const applicationId = row.id; // Ensure `row.id` is defined
+      const applicationId = row.id;
+      const focalEmail = row.focal_email;
+      const team_name = row.team_name;
 
       try {
         const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/application/${applicationId}/status`, {
@@ -138,12 +147,23 @@ const SocialEnterprise = ({ }) => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ status: "Declined" }),
+          body: JSON.stringify({ 
+            status: "Declined",
+            email: focalEmail,
+            team_name: team_name,
+          }),
         });
 
         if (response.ok) {
-          console.log("Status updated to Declined.");
-          // Optional: show toast, refresh table, etc.
+          console.log("✅ Status updated to Declined.");
+          setSnackbar({
+            open: true,
+            message: "Decline Social Enterprise Application",
+            severity: "success",
+          });
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500); // Adjust delay if needed
         } else {
           console.error("❌ Failed to decline the application. Response not ok.");
         }
@@ -355,6 +375,7 @@ const SocialEnterprise = ({ }) => {
         criticalAreas: socialEnterpriseData.criticalAreas || [],
         description: socialEnterpriseData.description,
         preferred_mentoring_time: socialEnterpriseData.preferred_mentoring_time || [],
+        mentoring_time_note: socialEnterpriseData.mentoring_time_note || null,
       };
 
       const response = await fetch(
@@ -1015,6 +1036,51 @@ const SocialEnterprise = ({ }) => {
                 </FormControl>
               </Box>
 
+              {/* Time Notes Field (Read-only) */}
+              <Box sx={{ marginTop: "10px" }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: "bold",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Time Notes / Specifics
+                </Typography>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  maxRows={4}
+                  value={socialEnterpriseData.mentoring_time_note?.trim() ? socialEnterpriseData.mentoring_time_note : "N/A"}
+                  InputProps={{
+                    readOnly: true,
+                    style: { color: "#000" },
+                  }}
+                  InputLabelProps={{
+                    style: {
+                      color: "#000",
+                      backgroundColor: "#fff",
+                      padding: "0 4px",
+                    },
+                  }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      "& fieldset": {
+                        borderColor: "#000",
+                      },
+                      "&:hover fieldset": {
+                        borderColor: "#000",
+                      },
+                      "&.Mui-focused fieldset": {
+                        borderColor: "#000",
+                      },
+                    },
+                  }}
+                />
+              </Box>
+
               {/* Status Dropdown */}
               <Box>
                 {/* Status Label */}
@@ -1129,7 +1195,7 @@ const SocialEnterprise = ({ }) => {
                 handleCloseAddSE(); // ✅ Closes after timeout
                 setTimeout(() => {
                   window.location.reload();
-                }, 500); // Adjust delay if needed
+                }, 1500); // Adjust delay if needed
               }}
               sx={{
                 color: "#000",
@@ -1196,6 +1262,21 @@ const SocialEnterprise = ({ }) => {
           >
             Social Enterprise added successfully!
           </Alert>
+        </Snackbar>
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={4000}
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+        <Alert
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
         </Snackbar>
 
         <Dialog
