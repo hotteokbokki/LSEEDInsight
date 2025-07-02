@@ -110,8 +110,8 @@ app.use(cors({
   credentials: true
 }));
 
-//"https://polished-moth-usefully.ngrok-free.app" include this if for production
-
+//"http://localhost:3000" include this if for testing
+// "https://polished-moth-usefully.ngrok-free.app" include this if for deployment
 app.use(cookieParser());
 
 app.use(express.json());
@@ -128,9 +128,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,       // true if HTTPS only in production
+    secure: true,       // true if HTTPS only in production
     httpOnly: true,
-    sameSite: 'lax',     // none only in production
+    sameSite: 'none',     // none only in production
     maxAge: 1000 * 60 * 60 * 24,
   },
 }));
@@ -1252,9 +1252,7 @@ app.get('/validate-invite-token', async (req, res) => {
 
 // Returns mentor availability for mentorship
 app.get("/get-mentor-availability", async (req, res) => {
-  const user = req.session.user;
-
-  const mentorId = user.id;
+  const mentorId = req.session.user?.id;
 
   try {
     const result = await pgDatabase.query(
@@ -2944,6 +2942,7 @@ app.post("/webhook-bot1", async (req, res) => {
                   // 3. Construct notification title
                   const notificationTitle = `Evaluation Acknowledged by ${seName}`;
 
+                  //JM EDIT
                   // 4. Insert notification for the mentor
                   await pgDatabase.query(
                       `INSERT INTO notification (notification_id, receiver_id, se_id, title, created_at)
@@ -3371,8 +3370,8 @@ app.post("/api/googleform-webhook", async (req, res) => {
         const receiverId = director.user_id;
         
         await pgDatabase.query(
-          `INSERT INTO notification (notification_id, receiver_id, title, created_at) 
-          VALUES (uuid_generate_v4(), $1, $2, NOW());`,
+          `INSERT INTO notification (notification_id, receiver_id, title, created_at, target_route) 
+          VALUES (uuid_generate_v4(), $1, $2, NOW(), '/socialenterprise');`,
           [receiverId, notificationTitle]
         );
       }
@@ -3928,7 +3927,7 @@ app.get("/api/notifications", async (req, res) => {
       query = `
           SELECT n.notification_id, n.title, n.created_at,
        COALESCE(u.first_name || ' ' || u.last_name, 'System') AS sender_name,
-       n.se_id, se.team_name AS se_name, ms.status
+       n.se_id, se.team_name AS se_name, ms.status, n.target_route
 FROM notification n
 LEFT JOIN users u ON n.sender_id = u.user_id
 LEFT JOIN socialenterprises se ON n.se_id = se.se_id
@@ -4087,7 +4086,26 @@ async function setWebhook(botToken, webhookPath, ngrokUrl) {
   }
 }
 
-// Start the server and ngrok tunnel
+// // Start the server (Production)
+// app.listen(PORT, async () => {
+//   console.log(`🚀 Server running on http://localhost:${PORT}`);
+
+//   try {
+//     const baseUrl = process.env.WEBHOOK_BASE_URL;
+//     if (!baseUrl) {
+//       throw new Error("WEBHOOK_BASE_URL is not set in environment variables.");
+//     }
+
+//     console.log(`🌍 Using webhook base URL: ${baseUrl}`);
+
+//     // Set the webhook
+//     await setWebhook(TELEGRAM_BOT_TOKEN, '/webhook-bot1', baseUrl);
+//   } catch (error) {
+//     console.error(`❌ Couldn't set webhook: ${error.message}`);
+//   }
+// });
+
+// Start the server and ngrok tunnel (Testing)
 app.listen(PORT, async () => {
   console.log(`🚀 Localhost running on: http://localhost:${PORT}`);
 

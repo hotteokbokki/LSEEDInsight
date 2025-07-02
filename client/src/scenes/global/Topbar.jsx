@@ -23,6 +23,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import { useAuth } from "../../context/authContext";
 import axios from "axios";
+import { Link as RouterLink } from "react-router-dom";
 
 // 3. Destructure the new props from the function signature
 const Topbar = ({}) => {
@@ -184,6 +185,8 @@ const Topbar = ({}) => {
               notifications.map((notif, index) => (
                 <Box key={notif.notification_id}>
                   <MenuItem
+                    component={RouterLink}
+                    to={notif.target_route || "#"}     // ✅ Use stored target_route
                     onClick={handleNotifClose}
                     sx={{
                       display: "flex",
@@ -191,17 +194,19 @@ const Topbar = ({}) => {
                       alignItems: "flex-start",
                       padding: "12px",
                       "&:hover": { backgroundColor: "#f0f0f0" },
-                      minHeight: "auto", // ✅ Allow flexible height
+                      minHeight: "auto",
+                      textDecoration: "none",          // ✅ Remove link underline
+                      color: "inherit",                 // ✅ Inherit text color
                     }}
                   >
-                    {/* Notification Content with Horizontal Scroll */}
+                    {/* Notification Content */}
                     <Box
                       sx={{
                         width: "100%",
-                        overflowX: "auto", // ✅ Enable horizontal scrolling
+                        overflowX: "auto",
                         overflowY: "hidden",
                         "&::-webkit-scrollbar": {
-                          height: "6px", // ✅ Thin horizontal scrollbar
+                          height: "6px",
                         },
                         "&::-webkit-scrollbar-track": {
                           backgroundColor: "#f1f1f1",
@@ -220,22 +225,21 @@ const Topbar = ({}) => {
                         <Typography
                           sx={{
                             fontWeight: "bold",
-                            whiteSpace: "nowrap", // ✅ Prevent text wrapping for title
+                            whiteSpace: "nowrap",
                           }}
                         >
                           {notif.title}
                         </Typography>
 
-                        {/* ✅ Display different messages based on status */}
                         <Typography
                           variant="body2"
                           sx={{
-                            whiteSpace: "nowrap", // ✅ Prevent text wrapping for content
+                            whiteSpace: "nowrap",
                             marginTop: "4px",
                           }}
                         >
                           {notif.title === "Scheduling Approval Needed"
-                            ? `${notif.sender_name} created a schedule for ${notif.se_name}.` // ✅ LSEED users see this
+                            ? `${notif.sender_name} created a schedule for ${notif.se_name}.`
                             : notif.title === "LSEED Approval"
                             ? `Your desired schedule for ${notif.se_name} is already accepted by the LSEED.`
                             : notif.title === "Social Enterprise Approval"
@@ -247,7 +251,7 @@ const Topbar = ({}) => {
                           variant="caption"
                           color="gray"
                           sx={{
-                            whiteSpace: "nowrap", // ✅ Prevent text wrapping for timestamp
+                            whiteSpace: "nowrap",
                             marginTop: "4px",
                             display: "block",
                           }}
