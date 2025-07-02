@@ -146,7 +146,6 @@ export const AuthContextProvider = ({ children }) => {
     }
   };
 
-  // Corrected and refined toggleView function
   const toggleView = useCallback(() => {
     if (!user || !user.roles) {
       console.error("User or user roles not available for toggling.");
@@ -160,14 +159,37 @@ export const AuthContextProvider = ({ children }) => {
     if (hasMentorRole && hasLSEEDRole) {
       setIsMentorView(prevIsMentorView => {
         const newIsMentorView = !prevIsMentorView;
-        console.log(`Toggling view: from ${prevIsMentorView ? 'Mentor' : 'Coordinator'} to ${newIsMentorView ? 'Mentor' : 'Coordinator'}`);
-        // The useEffect for isMentorView will handle saving to localStorage
+        const newActiveRole = newIsMentorView ? "Mentor" : "LSEED-Coordinator";
+
+        console.log(`Toggling view: from ${prevIsMentorView ? 'Mentor' : 'Coordinator'} to ${newActiveRole}`);
+
+        // ⭐️ Notify the server about the new active role
+        fetch(`${process.env.REACT_APP_API_BASE_URL}/api/session/role`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ activeRole: newActiveRole })
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              console.log(`✅ Active role updated on server: ${newActiveRole}`);
+            } else {
+              console.error(`❌ Server error updating active role:`, data);
+            }
+          })
+          .catch(error => {
+            console.error("❌ Failed to send active role to server:", error);
+          });
+
         return newIsMentorView;
       });
     } else {
       console.warn("Toggle attempted by a user without both 'Mentor' and 'LSEED' roles. No action taken.");
     }
-  }, [user]); // Add user to dependency array as it's accessed within the useCallback
+  }, [user]);
 
   // Render a loading spinner or message while authentication state is being determined
   if (loading) {

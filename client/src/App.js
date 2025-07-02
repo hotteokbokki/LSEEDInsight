@@ -114,13 +114,15 @@ const MainContent = () => {
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/financial-analytics" element={<FinancialAnalytics />} />
           <Route path="/admin" element={<Admin />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director", "LSEED-Coordinator","Mentor"]} />}>
           <Route path="/assess" element={<EvaluatePage />} />
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={["Mentor"]} />}>
           <Route path="/mentorships" element={<Mentorships />} />
           <Route path="/mentor-analytics/:id" element={<MentorAnalytics />} />
-          <Route path="/assess" element={<EvaluatePage />} />
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director", "LSEED-Coordinator", "Mentor"]} />}>

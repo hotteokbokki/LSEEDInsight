@@ -1,10 +1,6 @@
 const express = require("express");
 const session = require("express-session");
-<<<<<<< Updated upstream
-
-=======
 const { v4: uuidv4 } = require('uuid');
->>>>>>> Stashed changes
 const cors = require("cors");
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt'); // For password hashing
@@ -12,6 +8,7 @@ const cron = require('node-cron'); // For automating password changing
 const crypto = require('crypto'); // FOr generating passwords for sign up
 const { router: authRoutes, requireAuth } = require("./routes/authRoutes");
 const axios = require("axios");
+const path = require('path');
 const ngrok = require("ngrok"); // Exposes your local server to the internet
 const { getPrograms, getProgramNameByID, getProgramCount, getProgramsForTelegram, getAllPrograms } = require("./controllers/programsController");
 const { getTelegramUsers, insertTelegramUser, getSocialEnterprisesUsersByProgram, countTelegramUsers } = require("./controllers/telegrambotController");
@@ -104,59 +101,59 @@ const { getSignUpPassword } = require("./controllers/signuppasswordsController.j
 const app = express();
 
 
-// Enable CORS with credentials
-app.use(cors({ origin: "http://localhost:3000", credentials: true }));
-app.use(express.json());
-app.use(session({
-  store: new pgSession({ pool: pgDatabase, tableName: "session" }),
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: false,
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 1000 * 60 * 60 * 24,
-  },
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "https://polished-moth-usefully.ngrok-free.app"
+  ],
+  credentials: true
 }));
 
-app.use("/api/cashflow", cashflowRoutes);
-
-app.use("/api/inventory-distribution", inventoryRoutes);
-
+app.use(express.json());
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 const inviteToken = uuidv4();
 
-//MAYBE REMOVE
-app.set('trust proxy', 1); // 🔒 Required when behind reverse proxies like Nginx or Heroku
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "https://polished-moth-usefully.ngrok-free.app"
+  ],
+  credentials: true
+}));
 
-// Configure session handling
-app.use(
-  session({
-    store: new pgSession({
-      pool: pgDatabase,
-      tableName: "session",
-    }),
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: false,
-      httpOnly: true,
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24,
-    },
-  })
-);
 app.use(cookieParser());
+
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Use authentication routes
+app.set('trust proxy', 1);
+
+app.use(session({
+  store: new pgSession({
+    pool: pgDatabase,
+    tableName: "session",
+  }),
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: true,       // true if HTTPS only in production
+    httpOnly: true,
+    sameSite: 'none',
+    maxAge: 1000 * 60 * 60 * 24,
+  },
+}));
+
+// API Routes
 //TODO
+app.use("/api/cashflow", cashflowRoutes);
+app.use("/api/inventory-distribution", inventoryRoutes);
 app.use("/auth", authRoutes);
 app.use("/api/mentorships", mentorshipRoutes);
+
+app.use(express.static(path.join(__dirname, 'client/build')));
 
 app.post("/api/import/:reportType", async (req, res) => {
   const { reportType } = req.params;
@@ -248,7 +245,7 @@ function generateRandomPassword(length = 16) {
   return crypto.randomBytes(length).toString('base64').slice(0, length);
 }
 
-cron.schedule('* * * * *', async () => {
+cron.schedule('0 8 * * 1', async () => {
   const newPassword = generateRandomPassword(16);
   const validFrom = new Date();
   const validUntil = new Date();
@@ -632,6 +629,7 @@ app.post("/login", async (req, res) => {
       roles: cleanedRoles,
       firstName: user.first_name,
       lastName: user.last_name,
+      activeRole: user.roles[0],
     };
     req.session.isAuth = true;
 
@@ -2109,15 +2107,37 @@ app.get("/getEvaluationDetailsForMentorEvaluation", async (req, res) => {
       res.status(500).json({ message: "Internal Server Error" });
   }
 });
-//DEBUG
+
+app.post("/api/session/role", (req, res) => {
+  const { activeRole } = req.body;
+
+  if (!req.session.user) {
+    return res.status(401).json({ error: "Not logged in" });
+  }
+
+  // Optionally validate role
+  const allowedRoles = req.session.user.roles || [];
+  if (!allowedRoles.includes(activeRole)) {
+    return res.status(400).json({ error: "Role not assigned to user" });
+  }
+
+  req.session.user.activeRole = activeRole;
+
+  console.log("✅ Active role set in session:", req.session.user);
+
+  res.json({ success: true });
+});
+
 app.get("/api/top-se-performance", async (req, res) => {
   try {
     const period = req.query.period;
     const program = req.query.program || null; 
 
     let mentor_id = null;
-    // Ensure req.session.user.roles exists and is an array before checking
-    if (req.session.user && Array.isArray(req.session.user.roles) && req.session.user.roles.includes('Mentor')) {
+    if (
+      (req.session.user?.activeRole === "Mentor") ||
+      (req.session.user?.roles?.includes("Mentor") && !req.session.user?.activeRole)
+    ) {
       mentor_id = req.session.user.id;
     }
 
@@ -4045,6 +4065,14 @@ app.get("/checkPendingMeetings", async (req, res) => {
     console.error("❌ ERROR in /checkPendingMeetings:", error.stack);
     res.status(500).json({ error: "Internal Server Error" });
   }
+});
+
+// ✅ THEN serve React static files
+app.use(express.static(path.join(__dirname, 'client/build')));
+
+// ✅ Finally, handle client-side routing fallback
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
 });
 
 // Start the server

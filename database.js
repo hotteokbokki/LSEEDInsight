@@ -2,17 +2,6 @@ require('dotenv').config();
 const { Pool } = require('pg');
 
 // Retrieve Database credentials from environment variables (DLSU)
-<<<<<<< Updated upstream
-//const pool = new Pool({
-//host: process.env.DATABASE_HOSTNAME,
- //user: process.env.DATABASE_USER,
-//port: process.env.DATABASE_PORT,
-//password: process.env.DATABASE_LOCAL_KEY,
-//database: process.env.DATABASE_LOCAL_NAME,
-//max: 10, // Max connections in pool
-//idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-//});
-=======
 const pool = new Pool({
 host: process.env.DATABASE_HOSTNAME,
  user: process.env.DATABASE_USER,
@@ -22,18 +11,17 @@ database: process.env.DATABASE_NAME,
 max: 10, // Max connections in pool
 idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
 });
->>>>>>> Stashed changes
 
 // // Retrieve Database credentials from environment variables (LOCAL)
- const pool = new Pool({
- host: process.env.DATABASE_LOCALHOSTNAME,
- user: process.env.DATABASE_LOCAL_USER,
- port: process.env.DATABASE_PORT,
- password: process.env.DATABASE_LOCAL_KEY,
- database: process.env.DATABASE_LOCAL_NAME,
- max: 10, // Max connections in pool
- idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
- });
+//  const pool = new Pool({
+//  host: process.env.DATABASE_LOCALHOSTNAME,
+//  user: process.env.DATABASE_LOCAL_USER,
+//  port: process.env.DATABASE_PORT,
+//  password: process.env.DATABASE_LOCAL_KEY,
+//  database: process.env.DATABASE_LOCAL_NAME,
+//  max: 10, // Max connections in pool
+//  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+//  });
 
 //  // JM LOCAL
       //   const pool = new Pool({
