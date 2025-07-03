@@ -143,8 +143,6 @@ app.use("/api/inventory-distribution", inventoryRoutes);
 app.use("/auth", authRoutes);
 app.use("/api/mentorships", mentorshipRoutes);
 
-app.use(express.static(path.join(__dirname, 'client/build')));
-
 app.post("/api/import/:reportType", async (req, res) => {
   const { reportType } = req.params;
   const data = req.body.data; // expects { data: [...], se_id: ..., user_id: ... }
