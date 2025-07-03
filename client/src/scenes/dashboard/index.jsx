@@ -755,7 +755,7 @@ const Dashboard = ({ }) => {
         let response;
         
         if (isCoordinator) {
-          const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}0/api/get-program-coordinator`, {
+          const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
             method: "GET",
             credentials: "include", // Required to send session cookie
           });

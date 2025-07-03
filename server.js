@@ -1212,6 +1212,25 @@ app.post("/accept-mentor-application", async (req, res) => {
       );
 
       await pgDatabase.query('COMMIT');
+
+      const lseedCoordinators = await getLSEEDCoordinators(); // This fetches LSEED Directors/Coordinators
+      if (lseedCoordinators && lseedCoordinators.length > 0) {
+        const notificationTitle = `Mentor Application Approved: ${existingUser.first_name} ${existingUser.last_name}`;
+
+        for (const coordinator of lseedCoordinators) {
+          const receiverId = coordinator.user_id;
+          await pgDatabase.query(
+            `INSERT INTO notification (notification_id, receiver_id, title, created_at, target_route)
+             VALUES (uuid_generate_v4(), $1, $2, NOW(), '/mentors');`,
+            [receiverId, notificationTitle]
+          );
+          console.log(`🔔 Notification sent to LSEED Coordinator ${coordinator.first_name} ${coordinator.last_name}: Mentor application for ${existingUser.first_name} ${existingUser.last_name} approved.`);
+        }
+      } else {
+        console.warn("⚠️ No LSEED Coordinators found to send notification for accepted mentor application.");
+      }
+      // --- END: Notification for Accepted Mentor Application (Existing Coordinator) ---
+
       return res.status(201).json({ message: "Coordinator successfully added as Mentor." });
     }
 
@@ -1257,6 +1276,24 @@ app.post("/accept-mentor-application", async (req, res) => {
     );
 
     await pgDatabase.query('COMMIT');
+
+    const lseedCoordinators = await getLSEEDCoordinators(); // This fetches LSEED Directors/Coordinators
+    if (lseedCoordinators && lseedCoordinators.length > 0) {
+      const notificationTitle = `New Mentor Approved: ${app.first_name} ${app.last_name}`;
+
+      for (const coordinator of lseedCoordinators) {
+        const receiverId = coordinator.user_id;
+        await pgDatabase.query(
+          `INSERT INTO notification (notification_id, receiver_id, title, created_at, target_route)
+           VALUES (uuid_generate_v4(), $1, $2, NOW(), '/mentors');`,
+          [receiverId, notificationTitle]
+        );
+        console.log(`🔔 Notification sent to LSEED Coordinator ${coordinator.first_name} ${coordinator.last_name}: New mentor ${app.first_name} ${app.last_name} approved.`);
+      }
+    } else {
+      console.warn("⚠️ No LSEED Coordinators found to send notification for accepted mentor application.");
+    }
+
     return res.status(201).json({ message: "Mentor successfully accepted and account created." });
 
   } catch (err) {
@@ -3238,8 +3275,8 @@ app.post("/webhook-bot1", async (req, res) => {
                   //JM EDIT
                   // 4. Insert notification for the mentor
                   await pgDatabase.query(
-                      `INSERT INTO notification (notification_id, receiver_id, se_id, title, created_at)
-                       VALUES (uuid_generate_v4(), $1, $2, $3, NOW());`,
+                      `INSERT INTO notification (notification_id, receiver_id, se_id, title, created_at, target_route)
+                      VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/mentorships');`,
                       [mentor_id, se_id, notificationTitle]
                   );
                   console.log(`🔔 Notification sent to mentor ${mentor_id}: Evaluation for ${seName} acknowledged.`);
@@ -4284,10 +4321,10 @@ ORDER BY n.created_at DESC;
       // Mentors only get status change notifications
       query = `
           SELECT n.notification_id, n.title, n.created_at,
-                  n.se_id, se.team_name AS se_name, ms.status
+                  n.se_id, se.team_name AS se_name, ms.status, n.target_route
           FROM notification n
-          JOIN socialenterprises se ON n.se_id = se.se_id
-          JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
+          LEFT JOIN socialenterprises se ON n.se_id = se.se_id
+          LEFT JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
           WHERE n.receiver_id = $1 AND n.title != 'Scheduling Approval Needed'
           ORDER BY n.created_at DESC;
       `;
