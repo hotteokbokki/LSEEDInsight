@@ -294,23 +294,6 @@ const AdminPage = () => {
           </Button>
         )}
 
-        {/* Create LSEED-Coordinator Button */}
-        {!showEditButtons && (
-          <Button
-            variant="contained"
-            sx={{
-              backgroundColor: colors.greenAccent[500],
-              color: "black",
-              "&:hover": {
-                backgroundColor: colors.greenAccent[600],
-              },
-            }}
-            onClick={handleOpenInviteCoordinator} 
-          >
-            Create LSEED-Coordinator
-          </Button>
-        )}
-
         {/* Cancel and Save Buttons */}
         {showEditButtons && (
           <>
@@ -352,6 +335,21 @@ const AdminPage = () => {
             </Button>
           </>
         )}
+
+        {/* Create LSEED-Coordinator Button */}
+        <Button
+          variant="contained"
+          sx={{
+            backgroundColor: colors.greenAccent[500],
+            color: "black",
+            "&:hover": {
+              backgroundColor: colors.greenAccent[600],
+            },
+          }}
+          onClick={handleOpenInviteCoordinator} 
+        >
+          Create LSEED-Coordinator
+        </Button>
       </Box>
 
       <Dialog

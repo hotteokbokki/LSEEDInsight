@@ -444,6 +444,7 @@ const SocialEnterprise = ({ }) => {
       field: "name",
       headerName: "Social Enterprise",
       flex: 1,
+      minWidth: 100,
       editable: isEditing,
       renderCell: (params) => (
         <Typography
@@ -461,6 +462,7 @@ const SocialEnterprise = ({ }) => {
       field: "program",
       headerName: "Program",
       flex: 1,
+      minWidth: 100,
       editable: isEditing,
       renderCell: (params) => (
         <Box
@@ -478,6 +480,7 @@ const SocialEnterprise = ({ }) => {
       field: "contact",
       headerName: "Contact Person",
       flex: 1,
+      minWidth: 100,
       editable: false,
       renderCell: (params) => (
         <Box
@@ -495,6 +498,7 @@ const SocialEnterprise = ({ }) => {
       field: "mentors",
       headerName: "Mentors",
       flex: 1,
+      minWidth: 100,
       editable: isEditing,
       renderCell: (params) => (
         <Box
@@ -524,7 +528,7 @@ const SocialEnterprise = ({ }) => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 150,
+      minWidth: 100,
       renderCell: (params) => (
         <Box
           sx={{

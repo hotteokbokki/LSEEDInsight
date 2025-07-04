@@ -116,7 +116,6 @@ exports.getAllMentors = async () => {
     const result = await pgDatabase.query(query);
 
     if (!result.rows.length) {
-      console.log("⚠️ No mentors found.");
       return [];
     }
 
@@ -159,7 +158,6 @@ exports.getAllMentorsWithMentorships = async () => {
     const result = await pgDatabase.query(query);
 
     if (!result.rows.length) {
-      console.log("⚠️ No mentors with mentorships found.");
       return [];
     }
 

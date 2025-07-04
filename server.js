@@ -639,7 +639,7 @@ app.post("/login", async (req, res) => {
     };
     req.session.isAuth = true;
 
-    console.log("[authRoutes] Session ID:", req.session);
+    console.log("Login Session:", req.session);
 
     // Respond appropriately
     if (cleanedRoles.includes("Administrator")) { // Use .includes() for array check
@@ -674,7 +674,7 @@ app.post("/login", async (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
-  console.log("[authRoutes] Logging Out");
+  console.log("Successfully Logged Out");
 
   const sessionId = req.sessionID;
 
@@ -965,6 +965,27 @@ app.post("/signup", async (req, res) => {
       `,
     });
 
+    // MAYBE ADD EMAIL
+
+    // LSEED-Director notification
+    const lseedDirectors = await getLSEEDDirectors(); // change your function if needed
+
+    if (lseedDirectors && lseedDirectors.length > 0) {
+      const directorTitle = "New Mentor Application";
+      const notificationDirectorMessage = 
+        `A new mentor has submitted an application. Review their details in the mentors page.`;
+
+      for (const director of lseedDirectors) {
+        const receiverId = director.user_id;
+        
+        await pgDatabase.query(
+          `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
+          VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/mentors');`,
+          [receiverId, directorTitle, notificationDirectorMessage]
+        );
+      }
+    }
+
   } catch (err) {
     console.error("Error during mentor signup:", err);
     res.status(500).json({ message: "An error occurred during mentor signup." });
@@ -989,7 +1010,7 @@ app.post("/notify-mentor-application-status", async (req, res) => {
       return res.status(404).json({ message: "Application not found." });
     }
 
-    const { first_name, last_name, email } = rows[0];
+    const { first_name, email } = rows[0];
 
     // ✉️ Set up email transport
     const transporter = nodemailer.createTransport({
@@ -1000,57 +1021,30 @@ app.post("/notify-mentor-application-status", async (req, res) => {
       },
     });
 
-    let subject;
-    let html;
+    // 📧 Compose Declined email only
+    const subject = "Your LSEED Mentor Application Status";
+    const html = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+        <p style="margin: 0 0 16px;">Dear ${first_name},</p>
 
-    // ✨ Compose email based on status
-    if (status === "Accepted") {
-      subject = "Your LSEED Mentor Application Has Been Accepted";
-      html = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
-          <p style="margin: 0 0 16px;">Dear ${first_name},</p>
+        <p style="margin: 0 0 16px;">
+          Thank you for your interest in becoming a mentor at the <strong>LSEED Center</strong>.
+        </p>
 
-          <p style="margin: 0 0 16px;">
-            Congratulations! Your application to become a mentor at the <strong>LSEED Center</strong> has been accepted.
-          </p>
+        <p style="margin: 0 0 16px;">
+          After careful consideration, we regret to inform you that your application has not been approved at this time.
+        </p>
 
-          <p style="margin: 0 0 16px;">
-            You may now log in using the credentials you submitted during signup.
-          </p>
+        <p style="margin: 0;">
+          We encourage you to stay connected and consider applying again in the future.
+        </p>
 
-          <p style="margin: 0;">
-            Warm regards,<br/>
-            The LSEED Team
-          </p>
-        </div>
-      `;
-    } else if (status === "Declined") {
-      subject = "Your LSEED Mentor Application Status";
-      html = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
-          <p style="margin: 0 0 16px;">Dear ${first_name},</p>
-
-          <p style="margin: 0 0 16px;">
-            Thank you for your interest in becoming a mentor at the <strong>LSEED Center</strong>.
-          </p>
-
-          <p style="margin: 0 0 16px;">
-            After careful consideration, we regret to inform you that your application has not been approved at this time.
-          </p>
-
-          <p style="margin: 0;">
-            We encourage you to stay connected and consider applying again in the future.
-          </p>
-
-          <p style="margin: 0;">
-            Warm regards,<br/>
-            The LSEED Team
-          </p>
-        </div>
-      `;
-    } else {
-      return res.status(400).json({ message: "Invalid status value." });
-    }
+        <p style="margin: 0;">
+          Warm regards,<br/>
+          The LSEED Team
+        </p>
+      </div>
+    `;
 
     // ✉️ Send email
     await transporter.sendMail({
@@ -1060,8 +1054,8 @@ app.post("/notify-mentor-application-status", async (req, res) => {
       html,
     });
 
-    console.log(`✅ Status email sent to ${email} (${status})`);
-    res.json({ message: "Email notification sent successfully." });
+    console.log(`✅ Declined email sent to ${email}`);
+    res.json({ message: "Decline notification email sent successfully." });
   } catch (err) {
     console.error("❌ Error sending email:", err);
     res.status(500).json({ message: "Failed to send email notification." });
@@ -1124,6 +1118,37 @@ app.post("/signup-LSEEDCoordinator", async (req, res) => {
     );
 
     console.log(`✅ New LSEED-Coordinator registered: ${email}`);
+
+    // Create Welcome to LSEED Insight Message to Coordinator
+    const notificationTitle = "Welcome to LSEED Insight!";
+    const notificationWelcomeMessage = 
+    "As a LSEED-Coordinator, you can manage mentors, oversee social enterprises, and facilitate impactful connections that are involved in your assigned program. We're excited to have you on board. Get started by exploring your dashboard and other relevant pages!";
+    
+    await pgDatabase.query(
+      `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route)
+      VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/dashboard/lseed');`,
+      [userId, notificationTitle, notificationWelcomeMessage]
+    )
+
+    // LSEED-Director notification
+    const lseedDirectors = await getLSEEDDirectors(); // change your function if needed
+
+    if (lseedDirectors && lseedDirectors.length > 0) {
+      const directorTitle = "LSEED-Coordinator Sign Up Successful!";
+      const coordinatorName = `${firstName} ${lastName}`;
+      const notificationDirectorMessage = 
+        `LSEED-Coordinator ${coordinatorName} has successfully signed up and joined the system. You may now assign programs or monitor their activities via the Manage Programs Page.`;
+
+      for (const director of lseedDirectors) {
+        const receiverId = director.user_id;
+        
+        await pgDatabase.query(
+          `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
+          VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/programs');`,
+          [receiverId, directorTitle, notificationDirectorMessage]
+        );
+      }
+    }
     res.status(201).json({ message: "Coordinator account created successfully." });
 
   } catch (err) {
@@ -1191,8 +1216,9 @@ app.post("/accept-mentor-application", async (req, res) => {
           email,
           contactnum,
           critical_areas,
-          preferred_mentoring_time
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          preferred_mentoring_time,
+          accepted_application_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
           existingUser.user_id,
           existingUser.first_name,
@@ -1200,7 +1226,8 @@ app.post("/accept-mentor-application", async (req, res) => {
           existingUser.email,
           existingUser.contactnum,
           app.business_areas,
-          app.preferred_time
+          app.preferred_time,
+          applicationId
         ]
       );
 
@@ -1209,28 +1236,54 @@ app.post("/accept-mentor-application", async (req, res) => {
         `UPDATE mentor_form_application SET status = 'Approved' WHERE id = $1`,
         [applicationId]
       );
-
+      
+      // Create Mentor Status Updated Notification
+      const notificationTitle = "Mentor Access Granted";
+      const notificationWelcomeMessage = 
+      "Your application to also serve as a mentor has been approved. You can now use your account to access mentor features, connect with social enterprises, and support them through mentorship. Visit your dashboard to get started.";
+      
+      await pgDatabase.query(
+        `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route)
+        VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/dashboard/mentor');`,
+        [existingUser.user_id, notificationTitle, notificationWelcomeMessage]
+      )
+      
       await pgDatabase.query('COMMIT');
 
-      const lseedCoordinators = await getLSEEDCoordinators(); // This fetches LSEED Directors/Coordinators
-      if (lseedCoordinators && lseedCoordinators.length > 0) {
-        const notificationTitle = `Mentor Application Approved: ${existingUser.first_name} ${existingUser.last_name}`;
+            const transporter = nodemailer.createTransport({
+        service: 'Gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
 
-        for (const coordinator of lseedCoordinators) {
-          const receiverId = coordinator.user_id;
-          await pgDatabase.query(
-            `INSERT INTO notification (notification_id, receiver_id, title, created_at, target_route)
-             VALUES (uuid_generate_v4(), $1, $2, NOW(), '/mentors');`,
-            [receiverId, notificationTitle]
-          );
-          console.log(`🔔 Notification sent to LSEED Coordinator ${coordinator.first_name} ${coordinator.last_name}: Mentor application for ${existingUser.first_name} ${existingUser.last_name} approved.`);
-        }
-      } else {
-        console.warn("⚠️ No LSEED Coordinators found to send notification for accepted mentor application.");
-      }
-      // --- END: Notification for Accepted Mentor Application (Existing Coordinator) ---
+      // ✉️ Send email
+      await transporter.sendMail({
+        from: `"LSEED Center" <${process.env.EMAIL_USER}>`,
+        to: existingUser.email,
+        subject: "Your LSEED Mentor Application Has Been Accepted",
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+            <p style="margin: 0 0 16px;">Dear ${existingUser.first_name},</p>
 
-      return res.status(201).json({ message: "Coordinator successfully added as Mentor." });
+            <p style="margin: 0 0 16px;">
+              Your request to also serve as a mentor within the <strong>LSEED Center</strong> has been approved.
+            </p>
+
+            <p style="margin: 0 0 16px;">
+              Your account has now been granted mentor access. You may continue using your existing login credentials to access mentor features.
+            </p>
+
+            <p style="margin: 0;">
+              Warm regards,<br/>
+              <strong>The LSEED Team</strong>
+            </p>
+          </div>
+        `
+      });
+
+      return res.status(201).json({ message: "Mentor successfully added" });
     }
 
     // 3. User doesn't exist → normal path, create user account
@@ -1256,8 +1309,9 @@ app.post("/accept-mentor-application", async (req, res) => {
         email,
         contactnum,
         critical_areas,
-        preferred_mentoring_time
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        preferred_mentoring_time,
+        accepted_application_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         newUserId,
         app.first_name,
@@ -1265,7 +1319,8 @@ app.post("/accept-mentor-application", async (req, res) => {
         app.email,
         app.contact_no,
         app.business_areas,
-        app.preferred_time
+        app.preferred_time,
+        applicationId
       ]
     );
 
@@ -1276,25 +1331,51 @@ app.post("/accept-mentor-application", async (req, res) => {
 
     await pgDatabase.query('COMMIT');
 
-    const lseedCoordinators = await getLSEEDCoordinators(); // This fetches LSEED Directors/Coordinators
-    if (lseedCoordinators && lseedCoordinators.length > 0) {
-      const notificationTitle = `New Mentor Approved: ${app.first_name} ${app.last_name}`;
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
 
-      for (const coordinator of lseedCoordinators) {
-        const receiverId = coordinator.user_id;
-        await pgDatabase.query(
-          `INSERT INTO notification (notification_id, receiver_id, title, created_at, target_route)
-           VALUES (uuid_generate_v4(), $1, $2, NOW(), '/mentors');`,
-          [receiverId, notificationTitle]
-        );
-        console.log(`🔔 Notification sent to LSEED Coordinator ${coordinator.first_name} ${coordinator.last_name}: New mentor ${app.first_name} ${app.last_name} approved.`);
-      }
-    } else {
-      console.warn("⚠️ No LSEED Coordinators found to send notification for accepted mentor application.");
-    }
+    // ✉️ Send email
+    await transporter.sendMail({
+      from: `"LSEED Center" <${process.env.EMAIL_USER}>`,
+      to: app.email,
+      subject: "Your LSEED Mentor Application Has Been Accepted",
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+          <p style="margin: 0 0 16px;">Dear ${app.first_name},</p>
 
-    return res.status(201).json({ message: "Mentor successfully accepted and account created." });
+          <p style="margin: 0 0 16px;">
+            Congratulations! Your application to become a mentor at the <strong>LSEED Center</strong> has been accepted.
+          </p>
 
+          <p style="margin: 0 0 16px;">
+            You may now log in using the credentials you submitted during signup.
+          </p>
+
+          <p style="margin: 0;">
+            Warm regards,<br/>
+            The LSEED Team
+          </p>
+        </div>
+      `
+    });
+
+    // Create Notification
+    // Create Welcome Message
+    const notificationTitle = "Welcome to LSEED Insight";
+    const notificationWelcomeMessage = 
+      "As a mentor at the LSEED Center, you can support social enterprises by sharing your expertise and guidance. We're excited to have you on board! Explore your dashboard to evaluate social enterprises, schedule mentoring sessions, and make an impact.";
+    
+    await pgDatabase.query(
+      `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route)
+      VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/dashboard/mentor');`,
+      [newUserId, notificationTitle, notificationWelcomeMessage]
+    )
+    return res.status(201).json({ message: "Mentor successfully added" });
   } catch (err) {
     await pgDatabase.query('ROLLBACK');
     console.error("❌ Error processing mentor application:", err);
@@ -2731,6 +2812,23 @@ app.put("/mentor-application/:id/status", async (req, res) => {
   }
 });
 
+// Notification is_read update
+app.put("/api/notifications/:notificationId/read", async (req, res) => {
+  const { notificationId } = req.params;
+
+  try {
+    await pgDatabase.query(
+      `UPDATE notification SET is_read = true WHERE notification_id = $1`,
+      [notificationId]
+    );
+
+    res.sendStatus(200);
+  } catch (error) {
+    console.error("❌ Failed to mark notification as read:", error);
+    res.sendStatus(500);
+  }
+});
+
 // API endpoint to fetch all programs
 app.get("/getPrograms", async (req, res) => {
   try {
@@ -3737,20 +3835,20 @@ app.post("/api/googleform-webhook", async (req, res) => {
     const lseedDirectors = await getLSEEDDirectors(); // change your function if needed
 
     if (lseedDirectors && lseedDirectors.length > 0) {
-      const notificationTitle = `New Social Enterprise Application: ${team_name}`;
+      const notificationTitle = `New Social Enterprise Application`;
+      const notificationMessage = 
+        `A new social enterprise (${team_name}) has submitted an application. Review their details in the mentors page.`;
       
       for (const director of lseedDirectors) {
         const receiverId = director.user_id;
         
         await pgDatabase.query(
-          `INSERT INTO notification (notification_id, receiver_id, title, created_at, target_route) 
-          VALUES (uuid_generate_v4(), $1, $2, NOW(), '/socialenterprise');`,
-          [receiverId, notificationTitle]
+          `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
+          VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/socialenterprise');`,
+          [receiverId, notificationTitle, notificationMessage]
         );
       }
     }
-
-    res.sendStatus(200);
 
     if(focal_email) {
 
@@ -3798,6 +3896,8 @@ app.post("/api/googleform-webhook", async (req, res) => {
           </div>
         `,
       });
+
+      res.sendStatus(200);
     } else {
       console.log(`⚠️ No focal_email provided for ${team_name}. Skipping email.`);
     }
@@ -4301,7 +4401,6 @@ async function updateUser(id, updatedUser) {
 app.get("/api/notifications", async (req, res) => {
   try {
       const { receiver_id } = req.query;
-      console.log("🧾 Receiver ID from query:", receiver_id);
 
       if (!receiver_id) {
           return res.status(400).json({ message: "Receiver ID is required" });
@@ -4333,7 +4432,6 @@ app.get("/api/notifications", async (req, res) => {
       ? userResult.rows[0].roles
       : [];
 
-      console.log("🔑 User Roles:", userRoles);
     // Determine the user's effective role for notification purposes
     const isLSEEDUser = userRoles.some(role => 
   role === "LSEED-Coordinator" || 
@@ -4351,7 +4449,7 @@ app.get("/api/notifications", async (req, res) => {
       query = `
           SELECT n.notification_id, n.title, n.created_at,
        COALESCE(u.first_name || ' ' || u.last_name, 'System') AS sender_name,
-       n.se_id, se.team_name AS se_name, ms.status, n.target_route
+       n.se_id, se.team_name AS se_name, ms.status, n.target_route, n.message, n.is_read
 FROM notification n
 LEFT JOIN users u ON n.sender_id = u.user_id
 LEFT JOIN socialenterprises se ON n.se_id = se.se_id
@@ -4378,9 +4476,9 @@ ORDER BY n.created_at DESC;
     }
 
     const result = await pgDatabase.query(query, queryParams); // Use queryParams for the SQL values
-console.log("📤 Running notification query for:", isLSEEDUser ? "LSEED" : isMentorUser ? "Mentor" : "None");
-console.log("🧵 Final SQL:", query);
-console.log("📩 Notifications fetched:", result.rows.length);
+// console.log("📤 Running notification query for:", isLSEEDUser ? "LSEED" : isMentorUser ? "Mentor" : "None");
+// console.log("🧵 Final SQL:", query);
+// console.log("📩 Notifications fetched:", result.rows.length);
 
     if (result.rows.length === 0) {
       return res.status(200).json([]); // Return empty array if no notifications

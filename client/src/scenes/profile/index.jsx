@@ -35,7 +35,9 @@ const ProfilePage = () => {
 
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState("");
-
+  const [isEditing, setIsEditing] = useState(false);
+  const [showEditButtons, setShowEditButtons] = useState(false);
+  
   useEffect(() => {
     // Example pre-fill
     setProfileData({
@@ -59,10 +61,74 @@ const ProfilePage = () => {
     setIsSuccess(true);
   };
 
+  const toggleEditing = () => {
+    setIsEditing(true);
+    setShowEditButtons(true);
+  };
+
   return (
     <Box m="20px">
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Header title="USER PROFILE" subtitle="View and edit your profile details" />
+      </Box>
+      <Box display="flex" alignItems="center" gap={2} mb={2}>
+        {/* Enable Editing Button */}
+        {!showEditButtons && (
+          <Button
+            variant="contained"
+            sx={{
+              backgroundColor: colors.blueAccent[500],
+              color: "black",
+              "&:hover": {
+                backgroundColor: colors.blueAccent[800],
+              },
+            }}
+            onClick={toggleEditing}
+          >
+            Enable Editing
+          </Button>
+        )}
+
+        {/* Cancel and Save Buttons */}
+        {showEditButtons && (
+          <>
+            <Button
+              variant="outlined"
+              sx={{
+                backgroundColor: colors.redAccent[500],
+                color: "black",
+                "&:hover": {
+                  backgroundColor: colors.redAccent[600],
+                },
+              }}
+              onClick={() => {
+                setIsEditing(false);
+                setShowEditButtons(false);
+                setTimeout(() => window.location.reload(), 500);
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="contained"
+              sx={{
+                backgroundColor: colors.blueAccent[500],
+                color: "black",
+                "&:hover": {
+                  backgroundColor: colors.blueAccent[600],
+                },
+              }}
+              onClick={() => {
+                setIsEditing(false);
+                setShowEditButtons(false);
+                setTimeout(() => window.location.reload(), 500);
+              }}
+            >
+              Save Changes
+            </Button>
+          </>
+        )}
       </Box>
 
       <Box
@@ -87,14 +153,15 @@ const ProfilePage = () => {
             fullWidth
             value={profileData.fullName}
             onChange={(e) => handleChange("fullName", e.target.value)}
+            disabled={!isEditing}
             sx={inputStyle}
           />
-
+          {/* Add OTP to change email */}
           <TextField
             label="Email"
             fullWidth
             value={profileData.email}
-            disabled
+            disabled={!isEditing}
             sx={inputStyle}
           />
 
@@ -103,6 +170,7 @@ const ProfilePage = () => {
             fullWidth
             value={profileData.contactnum}
             onChange={(e) => handleChange("contactnum", e.target.value)}
+            disabled={!isEditing}
             sx={inputStyle}
           />
 

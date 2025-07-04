@@ -20,6 +20,7 @@ import {
   OutlinedInput,
   ListItemText,
   Box,
+  Chip,
 } from "@mui/material";
 
 const Login = () => {
@@ -443,7 +444,7 @@ const Login = () => {
                         key: "motivation",
                         multiline: true,
                       },
-                      { label: "Areas of Expertise", key: "expertise" },
+                      { label: "Areas of Expertise", key: "expertise", multiline: true, },
                     ].map((field) => (
                       <TextField
                         key={field.key}
@@ -472,6 +473,7 @@ const Login = () => {
                     <FormControl fullWidth sx={{ mt: 2 }}>
                       <InputLabel>Business Areas</InputLabel>
                       <Select
+                        required
                         multiple
                         value={formData.businessAreas}
                         onChange={(e) =>
@@ -480,15 +482,50 @@ const Login = () => {
                             businessAreas: e.target.value.filter(Boolean),
                           }))
                         }
-                        input={<OutlinedInput label="Business Areas" />}
-                        renderValue={(selected) => selected.join(", ")}
+                        input={
+                          <OutlinedInput
+                            label="Business Areas"
+                            sx={{
+                              // these make the input grow to fit chips
+                              padding: '8px 12px',
+                              minHeight: 80,
+                              height: 'auto',
+                              alignItems: 'flex-start',
+                            }}
+                          />
+                        }
+                        renderValue={(selected) => (
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: 0.5,
+                              maxHeight: 200,
+                              overflowY: 'auto',
+                            }}
+                          >
+                            {selected.map((value) => (
+                              <Chip
+                                key={value}
+                                label={value}
+                                color="default"
+                                sx={{
+                                  color: "#000",          // Force text inside chip
+                                  backgroundColor: "#e0e0e0", // Optional: softer background for contrast
+                                }}
+                              />
+                            ))}
+                          </Box>
+                        )}
                         open={menuOpenBusiness}
                         onOpen={() => setMenuOpenBusiness(true)}
                         onClose={() => setMenuOpenBusiness(false)}
                         sx={{
-                          color: "#000", // Changed from "#fff" to "#000"
                           "& .MuiOutlinedInput-notchedOutline": {
                             borderColor: "#000",
+                          },
+                          "& .MuiSvgIcon-root": {
+                            color: "#000",                           // Force dropdown arrow black
                           },
                         }}
                       >
@@ -513,8 +550,9 @@ const Login = () => {
 
                     {/* Preferred Time Selection */}
                     <FormControl fullWidth sx={{ mt: 2 }}>
-                      <InputLabel>Preferred Time</InputLabel>
+                      <InputLabel sx={{ color: "#000" }}>Preferred Time</InputLabel>
                       <Select
+                        required
                         multiple
                         value={formData.preferredTime}
                         onChange={(e) =>
@@ -523,15 +561,56 @@ const Login = () => {
                             preferredTime: e.target.value.filter(Boolean),
                           }))
                         }
-                        input={<OutlinedInput label="Preferred Time" />}
-                        renderValue={(selected) => selected.join(", ")}
+                        input={
+                          <OutlinedInput
+                            label="Preferred Time"
+                            sx={{
+                              padding: '8px 12px',
+                              minHeight: 80,
+                              height: 'auto',
+                              alignItems: 'flex-start',
+                              color: "#000",                          // Force input text black
+                              "& .MuiInputBase-input": {
+                                color: "#000",                        // Ensure inner input text is black
+                              },
+                            }}
+                          />
+                        }
+                        renderValue={(selected) => (
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: 0.5,
+                              maxHeight: 200,
+                              overflowY: 'auto',
+                            }}
+                          >
+                            {selected.map((value) => (
+                              <Chip
+                                key={value}
+                                label={value}
+                                color="default"
+                                sx={{
+                                  color: "#000",                      // Force chip label black
+                                  backgroundColor: "#e0e0e0",         // Soft gray chip background
+                                }}
+                              />
+                            ))}
+                          </Box>
+                        )}
                         open={menuOpenPreferredTime}
                         onOpen={() => setMenuOpenPreferredTime(true)}
                         onClose={() => setMenuOpenPreferredTime(false)}
                         sx={{
-                          color: "#000", // Changed from "#fff" to "#000"
                           "& .MuiOutlinedInput-notchedOutline": {
-                            borderColor: "#000",
+                            borderColor: "#000",                     // Force border black
+                          },
+                          "& .MuiInputLabel-root": {
+                            color: "#000",                           // Force label black
+                          },
+                          "& .MuiSvgIcon-root": {
+                            color: "#000",                           // Force dropdown arrow black
                           },
                         }}
                       >
@@ -581,7 +660,7 @@ const Login = () => {
 
                     {/* Communication Modes */}
                     <FormControl fullWidth sx={{ mt: 2 }}>
-                      <InputLabel>Communication Modes</InputLabel>
+                      <InputLabel sx={{ color: "#000" }}>Communication Modes</InputLabel>
                       <Select
                         multiple
                         value={formData.communicationMode}
@@ -591,15 +670,57 @@ const Login = () => {
                             communicationMode: e.target.value.filter(Boolean),
                           }))
                         }
-                        input={<OutlinedInput label="Communication Modes" />}
-                        renderValue={(selected) => selected.join(", ")}
+                        required
+                        input={
+                          <OutlinedInput
+                            label="Communication Modes"
+                            sx={{
+                              padding: '8px 12px',
+                              minHeight: 80,
+                              height: 'auto',
+                              alignItems: 'flex-start',
+                              color: "#000",                          // Force text color black
+                              "& .MuiInputBase-input": {
+                                color: "#000",                        // Ensure inner input text is black
+                              },
+                            }}
+                          />
+                        }
+                        renderValue={(selected) => (
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: 0.5,
+                              maxHeight: 200,
+                              overflowY: 'auto',
+                            }}
+                          >
+                            {selected.map((value) => (
+                              <Chip
+                                key={value}
+                                label={value}
+                                color="default"
+                                sx={{
+                                  color: "#000",                      // Force chip text black
+                                  backgroundColor: "#e0e0e0",         // Soft gray background
+                                }}
+                              />
+                            ))}
+                          </Box>
+                        )}
                         open={menuOpenCommunicationModes}
                         onOpen={() => setMenuOpenCommunicationModes(true)}
                         onClose={() => setMenuOpenCommunicationModes(false)}
                         sx={{
-                          color: "#000", // Changed from "#fff" to "#000"
                           "& .MuiOutlinedInput-notchedOutline": {
-                            borderColor: "#000",
+                            borderColor: "#000",                     // Force border black
+                          },
+                          "& .MuiInputLabel-root": {
+                            color: "#000",                           // Force label black
+                          },
+                          "& .MuiSvgIcon-root": {
+                            color: "#000",                           // Force dropdown arrow black
                           },
                         }}
                       >
@@ -621,6 +742,7 @@ const Login = () => {
                         </MenuItem>
                       </Select>
                     </FormControl>
+
                     {/* Terms and Submit */}
                     <div
                       className="checkbox-wrapper terms-checkbox"

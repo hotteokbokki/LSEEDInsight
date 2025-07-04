@@ -317,9 +317,9 @@ const Mentors = ( {} ) => {
         specificTime: "",
         communicationMode: [],
       });
-       setTimeout(() => {
-        window.location.reload();
-      }, 2000); // Adjust delay if needed
+      
+      await new Promise((r) => setTimeout(r, 2000));
+      window.location.reload();
     } catch (error) {
       console.error("Error submitting application:", error);
       setSnackbar({
@@ -338,25 +338,16 @@ const Mentors = ( {} ) => {
   };
 
   const handleAcceptMentor = async (row) => {
-    try {
-      const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/accept-mentor-application`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          applicationId: row.id, // only send the ID
-        }),
-      });
+    const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/accept-mentor-application`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ applicationId: row.id }),
+    });
 
-      if (!res.ok) throw new Error("Failed to accept mentor application");
+    if (!res.ok) throw new Error("Failed to accept mentor application");
 
-      const data = await res.json();
-      console.log("✅ Mentor accepted:", data);
-
-      setOpenAddMentor(true);
-    } catch (err) {
-      console.error("❌ Error accepting mentor:", err);
-      alert("Something went wrong while accepting the mentor.");
-    }
+    const data = await res.json();
+    console.log("✅ Mentor accepted:", data);
   };
 
   const handleMenuAction = async (action, row) => {
@@ -364,29 +355,14 @@ const Mentors = ( {} ) => {
 
     if (action === "Accept") {
       try {
-        // 1️⃣ Call your existing function to add the mentor (presumably inserts them in the users table)
         await handleAcceptMentor(row);
 
-        // 2️⃣ Notify the applicant by email
-        await fetch(`${process.env.REACT_APP_API_BASE_URL}/notify-mentor-application-status`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            applicationId: row.id,
-            status: "Accepted",
-          }),
-        });
-
-        // 3️⃣ Show success message
         setSnackbarMessage("Accepted Application! Mentor Added Successfully");
         setSnackbarSeverity("success");
         setSnackbarOpen(true);
 
-        setTimeout(() => {
-          window.location.reload();
-        }, 3500);
+        await new Promise((r) => setTimeout(r, 3500));
+        window.location.reload();
       } catch (error) {
         console.error("❌ Error accepting mentor:", error);
         setSnackbarMessage("Error processing acceptance. Please try again.");
@@ -429,9 +405,9 @@ const Mentors = ( {} ) => {
         setSnackbarSeverity("success");
         setSnackbarOpen(true);
 
-        setTimeout(() => {
-          window.location.reload();
-        }, 3500);
+        // RECOMMENDED STANDARD
+        await new Promise((r) => setTimeout(r, 1500));
+        window.location.reload();
       } catch (error) {
         console.error("❌ Error declining mentor:", error);
         setSnackbarMessage("Error processing decline. Please try again.");
@@ -679,9 +655,9 @@ const Mentors = ( {} ) => {
         setSnackbarSeverity("success");
         setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
 
-        setTimeout(() => {
-          window.location.reload();
-        }, 500); // Adjust delay if needed
+        await new Promise((r) => setTimeout(r, 1500));
+        window.location.reload();
+
         setIsModalOpen(false);
         setSelectedMentor(null);
         setSelectedSE("");
@@ -731,9 +707,8 @@ const Mentors = ( {} ) => {
         await fetchLatestMentorships();
 
         // Refresh the page after a short delay to ensure updates are reflected
-        setTimeout(() => {
-          window.location.reload();
-        }, 500); // Adjust delay if needed
+        await new Promise((r) => setTimeout(r, 1000));
+        window.location.reload();
       } else {
         console.error("Error adding mentorship");
       }
@@ -774,14 +749,14 @@ const Mentors = ( {} ) => {
             field: "mentor_firstName",
             headerName: "First Name",
             flex: 1,
-            minWidth: 150,
+            minWidth: 100,
             cellClassName: "name-column--cell",
             editable: true,
           },
           {
             field: "mentor_lastName",
             headerName: "Last Name",
-            minWidth: 150,
+            minWidth: 100,
             flex: 1,
             cellClassName: "name-column--cell",
             editable: true,
@@ -792,7 +767,7 @@ const Mentors = ( {} ) => {
             field: "mentor_fullName",
             headerName: "Mentor Name",
             flex: 1,
-            minWidth: 150,
+            minWidth: 100,
             cellClassName: "name-column--cell",
             renderCell: (params) =>
               `${params.row.mentor_firstName} ${params.row.mentor_lastName}`,
@@ -802,14 +777,14 @@ const Mentors = ( {} ) => {
     {
       field: "email",
       headerName: "Email",
-      minWidth: 150,
+      minWidth: 100,
       flex: 1,
       renderCell: (params) => `${params.row.email}`,
       editable: isEditing,
     },
     {
       field: "contactnum",
-      minWidth: 150,
+      minWidth: 100,
       headerName: "Contact Number",
       flex: 1,
       renderCell: (params) => `${params.row.contactnum}`,
@@ -817,7 +792,7 @@ const Mentors = ( {} ) => {
     },
     {
       field: "numberOfSEsAssigned",
-      minWidth: 150,
+      minWidth: 100,
       headerName: "SEs Assigned",
       headerAlign: "left",
       align: "left",
@@ -843,7 +818,7 @@ const Mentors = ( {} ) => {
       field: "status",
       headerName: "Status",
       flex: 1,
-      minWidth: 150,
+      minWidth: 100,
       editable: isEditing,
       renderCell: (params) => <Box>{params.value}</Box>,
       renderEditCell: (params) => (
@@ -867,8 +842,7 @@ const Mentors = ( {} ) => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 150,
-      minWidth: 150,
+      minWidth: 100,
       renderCell: (params) => (
         <Button
           variant="contained"
@@ -1741,14 +1715,14 @@ const Mentors = ( {} ) => {
           padding="20px"
         >
           {/* Top Row with Title and Button */}
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb="15px">
-            <Typography
-              variant="h3"
-              fontWeight="bold"
-              color={colors.greenAccent[500]}
-            >
-              Mentors
-            </Typography>
+          <Typography
+            variant="h3"
+            fontWeight="bold"
+            color={colors.greenAccent[500]}
+            marginBottom="15px"
+          >
+            Mentors
+          </Typography>
 
             {user?.roles?.includes("LSEED-Coordinator") && (
               <Button
@@ -1767,7 +1741,6 @@ const Mentors = ( {} ) => {
                 Apply to Be a Mentor
               </Button>
             )}
-          </Box>
 
           {/* DataGrid Box */}
           <Box

@@ -10,6 +10,7 @@ import {
   FormControlLabel, // 1. Import FormControlLabel for the toggle switch label
   Switch, // 2. Import Switch component
 } from "@mui/material";
+import Badge from '@mui/material/Badge';
 import { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ColorModeContext, tokens } from "../../theme";
@@ -23,7 +24,8 @@ import SearchIcon from "@mui/icons-material/Search";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import { useAuth } from "../../context/authContext";
 import axios from "axios";
-import { Link as RouterLink } from "react-router-dom";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 // 3. Destructure the new props from the function signature
 const Topbar = ({}) => {
@@ -34,16 +36,26 @@ const Topbar = ({}) => {
   const [notifAnchorEl, setNotifAnchorEl] = useState(null);
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
-
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const [expandedNotificationId, setExpandedNotificationId] = useState(null);
   const { logout, user, isMentorView, toggleView } = useAuth();
-
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
-
   const handleNotifOpen = (event) => setNotifAnchorEl(event.currentTarget);
   const handleNotifClose = () => setNotifAnchorEl(null);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
+  const handleToggleExpand = async (notifId) => {
+    setExpandedNotificationId((prev) =>
+      prev === notifId ? null : notifId
+    );
+    await markNotificationAsRead(notifId);
+  };
+
+  const handleNotificationClick = (notif) => {
+    navigate(notif.target_route || "/");
+  };
 
   const fetchNotifications = async () => {
     try {
@@ -79,6 +91,20 @@ const Topbar = ({}) => {
       return () => clearInterval(interval);
     }
   }, [user]);
+
+  const markNotificationAsRead = async (notificationId) => {
+    await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/notifications/${notificationId}/read`, {
+      method: "PUT",
+      credentials: "include",
+    });
+
+    // Update local state
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n.notification_id === notificationId ? { ...n, is_read: true } : n
+      )
+    );
+  };
 
   useEffect(() => {
     console.log("🔥 Notifications state updated:", notifications);
@@ -134,7 +160,9 @@ const Topbar = ({}) => {
 
         {/* Notifications Button */}
         <IconButton onClick={handleNotifOpen}>
-          <NotificationsOutlinedIcon />
+          <Badge badgeContent={unreadCount} color="error">
+            <NotificationsOutlinedIcon />
+          </Badge>
         </IconButton>
 
         {/* Notifications Menu */}
@@ -174,10 +202,10 @@ const Topbar = ({}) => {
           {/* Debug JSX */}
           {console.log("🛠 Rendering Notifications:", notifications)}
 
-          {/* Notification Items Container with Horizontal Scroll */}
+          {/* Notification Items Container */}
           <Box
             sx={{
-              maxHeight: "340px", // ✅ Container height for vertical scrolling
+              maxHeight: "340px", // Container height for vertical scrolling
               overflowY: "auto",
             }}
           >
@@ -185,81 +213,83 @@ const Topbar = ({}) => {
               notifications.map((notif, index) => (
                 <Box key={notif.notification_id}>
                   <MenuItem
-                    component={RouterLink}
-                    to={notif.target_route || "#"}     // ✅ Use stored target_route
-                    onClick={handleNotifClose}
+                    onClick={() => handleToggleExpand(notif.notification_id)}
                     sx={{
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "flex-start",
                       padding: "12px",
+                      backgroundColor: notif.is_read ? "inherit" : colors.greenAccent[100],
                       "&:hover": { backgroundColor: "#f0f0f0" },
-                      minHeight: "auto",
-                      textDecoration: "none",          // ✅ Remove link underline
-                      color: "inherit",                 // ✅ Inherit text color
+                      cursor: "pointer",
+                      textDecoration: "none",
+                      color: "inherit",
                     }}
                   >
-                    {/* Notification Content */}
                     <Box
                       sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
                         width: "100%",
-                        overflowX: "auto",
-                        overflowY: "hidden",
-                        "&::-webkit-scrollbar": {
-                          height: "6px",
-                        },
-                        "&::-webkit-scrollbar-track": {
-                          backgroundColor: "#f1f1f1",
-                          borderRadius: "3px",
-                        },
-                        "&::-webkit-scrollbar-thumb": {
-                          backgroundColor: "#888",
-                          borderRadius: "3px",
-                          "&:hover": {
-                            backgroundColor: "#555",
-                          },
-                        },
+                        alignItems: "center",
                       }}
                     >
-                      <Box sx={{ minWidth: "300px", paddingBottom: "4px" }}>
-                        <Typography
-                          sx={{
-                            fontWeight: "bold",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {notif.title}
-                        </Typography>
+                      <Typography sx={{ fontWeight: "bold", flexGrow: 1 }}>
+                        {notif.title}
+                      </Typography>
+                      <IconButton size="small" sx={{ color: "black" }}>
+                        {expandedNotificationId === notif.notification_id ? (
+                          <ExpandLessIcon />
+                        ) : (
+                          <ExpandMoreIcon />
+                        )}
+                      </IconButton>
+                    </Box>
 
+                    {expandedNotificationId === notif.notification_id && (
+                      <Box
+                        sx={{
+                          mt: 1,
+                          width: "100%",
+                          padding: "8px",
+                          borderRadius: "4px",
+                          backgroundColor: "#f9f9f9",
+                          border: "1px solid #ddd",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "8px",
+                          wordWrap: "break-word",
+                          overflowWrap: "break-word",
+                        }}
+                      >
                         <Typography
                           variant="body2"
                           sx={{
-                            whiteSpace: "nowrap",
-                            marginTop: "4px",
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                            overflowWrap: "break-word",
                           }}
                         >
-                          {notif.title === "Scheduling Approval Needed"
-                            ? `${notif.sender_name} created a schedule for ${notif.se_name}.`
-                            : notif.title === "LSEED Approval"
-                            ? `Your desired schedule for ${notif.se_name} is already accepted by the LSEED.`
-                            : notif.title === "Social Enterprise Approval"
-                            ? `The ${notif.se_name} has agreed to your desired schedule.`
-                            : notif.title}
+                          {notif.message}
                         </Typography>
 
                         <Typography
                           variant="caption"
                           color="gray"
-                          sx={{
-                            whiteSpace: "nowrap",
-                            marginTop: "4px",
-                            display: "block",
-                          }}
                         >
                           {new Date(notif.created_at).toLocaleString()}
                         </Typography>
+
+                        <Button
+                          variant="text"
+                          color="primary"
+                          sx={{ fontSize: "0.85rem", alignSelf: "flex-start" }}
+                          onClick={() => handleNotificationClick(notif)}
+                        >
+                          Go to page
+                        </Button>
                       </Box>
-                    </Box>
+                    )}
                   </MenuItem>
 
                   {index < notifications.length - 1 && <Divider />}
@@ -274,9 +304,9 @@ const Topbar = ({}) => {
         </Menu>
 
         {/* <IconButton>
-  <SettingsOutlinedIcon />
-</IconButton> 
-*/}
+              <SettingsOutlinedIcon />
+            </IconButton> 
+            */}
 
         <IconButton onClick={handleMenuOpen}>
           <PersonOutlinedIcon />
