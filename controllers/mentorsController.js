@@ -8,7 +8,7 @@ exports.getMentorsBySocialEnterprises = async (se_id) => {
     const query = `
       SELECT "mentor_id", "mentor_firstName", "mentor_lastName"
       FROM "mentors"
-      WHERE $1 = ANY("se_id")`;  // ✅ Correctly match UUID in an array
+      WHERE $1 = ANY(se_id)`;  // ✅ Correctly match UUID in an array
 
     const values = [se_id];
 
@@ -113,7 +113,6 @@ exports.getAllMentors = async () => {
         m.mentor_id, m.mentor_firstName, m.mentor_lastName, m.email, m.contactNum;
     `;
 
-
     const result = await pgDatabase.query(query);
 
     if (!result.rows.length) {
@@ -132,6 +131,49 @@ exports.getAllMentors = async () => {
     }));
   } catch (error) {
     console.error("❌ Error fetching all mentors:", error);
+    return [];
+  }
+};
+
+exports.getAllMentorsWithMentorships = async () => {
+  try {
+    const query = `
+      SELECT 
+        m.mentor_id,
+        m.mentor_firstName,
+        m.mentor_lastName,
+        m.email,
+        m.contactNum,
+        COUNT(ms.mentor_id) AS number_SE_assigned,
+        STRING_AGG(se.team_name, '||') AS assigned_se_names
+      FROM 
+        mentors m
+      JOIN 
+        mentorships ms ON ms.mentor_id = m.mentor_id
+      LEFT JOIN 
+        socialenterprises se ON se.se_id = ms.se_id
+      GROUP BY 
+        m.mentor_id, m.mentor_firstName, m.mentor_lastName, m.email, m.contactNum;
+    `;
+
+    const result = await pgDatabase.query(query);
+
+    if (!result.rows.length) {
+      console.log("⚠️ No mentors with mentorships found.");
+      return [];
+    }
+
+    return result.rows.map(mentor => ({
+      mentor_id: mentor.mentor_id,
+      mentor_firstName: mentor.mentor_firstname,
+      mentor_lastName: mentor.mentor_lastname,
+      email: mentor.email,
+      contactNum: mentor.contactnum,
+      number_SE_assigned: mentor.number_se_assigned || 0,
+      assigned_se_names: mentor.assigned_se_names || "",
+    }));
+  } catch (error) {
+    console.error("❌ Error fetching mentors with mentorships:", error);
     return [];
   }
 };
@@ -186,17 +228,11 @@ exports.getPreviousUnassignedMentors = async () => {
 //   }
 // };
 
-exports.getMentorCount = async (program = null) => {
+exports.getMentorCount = async () => {
   try {
-      let programFilter = program ? `WHERE p.name = '${program}'` : '';
 
       const query = `
-          SELECT COUNT(DISTINCT m.mentor_id)
-          FROM mentors AS m
-          JOIN mentorships AS ms ON ms.mentor_id = m.mentor_id
-          JOIN socialenterprises AS s ON s.se_id = ms.se_id
-          JOIN programs AS p ON p.program_id = s.program_id
-          ${programFilter};
+        SELECT COUNT(*) FROM mentors;
       `;
 
       const result = await pgDatabase.query(query);
@@ -207,18 +243,13 @@ exports.getMentorCount = async (program = null) => {
   }
 };
 
-exports.getWithoutMentorshipCount = async (program = null) => {
+exports.getWithoutMentorshipCount = async () => {
   try {
-      let programFilter = program ? `AND p.name = '${program}'` : '';
-
       const query = `
-          SELECT COUNT(*) 
-          FROM mentors AS m
-          JOIN mentorships AS ms ON ms.mentor_id = m.mentor_id
-          JOIN socialenterprises AS s ON s.se_id = ms.se_id
-          JOIN programs AS p ON p.program_id = s.program_id
-          WHERE m.mentor_id NOT IN (SELECT DISTINCT m.mentor_id FROM mentorships)          
-          ${programFilter};
+          SELECT COUNT(*)
+          FROM mentors m
+          LEFT JOIN mentorships ms ON ms.mentor_id = m.mentor_id
+          WHERE ms.mentor_id IS NULL;
       `;
       const result = await pgDatabase.query(query);
       return result.rows;

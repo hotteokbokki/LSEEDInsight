@@ -4,7 +4,7 @@ const pgDatabase = require('../database.js'); // Import PostgreSQL client
 exports.getTelegramUsers = async (chatID) => {
   try {
     // Query to get user details by chatID
-    const query = 'SELECT * FROM TelegramBot WHERE chatID = $1';
+    const query = 'SELECT * FROM telegrambot WHERE chatid = $1';
     const values = [chatID];
 
     const result = await pgDatabase.query(query, values);
@@ -27,7 +27,7 @@ exports.countTelegramUsers = async (se_id) => {
     const query = `
       SELECT COUNT(*) AS total_users
       FROM telegrambot tu
-      WHERE tu."se_ID" = $1;
+      WHERE tu.se_id = $1;
     `;
     const values = [se_id];
 
@@ -45,7 +45,7 @@ exports.insertTelegramUser = async (chatid, username, firstname, userData, mento
     // SQL query to insert data into telegrambot table
     const query = `
       INSERT INTO "telegrambot" (
-        "username", "firstName", "lastName", "mentor_id", "rating", "comments", "isAcknowledge", "se_ID", "chatid"
+        "username", "firstName", "lastName", "mentor_id", "rating", "comments", "isAcknowledge", "se_id", "chatid"
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *; -- Return the inserted row
     `;
@@ -82,9 +82,9 @@ exports.getSocialEnterprisesUsersByProgram = async (program_id) => {
     console.log("🔍 Querying chat IDs for programs:", program_id);
 
     const query = `
-      SELECT DISTINCT t.chatid, t."se_ID"
+      SELECT DISTINCT t.chatid, t.se_id
       FROM telegrambot t
-      JOIN socialenterprises se ON t."se_ID" = se.se_id
+      JOIN socialenterprises se ON t.se_id = se.se_id
       WHERE se.program_id = ANY($1::uuid[])
     `;
     

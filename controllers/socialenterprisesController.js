@@ -34,7 +34,7 @@ exports.getSocialEnterprisesByProgram = async (programId) => {
 exports.getSocialEnterpriseByID = async (se_id) => {
   try {
     // Query to get a social enterprise by se_id
-    const query = 'SELECT * FROM "socialenterprises" WHERE "se_id" = $1';
+    const query = 'SELECT * FROM socialenterprises WHERE se_id = $1';
     const values = [se_id];
 
     const result = await pgDatabase.query(query, values);
@@ -54,17 +54,27 @@ exports.getSocialEnterpriseByID = async (se_id) => {
 
 exports.getAllSocialEnterprises = async () => {
   try {
-    const res = await pgDatabase.query('SELECT * FROM socialenterprises');
-    
+    const res = await pgDatabase.query(`
+      SELECT 
+        se.se_id,
+        se.team_name,
+        se.abbr,
+        se.description,
+        array_agg(CONCAT('SDG ', sdg.sdg_number, ': ', sdg.name)) AS sdgs
+      FROM socialenterprises se
+      JOIN sdg ON sdg.sdg_id = ANY(se.sdg_id)
+      GROUP BY se.se_id, se.team_name, se.abbr, se.description;
+    `);
+
     if (!res.rows || res.rows.length === 0) {
       console.error("No SE found");
-      return null; // or return an empty array []
+      return null; // or return []
     }
 
-    return res.rows; // return the list of users
+    return res.rows;
   } catch (error) {
-    console.error("Error fetching user:", error);
-    return null; // or handle error more gracefully
+    console.error("Error fetching social enterprises:", error);
+    return null;
   }
 };
 
@@ -306,14 +316,11 @@ exports.updateSocialEnterpriseStatus = async (se_id, isActive) => {
   }
 };
 
-exports.getTotalSECount = async (program = null) => {
+exports.getTotalSECount = async () => {
   try {
-      let programFilter = program ? `WHERE p.name = '${program}'` : '';
-
       const query = `
         SELECT COUNT(*) FROM socialenterprises AS s
         JOIN programs AS p ON p.program_id = s.program_id
-        ${programFilter};
       `;
 
       const result = await pgDatabase.query(query);

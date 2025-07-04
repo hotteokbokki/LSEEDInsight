@@ -59,7 +59,7 @@ exports.getMentorshipsForScheduling = async (mentor_id) => {
             se.preferred_mentoring_time,
             se.mentoring_time_note
         FROM mentorships AS ms 
-        JOIN socialenterprises AS se ON ms."se_id" = se."se_id"
+        JOIN socialenterprises AS se ON ms.se_id = se.se_id
         JOIN mentors AS m ON m."mentor_id" = ms."mentor_id"
         JOIN programs AS p ON se."program_id" = p."program_id"
         JOIN sdg AS sdg ON sdg."sdg_id" = ANY(se."sdg_id")
@@ -148,17 +148,12 @@ exports.getHandledSEsCountByMentor = async (mentor_id) => {
   }
 };
 
-exports.getMentorshipCount = async (program = null) => {
+exports.getMentorshipCount = async () => {
     try {
-        let programFilter = program ? `AND p.name = '${program}'` : '';
-        
         const query = `
-            SELECT COUNT(DISTINCT mentor_id) 
-            FROM mentorships AS ms
-            JOIN socialenterprises AS s ON s.se_id = ms.se_id
-            JOIN programs AS p ON p.program_id = s.program_id
-            WHERE status != 'Inactive'
-            ${programFilter};  
+            SELECT COUNT(DISTINCT m.mentor_id)
+            FROM mentors m
+            JOIN mentorships ms ON ms.mentor_id = m.mentor_id;
         `;
 
         const result = await pgDatabase.query(query);

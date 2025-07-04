@@ -42,7 +42,8 @@ const { getMentorsBySocialEnterprises,
         getMostAssignedMentor, 
         getMentorDetails, 
         getMentorCount, 
-        getCriticalAreasByMentorID} = require("./controllers/mentorsController.js");
+        getCriticalAreasByMentorID,
+        getAllMentorsWithMentorships} = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
 const { getMentorshipsByMentorId, 
         getMentorBySEID, 
@@ -129,9 +130,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,       // true if HTTPS only in production
+    secure: false,       // true if HTTPS only in production
     httpOnly: true,
-    sameSite: 'none',     // none only in production
+    sameSite: 'lax',     // none only in production
     maxAge: 1000 * 60 * 60 * 24,
   },
 }));
@@ -1311,17 +1312,24 @@ app.get("/api/mentors", async (req, res) => {
   }
 });
 
+app.get("/api/mentors-with-mentorships", async (req, res) => {
+  try {
+    const mentors = await getAllMentorsWithMentorships();
+    res.json(mentors);
+  } catch (error) {
+    console.error("❌ Error fetching mentors:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.get("/api/dashboard-stats", async (req, res) => {
   try {
-
-    const program = req.query.program || null; // Optional program param
-
-    const mentorshipCount = await getMentorCount(program);
-    const mentorsWithMentorshipCount = await getMentorshipCount(program);
-    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount(program);
+    const mentorshipCount = await getMentorCount();
+    const mentorsWithMentorshipCount = await getMentorshipCount();
+    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount();
 
     // ✅ Fetch the total number of social enterprises
-    const totalSocialEnterprises = await getTotalSECount(program);
+    const totalSocialEnterprises = await getTotalSECount();
 
     // ✅ Fetch the number of programs
     const totalPrograms = await getProgramCount();
@@ -1477,15 +1485,14 @@ app.get("/get-mentor-availability", async (req, res) => {
 
 app.get("/api/mentor-stats", async (req, res) => {
   try {
-    const program = req.query.program || null; // Optional program param
 
     // ✅ Fetch data
-    const mentorshipCount = await getMentorCount(program);
-    const mentorsWithMentorshipCount = await getMentorshipCount(program);
-    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount(program);
+    const mentorshipCount = await getMentorCount();
+    const mentorsWithMentorshipCount = await getMentorshipCount();
+    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount();
     const leastAssignedMentor = await getLeastAssignedMentor();
     const mostAssignedMentor = await getMostAssignedMentor();
-    const totalSECount = await getTotalSECount(program);
+    const totalSECount = await getTotalSECount();
 
     res.json({
       mentorCountTotal: mentorshipCount,
@@ -1774,7 +1781,7 @@ app.post("/evaluate", async (req, res) => {
 
       // ✅ Get mentor's chat ID from Telegram Bot Table
       const chatIdQuery = `
-        SELECT chatid FROM telegrambot WHERE mentor_id = $1 AND "se_ID" = $2;
+        SELECT chatid FROM telegrambot WHERE mentor_id = $1 AND se_id = $2;
       `;
       const chatIdResult = await pgDatabase.query(chatIdQuery, [mentorId, singleSeId]);
 
@@ -2480,30 +2487,68 @@ app.post("/api/remove-mentorship", async (req, res) => {
     return res.status(400).json({ error: "Mentor ID and Social Enterprise ID are required." });
   }
 
+  const client = await pgDatabase.connect();
+
   try {
-    // Begin transaction
-    await pgDatabase.query("BEGIN");
+    await client.query("BEGIN");
 
-    // Delete mentorship record
-    const deleteMentorship = `
-      DELETE FROM mentorships 
-      WHERE mentor_id = $1 AND se_id = $2
-    `;
-    const result = await pgDatabase.query(deleteMentorship, [mentorId, seId]);
+    // Get mentor's name for the message
+    const mentorResult = await client.query(
+      "SELECT mentor_firstname, mentor_lastname FROM mentors WHERE mentor_id = $1",
+      [mentorId]
+    );
 
-    if (result.rowCount === 0) {
-      await pgDatabase.query("ROLLBACK");
+    if (mentorResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Mentor not found." });
+    }
+
+    const mentorName = `${mentorResult.rows[0].mentor_firstname} ${mentorResult.rows[0].mentor_lastname}`;
+
+    // 1️⃣ Get chat IDs for this mentorship
+    const chatResult = await client.query(
+      `SELECT chatid FROM telegrambot WHERE mentor_id = $1 AND se_id = $2`,
+      [mentorId, seId]
+    );
+
+    const chatIds = chatResult.rows.map(row => row.chatid);
+
+    console.log(`Found ${chatIds.length} chat IDs to notify.`);
+
+    // 2️⃣ Send Telegram notifications
+    const messageText = `*NOTICE*\nYour mentorship with *${mentorName}* has been removed by LSEED.`;
+
+    for (const chatId of chatIds) {
+      await sendMessage(chatId, messageText);
+    }
+
+    // 3️⃣ Delete the chat IDs from the telegrambot table
+    await client.query(
+      `DELETE FROM telegrambot WHERE mentor_id = $1 AND se_id = $2`,
+      [mentorId, seId]
+    );
+
+    // 4️⃣ Delete the mentorship record itself
+    const deleteMentorshipResult = await client.query(
+      `DELETE FROM mentorships WHERE mentor_id = $1 AND se_id = $2`,
+      [mentorId, seId]
+    );
+
+    if (deleteMentorshipResult.rowCount === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ error: "No mentorship record found." });
     }
 
-    // Commit transaction
-    await pgDatabase.query("COMMIT");
+    await client.query("COMMIT");
 
-    res.json({ success: true, message: "Mentorship removed successfully!" });
+    res.json({ success: true, message: "Mentorship removed and notifications sent." });
+
   } catch (error) {
-    await pgDatabase.query("ROLLBACK");
-    console.error("❌ Error removing mentorship:", error.message);
+    await client.query("ROLLBACK");
+    console.error("❌ Error removing mentorship:", error);
     res.status(500).json({ error: "Internal Server Error", details: error.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -4403,7 +4448,7 @@ app.get("/checkPendingMeetings", async (req, res) => {
     const query = `
       SELECT m.mentorship_id, m.se_id, m.mentorship_date, t.chatid
       FROM mentorships m
-      JOIN telegrambot t ON m.se_id = t."se_ID"
+      JOIN telegrambot t ON m.se_id = t.se_id
       WHERE m.telegramstatus = 'Pending'
     `;
 

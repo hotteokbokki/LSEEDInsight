@@ -26,7 +26,7 @@ import axios from "axios";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import PersonIcon from "@mui/icons-material/Person";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import Header from "../../components/Header";
 import StatBox from "../../components/StatBox";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
@@ -138,7 +138,7 @@ const Mentors = ( {} ) => {
   const fetchMentors = async () => {
     try {
       const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/mentors`); // ✅ Fixed URL
-      console.log("📥 API Response:", response.data); // ✅ Debugging Log
+      console.log("📥 MENTORS Response:", response.data); // ✅ Debugging Log
 
       const formattedData = response.data.map((mentor) => ({
         id: mentor.mentor_id,
@@ -545,19 +545,8 @@ const Mentors = ( {} ) => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        let response;
-        if (isLSEEDCoordinator) {
-          const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-program-coordinator`, {
-            method: "GET",
-            credentials: "include", // Required to send session cookie
-          });
-          const data = await res.json();
-          const program = data[0]?.name;
-
-          response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/mentor-stats?program=${program}`);
-        } else {
-          response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/mentor-stats`);
-        }
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/mentor-stats`);
+        
         const data = await response.json();
         setStats(data);
       } catch (error) {
@@ -572,7 +561,7 @@ const Mentors = ( {} ) => {
       try {
         // Fetch active mentors
         const mentorsResponse = await fetch(
-          `${process.env.REACT_APP_API_BASE_URL}/api/mentors`
+          `${process.env.REACT_APP_API_BASE_URL}/api/mentors-with-mentorships`
         );
         const mentorsData = await mentorsResponse.json();
         setMentors(mentorsData);
@@ -785,12 +774,14 @@ const Mentors = ( {} ) => {
             field: "mentor_firstName",
             headerName: "First Name",
             flex: 1,
+            minWidth: 150,
             cellClassName: "name-column--cell",
             editable: true,
           },
           {
             field: "mentor_lastName",
             headerName: "Last Name",
+            minWidth: 150,
             flex: 1,
             cellClassName: "name-column--cell",
             editable: true,
@@ -801,6 +792,7 @@ const Mentors = ( {} ) => {
             field: "mentor_fullName",
             headerName: "Mentor Name",
             flex: 1,
+            minWidth: 150,
             cellClassName: "name-column--cell",
             renderCell: (params) =>
               `${params.row.mentor_firstName} ${params.row.mentor_lastName}`,
@@ -810,12 +802,14 @@ const Mentors = ( {} ) => {
     {
       field: "email",
       headerName: "Email",
+      minWidth: 150,
       flex: 1,
       renderCell: (params) => `${params.row.email}`,
       editable: isEditing,
     },
     {
       field: "contactnum",
+      minWidth: 150,
       headerName: "Contact Number",
       flex: 1,
       renderCell: (params) => `${params.row.contactnum}`,
@@ -823,6 +817,7 @@ const Mentors = ( {} ) => {
     },
     {
       field: "numberOfSEsAssigned",
+      minWidth: 150,
       headerName: "SEs Assigned",
       headerAlign: "left",
       align: "left",
@@ -848,6 +843,7 @@ const Mentors = ( {} ) => {
       field: "status",
       headerName: "Status",
       flex: 1,
+      minWidth: 150,
       editable: isEditing,
       renderCell: (params) => <Box>{params.value}</Box>,
       renderEditCell: (params) => (
@@ -872,6 +868,7 @@ const Mentors = ( {} ) => {
       field: "actions",
       headerName: "Actions",
       width: 150,
+      minWidth: 150,
       renderCell: (params) => (
         <Button
           variant="contained"
@@ -909,7 +906,11 @@ const Mentors = ( {} ) => {
               parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
               parseInt(stats?.mentorCountTotal[0]?.count)
             } // Calculate percentage of unassigned mentors
-            increase={`${(
+            increase={
+              isNaN(parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
+              parseInt(stats?.mentorCountTotal[0]?.count))
+              ? "0%" :
+              `${(
               (parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
                 parseInt(stats?.mentorCountTotal[0]?.count)) *
               100
@@ -936,7 +937,11 @@ const Mentors = ( {} ) => {
               parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
               parseInt(stats?.mentorCountTotal[0]?.count)
             } // Calculate percentage filled
-            increase={`${(
+            increase={
+              isNaN(parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
+              parseInt(stats?.mentorCountTotal[0]?.count))
+              ? "0%" :
+              `${(
               (parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
                 parseInt(stats?.mentorCountTotal[0]?.count)) *
               100
@@ -956,13 +961,21 @@ const Mentors = ( {} ) => {
           justifyContent="center"
         >
           <StatBox
-            title={`${stats?.mostAssignedMentor[0]?.mentor_firstname} ${stats?.mostAssignedMentor[0]?.mentor_lastname}`}
+            title={
+              stats?.mostAssignedMentor?.length
+                ? `${stats.mostAssignedMentor[0].mentor_firstname ?? ''} ${stats.mostAssignedMentor[0].mentor_lastname ?? ''}`.trim()
+                : "No Available Data"
+            }
             subtitle="Most Assigned"
             progress={(
               stats?.mostAssignedMentor[0]?.num_assigned_se /
               stats?.totalSECount[0]?.count
             ).toFixed(2)} // Calculate progress (assigned SE count / total SE count)
-            increase={`${(
+            increase={
+              isNaN(stats?.mostAssignedMentor[0]?.num_assigned_se /
+              stats?.totalSECount[0]?.count)
+              ? "0%" :
+              `${(
               (stats?.mostAssignedMentor[0]?.num_assigned_se /
                 stats?.totalSECount[0]?.count -
                 0) *
@@ -983,13 +996,21 @@ const Mentors = ( {} ) => {
           justifyContent="center"
         >
           <StatBox
-            title={`${stats?.leastAssignedMentor[0]?.mentor_firstname} ${stats?.leastAssignedMentor[0]?.mentor_lastname}`}
+            title={
+              stats?.mostAssignedMentor?.length
+              ? `${stats?.leastAssignedMentor[0]?.mentor_firstname} ${stats?.leastAssignedMentor[0]?.mentor_lastname}`
+              : "No Available Data"
+            }
             subtitle="Least Assigned"
             progress={(
               stats?.leastAssignedMentor[0]?.num_assigned_se /
               stats?.totalSECount[0]?.count
             ).toFixed(2)} // Calculate progress (assigned SE count / total SE count)
-            increase={`${(
+            increase={
+              isNaN(stats?.leastAssignedMentor[0]?.num_assigned_se /
+              stats?.totalSECount[0]?.count)
+              ? "0%" :
+              `${(
               (stats?.leastAssignedMentor[0]?.num_assigned_se /
                 stats?.totalSECount[0]?.count -
                 0) *
@@ -1782,15 +1803,23 @@ const Mentors = ( {} ) => {
               sx={{
                 "& .MuiDataGrid-cell": {
                   display: "flex",
-                  alignItems: "center",
+                  alignItems: "center", // vertical centering
                   paddingTop: "12px",
                   paddingBottom: "12px",
+                },
+                "& .MuiDataGrid-columnHeader": {
+                  alignItems: "center", // optional: center header label vertically
                 },
                 "& .MuiDataGrid-cellContent": {
                   whiteSpace: "normal",
                   wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                },
+                "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+                color: `${colors.grey[100]} !important`,
                 },
               }}
+              slots={{ toolbar: GridToolbar }}
             />
           </Box>
         </Box>

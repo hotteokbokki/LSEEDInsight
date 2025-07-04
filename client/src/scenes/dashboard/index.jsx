@@ -954,11 +954,16 @@ const Dashboard = ({ }) => {
                                 parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
                                 parseInt(stats?.mentorCountTotal[0]?.count)
                             }
-                            increase={`${(
-                                (parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
+                            increase={
+                              isNaN(parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
+                                parseInt(stats?.mentorCountTotal[0]?.count))
+                              ? "0%"
+                              :
+                              `${((parseInt(stats?.mentorWithoutMentorshipCount[0]?.count) /
                                     parseInt(stats?.mentorCountTotal[0]?.count)) *
-                                100
-                            ).toFixed(2)}%`}
+                                    100
+                                ).toFixed(2)}%`
+                            }
                             icon={
                                 <PersonIcon
                                     sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
@@ -982,11 +987,14 @@ const Dashboard = ({ }) => {
                                 parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
                                 parseInt(stats?.mentorCountTotal[0]?.count)
                             }
-                            increase={`${(
-                                (parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
-                                    parseInt(stats?.mentorCountTotal[0]?.count)) *
-                                100
-                            ).toFixed(2)}%`}
+                            increase={
+                              isNaN(parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
+                                parseInt(stats?.mentorCountTotal[0]?.count))
+                                ? "0%" :
+                                `${((parseInt(stats?.mentorWithMentorshipCount[0]?.count) /
+                                      parseInt(stats?.mentorCountTotal[0]?.count)) *
+                                  100
+                              ).toFixed(2)}%`}
                             icon={
                                 <PersonIcon
                                     sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
@@ -1003,25 +1011,43 @@ const Dashboard = ({ }) => {
                         justifyContent="center"
                         bgcolor={colors.primary[400]}
                     >
-                        <Chip
-                            label={`${stats.totalSocialEnterprises} involved ${
-                                stats.totalSocialEnterprises === 1
-                                    ? "Social Enterprise"
-                                    : "Social Enterprises"
-                            }`}
-                            icon={
-                                <BusinessIcon
-                                    sx={{ fontSize: "26px", color: colors.greenAccent[500] }}
-                                />
-                            }
-                            sx={{
-                                fontSize: "20px",
-                                p: "10px",
-                                backgroundColor: colors.primary[400],
-                                color: colors.grey[100],
-                                "& .MuiChip-icon": { color: colors.greenAccent[500] },
-                            }}
-                        />
+                      <Chip
+                        label={
+                          <Box sx={{ textAlign: "center" }}>
+                            <Typography sx={{ fontSize: "20px", lineHeight: 1.2 }}>
+                              {stats.totalSocialEnterprises}
+                            </Typography>
+                            <Typography sx={{ fontSize: "16px", lineHeight: 1.2 }}>
+                              involved
+                            </Typography>
+                            <Typography
+                              sx={{
+                                fontSize: "16px",
+                                lineHeight: 1.2,
+                                wordBreak: "keep-all", // prevent mid-word breaks
+                                whiteSpace: "nowrap",  // keep full phrase on one line
+                              }}
+                            >
+                              {stats.totalSocialEnterprises === 1
+                                ? "Social Enterprise"
+                                : "Social Enterprises"}
+                            </Typography>
+                          </Box>
+                        }
+                        icon={
+                          <BusinessIcon
+                            sx={{ fontSize: "26px", color: colors.greenAccent[500] }}
+                          />
+                        }
+                        sx={{
+                          p: "10px",
+                          backgroundColor: colors.primary[400],
+                          color: colors.grey[100],
+                          "& .MuiChip-icon": { color: colors.greenAccent[500] },
+                          maxWidth: "200px", // more width to fit longer words
+                          whiteSpace: "normal", // allow wrapping between lines
+                        }}
+                      />
                     </Box>
 
                     {/* Total Programs (LSEED) */}

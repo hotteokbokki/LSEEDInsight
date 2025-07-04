@@ -13,6 +13,11 @@ import {
   DialogContent,
   DialogTitle,
   Chip,
+  TableContainer,
+  Table,
+  TableBody,
+  TableRow,
+  TableCell
 } from "@mui/material";
 import StarIcon from "@mui/icons-material/Star";
 import AssignmentIcon from "@mui/icons-material/Assignment";
@@ -54,7 +59,7 @@ const SEAnalytics = () => {
     acknowledgedEvaluations: 0,
   });
   const [criticalAreas, setCriticalAreas] = useState([]);
-
+  const [moreOpen, setMoreOpen] = useState([]);
   // Financial Analytics States
   const [financialData, setFinancialData] = useState([]);
   const [cashFlowRaw, setCashFlowRaw] = useState([]);
@@ -67,20 +72,24 @@ const SEAnalytics = () => {
         // Fetch SE list
         const seResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL}/getAllSocialEnterprises`);
         const seData = await seResponse.json();
+
         const formattedSEData = seData.map((se) => ({
-          id: se.se_id,
-          name: se.team_name,
-          abbr: se.abbr,
+          id: se?.se_id ?? "",
+          name: se?.team_name ?? "Unnamed SE",
+          abbr: se?.abbr ?? "",
+          description: se?.description ?? "",
+          sdgs: Array.isArray(se?.sdgs) && se.sdgs.length > 0
+            ? se.sdgs
+            : ["No SDG listed"],
         }));
-        setSocialEnterprises(formattedSEData);
 
         // Set selected SE
         if (id) {
-          console.log("[DEBUG] ID param detected:", id);
           const initialSE = formattedSEData.find((se) => se.id === id);
           setSelectedSE(initialSE);
           setSelectedSEId(id);
         }
+        //DEBUG
         // JM Check mo toh, kasi sa current Promise mo once nag error ung isang API error na kaagad yung whole code.
 
         // ✅ Use Promise.all when the calls are all required together and you want to stop if any fails:
@@ -461,6 +470,80 @@ const SEAnalytics = () => {
         </Box>
       </Box>
 
+      <Box mt="10px" p="10px" backgroundColor={colors.primary[500]} borderRadius="8px">
+    
+        {/* Description */}
+        <Typography variant="h6" color={colors.grey[100]} gutterBottom>
+          Description
+        </Typography>
+        <Typography variant="body1" color={colors.grey[300]} mb={2}>
+          {selectedSE?.description?.trim()
+            ? selectedSE.description
+            : "No description provided."}
+        </Typography>
+
+        {/* SDGs Involved */}
+        <TableContainer sx={{ maxWidth: 400, backgroundColor: colors.primary[500], borderRadius: 2, mt: 2 }}>
+          <Table size="small">
+            <TableBody>
+              {selectedSE?.sdgs?.length > 0 && (
+                <TableContainer
+                  sx={{
+                    maxWidth: 400,
+                    backgroundColor: colors.primary[500],
+                    borderRadius: 2,
+                    mt: 2
+                  }}
+                >
+                  <Table size="small">
+                    <TableBody>
+                      {selectedSE.sdgs.map((sdg, index) => (
+                        <TableRow key={index}>
+                          <TableCell
+                            sx={{
+                              color: colors.grey[100],
+                              borderBottom: 'none'
+                            }}
+                          >
+                            {sdg}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <Button
+          variant="outlined"
+          color="secondary"
+          onClick={() => setMoreOpen(true)}
+        >
+          More Info
+        </Button>
+
+        {/* Dialog or expandable card (choose one approach) */}
+        <Dialog open={moreOpen} onClose={() => setMoreOpen(false)}>
+          <DialogTitle>More Info - {selectedSE?.name}</DialogTitle>
+          <DialogContent dividers>
+            <Typography gutterBottom>
+              <strong>Status:</strong> {selectedSE?.status ?? "Not specified"}
+            </Typography>
+            <Typography gutterBottom>
+              <strong>Abbreviation:</strong> {selectedSE?.abbr ?? "N/A"}
+            </Typography>
+            <Typography gutterBottom>
+              <strong>Contact Email:</strong> {selectedSE?.contact_email ?? "N/A"}
+            </Typography>
+            {/* Add more fields as needed */}
+          </DialogContent>
+        </Dialog>
+
+      </Box>
+
       {/* Row 1 - StatBoxes */}
       <Box
         display="flex"
@@ -478,20 +561,30 @@ const SEAnalytics = () => {
           p="20px"
         >
           <Chip
-            label={`${stats.registeredUsers} ${
-              stats.registeredUsers === 1 ? "User" : "Users"
-            }`}
+            label={
+              <Box sx={{ textAlign: "center" }}>
+                <Typography sx={{ fontSize: "20px", lineHeight: 1.2 }}>
+                  {stats.registeredUsers}
+                </Typography>
+                <Typography sx={{ fontSize: "16px", lineHeight: 1.2 }}>
+                  Registered
+                </Typography>
+                <Typography sx={{ fontSize: "16px", lineHeight: 1.2 }}>
+                  Telegram {stats.registeredUsers === 1 ? "User" : "Users"}
+                </Typography>
+              </Box>
+            }
             icon={
               <PeopleIcon
                 sx={{ fontSize: "26px", color: colors.greenAccent[500] }}
               />
             }
             sx={{
-              fontSize: "20px",
               p: "10px",
               backgroundColor: colors.primary[400],
               color: colors.grey[100],
               "& .MuiChip-icon": { color: colors.greenAccent[500] },
+              maxWidth: "160px",
             }}
           />
         </Box>

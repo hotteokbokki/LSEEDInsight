@@ -687,20 +687,20 @@ exports.getAcknowledgementData = async (program = null) => {
 
         const query = `
             SELECT 
-                CONCAT(t.mentor_id, '-', t."se_ID") AS batch,  -- Grouping by mentor_id and se_ID
+                CONCAT(t.mentor_id, '-', t.se_id) AS batch,  -- Grouping by mentor_id and se_ID
                 s.team_name AS se_name,  -- Get the social enterprise name
                 COUNT(CASE WHEN e."isAcknowledge" = true THEN 1 END) * 100.0 / COUNT(*) AS acknowledged_percentage,
                 COUNT(CASE WHEN e."isAcknowledge" = false THEN 1 END) * 100.0 / COUNT(*) AS pending_percentage
             FROM evaluations e
             JOIN telegrambot t 
                 ON e.mentor_id = t.mentor_id 
-                AND e.se_id = t."se_ID"  
+                AND e.se_id = t.se_id 
             JOIN socialenterprises s 
-                ON t."se_ID" = s.se_id  
+                ON t.se_id = s.se_id  
             JOIN programs AS p ON p.program_id = s.program_id
             WHERE e.evaluation_type = 'Social Enterprise'
             ${programFilter}
-            GROUP BY t.mentor_id, t."se_ID", s.team_name
+            GROUP BY t.mentor_id, t.se_id, s.team_name
             ORDER BY COUNT(CASE WHEN e."isAcknowledge" = true THEN 1 END) DESC  -- Sort by acknowledged evaluations
             LIMIT 10;
         `;
@@ -827,7 +827,7 @@ exports.getPendingEvaluationCount= async (se_id) => {
         const query = `
             SELECT COUNT(*) AS pending_evaluations
             FROM evaluations AS e
-            WHERE e."se_id" = $1
+            WHERE e.se_id = $1
             AND e."isAcknowledge" = false;
         `;
 
@@ -846,7 +846,7 @@ exports.getAcknowledgedEvaluationCount= async (se_id) => {
         const query = `
             SELECT COUNT(*) AS acknowledged_evaluations
             FROM evaluations AS e
-            WHERE e."se_id" = $1
+            WHERE e.se_id = $1
             AND e."isAcknowledge" = true;
         `;
 

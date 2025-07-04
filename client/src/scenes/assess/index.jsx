@@ -220,6 +220,7 @@ const EvaluatePage = ({ }) => {
       field: "social_enterprise", 
       headerName: "Social Enterprise", 
       flex: 1,
+      minWidth: 150,
       renderCell: (params) => (
         <Typography
           variant="body2"
@@ -236,11 +237,11 @@ const EvaluatePage = ({ }) => {
       field: "evaluator_name", 
       headerName: "Evaluator", 
       flex: 1,
+      minWidth: 150,
       renderCell: (params) => (
         <Box
           sx={{
             width: "100%",
-            display: "flex",
             alignItems: "center",
           }}
         >
@@ -252,6 +253,7 @@ const EvaluatePage = ({ }) => {
       field: "acknowledged", 
       headerName: "Acknowledged", 
       flex: 1,
+      minWidth: 150,
       renderCell: (params) => (
         <Box
           sx={{
@@ -268,6 +270,7 @@ const EvaluatePage = ({ }) => {
       field: "evaluation_date", 
       headerName: "Evaluation Date", 
       flex: 1,
+      minWidth: 150,
       renderCell: (params) => (
         <Box
           sx={{
@@ -284,6 +287,7 @@ const EvaluatePage = ({ }) => {
       field: "action",
       headerName: "Action",
       flex: 1,
+      minWidth: 150,
       renderCell: (params) => (
         <Button
           variant="contained"
@@ -332,13 +336,14 @@ const EvaluatePage = ({ }) => {
   }, []);
 
   const mentorEvaluationColumns = [
-    { field: "mentor_name", headerName: "Mentor", flex: 1 },
-    { field: "evaluator_name", headerName: "Evaluator (SE)", flex: 1 },
-    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
+    { field: "mentor_name", headerName: "Mentor", flex: 1, minWidth: 150, },
+    { field: "evaluator_name", headerName: "Evaluator (SE)", flex: 1, minWidth: 150, },
+    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1, minWidth: 150, },
     {
       field: "action",
       headerName: "Action",
       flex: 1,
+      minWidth: 150,
       renderCell: (params) => (
         <Button
           variant="contained"
@@ -756,6 +761,27 @@ const EvaluatePage = ({ }) => {
         rows={evaluationsData}
         columns={columns}
         getRowId={(row) => row.evaluation_id} // Ensure evaluation_id is used as ID
+        getRowHeight={() => 'auto'}
+        sx={{
+          "& .MuiDataGrid-cell": {
+            display: "flex",
+            alignItems: "center", // vertical centering
+            paddingTop: "12px",
+            paddingBottom: "12px",
+          },
+          "& .MuiDataGrid-columnHeader": {
+            alignItems: "center", // optional: center header label vertically
+          },
+          "& .MuiDataGrid-cellContent": {
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
+          },
+          "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+          color: `${colors.grey[100]} !important`,
+          },
+        }}
+        slots={{ toolbar: GridToolbar }}
       />
     );
   }
@@ -1058,6 +1084,26 @@ const EvaluatePage = ({ }) => {
                 rows={lseedEvaluations}
                 columns={columns}
                 getRowId={(row) => row.id}
+                getRowHeight={() => 'auto'}
+                sx={{
+                  "& .MuiDataGrid-cell": {
+                    display: "flex",
+                    alignItems: "center", // vertical centering
+                    paddingTop: "12px",
+                    paddingBottom: "12px",
+                  },
+                  "& .MuiDataGrid-columnHeader": {
+                    alignItems: "center", // optional: center header label vertically
+                  },
+                  "& .MuiDataGrid-cellContent": {
+                    whiteSpace: "normal", // allow line wrap
+                    wordBreak: "break-word",
+                  },
+                  "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+                  color: `${colors.grey[100]} !important`,
+                  },
+                }}
+                slots={{ toolbar: GridToolbar }}
               />
             </Box>
           </Box>
@@ -1104,6 +1150,27 @@ const EvaluatePage = ({ }) => {
                 rows={mentorevaluationsData}
                 columns={mentorEvaluationColumns}
                 getRowId={(row) => row.id}
+                getRowHeight={() => 'auto'}
+                sx={{
+                  "& .MuiDataGrid-cell": {
+                    display: "flex",
+                    alignItems: "center", // vertical centering
+                    paddingTop: "12px",
+                    paddingBottom: "12px",
+                  },
+                  "& .MuiDataGrid-columnHeader": {
+                    alignItems: "center", // optional: center header label vertically
+                  },
+                  "& .MuiDataGrid-cellContent": {
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                    overflowWrap: "break-word",
+                  },
+                  "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+                  color: `${colors.grey[100]} !important`,
+                  },
+                }}
+                slots={{ toolbar: GridToolbar }}
               />
             </Box>
           </Box>

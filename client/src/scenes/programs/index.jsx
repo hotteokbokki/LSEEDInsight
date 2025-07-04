@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import {
   Snackbar,
   Alert,
@@ -216,11 +216,20 @@ const ProgramPage = () => {
       headerName: "Program Coordinator",
       flex: 1.5,
       editable: isEditing,
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          align="center"  // centers text horizontally
+          sx={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+          }}
+        >
+          {params.row.coordinator_name || "-- No Coordinator Assigned --"}
+        </Typography>
+      ),
       renderEditCell: (params) => (
         <Select
-          // The 'value' prop of Select should always reflect the currently displayed value
-          // from the DataGrid cell (`params.value`).
-          // The conditional MenuItem below will ensure the correct text is shown when the dropdown is opened.
           value={params.value}
           onChange={(e) => {
             params.api.setEditCellValue({
@@ -232,29 +241,22 @@ const ProgramPage = () => {
           fullWidth
           sx={{
             "& .MuiOutlinedInput-notchedOutline": { border: "none" },
-            "& .MuiSelect-select": { padding: "8px 14px" },
+            "& .MuiSelect-select": {
+              padding: "8px 14px",
+              whiteSpace: "normal",
+              wordBreak: "break-word",
+              textAlign: "center",  // centers selected text in dropdown
+            },
           }}
         >
-          {/* CONDITIONAL MENU ITEM FOR UNASSIGN/NO COORDINATOR */}
-          {params.row.coordinator_id ? ( // Check if a coordinator IS currently assigned to this program (using the 'coordinator_id' from the row data)
-            <MenuItem
-              value="-- No Coordinator Assigned--"
-              sx={{ color: colors.redAccent[500] }}
-            >
-              Remove Coordinator
-            </MenuItem>
-          ) : (
-            // If NO coordinator IS currently assigned to this program
-            <MenuItem value="-- No Coordinator Assigned --">
-              -- No Coordinator Assigned --
-            </MenuItem>
-          )}
+          <MenuItem value="-- No Coordinator Assigned --" sx={{ color: colors.redAccent[500] }}>
+            -- No Coordinator Assigned --
+          </MenuItem>
 
-          {/* Map through all available LSEED Coordinators */}
           {availableLSEEDCoordinators.map((user) => (
             <MenuItem
-              key={user.user_id} // Unique key for each MenuItem
-              value={`${user.first_name} ${user.last_name}`} // The value to be stored/sent
+              key={user.user_id}
+              value={`${user.first_name} ${user.last_name}`}
             >
               {`${user.first_name} ${user.last_name}`}
             </MenuItem>
@@ -266,16 +268,49 @@ const ProgramPage = () => {
       field: "program_name",
       headerName: "Program",
       flex: 1,
+      renderCell: (params) => (
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="body2">{params.row.program_name}</Typography>
+        </Box>
+      ),
     },
     {
       field: "program_description",
       headerName: "Description",
       flex: 2,
+      renderCell: (params) => (
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="body2">{params.row.program_description}</Typography>
+        </Box>
+      ),
     },
     {
       field: "coordinator_email",
       headerName: "Email",
       flex: 2,
+      renderCell: (params) => (
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="body2">{params.row.coordinator_email}</Typography>
+        </Box>
+      ),
     },
   ];
 
@@ -619,6 +654,7 @@ const ProgramPage = () => {
             pageSize={5}
             rowsPerPageOptions={[5, 10]}
             getRowId={(row) => row.id}
+            getRowHeight={() => 'auto'}
             processRowUpdate={handleRowUpdate}
             onProcessRowUpdateError={(error) => {
               console.error("DataGrid row update error:", error);
@@ -627,6 +663,25 @@ const ProgramPage = () => {
               );
               setSnackbarOpen(true);
             }}
+            sx={{
+              "& .MuiDataGrid-cell": {
+                display: "flex",
+                alignItems: "center", // vertical centering
+                paddingTop: "12px",
+                paddingBottom: "12px",
+              },
+              "& .MuiDataGrid-columnHeader": {
+                alignItems: "center", // optional: center header label vertically
+              },
+              "& .MuiDataGrid-cellContent": {
+                whiteSpace: "normal", // allow line wrap
+                wordBreak: "break-word",
+              },
+              "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+              color: `${colors.grey[100]} !important`,
+              },
+            }}
+            slots={{ toolbar: GridToolbar }}
             experimentalFeatures={{ newEditingApi: true }}
             disableSelectionOnClick
           />
