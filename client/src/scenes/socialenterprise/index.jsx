@@ -161,9 +161,9 @@ const SocialEnterprise = ({ }) => {
             message: "Decline Social Enterprise Application",
             severity: "success",
           });
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500); // Adjust delay if needed
+          
+          await new Promise((r) => setTimeout(r, 1500));
+          window.location.reload();
         } else {
           console.error("❌ Failed to decline the application. Response not ok.");
         }
@@ -376,6 +376,7 @@ const SocialEnterprise = ({ }) => {
         description: socialEnterpriseData.description,
         preferred_mentoring_time: socialEnterpriseData.preferred_mentoring_time || [],
         mentoring_time_note: socialEnterpriseData.mentoring_time_note || null,
+        accepted_application_id: socialEnterpriseData.applicationId,
       };
 
       const response = await fetch(
@@ -422,7 +423,9 @@ const SocialEnterprise = ({ }) => {
           applicationId: "", // Clear after submission
         });
 
-        // fetchSocialEnterprises(); // Optional: refresh list if applicable
+        await new Promise((r) => setTimeout(r, 1500));
+        window.location.reload();
+
       } else {
         console.error("Error adding Social Enterprise");
       }

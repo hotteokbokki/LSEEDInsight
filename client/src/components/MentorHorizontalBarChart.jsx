@@ -64,9 +64,16 @@ const MentorHorizontalBarChart = ({ mentorId, categoryType }) => {
   return (
     <Box height="300px" width="80%">
       {transformedData.length === 0 ? (
-        <Typography variant="h6" color="error" textAlign="center">
-          No data available for this mentor.
-        </Typography>
+        <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          height="100%"
+        >
+          <Typography variant="h6" color="error" textAlign="center">
+            No data available for this mentor.
+          </Typography>
+        </Box>
       ) : (
         <ResponsiveBar
           data={transformedData}

@@ -17,7 +17,9 @@ import {
   Table,
   TableBody,
   TableRow,
-  TableCell
+  TableCell,
+  Grid,
+  Divider,
 } from "@mui/material";
 import StarIcon from "@mui/icons-material/Star";
 import AssignmentIcon from "@mui/icons-material/Assignment";
@@ -28,7 +30,7 @@ import LikertChart from "../../components/LikertChart";
 import RadarChart from "../../components/RadarChart";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import StatBox from "../../components/StatBox";
 import DualAxisLineChart from "../../components/DualAxisLineChart";
 import ScatterPlot from "../../components/ScatterPlot";
@@ -47,6 +49,8 @@ const SEAnalytics = () => {
   const [likertData, setLikertData] = useState([]); // Real Likert scale data
   const [radarData, setRadarData] = useState([]); // Real radar chart data
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
+  const [seApplication, setSEApplication] = useState(null);
+  const [seList, setSEList] = useState([]);
   const [evaluationsData, setEvaluationsData] = useState([]);
   const [selectedEvaluation, setSelectedEvaluation] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
@@ -59,11 +63,33 @@ const SEAnalytics = () => {
     acknowledgedEvaluations: 0,
   });
   const [criticalAreas, setCriticalAreas] = useState([]);
-  const [moreOpen, setMoreOpen] = useState([]);
+  const [moreOpen, setMoreOpen] = useState(false);
   // Financial Analytics States
   const [financialData, setFinancialData] = useState([]);
   const [cashFlowRaw, setCashFlowRaw] = useState([]);
   const [inventoryData, setInventoryData] = useState([]);
+
+  useEffect(() => {
+    const fetchApplicationDetails = async () => {
+      if (!selectedSE || !selectedSE.accepted_application_id) {
+        setSEApplication(null);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/get-accepted-application/${selectedSE.accepted_application_id}`);
+        if (!res.ok) throw new Error("Failed to fetch application details");
+
+        const data = await res.json();
+        setSEApplication(data);
+      } catch (error) {
+        console.error("Error fetching application details:", error);
+        setSEApplication(null);
+      }
+    };
+
+    fetchApplicationDetails();
+  }, [selectedSE]);
 
   // Fetch all necessary data for the page
   useEffect(() => {
@@ -81,6 +107,7 @@ const SEAnalytics = () => {
           sdgs: Array.isArray(se?.sdgs) && se.sdgs.length > 0
             ? se.sdgs
             : ["No SDG listed"],
+          accepted_application_id: se?.accepted_application_id ?? "",
         }));
 
         // Set selected SE
@@ -377,14 +404,15 @@ const SEAnalytics = () => {
 
 
   const columns = [
-    { field: "social_enterprise", headerName: "Social Enterprise", flex: 1 },
-    { field: "evaluator_name", headerName: "Evaluator", flex: 1 },
-    { field: "acknowledged", headerName: "Acknowledged", flex: 1 },
-    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
+    { field: "social_enterprise", headerName: "Social Enterprise", flex: 1, minWidth: 150 },
+    { field: "evaluator_name", headerName: "Evaluator", flex: 1, minWidth: 150  },
+    { field: "acknowledged", headerName: "Acknowledged", flex: 1, minWidth: 150  },
+    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1, minWidth: 150  },
     {
       field: "action",
       headerName: "Action",
       flex: 1,
+      minWidth: 150,
       renderCell: (params) => (
         <Button
           variant="contained"
@@ -472,74 +500,243 @@ const SEAnalytics = () => {
 
       <Box mt="10px" p="10px" backgroundColor={colors.primary[500]} borderRadius="8px">
     
-        {/* Description */}
-        <Typography variant="h6" color={colors.grey[100]} gutterBottom>
+      {/* Description Section */}
+      <Box sx={{ mb: 4 }}>
+        <Typography
+          variant="h6"
+          color={colors.grey[100]}
+          gutterBottom
+          sx={{ fontWeight: 'bold' }}
+        >
           Description
         </Typography>
-        <Typography variant="body1" color={colors.grey[300]} mb={2}>
+        <Typography
+          variant="body1"
+          color={colors.grey[300]}
+          sx={{ lineHeight: 1.6 }}
+        >
           {selectedSE?.description?.trim()
             ? selectedSE.description
             : "No description provided."}
         </Typography>
+      </Box>
 
-        {/* SDGs Involved */}
-        <TableContainer sx={{ maxWidth: 400, backgroundColor: colors.primary[500], borderRadius: 2, mt: 2 }}>
-          <Table size="small">
-            <TableBody>
-              {selectedSE?.sdgs?.length > 0 && (
-                <TableContainer
-                  sx={{
-                    maxWidth: 400,
-                    backgroundColor: colors.primary[500],
-                    borderRadius: 2,
-                    mt: 2
-                  }}
-                >
-                  <Table size="small">
-                    <TableBody>
-                      {selectedSE.sdgs.map((sdg, index) => (
-                        <TableRow key={index}>
-                          <TableCell
-                            sx={{
-                              color: colors.grey[100],
-                              borderBottom: 'none'
-                            }}
-                          >
-                            {sdg}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+      {/* SDGs Involved */}
+      {selectedSE?.sdgs?.length > 0 && (
+        <Box sx={{ mb: 4 }}>
+          <Typography
+            variant="h6"
+            color={colors.grey[100]}
+            gutterBottom
+            sx={{ fontWeight: 'bold' }}
+          >
+            SDGs Involved
+          </Typography>
+          <TableContainer
+            sx={{
+              maxWidth: 400,
+              backgroundColor: colors.primary[500],
+              borderRadius: 2,
+              boxShadow: 2,
+            }}
+          >
+            <Table size="small">
+              <TableBody>
+                {selectedSE.sdgs.map((sdg, index) => (
+                  <TableRow key={index}>
+                    <TableCell
+                      sx={{
+                        color: colors.grey[100],
+                        borderBottom: 'none',
+                        py: 1.5,
+                      }}
+                    >
+                      {sdg}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      )}
 
+      {/* More Info Button */}
+      <Box sx={{ mt: 2 }}>
         <Button
           variant="outlined"
           color="secondary"
           onClick={() => setMoreOpen(true)}
+          sx={{
+            borderColor: colors.grey[300],
+            color: colors.grey[100],
+            '&:hover': {
+              backgroundColor: colors.grey[800],
+              borderColor: colors.grey[100],
+            },
+            textTransform: 'none',
+            fontWeight: 'bold',
+            px: 3,
+            py: 1,
+          }}
         >
           More Info
         </Button>
+      </Box>
 
-        {/* Dialog or expandable card (choose one approach) */}
-        <Dialog open={moreOpen} onClose={() => setMoreOpen(false)}>
-          <DialogTitle>More Info - {selectedSE?.name}</DialogTitle>
-          <DialogContent dividers>
-            <Typography gutterBottom>
-              <strong>Status:</strong> {selectedSE?.status ?? "Not specified"}
-            </Typography>
-            <Typography gutterBottom>
-              <strong>Abbreviation:</strong> {selectedSE?.abbr ?? "N/A"}
-            </Typography>
-            <Typography gutterBottom>
-              <strong>Contact Email:</strong> {selectedSE?.contact_email ?? "N/A"}
-            </Typography>
-            {/* Add more fields as needed */}
+        <Dialog
+          open={moreOpen}
+          onClose={() => setMoreOpen(false)}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            sx: {
+              backgroundColor: "#fff",
+              color: "#000",
+              border: "2px solid #1E4D2B",
+              borderRadius: "12px"
+            },
+          }}
+        >
+          <DialogTitle
+            sx={{
+              backgroundColor: "#1E4D2B",
+              color: "#fff",
+              textAlign: "center",
+              fontSize: "1.75rem",
+              fontWeight: "bold",
+              py: 2
+            }}
+          >
+            More Information
+          </DialogTitle>
+
+          <DialogContent
+            sx={{
+              padding: 3,
+              maxHeight: "70vh",
+              overflowY: "auto",
+              backgroundColor: "#f9f9f9"
+            }}
+          >
+            {seApplication ? (
+              <Grid container spacing={2}>
+                {/* Meta */}
+                <Grid item xs={12}>
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    textAlign="right"
+                  >
+                    Submitted At: {new Date(seApplication.submitted_at).toLocaleString()}
+                  </Typography>
+                </Grid>
+
+                {/* SECTION: About the Team */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ color: "#1E4D2B", fontWeight: 700 }} gutterBottom>
+                    🧭 About the Team
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}><strong>Team Name:</strong> {seApplication.team_name}</Grid>
+                <Grid item xs={6}><strong>Abbreviation:</strong> {seApplication.abbr}</Grid>
+                <Grid item xs={12}><strong>Description:</strong> {seApplication.description || <i>Not provided</i>}</Grid>
+                <Grid item xs={6}><strong>Started:</strong> {seApplication.enterprise_idea_start}</Grid>
+                <Grid item xs={6}><strong>Meeting Frequency:</strong> {seApplication.meeting_frequency}</Grid>
+                <Grid item xs={12}><strong>Communication Modes:</strong> {(seApplication.communication_modes || []).join(", ")}</Grid>
+
+                <Grid item xs={12}><Divider /></Grid>
+
+                {/* SECTION: Problem & Solution */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ color: "#1E4D2B", fontWeight: 700 }} gutterBottom>
+                    🎯 Problem & Solution
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}><strong>Social Problem:</strong> {seApplication.social_problem || <i>Not provided</i>}</Grid>
+                <Grid item xs={12}><strong>Nature:</strong> {seApplication.se_nature}</Grid>
+                <Grid item xs={12}><strong>Critical Areas:</strong> {(seApplication.critical_areas || []).join(", ")}</Grid>
+                <Grid item xs={12}><strong>Action Plans:</strong> {seApplication.action_plans}</Grid>
+
+                <Grid item xs={12}><Divider /></Grid>
+
+                {/* SECTION: Team Details */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ color: "#1E4D2B", fontWeight: 700 }} gutterBottom>
+                    👥 Team Details
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}><strong>Team Characteristics:</strong> {seApplication.team_characteristics}</Grid>
+                <Grid item xs={12}><strong>Challenges:</strong> {seApplication.team_challenges}</Grid>
+
+                <Grid item xs={12}><Divider /></Grid>
+
+                {/* SECTION: Mentoring Preferences */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ color: "#1E4D2B", fontWeight: 700 }} gutterBottom>
+                    📌 Mentoring Details
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}><strong>Team Members:</strong> {seApplication.mentoring_team_members}</Grid>
+                <Grid item xs={6}><strong>Preferred Time:</strong> {(seApplication.preferred_mentoring_time || []).join(", ")}</Grid>
+                <Grid item xs={6}><strong>Time Notes:</strong> {seApplication.mentoring_time_note}</Grid>
+
+                <Grid item xs={12}><Divider /></Grid>
+
+                {/* SECTION: Contact */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ color: "#1E4D2B", fontWeight: 700 }} gutterBottom>
+                    📞 Contact Information
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}><strong>Email:</strong> {seApplication.focal_email || <i>Not provided</i>}</Grid>
+                <Grid item xs={6}><strong>Phone:</strong> {seApplication.focal_phone || <i>Not provided</i>}</Grid>
+                <Grid item xs={12}><strong>Social Media:</strong> {seApplication.social_media_link}</Grid>
+                <Grid item xs={12}><strong>Focal Person Contact:</strong> {seApplication.focal_person_contact}</Grid>
+
+                <Grid item xs={12}><Divider /></Grid>
+
+                {/* SECTION: Pitch Deck */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ color: "#1E4D2B", fontWeight: 700 }} gutterBottom>
+                    📄 Pitch Deck
+                  </Typography>
+                  {seApplication.pitch_deck_url ? (
+                    <a
+                      href={seApplication.pitch_deck_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: "#1E4D2B",
+                        fontWeight: "bold",
+                        textDecoration: "underline"
+                      }}
+                    >
+                      View Document
+                    </a>
+                  ) : (
+                    <i>No pitch deck provided</i>
+                  )}
+                </Grid>
+              </Grid>
+            ) : (
+              <Typography>Loading...</Typography>
+            )}
           </DialogContent>
+
+          <DialogActions sx={{ padding: 2, borderTop: "1px solid #1E4D2B", justifyContent: "center" }}>
+            <Button
+              onClick={() => setMoreOpen(false)}
+              variant="outlined"
+              sx={{
+                color: "#1E4D2B",
+                borderColor: "#1E4D2B",
+                "&:hover": { backgroundColor: "#E0F2E9" },
+              }}
+            >
+              Close
+            </Button>
+          </DialogActions>
         </Dialog>
 
       </Box>
@@ -684,8 +881,7 @@ const SEAnalytics = () => {
             backgroundColor: colors.primary[400],
             padding: "20px",
             boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            minHeight: "400px",
-            flex: "2",
+            display: "flex",
             flexDirection: "column",
             overflow: "hidden",
             "& .MuiDataGrid-root": { border: "none" },
@@ -715,16 +911,45 @@ const SEAnalytics = () => {
             rows={evaluationsData}
             columns={columns}
             getRowId={(row) => row.id}
+            getRowHeight={() => 'auto'}
+            sx={{
+                "& .MuiDataGrid-cell": {
+                  display: "flex",
+                  alignItems: "center", // vertical centering
+                  paddingTop: "12px",
+                  paddingBottom: "12px",
+                },
+                "& .MuiDataGrid-columnHeader": {
+                  alignItems: "center", // optional: center header label vertically
+                },
+                "& .MuiDataGrid-cellContent": {
+                  whiteSpace: "normal",
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                },
+                "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+                color: `${colors.grey[100]} !important`,
+                },
+              }}
+              slots={{ toolbar: GridToolbar }}
           />
         </Box>
         {/* AREAS OF FOCUS TABLE */}
-        <Box flex="1" backgroundColor={colors.primary[400]} overflow="auto">
+        <Box
+          flex="1"
+          backgroundColor={colors.primary[400]}
+          height="500px"
+          display="flex"
+          flexDirection="column"
+        >
+          {/* Fixed Header */}
           <Box
             display="flex"
             justifyContent="space-between"
             alignItems="center"
             borderBottom={`4px solid ${colors.primary[500]}`}
             p="15px"
+            flexShrink={0}
           >
             <Typography
               color={colors.greenAccent[500]}
@@ -735,31 +960,39 @@ const SEAnalytics = () => {
             </Typography>
           </Box>
 
-          {criticalAreas.map((area, i) => (
-            <Box
-              key={i}
-              display="flex"
-              alignItems="center"
-              borderBottom={`4px solid ${colors.primary[500]}`}
-              p="15px"
-            >
-              {/* Icon */}
-              <Box sx={{ pr: 2, fontSize: "24px" }}>📌</Box>
-
-              {/* Area Name */}
-              <Typography
-                color={colors.grey[100]}
-                variant="h5"
-                fontWeight="500"
-                sx={{
-                  whiteSpace: "normal",
-                  wordBreak: "break-word",
-                }}
+          {/* Scrollable List */}
+          <Box
+            sx={{
+              flex: 1,
+              overflowY: "auto",
+            }}
+          >
+            {criticalAreas.map((area, i) => (
+              <Box
+                key={i}
+                display="flex"
+                alignItems="center"
+                borderBottom={`4px solid ${colors.primary[500]}`}
+                p="15px"
               >
-                {area}
-              </Typography>
-            </Box>
-          ))}
+                {/* Icon */}
+                <Box sx={{ pr: 2, fontSize: "24px" }}>📌</Box>
+
+                {/* Area Name */}
+                <Typography
+                  color={colors.grey[100]}
+                  variant="h5"
+                  fontWeight="500"
+                  sx={{
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {area}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
         </Box>
       </Box>
       {/* Evaluation Details Dialog - Read-Only */}

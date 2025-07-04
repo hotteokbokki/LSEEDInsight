@@ -24,7 +24,8 @@ const { getSocialEnterprisesByProgram,
         getAllSocialEnterprisesForComparison,
         getFlaggedSEs,
         getAreasOfFocus,
-        getSuggestedMentors} = require("./controllers/socialenterprisesController");
+        getSuggestedMentors,
+        getAcceptedApplications} = require("./controllers/socialenterprisesController");
 require("dotenv").config();
 const { getUsers, getUserName, getLSEEDCoordinators, getLSEEDDirectors } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
@@ -2164,6 +2165,20 @@ app.get("/getAllSDG", async (req, res) => {
   }
 });
 
+app.get("/get-accepted-application/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const application = await getAcceptedApplications(id);
+    if (!application) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+    res.json(application);
+  } catch (error) {
+    console.error("Error fetching application by ID:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.get("/getAllSocialEnterprises", async (req, res) => {
   try {
     const result = await getAllSocialEnterprises(); // Fetch SEs from DB
@@ -3412,13 +3427,13 @@ app.post("/webhook-bot1", async (req, res) => {
 
                   // 3. Construct notification title
                   const notificationTitle = `Evaluation Acknowledged by ${seName}`;
+                  const notificationMessage = `Your evaluation for ${seName} has been acknowledged.`
 
-                  //JM EDIT
                   // 4. Insert notification for the mentor
                   await pgDatabase.query(
-                      `INSERT INTO notification (notification_id, receiver_id, se_id, title, created_at, target_route)
-                      VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/mentorships');`,
-                      [mentor_id, se_id, notificationTitle]
+                      `INSERT INTO notification (notification_id, receiver_id, se_id, title, message, created_at, target_route)
+                      VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/assess');`,
+                      [mentor_id, se_id, notificationTitle, notificationMessage]
                   );
                   console.log(`🔔 Notification sent to mentor ${mentor_id}: Evaluation for ${seName} acknowledged.`);
               } else {
@@ -4462,7 +4477,7 @@ ORDER BY n.created_at DESC;
       // Mentors only get status change notifications
       query = `
           SELECT n.notification_id, n.title, n.created_at,
-                  n.se_id, se.team_name AS se_name, ms.status, n.target_route
+                  n.se_id, se.team_name AS se_name, ms.status, n.target_route, n.message, n.is_read
           FROM notification n
           LEFT JOIN socialenterprises se ON n.se_id = se.se_id
           LEFT JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id

@@ -60,6 +60,7 @@ exports.getAllSocialEnterprises = async () => {
         se.team_name,
         se.abbr,
         se.description,
+        se.accepted_application_id,
         array_agg(CONCAT('SDG ', sdg.sdg_number, ': ', sdg.name)) AS sdgs
       FROM socialenterprises se
       JOIN sdg ON sdg.sdg_id = ANY(se.sdg_id)
@@ -77,6 +78,48 @@ exports.getAllSocialEnterprises = async () => {
     return null;
   }
 };
+
+exports.getAcceptedApplications = async (id) => {
+  try {
+    const res = await pgDatabase.query(`
+      SELECT
+        id AS application_id,
+        team_name,
+        se_abbreviation AS abbr,
+        se_description AS description,
+        "timestamp" AS submitted_at,
+        enterprise_idea_start,
+        social_problem,
+        se_nature,
+        team_characteristics,
+        team_challenges,
+        critical_areas,
+        action_plans,
+        pitch_deck_url,
+        focal_email,
+        focal_phone,
+        focal_person_contact,
+        social_media_link,
+        mentoring_team_members,
+        preferred_mentoring_time,
+        mentoring_time_note,
+        meeting_frequency,
+        communication_modes
+      FROM mentees_form_submissions
+      WHERE id = $1 AND status = 'Accepted'
+    `, [id]);
+
+    if (!res.rows || res.rows.length === 0) {
+      return null;
+    }
+
+    return res.rows[0];
+  } catch (error) {
+    console.error("Error fetching application by ID:", error);
+    throw error;
+  }
+};
+
 
 exports.getAllSocialEnterprisesForComparison = async (program = null) => {
   try {
@@ -345,6 +388,7 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
       description,
       preferred_mentoring_time = [],
       mentoring_time_note,
+      accepted_application_id,
     } = socialEnterpriseData;
 
     if (!sdg_ids || !Array.isArray(sdg_ids) || sdg_ids.length === 0) {
@@ -368,9 +412,10 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
         critical_areas,
         description,
         preferred_mentoring_time,
-        mentoring_time_note
+        mentoring_time_note,
+        accepted_application_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING se_id;
     `;
 
@@ -385,7 +430,8 @@ exports.addSocialEnterprise = async (socialEnterpriseData) => {
       criticalAreas,
       description,
       preferred_mentoring_time,
-      mentoring_time_note
+      mentoring_time_note,
+      accepted_application_id
     ];
 
     const result = await pgDatabase.query(query, values);

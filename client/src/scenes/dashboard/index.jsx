@@ -307,7 +307,7 @@ const Dashboard = ({ }) => {
         mentorship_time,
         zoom_link,
       });
-
+      // TEST THIS DEBUG
       const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/approveMentorship`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

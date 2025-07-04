@@ -20,7 +20,7 @@ import LineChart from "../../components/LineChart";
 import RadarChart from "../../components/RadarChart";
 import { useParams, useNavigate } from "react-router-dom"; // Import useNavigate
 import { useTheme } from "@mui/material/styles";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import axios from "axios";
 
 const MentorAnalytics = () => {
@@ -113,13 +113,14 @@ const MentorAnalytics = () => {
   }, [id]);
 
   const columns = [
-    { field: "mentor_name", headerName: "Mentor", flex: 1 },
-    { field: "evaluator_name", headerName: "Evaluator (SE)", flex: 1 },
-    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
+    { field: "mentor_name", headerName: "Mentor", flex: 1, minWidth: 150 },
+    { field: "evaluator_name", headerName: "Evaluator (SE)", flex: 1, minWidth: 150 },
+    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1, minWidth: 150 },
     {
       field: "action",
       headerName: "Action",
       flex: 1,
+      minWidth: 150,  
       renderCell: (params) => (
         <Button
           variant="contained"
@@ -342,7 +343,13 @@ const MentorAnalytics = () => {
         </Box>
 
         {/* Chart Container */}
-        <Box height="90%" display="flex" flexDirection="column">
+        <Box 
+          display="flex"
+          flexDirection="column"
+          gap={3}
+          marginBottom={2}
+          marginTop={2}
+        >
           <MentorHorizontalBarChart
             mentorId={selectedMentorId}
             categoryType={categoryType}
@@ -357,8 +364,6 @@ const MentorAnalytics = () => {
             backgroundColor: colors.primary[400],
             padding: "20px",
             boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            minHeight: "400px",
-            flex: "2",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
@@ -389,6 +394,27 @@ const MentorAnalytics = () => {
             rows={evaluationsData}
             columns={columns}
             getRowId={(row) => row.id}
+            getRowHeight={() => 'auto'}
+            sx={{
+                "& .MuiDataGrid-cell": {
+                  display: "flex",
+                  alignItems: "center", // vertical centering
+                  paddingTop: "12px",
+                  paddingBottom: "12px",
+                },
+                "& .MuiDataGrid-columnHeader": {
+                  alignItems: "center", // optional: center header label vertically
+                },
+                "& .MuiDataGrid-cellContent": {
+                  whiteSpace: "normal",
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                },
+                "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+                color: `${colors.grey[100]} !important`,
+                },
+              }}
+              slots={{ toolbar: GridToolbar }}
           />
         </Box>
 
@@ -396,9 +422,9 @@ const MentorAnalytics = () => {
         <Box
           flex="1"
           backgroundColor={colors.primary[400]}
-          boxShadow="0 4px 6px rgba(0, 0, 0, 0.1)"
-          minHeight="400px"
-          overflow="auto"
+          height="500px"
+          display="flex"
+          flexDirection="column"
         >
           <Box
             display="flex"
@@ -406,41 +432,50 @@ const MentorAnalytics = () => {
             alignItems="center"
             borderBottom={`4px solid ${colors.primary[500]}`}
             p="15px"
+            flexShrink={0}
           >
             <Typography
               color={colors.greenAccent[500]}
-              variant="h5"
+              variant="h3"
               fontWeight="600"
             >
               Critical Areas of Focus
             </Typography>
           </Box>
-
-          {criticalAreas.map((area, i) => (
-            <Box
-              key={i}
-              display="flex"
-              alignItems="center"
-              borderBottom={`4px solid ${colors.primary[500]}`}
-              p="15px"
-            >
-              {/* Icon */}
-              <Box sx={{ pr: 2, fontSize: "24px" }}>📌</Box>
-
-              {/* Area Name */}
-              <Typography
-                color={colors.grey[100]}
-                variant="h6"
-                fontWeight="500"
-                sx={{
-                  whiteSpace: "normal",
-                  wordBreak: "break-word",
-                }}
+          {/* Scrollable List */}
+          <Box
+            sx={{
+              flex: 1,
+              overflowY: "auto",
+            }}
+          >
+            {criticalAreas.map((area, i) => (
+              <Box
+                key={i}
+                display="flex"
+                alignItems="center"
+                borderBottom={`4px solid ${colors.primary[500]}`}
+                p="15px"
               >
-                {area}
-              </Typography>
-            </Box>
-          ))}
+                {/* Icon */}
+                <Box sx={{ pr: 2, fontSize: "24px" }}>📌</Box>
+
+                {/* Area Name */}
+                <Typography
+                  color={colors.grey[100]}
+                  variant="h6"
+                  fontWeight="500"
+                  sx={{
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {area}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+
         </Box>
       </Box>
 

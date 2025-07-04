@@ -3,7 +3,10 @@ const pgDatabase = require('../database.js'); // Import PostgreSQL client
 // Function to fetch all SDGs
 exports.getAllSDG = async () => {
   try {
-    const query = "SELECT sdg_id, name FROM sdg"; // Fetch SDG ID and name
+    const query = `
+      SELECT sdg_id, 'SDG ' || sdg_number || ': ' || name AS name 
+      FROM sdg
+      ORDER BY sdg_number;`
     const result = await pgDatabase.query(query);
 
     // If no data, return an empty array
