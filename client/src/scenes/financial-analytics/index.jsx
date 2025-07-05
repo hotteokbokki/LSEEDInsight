@@ -168,40 +168,45 @@ const FinancialAnalytics = ({}) => {
   const socialEnterprises = Array.from(seMap.values());
 
   const profitOverTimeSeries = socialEnterprises.map((se) => {
-    const seenMonths = new Map();
+  const seenMonths = new Map();
 
-    se.revenueVsExpenses.forEach((point) => {
-      const date = new Date(point.x);
-      const monthKey = date.toLocaleString("default", { month: "long" }); // e.g., "July"
-      const year = date.getFullYear();
-      const key = `${monthKey} ${year}`;
+  se.revenueVsExpenses.forEach((point) => {
+    if (!point || !point.x) return;
 
-      const profit = point.revenue - point.expenses;
+    const date = new Date(point.x);
+    const monthKey = date.toLocaleString("default", { month: "long" });
+    const year = date.getFullYear();
+    const key = `${monthKey} ${year}`;
 
-      // Keep only the latest profit for the month or aggregate if needed
-      if (!seenMonths.has(key)) {
-        seenMonths.set(key, { x: key, y: profit });
-      } else {
-        const existing = seenMonths.get(key);
-        existing.y += profit; // accumulate profit if duplicate month exists
-      }
+    const profit = point.revenue - point.expenses;
+
+    if (!seenMonths.has(key)) {
+      seenMonths.set(key, { totalProfit: profit, count: 1 });
+    } else {
+      const current = seenMonths.get(key);
+      seenMonths.set(key, {
+        totalProfit: current.totalProfit + profit,
+        count: current.count + 1,
+      });
+    }
+  });
+
+  const averagedData = Array.from(seenMonths.entries())
+    .map(([month, { totalProfit, count }]) => ({
+      x: month,
+      y: Number((totalProfit / count).toFixed(2)),
+    }))
+    .sort((a, b) => {
+      const dateA = new Date(`1 ${a.x}`);
+      const dateB = new Date(`1 ${b.x}`);
+      return dateA - dateB;
     });
 
-    // Sort by month chronologically
-    const sortedData = Array.from(seenMonths.values())
-  .filter((d) => d && typeof d.x === "string" && typeof d.y === "number")
-  .sort((a, b) => {
-    const dateA = new Date(`1 ${a.x}`);
-    const dateB = new Date(`1 ${b.x}`);
-    return dateA - dateB;
-  });
-
-
-    return {
-      id: se.name,
-      data: sortedData,
-    };
-  });
+  return {
+    id: se.name,
+    data: averagedData,
+  };
+});
 
   const highestExpenseSE = socialEnterprises.reduce(
     (max, se) => (se.totalExpenses > (max?.totalExpenses || 0) ? se : max),
