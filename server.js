@@ -575,6 +575,15 @@ async function sendMentorshipMessage(
   }
 }
 
+function formatTimeLabel(time24) {
+  const [hoursStr, minutesStr] = time24.split(":");
+  let hours = parseInt(hoursStr, 10);
+  const suffix = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  return `${hours}:${minutesStr} ${suffix}`;
+}
+
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -3480,7 +3489,7 @@ app.post("/webhook-bot1", async (req, res) => {
                           p.name AS program_name,
                           TO_CHAR(ms.mentoring_session_date, 'FMMonth DD, YYYY') AS mentoring_session_date,
                           CONCAT(TO_CHAR(ms.start_time, 'HH24:MI'), ' - ', TO_CHAR(ms.end_time, 'HH24:MI')) AS mentoring_session_time,
-                          ms.status, ms.zoom_link
+                          ms.status, ms.zoom_link, mt.mentor_id
                    FROM mentorships m
                    JOIN mentoring_session ms ON m.mentorship_id = ms.mentorship_id
                    JOIN mentors mt ON m.mentor_id = mt.mentor_id
@@ -3514,7 +3523,18 @@ app.post("/webhook-bot1", async (req, res) => {
       
               await sendMessage(chatId, confirmationMessage);
               console.log("✅ Acceptance process completed successfully.");
-      
+
+              //NOTIFICATION HERE
+              // ✅ After all messages sent, insert ONE notification for the mentor
+              const notificationTitle = `Confirmed Mentoring Session`;
+              const notificationMessage = `${sessionDetails.team_name} has accepted your proposed schedule. Your upcoming mentoring session is on ${sessionDetails.mentoring_session_date} at ${sessionDetails.mentoring_session_time}.`;
+
+              await pgDatabase.query(
+                `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
+                VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/scheduling');`,
+                [sessionDetails.mentor_id, notificationTitle, notificationMessage]
+              );
+
               res.sendStatus(200);
               return;
           } catch (error) {
@@ -3525,7 +3545,6 @@ app.post("/webhook-bot1", async (req, res) => {
           }
         }
       
-        
         if (data.startsWith("declineschedule_")) {
             const parts = data.split("_");
         
@@ -3590,6 +3609,22 @@ app.post("/webhook-bot1", async (req, res) => {
         
                 await sendMessage(chatId, declineMessage);
                 console.log("✅ Decline process completed successfully.");
+
+                  // Inline keyboard for Accept/Decline
+                  const options = [
+                    [
+                      { text: `📅 Suggest New Schedule`, callback_data: `suggestnewschedule_${mentoring_session_id}` },
+                      { text: `❌ Cancel`, callback_data: `cancel_${mentoring_session_id}` }
+                    ]
+                  ];
+
+                  const sentSuggestSchedule = await sendMessageWithOptions(
+                    chatId,
+                    "📅 Would you like to suggest a new mentoring session schedule?",
+                    options
+                  );
+
+                  userStates[chatId] = { sentSuggestScheduleId: sentSuggestSchedule?.message_id };
         
                 res.sendStatus(200);
                 return;
@@ -3599,6 +3634,555 @@ app.post("/webhook-bot1", async (req, res) => {
                 await sendMessage(chatId, "❌ Failed to process decline.");
                 return res.sendStatus(500);
             }
+        }
+
+        if (data.startsWith("suggestnewschedule_")) {
+          const parts = data.split("_");
+
+          await deletePreviousMessages(chatId, ["sentSuggestScheduleId"]);
+
+          if (parts.length < 2) {
+            console.error("❌ Invalid suggest callback format:", data);
+            return res.sendStatus(400);
+          }
+
+          const mentoring_session_id = parts[1];
+          const messageId = callbackQuery.message.message_id;
+
+          console.log(`🔹 Starting suggest new schedule for mentoring session ${mentoring_session_id}`);
+          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
+
+          // ✅ Build month options
+          const now = new Date();
+          const currentMonthIndex = now.getMonth();
+          const currentYear = now.getFullYear();
+
+          const monthNames = [
+            "January","February","March","April","May","June",
+            "July","August","September","October","November","December"
+          ];
+
+          // Prepare userState storage for month mapping
+          if (!userStates[chatId]) userStates[chatId] = {};
+          userStates[chatId].monthChoices = {};
+
+          const inlineMonthOptions = [];
+          for (let i = 0; i < 6; i++) {
+            const monthIndex = (currentMonthIndex + i) % 12;
+            const yearOffset = Math.floor((currentMonthIndex + i) / 12);
+            const year = currentYear + yearOffset;
+
+            // ✅ Store the real month/year mapping in userState
+            userStates[chatId].monthChoices[i] = {
+              monthIndex,
+              monthName: monthNames[monthIndex],
+              year
+            };
+
+            // ✅ Make button callback short
+            inlineMonthOptions.push([
+              { 
+                text: `📅 ${monthNames[monthIndex]} ${year}`, 
+                callback_data: `selectday_${i}_${mentoring_session_id}` 
+              }
+            ]);
+          }
+
+          // ✅ Send the month picker message
+          const sentMonthPicker = await sendMessageWithOptions(
+            chatId,
+            "📅 Please choose the month for your new mentoring session schedule:",
+            inlineMonthOptions
+          );
+
+          userStates[chatId].sentMonthPickerId = sentMonthPicker?.message_id;
+
+          return res.sendStatus(200);
+        }
+
+        if (data.startsWith("selectday_")) {
+          const parts = data.split("_");
+
+          await deletePreviousMessages(chatId, ["sentMonthPickerId"]);
+
+          if (parts.length < 3) {
+            console.error("❌ Invalid selectday callback format:", data);
+            return res.sendStatus(400);
+          }
+
+          const choiceIndex = parseInt(parts[1], 10);
+          const mentoring_session_id = parts[2];
+          const messageId = callbackQuery.message.message_id;
+
+          console.log(`🔹 User chose month index: ${choiceIndex} for session ${mentoring_session_id}`);
+          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
+
+          // ✅ Retrieve the actual month/year from userState
+          const monthChoice = userStates[chatId]?.monthChoices?.[choiceIndex];
+          if (!monthChoice) {
+            console.error("❌ Invalid or expired month choice index:", choiceIndex);
+            return res.sendStatus(400);
+          }
+
+          const selectedMonthName = monthChoice.monthName;
+          const selectedYear = monthChoice.year;
+          const selectedMonthIndex = monthChoice.monthIndex;
+
+          console.log(`✅ Resolved month: ${selectedMonthName} ${selectedYear}`);
+
+          // ✅ Figure out valid day range
+          const now = new Date();
+          const isCurrentMonthAndYear =
+            (selectedYear === now.getFullYear() && selectedMonthIndex === now.getMonth());
+
+          const daysInMonth = new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
+          const startDay = isCurrentMonthAndYear ? now.getDate() : 1;
+
+          // ✅ Save chosen month/year in userState for later use
+          if (!userStates[chatId]) userStates[chatId] = {};
+          userStates[chatId].selectedMonthName = selectedMonthName;
+          userStates[chatId].selectedYear = selectedYear;
+          userStates[chatId].mentoringSessionId = mentoring_session_id;
+
+          // ✅ Build day buttons
+          const inlineDayOptions = [];
+          for (let d = startDay; d <= daysInMonth; d++) {
+            inlineDayOptions.push([
+              {
+                text: `📅 ${d}`,
+                callback_data: `selecttime_${d}`
+              }
+            ]);
+          }
+
+          // ✅ Send the day picker
+          const sentDayPicker = await sendMessageWithOptions(
+            chatId,
+            `📅 Please choose a day in ${selectedMonthName} ${selectedYear}:`,
+            inlineDayOptions
+          );
+
+          userStates[chatId].sentDayPickerId = sentDayPicker?.message_id;
+
+          return res.sendStatus(200);
+        }
+
+        if (data.startsWith("selecttime_")) {
+          const parts = data.split("_");
+
+          await deletePreviousMessages(chatId, ["sentDayPickerId"]);
+
+          if (parts.length < 2) {
+            console.error("❌ Invalid selecttime callback format:", data);
+            return res.sendStatus(400);
+          }
+
+          const selectedDay = parseInt(parts[1], 10);
+          const messageId = callbackQuery.message.message_id;
+
+          console.log(`🔹 User chose day: ${selectedDay}`);
+          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
+
+          // ✅ Get month/year/sessionId from userState
+          const userState = userStates[chatId];
+          if (!userState || !userState.selectedMonthName || !userState.selectedYear || !userState.mentoringSessionId) {
+            console.error("❌ Missing context in userStates");
+            await sendMessage(chatId, "⚠️ Sorry, something went wrong. Please start the scheduling process again.");
+            return res.sendStatus(400);
+          }
+
+          const selectedMonthName = userState.selectedMonthName;
+          const selectedYear = userState.selectedYear;
+          const mentoring_session_id = userState.mentoringSessionId;
+
+          console.log(`✅ Resolved full date: ${selectedDay} ${selectedMonthName} ${selectedYear} for session ${mentoring_session_id}`);
+
+          // ✅ Determine month index
+          const monthNames = [
+            "January","February","March","April","May","June",
+            "July","August","September","October","November","December"
+          ];
+          const selectedMonthIndex = monthNames.indexOf(selectedMonthName);
+
+          if (selectedMonthIndex === -1) {
+            console.error("❌ Invalid month name in userState:", selectedMonthName);
+            return res.sendStatus(400);
+          }
+
+          // ✅ Define all available time slots
+          const allTimeSlots = [
+            "08:00", "09:00", "10:00",
+            "11:00", "12:00", "13:00",
+            "14:00", "15:00", "16:00", "17:00"
+          ];
+
+          // ✅ Filter time slots if the day is today
+          const now = new Date();
+          const isToday =
+            selectedYear === now.getFullYear() &&
+            selectedMonthIndex === now.getMonth() &&
+            selectedDay === now.getDate();
+
+          const validTimeSlots = allTimeSlots.filter(timeStr => {
+            if (!isToday) return true;
+            const [hours, minutes] = timeStr.split(":").map(Number);
+            if (hours > now.getHours()) return true;
+            if (hours === now.getHours() && minutes > now.getMinutes()) return true;
+            return false;
+          });
+
+          if (validTimeSlots.length === 0) {
+            await sendMessageWithOptions(
+              chatId,
+              "❗️ No available time slots remaining for today. Please choose another day.",
+              [
+                [
+                  { text: "🔙 Back to Months", callback_data: `suggestnewschedule_${mentoring_session_id}` }
+                ]
+              ]
+            );
+            return res.sendStatus(200);
+          }
+
+          // ✅ Store selected day in userState
+          userState.selectedDay = selectedDay;
+
+          // ✅ Build time buttons
+          const inlineTimeOptions = validTimeSlots.map(timeStr => ([
+            {
+              text: `🕒 ${formatTimeLabel(timeStr)}`,
+              callback_data: `selectEndTime_${timeStr}`
+            }
+          ]));
+
+          // ✅ Send the time picker message
+          const sentTimePicker = await sendMessageWithOptions(
+            chatId,
+            `🕒 Please choose a START time on ${selectedMonthName} ${selectedDay}, ${selectedYear}:`,
+            inlineTimeOptions
+          );
+
+          userStates[chatId].sentTimePickerId = sentTimePicker?.message_id;
+
+          return res.sendStatus(200);
+        }
+
+        if (data.startsWith("selectEndTime_")) {
+          const parts = data.split("_");
+
+          await deletePreviousMessages(chatId, ["sentTimePickerId"]);
+
+          if (parts.length < 2) {
+            console.error("❌ Invalid selectEndTime callback format:", data);
+            return res.sendStatus(400);
+          }
+
+          const selectedStartTime = parts[1].trim();
+          const messageId = callbackQuery.message.message_id;
+
+          const userState = userStates[chatId];
+          if (
+            !userState || 
+            !userState.selectedDay || 
+            !userState.selectedMonthName || 
+            !userState.selectedYear || 
+            !userState.mentoringSessionId
+          ) {
+            console.error("❌ Missing context in userStates");
+            await sendMessage(chatId, "⚠️ Something went wrong. Please start the scheduling again.");
+            return res.sendStatus(400);
+          }
+
+          const selectedDay = userState.selectedDay;
+          const selectedMonthName = userState.selectedMonthName;
+          const selectedYear = userState.selectedYear;
+          const mentoring_session_id = userState.mentoringSessionId;
+
+          console.log(`🔹 User chose START time: ${selectedStartTime} on ${selectedDay} ${selectedMonthName} ${selectedYear} for session ${mentoring_session_id}`);
+          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
+
+          const allTimeSlots = [
+            "08:00", "09:00", "10:00",
+            "11:00", "12:00", "13:00",
+            "14:00", "15:00", "16:00", "17:00"
+          ];
+
+          function isTimeAfter(a, b) {
+            const [aH, aM] = a.split(":").map(Number);
+            const [bH, bM] = b.split(":").map(Number);
+            return aH > bH || (aH === bH && aM > bM);
+          }
+
+          const validEndTimes = allTimeSlots.filter(timeStr => isTimeAfter(timeStr, selectedStartTime));
+
+          if (validEndTimes.length === 0) {
+            await sendMessageWithOptions(
+              chatId,
+              "❗️ No valid end times after that start time. Please choose an earlier start.",
+              [[
+                { text: "🔙 Back to Start Times", callback_data: `selecttime_${selectedDay}` }
+              ]]
+            );
+            return res.sendStatus(200);
+          }
+
+          // ✅ Store selectedStartTime in userState
+          userState.selectedStartTime = selectedStartTime;
+
+          const inlineEndTimeOptions = validEndTimes.map(timeStr => ([
+            {
+              text: `🕒 ${formatTimeLabel(timeStr)}`,
+              callback_data: `confirmschedule_${timeStr}`
+            }
+          ]));
+
+          // ✅ Send the end time picker message
+          const sentEndTimePicker = await sendMessageWithOptions(
+            chatId,
+            `🕒 Please choose an END time after ${formatTimeLabel(selectedStartTime)} on ${selectedMonthName} ${selectedDay}, ${selectedYear}:`,
+            inlineEndTimeOptions
+          );
+
+          userStates[chatId].sentEndTimePickerId = sentEndTimePicker?.message_id;
+
+          return res.sendStatus(200);
+        }
+
+        if (data.startsWith("confirmschedule_")) {
+          const parts = data.split("_");
+
+          await deletePreviousMessages(chatId, ["sentEndTimePickerId"]);
+
+          if (parts.length < 2) {
+            console.error("❌ Invalid confirmschedule callback format:", data);
+            return res.sendStatus(400);
+          }
+
+          const selectedEndTime = parts[1].trim();
+          const messageId = callbackQuery.message.message_id;
+
+          const userState = userStates[chatId];
+          if (
+            !userState || 
+            !userState.selectedStartTime || 
+            !userState.selectedDay || 
+            !userState.selectedMonthName || 
+            !userState.selectedYear || 
+            !userState.mentoringSessionId
+          ) {
+            console.error("❌ Missing context in userStates");
+            await sendMessage(chatId, "⚠️ Something went wrong. Please start the scheduling again.");
+            return res.sendStatus(400);
+          }
+
+          const selectedStartTime = userState.selectedStartTime;
+          const selectedDay = userState.selectedDay;
+          const selectedMonthName = userState.selectedMonthName;
+          const selectedYear = userState.selectedYear;
+          const mentoring_session_id = userState.mentoringSessionId;
+
+          console.log(`🔹 User selected START ${selectedStartTime} and END ${selectedEndTime} on ${selectedDay} ${selectedMonthName} ${selectedYear} for session ${mentoring_session_id}`);
+          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
+
+          // ✅ Store the end time in userState
+          userState.selectedEndTime = selectedEndTime;
+
+          // ✅ Build inline buttons
+          const confirmOptions = [
+            [
+              { 
+                text: "✅ Confirm", 
+                callback_data: `saveSchedule_confirm`
+              }
+            ],
+            [
+              { 
+                text: "🔙 Pick Again", 
+                callback_data: `suggestnewschedule_${mentoring_session_id}`
+              }
+            ]
+          ];
+
+          // ✅ Send confirmation message
+          const sentConfirm = await sendMessageWithOptions(
+            chatId,
+            `📌 Please confirm your suggested mentoring session schedule:\n\n` +
+            `📅 *Date:* ${selectedMonthName} ${selectedDay}, ${selectedYear}\n` +
+            `🕒 *Start:* ${formatTimeLabel(selectedStartTime)}\n` +
+            `🕒 *End:* ${formatTimeLabel(selectedEndTime)}`,
+            confirmOptions
+          );
+
+          userStates[chatId].sentSuggestScheduleId = sentConfirm?.message_id;
+
+          return res.sendStatus(200);
+        }
+
+        if (data.startsWith("saveSchedule_confirm")) {
+          await deletePreviousMessages(chatId, ["sentSuggestScheduleId"]);
+
+          const userState = userStates[chatId];
+          if (
+            !userState ||
+            !userState.selectedStartTime ||
+            !userState.selectedEndTime ||
+            !userState.selectedDay ||
+            !userState.selectedMonthName ||
+            !userState.selectedYear ||
+            !userState.mentoringSessionId
+          ) {
+            console.error("❌ Missing schedule data in userStates");
+            await sendMessage(chatId, "⚠️ Something went wrong. Please start the scheduling again.");
+            return res.sendStatus(400);
+          }
+
+          const selectedStartTime = userState.selectedStartTime;
+          const selectedEndTime = userState.selectedEndTime;
+          const selectedDay = userState.selectedDay;
+          const selectedMonthName = userState.selectedMonthName;
+          const selectedYear = userState.selectedYear;
+          const mentoring_session_id = userState.mentoringSessionId;
+          const messageId = callbackQuery.message.message_id;
+
+          console.log(`🔹 Saving schedule: START ${selectedStartTime}, END ${selectedEndTime}, DATE ${selectedDay} ${selectedMonthName} ${selectedYear} for session ${mentoring_session_id}`);
+          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
+
+          // ✅ Convert month name to month index
+          const monthNames = [
+            "January","February","March","April","May","June",
+            "July","August","September","October","November","December"
+          ];
+          const selectedMonthIndex = monthNames.indexOf(selectedMonthName);
+          if (selectedMonthIndex === -1) {
+            console.error("❌ Invalid month name:", selectedMonthName);
+            return res.sendStatus(400);
+          }
+
+          // ✅ Format the date for storage as YYYY-MM-DD
+          const monthNumber = String(selectedMonthIndex + 1).padStart(2, '0');
+          const dayNumber = String(selectedDay).padStart(2, '0');
+          const mentoringSessionDate = `${selectedYear}-${monthNumber}-${dayNumber}`;
+
+          console.log(`✅ Formatted Date: ${mentoringSessionDate}`);
+
+          try {
+            const query = `
+              SELECT mSess.mentoring_session_id, m.mentor_id, se.team_name
+              FROM mentoring_session AS mSess
+              JOIN mentorships AS ms ON mSess.mentorship_id = ms.mentorship_id
+              JOIN socialenterprises AS se ON se.se_id = ms.se_id
+              JOIN mentors AS m ON m.mentor_id = ms.mentor_id
+              WHERE mSess.mentoring_session_id = $1;
+            `;
+
+            const { rows } = await pgDatabase.query(query, [mentoring_session_id]);
+
+            if (rows.length === 0) {
+              return res.status(404).json({ error: "Mentorship session not found" });
+            }
+
+            const row = rows[0];
+
+            const notificationTitle = 'Your mentoring session has been declined';
+            const notificationMessage = 
+              `${row.team_name} has declined your proposed mentoring session schedule, but suggested a new one:\n\n` +
+              `📅 Date: ${selectedMonthName} ${selectedDay}, ${selectedYear}\n` +
+              `🕒 Start: ${formatTimeLabel(selectedStartTime)}\n` +
+              `🕒 End: ${formatTimeLabel(selectedEndTime)}\n\n` +
+              `Please review this proposed schedule and appoint if available.`;
+
+            await pgDatabase.query(
+              `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
+              VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/scheduling');`,
+              [row.mentor_id, notificationTitle, notificationMessage]
+            );
+
+            // ✅ Notify the user
+            await sendMessage(chatId,
+              `✅ Your new proposed mentoring session schedule has been sent:\n\n` +
+              `📅 *Date:* ${selectedMonthName} ${selectedDay}, ${selectedYear}\n` +
+              `🕒 *Start:* ${formatTimeLabel(selectedStartTime)}\n` +
+              `🕒 *End:* ${formatTimeLabel(selectedEndTime)}\n\n` +
+              `The mentor will now review this proposed schedule.`
+            );
+
+            userStates[chatId] = {};  // clear temp state
+
+            return res.sendStatus(200);
+          } catch (error) {
+            console.error("❌ Error saving new schedule:", error);
+            await sendMessage(chatId, "❌ Failed to save the new schedule. Please try again.");
+            return res.sendStatus(500);
+          }
+        }
+
+        if (data.startsWith("cancel_")) {
+          const parts = data.split("_");
+        
+          await deletePreviousMessages(chatId, ["sentSuggestScheduleId"]);
+          
+          if (parts.length < 2) {
+            console.error("❌ Invalid decline callback format:", data);
+            return res.sendStatus(400);
+          }
+          
+          const mentoring_session_id = parts[1]; // Use mentoring_session_id instead of mentorship_id
+          const messageId = callbackQuery.message.message_id;
+          
+          console.log(`🔹 Canceling suggesting a mentoring session ${mentoring_session_id}`);
+          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
+
+          try {
+            // ✅ Step 1: Validate UUID format
+            if (!/^[0-9a-fA-F-]{36}$/.test(mentoring_session_id)) {
+                console.error(`❌ Invalid mentoring_session_id format: ${mentoring_session_id}`);
+                return res.sendStatus(400);
+            }
+    
+            // ✅ Step 2: Fetch mentoring session details
+            const result = await pgDatabase.query(
+                `SELECT ms.mentoring_session_id, m.mentorship_id, se.team_name, 
+                        CONCAT(mt.mentor_firstname, ' ', mt.mentor_lastname) AS mentor_name,
+                        p.name AS program_name,
+                        TO_CHAR(ms.mentoring_session_date, 'FMMonth DD, YYYY') AS mentoring_session_date,
+                        CONCAT(TO_CHAR(ms.start_time, 'HH24:MI'), ' - ', TO_CHAR(ms.end_time, 'HH24:MI')) AS mentoring_session_time,
+                        ms.status, ms.zoom_link, mt.mentor_id
+                FROM mentorships m
+                JOIN mentoring_session ms ON m.mentorship_id = ms.mentorship_id
+                JOIN mentors mt ON m.mentor_id = mt.mentor_id
+                JOIN socialenterprises se ON m.se_id = se.se_id
+                JOIN programs p ON p.program_id = se.program_id
+                WHERE ms.mentoring_session_id = $1`,
+                [mentoring_session_id]
+            );
+    
+            if (result.rows.length === 0) {
+                console.warn(`⚠️ No mentoring session found for ID ${mentoring_session_id}`);
+                return res.sendStatus(404);
+            }
+    
+            const sessionDetails = result.rows[0];
+            console.log(`🔍 Found Mentoring Session:`, sessionDetails);
+
+            //NOTIFICATION HERE
+            // ✅ After all messages sent, insert ONE notification for the mentor
+            const notificationTitle = `Mentoring Session Declined`;
+            const notificationMessage = `${sessionDetails.team_name} has declined your proposed schedule. Please propose a new date and time for the mentoring session.`;
+            
+            await pgDatabase.query(
+              `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
+              VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/scheduling');`,
+              [sessionDetails.mentor_id, notificationTitle, notificationMessage]
+            );
+    
+            res.sendStatus(200);
+            return;
+          } catch (error) {
+              console.error("❌ Error handling decline:", error);
+              console.log("🛑 Error Stack:", error.stack);
+              await sendMessage(chatId, "❌ Failed to process decline.");
+              return res.sendStatus(500);
+          }
         }
         
         if (data.startsWith("mentoreval_")) {
@@ -4058,7 +4642,7 @@ app.post("/declineMentorship", async (req, res) => {
 
     const notificationTitle = 'Your mentoring session has been declined'
     const notificationMessage = 
-      `Your requested mentoring session has been declined. Please review the schedule and propose a new date if needed.`;
+      `Your requested mentoring session has been declined by the Social Enterprise. Please review the schedule and propose a new date if needed.`;
 
     await pgDatabase.query(
       `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
