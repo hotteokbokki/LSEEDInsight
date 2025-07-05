@@ -86,6 +86,7 @@ const Mentors = ( {} ) => {
   const [stats, setStats] = useState(null);
   const [selectedRowId, setSelectedRowId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAllowedtoApply, setIsAllowedtoApply] = useState(null);
   const [selectedMentor, setSelectedMentor] = useState(null);
   const [mentorSearch, setMentorSearch] = useState(""); // For autocomplete input
   const [selectedSE, setSelectedSE] = useState("");
@@ -99,7 +100,7 @@ const Mentors = ( {} ) => {
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const hasMentorRole = user?.roles?.includes("Mentor");
   const isLSEEDCoordinator = user?.roles?.includes("LSEED-Coordinator");
-
+  
   const businessAreasList = [
     "Application Development",
     "Business Registration Process",
@@ -133,6 +134,7 @@ const Mentors = ( {} ) => {
     "Zoom",
     "Other",
   ];
+  
 
   // Fetch mentors from the database
   const fetchMentors = async () => {
@@ -186,7 +188,26 @@ const Mentors = ( {} ) => {
           }))
         }
         input={<OutlinedInput label="Business Areas" />}
-        renderValue={(selected) => selected.join(", ")}
+        renderValue={(selected) => (
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 0.5,
+              maxHeight: 200,
+              overflowY: 'auto',
+            }}
+          >
+            {selected.map((value) => (
+              <Chip
+                key={value}
+                label={value}
+                color="default"
+                variant="outlined"
+              />
+            ))}
+          </Box>
+        )}
         open={menuOpenBusiness}
         onOpen={() => setMenuOpenBusiness(true)}
         onClose={() => setMenuOpenBusiness(false)}
@@ -224,7 +245,26 @@ const Mentors = ( {} ) => {
           }))
         }
         input={<OutlinedInput label="Preferred Time" />}
-        renderValue={(selected) => selected.join(", ")}
+        renderValue={(selected) => (
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 0.5,
+              maxHeight: 200,
+              overflowY: 'auto',
+            }}
+          >
+            {selected.map((value) => (
+              <Chip
+                key={value}
+                label={value}
+                color="default"
+                variant="outlined"
+              />
+            ))}
+          </Box>
+        )}
         open={menuOpenPreferredTime}
         onOpen={() => setMenuOpenPreferredTime(true)}
         onClose={() => setMenuOpenPreferredTime(false)}
@@ -262,7 +302,26 @@ const Mentors = ( {} ) => {
           }))
         }
         input={<OutlinedInput label="Communication Modes" />}
-        renderValue={(selected) => selected.join(", ")}
+        renderValue={(selected) => (
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 0.5,
+              maxHeight: 200,
+              overflowY: 'auto',
+            }}
+          >
+            {selected.map((value) => (
+              <Chip
+                key={value}
+                label={value}
+                color="default"
+                variant="outlined"
+              />
+            ))}
+          </Box>
+        )}        
         open={menuOpenCommunicationModes}
         onOpen={() => setMenuOpenCommunicationModes(true)}
         onClose={() => setMenuOpenCommunicationModes(false)}
@@ -426,6 +485,15 @@ const Mentors = ( {} ) => {
 
     handleCloseMenu();
   };
+
+  useEffect(() => {
+    const fetchMentorApplicationStatus = async () => {
+      const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/check-mentor-application-status`, { credentials: 'include' });
+      const data = await res.json();
+      setIsAllowedtoApply(data.allowed);
+    };
+    fetchMentorApplicationStatus();
+  }, []);
 
   useEffect(() => {
     const fetchMentorApplications = async () => {
@@ -1715,23 +1783,28 @@ const Mentors = ( {} ) => {
           padding="20px"
         >
           {/* Top Row with Title and Button */}
-          <Typography
-            variant="h3"
-            fontWeight="bold"
-            color={colors.greenAccent[500]}
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
             marginBottom="15px"
           >
-            Mentors
-          </Typography>
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              color={colors.greenAccent[500]}
+            >
+              Mentors
+            </Typography>
 
-            {user?.roles?.includes("LSEED-Coordinator") && (
+            {user?.roles?.includes("LSEED-Coordinator") && isAllowedtoApply && (
               <Button
                 variant="contained"
                 color="secondary"
                 onClick={() => setOpenApplyDialog(true)}
                 sx={{
                   backgroundColor: colors.greenAccent[500],
-                  color: "#fff",
+                  color: "#000",
                   textTransform: "none",
                   "&:hover": {
                     backgroundColor: colors.greenAccent[600],
@@ -1741,6 +1814,7 @@ const Mentors = ( {} ) => {
                 Apply to Be a Mentor
               </Button>
             )}
+          </Box>
 
           {/* DataGrid Box */}
           <Box

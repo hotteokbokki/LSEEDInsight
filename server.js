@@ -770,7 +770,7 @@ app.post("/apply-as-mentor", async (req, res) => {
       first_name: firstName,
       last_name: lastName,
       email,
-      contact_no: contactno,
+      contactnum: contactno,
       password
     } = userResult.rows[0];
 
@@ -1995,6 +1995,35 @@ app.get("/api/admin/users", async (req, res) => {
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get('/check-mentor-application-status', async (req, res) => {
+  try {
+    // Get user email from your session
+    const userEmail = req.session.user?.email;
+    if (!userEmail) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Query
+    const query = 'SELECT status FROM mentor_form_application WHERE email = $1';
+    const { rows } = await pgDatabase.query(query, [userEmail]);
+
+    let allowed;
+    if (rows.length === 0) {
+      // No application yet: allow to apply
+      allowed = true;
+    } else {
+      const status = rows[0].status;
+      // Block if Pending or Approved
+      allowed = !(status === 'Pending' || status === 'Approved');
+    }
+
+    return res.json({ allowed });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
