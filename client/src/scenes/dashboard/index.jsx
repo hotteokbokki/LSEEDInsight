@@ -293,30 +293,22 @@ const Dashboard = ({ }) => {
   const handleAcceptClick = async (schedule) => {
     try {
       const {
-        id: mentoring_session_id,
+        id,
         mentorship_id,
-        date: mentorship_date,
-        time: mentorship_time,
-        zoom: zoom_link,
+        realDate,
+        realTime,
+        zoom
       } = schedule;
 
-      console.log("Approving mentorship with details:", {
-        mentoring_session_id,
-        mentorship_id,
-        mentorship_date,
-        mentorship_time,
-        zoom_link,
-      });
-      // TEST THIS DEBUG
       const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/approveMentorship`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mentoring_session_id,
+          mentoring_session_id: id,
           mentorship_id,
-          mentorship_date,
-          mentorship_time,
-          zoom_link,
+          mentorship_date: realDate,
+          mentorship_time: realTime,
+          zoom_link: zoom,
         }),
       });
 
@@ -336,14 +328,12 @@ const Dashboard = ({ }) => {
 
   const handleDeclineClick = async (schedule) => {
     try {
-      const { id: mentoring_session_id } = schedule; // Extract ID
-
-      console.log("Declining schedule with ID:", mentoring_session_id);
+      const { id } = schedule; // Extract ID
 
       const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/declineMentorship`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mentoring_session_id }),
+        body: JSON.stringify({ mentoring_session_id: id }),
       });
 
       if (!response.ok) {
@@ -1268,6 +1258,8 @@ const Dashboard = ({ }) => {
                                             zoom: schedule.zoom_link || "N/A",
                                             mentorship_id: schedule.mentorship_id,
                                             status: schedule.status || "Pending",
+                                            realDate: schedule.mentoring_session_date || "N/A",     // for backend
+                                            realTime: schedule.mentoring_session_time || "N/A",     // for backend
                                         }))}
                                         sx={{
                                           "& .MuiDataGrid-cell": {

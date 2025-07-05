@@ -40,3 +40,22 @@ exports.getUpcomingSchedulesForMentor = async (mentor_id) => {
         return [];
     }
 };
+
+exports.getMentorsByMentoringSessionID = async (mentoring_session_id) => {
+    try {
+        const query = `
+            SELECT ms.mentoring_session_id, m.mentor_id FROM mentoring_session AS ms
+            JOIN mentorships AS mships ON mships.mentorship_id = ms.mentorship_id
+            JOIN mentors AS m ON m.mentor_id = mships.mentor_id
+            WHERE ms.mentoring_session_id = $1;
+        `;
+
+        const values = [mentoring_session_id];
+        const result = await pgDatabase.query(query, values);
+
+        return result.rows;
+    } catch (error) {
+        console.error("❌ Error fetching evaluations:", error);
+        return [];
+    }
+};

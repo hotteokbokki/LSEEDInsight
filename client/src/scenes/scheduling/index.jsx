@@ -40,6 +40,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { saveAs } from "file-saver";
+import { preventDefault } from "@fullcalendar/core/internal";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -99,13 +100,13 @@ const Scheduling = ({}) => {
   const timeSlots = generateTimeSlots();
 
   const handleAcceptClick = async (schedule) => {
-    try {
+   try {
       const {
-        id: mentoring_session_id,
+        id,
         mentorship_id,
-        mentorship_date,
-        mentorship_time,
-        zoom_link,
+        realDate,
+        realTime,
+        zoom,
       } = schedule;
 
       const response = await fetch(
@@ -114,12 +115,11 @@ const Scheduling = ({}) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            mentoring_session_id,
+            mentoring_session_id: id,
             mentorship_id,
-            mentorship_date,
-            mentorship_time,
-            zoom_link,
-            sender_id: user.id, // 👈 Add this line
+            mentorship_date: realDate,
+            mentorship_time: realTime,
+            zoom_link: zoom,
           }),
         }
       );
@@ -248,7 +248,7 @@ const Scheduling = ({}) => {
 
   const handleDeclineClick = async (schedule) => {
     try {
-      const { id: mentoring_session_id } = schedule;
+      const { id } = schedule;
 
       const response = await fetch(
         `${process.env.REACT_APP_API_BASE_URL}/declineMentorship`,
@@ -256,8 +256,7 @@ const Scheduling = ({}) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            mentoring_session_id,
-            sender_id: user.id, // 👈 Add this line
+            mentoring_session_id: id,
           }),
         }
       );
@@ -874,6 +873,8 @@ const Scheduling = ({}) => {
                     zoom: schedule.zoom_link || "N/A",
                     mentorship_id: schedule.mentorship_id,
                     status: schedule.status || "Pending",
+                    realDate: schedule.mentoring_session_date || "N/A",     // for backend
+                    realTime: schedule.mentoring_session_time || "N/A",     // for backend
                   }))}
                   columns={[
                     {

@@ -381,4 +381,21 @@ exports.getMentorshipCountByMentorID = async (mentor_id) => {
       return [];
     }
 };
-  
+
+exports.getProgramCoordinatorsByMentorshipID = async (mentorship_id) => {
+  try {
+    const query = `
+      SELECT DISTINCT pa.user_id, p.name AS program_name
+      FROM mentorships AS ms
+      JOIN socialenterprises AS s ON s.se_id = ms.se_id
+      JOIN programs AS p ON p.program_id = s.program_id
+      JOIN program_assignment AS pa ON pa.program_id = p.program_id
+      WHERE ms.mentorship_id = $1;
+    `;
+    const result = await pgDatabase.query(query, [mentorship_id]);
+    return result.rows;
+  } catch (error) {
+    console.error("❌ Error fetching program coordinators by mentorship ID:", error);
+    return [];
+  }
+};
