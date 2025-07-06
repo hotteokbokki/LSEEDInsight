@@ -1,32 +1,68 @@
-import { ResponsiveLine } from "@nivo/line"; // ✅ Fix: Import ResponsiveLine for charts
-import { useTheme } from "@mui/material"; // ✅ Fix: Import useTheme from MUI
-import { tokens } from "../theme"; // ✅ Fix: Ensure tokens is imported from your theme file
-import { format, addDays } from "date-fns"; // ✅ Fix: Import format and addDays from date-fns
+import { ResponsiveLine } from "@nivo/line";
+import { useTheme } from "@mui/material";
+import { tokens } from "../theme";
+import { format, addDays } from "date-fns";
 
 const POTLineChart = ({ data, isDashboard = false, dateRange = 60 }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
-  // ✅ Generate date range dynamically (default: today + 60 days)
+  // ✅ Generate future months (or customize as needed)
   const generateDateRange = (numDays) => {
     const today = new Date();
     return Array.from(
       { length: numDays },
-      (_, i) => format(addDays(today, i), "yyyy-MM") // Format as "YYYY-MM"
+      (_, i) => format(addDays(today, i), "MMMM yyyy")
     );
   };
 
-  // ✅ Default to today + 60 days unless overridden
   const xAxisDates = generateDateRange(dateRange);
 
-  // ✅ Ensure data is not undefined before flattening
-  const allYValues = data?.flatMap((d) => d.data.map((point) => point.y)) || [];
+  // ✅ Filter and clean the data to ensure all points are valid
+  const safeData = Array.isArray(data)
+    ? data
+        .filter((series) => series && Array.isArray(series.data))
+        .map((series) => ({
+          ...series,
+          data: series.data
+            .filter(
+              (point) =>
+                point &&
+                typeof point.x === "string" &&
+                typeof point.y === "number" &&
+                !isNaN(point.y)
+            )
+            .map((point) => ({
+              x: point.x,
+              y: point.y,
+            })),
+        }))
+        .filter((series) => series.data.length > 0)
+    : [];
+
+  const allYValues = safeData.flatMap((d) => d.data.map((p) => p.y));
   const minY = allYValues.length ? Math.min(...allYValues, 0) : 0;
   const maxY = allYValues.length ? Math.max(...allYValues, 5) : 5;
 
+  if (safeData.length === 0) {
+    return (
+      <div
+        style={{
+          height: "400px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: colors.grey[300],
+        }}
+      >
+        No valid data to display.
+      </div>
+    );
+  }
+
   return (
     <ResponsiveLine
-      data={data || []} // ✅ Default to empty array if data is undefined
+      data={safeData}
       theme={{
         axis: {
           domain: { line: { stroke: colors.grey[100] } },
@@ -43,12 +79,12 @@ const POTLineChart = ({ data, isDashboard = false, dateRange = 60 }) => {
       margin={{ top: 50, right: 210, bottom: 50, left: 60 }}
       xScale={{
         type: "point",
-        domain: xAxisDates, // ✅ Controlled inside LineChart
+        domain: safeData.flatMap((s) => s.data.map((p) => p.x)),
       }}
       yScale={{
         type: "linear",
-        min: minY, // ✅ Dynamic min based on dataset
-        max: maxY, // ✅ Dynamic max based on dataset
+        min: minY,
+        max: maxY,
         stacked: false,
         reverse: false,
       }}
@@ -67,11 +103,10 @@ const POTLineChart = ({ data, isDashboard = false, dateRange = 60 }) => {
       }}
       axisLeft={{
         orient: "left",
-        tickValues: [0, 1, 2, 3, 4, 5], // ✅ Y-axis based on dataset
         tickSize: 3,
         tickPadding: 5,
         tickRotation: 0,
-        legend: isDashboard ? undefined : "Average Rating",
+        legend: isDashboard ? undefined : "Average Profit",
         legendOffset: -40,
         legendPosition: "middle",
       }}
@@ -85,11 +120,11 @@ const POTLineChart = ({ data, isDashboard = false, dateRange = 60 }) => {
       useMesh={true}
       legends={[
         {
-          anchor: "bottom-right", // ✅ Move legend to bottom-right
+          anchor: "bottom-right",
           direction: "column",
           justify: false,
-          translateX: 110, // ✅ Adjust position horizontally
-          translateY: -30, // ✅ Move down
+          translateX: 110,
+          translateY: -30,
           itemsSpacing: 4,
           itemDirection: "left-to-right",
           itemWidth: 80,

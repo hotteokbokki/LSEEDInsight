@@ -171,9 +171,10 @@ const FinancialAnalytics = ({}) => {
   const seenMonths = new Map();
 
   se.revenueVsExpenses.forEach((point) => {
-    if (!point || !point.x) return;
+    if (!point || typeof point.x !== "string" || typeof point.revenue !== "number" || typeof point.expenses !== "number") return;
 
     const date = new Date(point.x);
+    if (isNaN(date)) return;
     const monthKey = date.toLocaleString("default", { month: "long" }); 
     const year = date.getFullYear();
     const key = `${monthKey} ${year}`;
@@ -228,9 +229,6 @@ const FinancialAnalytics = ({}) => {
   // Helper to calculate averages for StatBoxes (or sums where applicable)
   const avg = (arr, key) =>
     (arr.reduce((acc, item) => acc + item[key], 0) / arr.length).toFixed(2);
-
-  // Prepare combined data for charts comparing SEs:
-  // For LineChart: we create one series per SE with their revenue and expenses or equity trend
 
   // Format revenue vs expenses as separate series per SE for line chart
   const revenueVsExpensesData = socialEnterprises

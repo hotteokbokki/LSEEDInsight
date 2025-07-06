@@ -751,18 +751,7 @@ const Scheduling = ({}) => {
         >
           {/* Open LSEED Calendar Button */}
           {/* Visible if user has any LSEED role AND (is not a mentor OR is in coordinator view) */}
-          {user?.roles.some((r) => r.startsWith("LSEED")) &&
-            (!user?.roles.includes("Mentor") ||
-              (user?.roles.includes("Mentor") && !isMentorView)) && (
-              <Button
-                variant="contained"
-                color="secondary"
-                sx={{ fontSize: "16px", py: "10px", flexGrow: 1, minWidth: 0 }}
-                onClick={handleRedirect}
-              >
-                Open LSEED Calendar
-              </Button>
-            )}
+            
 
           {/* Schedule a Mentoring Session Button */}
           {/* Visible if user has Mentor role AND (is not an LSEED user OR is in mentor view) */}
