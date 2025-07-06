@@ -11,6 +11,8 @@ import {
   FormControl,
   Snackbar,
   Alert,
+  Card,
+  CardContent,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { tokens } from "../../theme";
@@ -20,10 +22,9 @@ const ProfilePage = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
-  const userRole = "Mentor";
-
   const [profileData, setProfileData] = useState({
-    fullName: "",
+    firstName: "",
+    lastName: "",
     email: "",
     contactnum: "",
     businessAreas: [],
@@ -31,98 +32,155 @@ const ProfilePage = () => {
     specificTime: "",
     communicationMode: [],
     bio: "",
+    role: "",
   });
 
+  const [originalData, setOriginalData] = useState(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  const [showEditButtons, setShowEditButtons] = useState(false);
-  
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    // Example pre-fill
-    setProfileData({
-      fullName: "Flore Cientech",
-      email: "florecientech@gmail.com",
-      contactnum: "09950965570",
-      businessAreas: ["Marketing", "Operations"],
-      preferredTime: "Weekday (Morning)",
-      specificTime: "",
-      communicationMode: ["Facebook Messenger", "Zoom"],
-      bio: "Passionate about mentoring and social impact.",
-    });
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch("http://localhost:4000/api/profile", {
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch profile: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const profileInfo = {
+          firstName: data.firstName || "",
+          lastName: data.lastName || "",
+          email: data.email || "",
+          contactnum: data.contactnum || "",
+          businessAreas: data.businessAreas || [],
+          preferredTime: "",
+          specificTime: "",
+          communicationMode: [],
+          bio: "",
+          role: data.role || "",
+        };
+
+        setProfileData(profileInfo);
+        setOriginalData(profileInfo);
+      } catch (err) {
+        setError(`Failed to load profile: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
   }, []);
 
   const handleChange = (field, value) => {
     setProfileData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    console.log("Saved profile:", profileData);
-    setIsSuccess(true);
+  const handleSave = async () => {
+    try {
+      setError("");
+      const response = await fetch("http://localhost:4000/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(profileData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || `Server error: ${response.status}`
+        );
+      }
+
+      setIsSuccess(true);
+      setIsEditing(false);
+      setOriginalData({ ...profileData });
+    } catch (err) {
+      setError(err.message || "Failed to save changes");
+    }
   };
 
-  const toggleEditing = () => {
-    setIsEditing(true);
-    setShowEditButtons(true);
+  const handleCancel = () => {
+    setIsEditing(false);
+    setError("");
+    if (originalData) {
+      setProfileData({ ...originalData });
+    }
   };
+
+  if (loading) {
+    return (
+      <Box m="20px">
+        <Typography>Loading profile...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box m="20px">
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Header title="USER PROFILE" subtitle="View and edit your profile details" />
+      <Header
+        title="USER PROFILE"
+        subtitle="View and edit your profile details"
+      />
+
+      {/* Role Badge */}
+      <Box mb={3}>
+        <Typography
+          variant="h6"
+          sx={{
+            display: "inline-block",
+            px: 3,
+            py: 1,
+            backgroundColor: colors.primary[400],
+            color: colors.grey[100],
+            borderRadius: "20px",
+            fontWeight: "bold",
+          }}
+        >
+          Role: {profileData.role}
+        </Typography>
       </Box>
-      <Box display="flex" alignItems="center" gap={2} mb={2}>
-        {/* Enable Editing Button */}
-        {!showEditButtons && (
+
+      {/* Action Buttons */}
+      <Box display="flex" gap={2} mb={3} justifyContent="left">
+        {!isEditing ? (
           <Button
             variant="contained"
+            onClick={() => setIsEditing(true)}
             sx={{
-              backgroundColor: colors.blueAccent[500],
-              color: "black",
-              "&:hover": {
-                backgroundColor: colors.blueAccent[800],
-              },
+              backgroundColor: colors.blueAccent[600],
+              color: "white",
+              "&:hover": { backgroundColor: colors.blueAccent[700] },
             }}
-            onClick={toggleEditing}
           >
-            Enable Editing
+            Edit Profile
           </Button>
-        )}
-
-        {/* Cancel and Save Buttons */}
-        {showEditButtons && (
+        ) : (
           <>
             <Button
               variant="outlined"
+              onClick={handleCancel}
               sx={{
-                backgroundColor: colors.redAccent[500],
-                color: "black",
-                "&:hover": {
-                  backgroundColor: colors.redAccent[600],
-                },
-              }}
-              onClick={() => {
-                setIsEditing(false);
-                setShowEditButtons(false);
-                setTimeout(() => window.location.reload(), 500);
+                color: colors.grey[100],
+                borderColor: colors.grey[400],
+                "&:hover": { borderColor: colors.grey[300] },
               }}
             >
               Cancel
             </Button>
-
             <Button
               variant="contained"
+              onClick={handleSave}
               sx={{
-                backgroundColor: colors.blueAccent[500],
-                color: "black",
-                "&:hover": {
-                  backgroundColor: colors.blueAccent[600],
-                },
-              }}
-              onClick={() => {
-                setIsEditing(false);
-                setShowEditButtons(false);
-                setTimeout(() => window.location.reload(), 500);
+                backgroundColor: colors.greenAccent[600],
+                color: "white",
+                "&:hover": { backgroundColor: colors.greenAccent[700] },
               }}
             >
               Save Changes
@@ -131,78 +189,167 @@ const ProfilePage = () => {
         )}
       </Box>
 
-      <Box
-        mt={4}
-        bgcolor={colors.primary[400]}
-        p={3}
-        borderRadius="8px"
-        boxShadow={2}
-      >
-        <Typography
-          variant="h3"
-          fontWeight="bold"
-          color={colors.greenAccent[500]}
-          mb={3}
-        >
-          Profile Information
-        </Typography>
+      {/* Profile Card */}
+      <Card sx={{ backgroundColor: colors.primary[400], mb: 3 }}>
+        <CardContent>
+          <Typography variant="h5" color={colors.grey[100]} mb={3}>
+            Basic Information
+          </Typography>
 
-        <Box display="flex" flexDirection="column" gap={3} maxWidth="600px">
-          <TextField
-            label="Full Name"
-            fullWidth
-            value={profileData.fullName}
-            onChange={(e) => handleChange("fullName", e.target.value)}
-            disabled={!isEditing}
-            sx={inputStyle}
-          />
-          {/* Add OTP to change email */}
-          <TextField
-            label="Email"
-            fullWidth
-            value={profileData.email}
-            disabled={!isEditing}
-            sx={inputStyle}
-          />
+          <Box display="flex" flexDirection="column" gap={2.5}>
+            <Box display="flex" gap={2}>
+              <TextField
+                label="First Name"
+                fullWidth
+                value={profileData.firstName}
+                onChange={(e) => handleChange("firstName", e.target.value)}
+                disabled={!isEditing}
+                sx={{
+                  "& .MuiInputLabel-root": { color: colors.grey[100] },
+                  "& .MuiOutlinedInput-root": {
+                    color: colors.grey[100],
+                    "& fieldset": { borderColor: colors.grey[400] },
+                    "&:hover fieldset": { borderColor: colors.grey[300] },
+                    "&.Mui-focused fieldset": {
+                      borderColor: colors.blueAccent[500],
+                    },
+                  },
+                }}
+              />
+              <TextField
+                label="Last Name"
+                fullWidth
+                value={profileData.lastName}
+                onChange={(e) => handleChange("lastName", e.target.value)}
+                disabled={!isEditing}
+                sx={{
+                  "& .MuiInputLabel-root": { color: colors.grey[100] },
+                  "& .MuiOutlinedInput-root": {
+                    color: colors.grey[100],
+                    "& fieldset": { borderColor: colors.grey[400] },
+                    "&:hover fieldset": { borderColor: colors.grey[300] },
+                    "&.Mui-focused fieldset": {
+                      borderColor: colors.blueAccent[500],
+                    },
+                  },
+                }}
+              />
+            </Box>
 
-          <TextField
-            label="Contact Number"
-            fullWidth
-            value={profileData.contactnum}
-            onChange={(e) => handleChange("contactnum", e.target.value)}
-            disabled={!isEditing}
-            sx={inputStyle}
-          />
+            <TextField
+              label="Email Address"
+              fullWidth
+              value={profileData.email}
+              onChange={(e) => handleChange("email", e.target.value)}
+              disabled={!isEditing}
+              sx={{
+                "& .MuiInputLabel-root": { color: colors.grey[100] },
+                "& .MuiOutlinedInput-root": {
+                  color: colors.grey[100],
+                  "& fieldset": { borderColor: colors.grey[400] },
+                  "&:hover fieldset": { borderColor: colors.grey[300] },
+                  "&.Mui-focused fieldset": {
+                    borderColor: colors.blueAccent[500],
+                  },
+                },
+              }}
+            />
 
-          {userRole === "Mentor" && (
-            <>
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: "#000" }}>Business Areas</InputLabel>
+            <TextField
+              label="Contact Number"
+              fullWidth
+              value={profileData.contactnum}
+              onChange={(e) => handleChange("contactnum", e.target.value)}
+              disabled={!isEditing}
+              sx={{
+                "& .MuiInputLabel-root": { color: colors.grey[100] },
+                "& .MuiOutlinedInput-root": {
+                  color: colors.grey[100],
+                  "& fieldset": { borderColor: colors.grey[400] },
+                  "&:hover fieldset": { borderColor: colors.grey[300] },
+                  "&.Mui-focused fieldset": {
+                    borderColor: colors.blueAccent[500],
+                  },
+                },
+              }}
+            />
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Mentor-specific fields */}
+      {profileData.role === "Mentor" && (
+        <Card sx={{ backgroundColor: colors.primary[400], mb: 3 }}>
+          <CardContent>
+            <Typography variant="h5" color={colors.grey[100]} mb={3}>
+              Mentor Specialization
+            </Typography>
+
+            <Box display="flex" flexDirection="column" gap={2.5}>
+              <FormControl fullWidth disabled={!isEditing}>
+                <InputLabel sx={{ color: colors.grey[100] }}>
+                  Business Areas
+                </InputLabel>
                 <Select
                   multiple
                   value={profileData.businessAreas}
-                  onChange={(e) => handleChange("businessAreas", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("businessAreas", e.target.value)
+                  }
                   renderValue={(selected) => selected.join(", ")}
-                  sx={selectStyle}
+                  sx={{
+                    color: colors.grey[100],
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: colors.grey[400],
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: colors.grey[300],
+                    },
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      borderColor: colors.blueAccent[500],
+                    },
+                  }}
                 >
                   {businessAreaOptions.map((area) => (
                     <MenuItem key={area} value={area}>
-                      <Checkbox checked={profileData.businessAreas.includes(area)} />
-                      <Typography color="white">{area}</Typography>
+                      <Checkbox
+                        checked={profileData.businessAreas.includes(area)}
+                        sx={{ color: colors.greenAccent[500] }}
+                      />
+                      <Typography>{area}</Typography>
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
 
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: "#000" }}>Preferred Mentoring Time</InputLabel>
+              <FormControl fullWidth disabled={!isEditing}>
+                <InputLabel sx={{ color: colors.grey[100] }}>
+                  Preferred Mentoring Time
+                </InputLabel>
                 <Select
                   value={profileData.preferredTime}
-                  onChange={(e) => handleChange("preferredTime", e.target.value)}
-                  sx={selectStyle}
+                  onChange={(e) =>
+                    handleChange("preferredTime", e.target.value)
+                  }
+                  sx={{
+                    color: colors.grey[100],
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: colors.grey[400],
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: colors.grey[300],
+                    },
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      borderColor: colors.blueAccent[500],
+                    },
+                  }}
                 >
-                  <MenuItem value="Weekday (Morning)">Weekday (Morning) 8AM - 12NN</MenuItem>
-                  <MenuItem value="Weekday (Afternoon)">Weekday (Afternoon) 1PM - 5PM</MenuItem>
+                  <MenuItem value="Weekday (Morning)">
+                    Weekday (Morning) 8AM - 12NN
+                  </MenuItem>
+                  <MenuItem value="Weekday (Afternoon)">
+                    Weekday (Afternoon) 1PM - 5PM
+                  </MenuItem>
                   <MenuItem value="Other">Other</MenuItem>
                 </Select>
               </FormControl>
@@ -213,23 +360,52 @@ const ProfilePage = () => {
                   fullWidth
                   value={profileData.specificTime}
                   onChange={(e) => handleChange("specificTime", e.target.value)}
-                  sx={inputStyle}
+                  disabled={!isEditing}
+                  sx={{
+                    "& .MuiInputLabel-root": { color: colors.grey[100] },
+                    "& .MuiOutlinedInput-root": {
+                      color: colors.grey[100],
+                      "& fieldset": { borderColor: colors.grey[400] },
+                      "&:hover fieldset": { borderColor: colors.grey[300] },
+                      "&.Mui-focused fieldset": {
+                        borderColor: colors.blueAccent[500],
+                      },
+                    },
+                  }}
                 />
               )}
 
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: "#000" }}>Communication Modes</InputLabel>
+              <FormControl fullWidth disabled={!isEditing}>
+                <InputLabel sx={{ color: colors.grey[100] }}>
+                  Communication Modes
+                </InputLabel>
                 <Select
                   multiple
                   value={profileData.communicationMode}
-                  onChange={(e) => handleChange("communicationMode", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("communicationMode", e.target.value)
+                  }
                   renderValue={(selected) => selected.join(", ")}
-                  sx={selectStyle}
+                  sx={{
+                    color: colors.grey[100],
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: colors.grey[400],
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: colors.grey[300],
+                    },
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      borderColor: colors.blueAccent[500],
+                    },
+                  }}
                 >
                   {communicationModeOptions.map((mode) => (
                     <MenuItem key={mode} value={mode}>
-                      <Checkbox checked={profileData.communicationMode.includes(mode)} />
-                      <Typography color="white">{mode}</Typography>
+                      <Checkbox
+                        checked={profileData.communicationMode.includes(mode)}
+                        sx={{ color: colors.greenAccent[500] }}
+                      />
+                      <Typography>{mode}</Typography>
                     </MenuItem>
                   ))}
                 </Select>
@@ -238,39 +414,40 @@ const ProfilePage = () => {
               <TextField
                 label="Short Bio / Experience"
                 multiline
-                rows={3}
+                rows={4}
                 fullWidth
                 value={profileData.bio}
                 onChange={(e) => handleChange("bio", e.target.value)}
-                sx={inputStyle}
+                disabled={!isEditing}
+                placeholder="Tell us about your experience and expertise..."
+                sx={{
+                  "& .MuiInputLabel-root": { color: colors.grey[100] },
+                  "& .MuiOutlinedInput-root": {
+                    color: colors.grey[100],
+                    "& fieldset": { borderColor: colors.grey[400] },
+                    "&:hover fieldset": { borderColor: colors.grey[300] },
+                    "&.Mui-focused fieldset": {
+                      borderColor: colors.blueAccent[500],
+                    },
+                  },
+                }}
               />
-            </>
-          )}
+            </Box>
+          </CardContent>
+        </Card>
+      )}
 
-          {error && <Alert severity="error">{error}</Alert>}
+      {/* Error Display */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
-          <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
-            <Button
-              variant="outlined"
-              sx={buttonOutlinedStyle}
-              onClick={() => window.location.reload()}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              onClick={handleSave}
-              sx={buttonContainedStyle}
-            >
-              Save Changes
-            </Button>
-          </Box>
-        </Box>
-      </Box>
-
+      {/* Success Snackbar */}
       <Snackbar
         open={isSuccess}
-        autoHideDuration={3000}
+        autoHideDuration={4000}
         onClose={() => setIsSuccess(false)}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
@@ -286,45 +463,32 @@ const ProfilePage = () => {
   );
 };
 
-// Styling
-const inputStyle = {
-  "& .MuiOutlinedInput-root": {
-    "& fieldset": { borderColor: "#000" },
-    "&:hover fieldset": { borderColor: "#000" },
-    "&.Mui-focused fieldset": { borderColor: "#000" },
-  },
-  color: "#000",
-};
-
-const selectStyle = {
-  color: "#000",
-  "& .MuiOutlinedInput-notchedOutline": { borderColor: "#000" },
-  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#000" },
-  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#000" },
-};
-
-const buttonOutlinedStyle = {
-  color: "#000",
-  border: "1px solid #000",
-  "&:hover": { backgroundColor: "#f0f0f0" },
-};
-
-const buttonContainedStyle = {
-  backgroundColor: "#1E4D2B",
-  color: "#fff",
-  "&:hover": { backgroundColor: "#145A32" },
-};
-
 const businessAreaOptions = [
-  "Application Development", "Business Registration Process", "Community Development",
-  "Expansion/Acceleration", "Finance", "Human Resource", "Intellectual Property",
-  "Legal Aspects and Compliance", "Management", "Marketing", "Online engagement",
-  "Operations", "Product Development", "Sales", "Supply Chain and Logistics",
-  "Technology Development", "Social Impact",
+  "Application Development",
+  "Business Registration Process",
+  "Community Development",
+  "Expansion/Acceleration",
+  "Finance",
+  "Human Resource",
+  "Intellectual Property",
+  "Legal Aspects and Compliance",
+  "Management",
+  "Marketing",
+  "Online engagement",
+  "Operations",
+  "Product Development",
+  "Sales",
+  "Supply Chain and Logistics",
+  "Technology Development",
+  "Social Impact",
 ];
 
 const communicationModeOptions = [
-  "Face to Face", "Facebook Messenger", "Google Meet", "Zoom", "Other",
+  "Face to Face",
+  "Facebook Messenger",
+  "Google Meet",
+  "Zoom",
+  "Other",
 ];
 
 export default ProfilePage;

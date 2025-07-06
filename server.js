@@ -32,6 +32,8 @@ const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const pgSession = require("connect-pg-simple")(session);
 const cookieParser = require("cookie-parser");
 const { addProgram } = require("./controllers/programsController");
+const profileRoutes = require("./routes/profileRoutes.js");
+
 const { getMentorsBySocialEnterprises, 
         getMentorById, 
         getAllMentors, 
@@ -145,6 +147,7 @@ app.use("/api/cashflow", cashflowRoutes);
 app.use("/api/inventory-distribution", inventoryRoutes);
 app.use("/auth", authRoutes);
 app.use("/api/mentorships", mentorshipRoutes);
+app.use("/api/profile", requireAuth, profileRoutes);
 
 app.post("/api/import/:reportType", async (req, res) => {
   const { reportType } = req.params;
