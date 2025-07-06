@@ -18,6 +18,7 @@ import MentorAnalytics from "./scenes/mentoranalytics";
 import Mentorships from "./scenes/mentorships";
 import Sidebar from "./scenes/global/Sidebar";
 import Topbar from "./scenes/global/Topbar";
+import AuditLogs from "./scenes/audit-logs";
 import Unauthorized from "./scenes/unauthorized";
 import ProfilePage from "./scenes/profile";
 import { ColorModeContext, useMode } from "./theme";
@@ -64,7 +65,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
   
 
   // Define roles that have full access to all protected routes
-  const privilegedRoles = ["Administrator", "LSEED-Director"];
+  const privilegedRoles = ["LSEED-Director"];
 
   const hasPrivilegedAccess = userRoles.some((role) =>
     privilegedRoles.includes(role)
@@ -92,7 +93,22 @@ const MainContent = () => {
       {/* PUBLIC ROUTES WITHOUT SIDEBAR/TOPBAR */}
       <Route element={<PublicLayout />}>
         <Route path="/coordinator-signup" element={<CoordinatorSignup />} />
-        <Route path="/" element={user ? <Navigate to="/dashboard/lseed" /> : <Login />} />
+        <Route
+          path="/"
+          element={
+            user ? (
+              user.roles.includes("Administrator") ? (
+                <Navigate to="/admin" />
+              ) : isMentorView ? (
+                <Navigate to="/dashboard/mentor" />
+              ) : (
+                <Navigate to="/dashboard/lseed" />
+              )
+            ) : (
+              <Login />
+            )
+          }
+        />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
@@ -105,7 +121,7 @@ const MainContent = () => {
         <Route path="/dashboard/lseed" element={<Dashboard />} />
         <Route path="/dashboard/mentor" element={<Dashboard />} />
 
-        <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director", "LSEED-Coordinator"]} />}>
+        <Route element={<ProtectedRoute allowedRoles={["LSEED-Director", "LSEED-Coordinator"]} />}>
           <Route path="/socialenterprise" element={<SocialEnterprise />} />
           <Route path="/mentors" element={<Mentors />} />
           <Route path="/programs" element={<ProgramPage />} />
@@ -113,10 +129,9 @@ const MainContent = () => {
           <Route path="/evaluate" element={<EvaluatePage />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/financial-analytics" element={<FinancialAnalytics />} />
-          <Route path="/admin" element={<Admin />} />
         </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director", "LSEED-Coordinator","Mentor"]} />}>
+        <Route element={<ProtectedRoute allowedRoles={["LSEED-Director", "LSEED-Coordinator","Mentor"]} />}>
           <Route path="/assess" element={<EvaluatePage />} />
         </Route>
 
@@ -125,11 +140,16 @@ const MainContent = () => {
           <Route path="/mentor-analytics/:id" element={<MentorAnalytics />} />
         </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director", "LSEED-Coordinator", "Mentor"]} />}>
+        <Route element={<ProtectedRoute allowedRoles={["Administrator", "LSEED-Director",]} />}>
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/audit-logs" element={<AuditLogs />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={["LSEED-Director", "LSEED-Coordinator", "Mentor"]} />}>
           <Route path="/scheduling" element={<Scheduling />} />
         </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator", "Mentor", "Guest User", "LSEED-Director", "Administrator"]} />}>
+        <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator", "Mentor", "Guest User", "LSEED-Director"]} />}>
           <Route path="/se-analytics/:id" element={<SEAnalytics />} />
         </Route>
 

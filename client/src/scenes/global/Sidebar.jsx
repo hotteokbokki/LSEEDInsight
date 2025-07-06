@@ -14,6 +14,7 @@ import {
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { tokens } from "../../theme";
 import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import GridViewOutlinedIcon from "@mui/icons-material/GridViewOutlined";
 import SupervisorAccountOutlinedIcon from "@mui/icons-material/SupervisorAccountOutlined";
 import Diversity2OutlinedIcon from "@mui/icons-material/Diversity2Outlined";
@@ -72,6 +73,7 @@ const Sidebar = ({ }) => {
   const isAdministrator = userRoles.includes("Administrator");
   const isLSEEDUser = userRoles.some(role => role.startsWith("LSEED"));
   const isLSEEDDirector = userRoles.includes("LSEED-Director");
+  const shouldShowMinimalSidebar = isAdministrator && !isLSEEDDirector;
 
   // ⭐️ Add this useEffect hook for debugging
   useEffect(() => {
@@ -228,8 +230,14 @@ const Sidebar = ({ }) => {
           {/* Navigation Items */}
           <Box paddingLeft={isCollapsed ? undefined : "10%"}>
             {/* ⭐️ Conditional rendering based on the isCoordinatorView state from context */}
-            {isCoordinatorView ? (
-              // ⭐️ Coordinator/Admin Menu Items (Only visible in Coordinator View)
+            {shouldShowMinimalSidebar ? (
+              // 🔒 Minimal Sidebar for Administrator
+              <>
+                <Item title="Manage Users" to="/admin" icon={<AdminPanelSettingsOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item title="Show Audit Logs" to="/audit-logs" icon={<DescriptionOutlinedIcon />} selected={selected} setSelected={setSelected} />
+              </>
+            ) : isCoordinatorView ? (
+              // 🧑‍💼 Coordinator or Director View
               <>
                 <Item title="Dashboard" to="/dashboard/lseed" icon={<GridViewOutlinedIcon />} selected={selected} setSelected={setSelected} />
                 <Item title="Evaluate" to="/assess" icon={<AssignmentTurnedInOutlinedIcon />} selected={selected} setSelected={setSelected} />
@@ -247,7 +255,7 @@ const Sidebar = ({ }) => {
                 )}
               </>
             ) : hasMentorRole ? (
-              // ⭐️ Mentor Menu Items (Only visible in Mentor View)
+              // 🧑‍🏫 Mentor View
               <>
                 <Item title="Dashboard" to="/dashboard/mentor" icon={<GridViewOutlinedIcon />} selected={selected} setSelected={setSelected} />
                 <Item title="Evaluate" to="/assess" icon={<AssignmentTurnedInOutlinedIcon />} selected={selected} setSelected={setSelected} />
@@ -261,7 +269,7 @@ const Sidebar = ({ }) => {
                   <Typography variant="body1">Scheduling Matrix</Typography>
                 </MenuItem>
               </>
-            ) : null} {/* If user has no relevant role, show nothing */}
+            ) : null}
 
             {/* Logout Button */}
             <Box mt="20px">

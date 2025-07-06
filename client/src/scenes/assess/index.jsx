@@ -811,6 +811,7 @@ const EvaluatePage = ({ }) => {
             <Button
               variant="contained"
               color="secondary"
+              disabled={socialEnterprises.length === 0}
               sx={{
                 fontSize: "16px", // Adjust font size for better fit
                 py: "10px", // Reduces height

@@ -97,7 +97,8 @@ const AdminPage = () => {
       // Send the invite request
       const response = await axios.post(
         `${process.env.REACT_APP_API_BASE_URL}/invite-coordinator`,
-        { email: inviteCoordinatorFormData.email.trim() }
+          {email: inviteCoordinatorFormData.email.trim()}, 
+          { withCredentials: true }
       );
 
       if (response.status === 201) {

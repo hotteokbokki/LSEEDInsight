@@ -549,43 +549,6 @@ const Mentors = ( {} ) => {
     }
   };
 
-  // Handle row updates
-  const handleMentorRowUpdate = async (params) => {
-    console.log("🔍 handleMentorRowUpdate received:", params);
-
-    // Prepare updated mentor data for the API
-    const updatedMentorData = {
-      mentor_firstName: params.mentor_firstName,
-      mentor_lastName: params.mentor_lastName,
-      email: params.email,
-      contactnum: params.contactnum,
-      isactive: params.status === "Active" ? true : false,
-    };
-
-    // Check if params contains the expected structure
-    Object.keys(params).forEach((key) => {
-      console.log(`🛠 params[${key}]:`, params[key]);
-    });
-
-    setRows(updatedMentorData);
-
-    try {
-      const response = await axios.put(
-        `${process.env.REACT_APP_API_BASE_URL}/api/mentors/${params.id}`,
-        updatedMentorData,
-        { headers: { "Content-Type": "application/json" } }
-      );
-
-      if (response.status === 200) {
-        console.log("✅ Mentor updated successfully:", response.data);
-      } else {
-        throw new Error("Failed to update mentor in database");
-      }
-    } catch (error) {
-      console.error("❌ Error updating mentor:", error);
-    }
-  };
-
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -656,8 +619,6 @@ const Mentors = ( {} ) => {
     email: "",
     contactNumber: "",
   });
-  const [isEditing, setIsEditing] = useState(false); // Toggle editing mode
-  const [showEditButtons, setShowEditButtons] = useState(false);
 
   // Handle dialog open/close
   const handleDialogOpen = () => {
@@ -800,55 +761,22 @@ const Mentors = ( {} ) => {
     }
   };
 
-  // Toggle editing mode
-  const toggleEditing = () => {
-    setIsEditing(true);
-    setShowEditButtons(true); // Toggle button visibility
-  };
-
-  const handleApplyAsMentor = () => {
-    navigate("/mentor-application"); // Or open a dialog, depending on your design
-  };
-
   const columns = [
-    ...(isEditing
-      ? [
-          {
-            field: "mentor_firstName",
-            headerName: "First Name",
-            flex: 1,
-            minWidth: 100,
-            cellClassName: "name-column--cell",
-            editable: true,
-          },
-          {
-            field: "mentor_lastName",
-            headerName: "Last Name",
-            minWidth: 100,
-            flex: 1,
-            cellClassName: "name-column--cell",
-            editable: true,
-          },
-        ]
-      : [
-          {
-            field: "mentor_fullName",
-            headerName: "Mentor Name",
-            flex: 1,
-            minWidth: 100,
-            cellClassName: "name-column--cell",
-            renderCell: (params) =>
-              `${params.row.mentor_firstName} ${params.row.mentor_lastName}`,
-          },
-        ]),
-
+    {
+      field: "mentor_fullName",
+      headerName: "Mentor Name",
+      flex: 1,
+      minWidth: 100,
+      cellClassName: "name-column--cell",
+      renderCell: (params) =>
+        `${params.row.mentor_firstName} ${params.row.mentor_lastName}`,
+    },
     {
       field: "email",
       headerName: "Email",
       minWidth: 200,
       flex: 1,
       renderCell: (params) => `${params.row.email}`,
-      editable: isEditing,
     },
     {
       field: "contactnum",
@@ -856,7 +784,6 @@ const Mentors = ( {} ) => {
       headerName: "Contact Number",
       flex: 1,
       renderCell: (params) => `${params.row.contactnum}`,
-      editable: isEditing,
     },
     {
       field: "numberOfSEsAssigned",
@@ -887,19 +814,11 @@ const Mentors = ( {} ) => {
       headerName: "Status",
       flex: 1,
       minWidth: 100,
-      editable: isEditing,
       renderCell: (params) => <Box>{params.value}</Box>,
       renderEditCell: (params) => (
         <TextField
           select
           value={params.value}
-          onChange={(e) =>
-            params.api.setEditCellValue({
-              id: params.id,
-              field: params.field,
-              value: e.target.value,
-            })
-          }
           fullWidth
         >
           <MenuItem value="Active">Active</MenuItem>
@@ -1286,92 +1205,6 @@ const Mentors = ( {} ) => {
               </Button>
             </DialogActions>
           </Dialog>
-
-          {!showEditButtons && (
-            <Button
-              variant="contained"
-              sx={{
-                backgroundColor: colors.blueAccent[500],
-                color: "black",
-                "&:hover": {
-                  backgroundColor: colors.blueAccent[800],
-                },
-              }}
-              onClick={toggleEditing}
-            >
-              Enable Editing
-            </Button>
-          )}
-          {/* Cancel and Save Changes Buttons */}
-          {showEditButtons && (
-            <>
-              <Button
-                variant="outlined"
-                sx={{
-                  backgroundColor: colors.redAccent[500],
-                  color: "black",
-                  "&:hover": {
-                    backgroundColor: colors.redAccent[600],
-                  },
-                }}
-                onClick={() => {
-                  setIsEditing(false); // Disable editing mode
-                  setShowEditButtons(false);
-                  setTimeout(() => {
-                    window.location.reload();
-                  }, 500); // Adjust delay if needed
-                }}
-              >
-                Cancel
-              </Button>
-
-              <Button
-                variant="contained"
-                sx={{
-                  backgroundColor: colors.blueAccent[500],
-                  color: "black",
-                  "&:hover": {
-                    backgroundColor: colors.blueAccent[600],
-                  },
-                }}
-                onClick={async () => {
-                  try {
-                    const selectedRow = rows.find(
-                      (row) => row.id === selectedRowId
-                    ); // Replace `selectedRowId`
-                    if (selectedRow) {
-                      handleMentorRowUpdate({
-                        id: selectedRow.id,
-                        field: "email",
-                        value: selectedRow.email,
-                      });
-                    } else {
-                      console.error("No mentor selected for update");
-                    }
-                    setIsEditing(false);
-                    setShowEditButtons(false);
-                    // Snackbar
-                    setSnackbarMessage("Successfully saved!");
-                    setSnackbarSeverity("success");
-                    setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
-
-                  } catch (error) {
-                    console.error("Failed to update mentor:", error);
-                    // Snackbar
-                    setSnackbarMessage("Failed to save changes. Please try again.");
-                    setSnackbarSeverity("error");
-                    setSnackbarOpen(true); // Ensure setSnackbarOpen is defined
-
-                  }
-                  setTimeout(() => {
-                    window.location.reload();
-                  }, 500); // Adjust delay if needed
-                }}
-              >
-                Save Changes
-              </Button>
-            </>
-          )}
         </Box>
       </Box>
       
@@ -1842,10 +1675,6 @@ const Mentors = ( {} ) => {
               columns={columns}
               getRowId={(row) => row.id}
               getRowHeight={() => 'auto'}
-              processRowUpdate={(params) => {
-                handleMentorRowUpdate(params);
-                return params;
-              }}
               editMode="row"
               sx={{
                 "& .MuiDataGrid-cell": {

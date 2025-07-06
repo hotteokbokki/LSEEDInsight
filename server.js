@@ -104,6 +104,7 @@ const { getProgramCoordinators,
 const { getApplicationList } = require("./controllers/menteesFormSubmissionsController.js");
 const { getMentorFormApplications } = require("./controllers/mentorFormApplicationController.js");
 const { getSignUpPassword } = require("./controllers/signuppasswordsController.js");
+const { getAuditLogs } = require("./controllers/auditlogsController.js");
 const app = express();
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
@@ -1113,6 +1114,9 @@ app.post("/signup-LSEEDCoordinator", async (req, res) => {
       [firstName, lastName, email, hashedPassword, contactno]
     );
 
+    // Add admin log
+
+
     const userId = userResult.rows[0].user_id;
 
     await pgDatabase.query(
@@ -1416,8 +1420,6 @@ app.get("/api/dashboard-stats", async (req, res) => {
   try {
     const program = req.query.program || null; // Optional program param
 
-    console.log("Coor: ",program)
-
     const mentorshipCount = await getMentorCount();
     const mentorsWithMentorshipCount = await getMentorshipCount();
     const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount();
@@ -1463,8 +1465,26 @@ app.post("/toggle-mentor-availability", async (req, res) => {
   }
 });
 
+app.get("/getAuditLogs", async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+
+    const auditLogs = await getAuditLogs({ page, limit });
+
+
+
+    res.json(auditLogs);
+  } catch (error) {
+    console.error("Error fetching audit logs:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.post("/invite-coordinator", async (req, res) => {
   const { email } = req.body;
+  const ipAddress = (req.headers['x-forwarded-for'] || req.connection.remoteAddress || '').split(',')[0].trim();
+  const userId = req.session.user?.id;
+
   console.log('POST /invite-coordinator - Inviting email:', email);
 
   if (!email) {
@@ -1528,6 +1548,14 @@ app.post("/invite-coordinator", async (req, res) => {
       `,
     });
 
+    // Add Admin log
+    await pgDatabase.query(
+      `INSERT INTO audit_logs (user_id, action, details, ip_address) VALUES ($1, $2, $3, $4)`,
+      [userId, 'Invited LSEED-Coordinator to create account', JSON.stringify({ invited_email: email }), ipAddress]
+    );
+
+    console.log('Audit Log Insert Debug:', { userId, email, ipAddress });
+   
     res.status(201).json({ message: 'Invitation email sent successfully.' });
 
   } catch (err) {

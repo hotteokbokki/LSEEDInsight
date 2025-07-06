@@ -68,7 +68,6 @@ exports.getAllSocialEnterprises = async () => {
     `);
 
     if (!res.rows || res.rows.length === 0) {
-      console.error("No SE found");
       return null; // or return []
     }
 
@@ -136,7 +135,6 @@ exports.getAllSocialEnterprisesForComparison = async (program = null) => {
     const res = await pgDatabase.query(query);
     
     if (!res.rows || res.rows.length === 0) {
-      console.error("No SE found");
       return null; // or return an empty array []
     }
 
@@ -185,7 +183,6 @@ exports.getFlaggedSEs = async (program = null) => {
     const res = await pgDatabase.query(query);
     
     if (!res.rows || res.rows.length === 0) {
-      console.error("No SE found");
       return null; // or return an empty array []
     }
 
