@@ -845,7 +845,7 @@ const Mentors = ( {} ) => {
     {
       field: "email",
       headerName: "Email",
-      minWidth: 100,
+      minWidth: 200,
       flex: 1,
       renderCell: (params) => `${params.row.email}`,
       editable: isEditing,
@@ -860,7 +860,7 @@ const Mentors = ( {} ) => {
     },
     {
       field: "numberOfSEsAssigned",
-      minWidth: 100,
+      minWidth: 50,
       headerName: "SEs Assigned",
       headerAlign: "left",
       align: "left",
@@ -1876,7 +1876,10 @@ const Mentors = ( {} ) => {
           <Box
             flex="1"
             backgroundColor={colors.primary[400]}
-            overflow="auto"
+            sx={{
+              height: "700px", // 👈 adjust height as needed
+              overflowY: "auto", // 👈 enables vertical scroll
+            }}
           >
             <Box
               display="flex"

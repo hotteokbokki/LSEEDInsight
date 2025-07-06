@@ -95,7 +95,7 @@ exports.getSocialEnterprisesUsersByProgram = async (program_id) => {
     // Ensure chat IDs are valid before returning
     const chatIds = rows.map(row => ({
       chatId: row.chatid,
-      seId: row.se_ID, // Capture the SE ID as well
+      seId: row.se_id, // Capture the SE ID as well
     }));
 
     console.log("✅ Returning Chat IDs with SE ID:", chatIds);

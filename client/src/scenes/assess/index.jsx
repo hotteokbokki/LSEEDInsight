@@ -1054,7 +1054,7 @@ const EvaluatePage = ({ }) => {
               color={colors.greenAccent[500]}
               marginBottom="15px" // Ensures a small gap between header & DataGrid
             >
-              SE Evaluations
+              Evaluations by Mentors
             </Typography>
             <Box
               width="100%"
@@ -1121,7 +1121,7 @@ const EvaluatePage = ({ }) => {
               color={colors.greenAccent[500]}
               marginBottom="15px" // Ensures a small gap between header & DataGrid
             >
-              Mentor Evaluations
+              Evaluations by Social Enterprises
             </Typography>
             <Box
               width="100%"

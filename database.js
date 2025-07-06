@@ -33,8 +33,8 @@ idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
 //  max: 10,
 //  idleTimeoutMillis: 30000,
 //  })
-// pool.connect()
-//    .then(() => console.log("🔗 Connected to PostgreSQL"))
-//    .catch(err => console.error("❌ Connection error", err.stack));
+pool.connect()
+   .then(() => console.log("🔗 Connected to PostgreSQL"))
+   .catch(err => console.error("❌ Connection error", err.stack));
 
 module.exports = pool;

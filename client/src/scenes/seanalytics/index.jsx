@@ -874,7 +874,7 @@ const SEAnalytics = () => {
         <SEPerformanceTrendChart selectedSEId={selectedSEId} />
       </Box>
 
-      <Box display="flex" gap="20px" width="100%" mt="20px">
+      <Box display="flex" gap="20px" width="100%" mt="20px" height="500px">
         {/* Evaluations Table */}
         <Box
           sx={{

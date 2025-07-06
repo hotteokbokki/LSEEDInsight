@@ -1411,12 +1411,16 @@ app.get("/api/mentors-with-mentorships", async (req, res) => {
 
 app.get("/api/dashboard-stats", async (req, res) => {
   try {
+    const program = req.query.program || null; // Optional program param
+
+    console.log("Coor: ",program)
+
     const mentorshipCount = await getMentorCount();
     const mentorsWithMentorshipCount = await getMentorshipCount();
     const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount();
 
     // ✅ Fetch the total number of social enterprises
-    const totalSocialEnterprises = await getTotalSECount();
+    const totalSocialEnterprises = await getTotalSECount(program);
 
     // ✅ Fetch the number of programs
     const totalPrograms = await getProgramCount();

@@ -18,26 +18,15 @@ import { tokens } from "../../theme";
 import PersonIcon from "@mui/icons-material/Person";
 import { useAuth } from "../../context/authContext"; 
 import SchoolIcon from "@mui/icons-material/School";
-import { mockTransactions } from "../../sampledata/mockData";
-import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
-import EmailIcon from "@mui/icons-material/Email";
-import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AcknowledgmentChart from "../../components/AcknowledgmentChart";
-import TrafficIcon from "@mui/icons-material/Traffic";
 import Header from "../../components/Header";
 import { useNavigate } from "react-router-dom";
 import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
 import StatBox from "../../components/StatBox";
-import ProgressCircle from "../../components/ProgressCircle";
-import FullCalendar from "@fullcalendar/react";
-import { formatDate } from "@fullcalendar/core";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
-import listPlugin from "@fullcalendar/list";
 import { useState, useEffect, useContext } from "react";
-import { DataGrid } from "@mui/x-data-grid";
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import SupervisorAccountOutlinedIcon from "@mui/icons-material/SupervisorAccountOutlined";
+import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 import Diversity2OutlinedIcon from "@mui/icons-material/Diversity2Outlined";
@@ -270,14 +259,15 @@ const Dashboard = ({ }) => {
   }, [user]);
 
   const mentorColumns = [
-    { field: "social_enterprise", headerName: "Social Enterprise", flex: 1 },
-    { field: "evaluator_name", headerName: "Evaluator", flex: 1 },
-    { field: "acknowledged", headerName: "Acknowledged", flex: 1 },
-    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1 },
+    { field: "social_enterprise", headerName: "Social Enterprise", flex: 1, minWidth: 100 },
+    { field: "evaluator_name", headerName: "Evaluator", flex: 1, minWidth: 100 },
+    { field: "acknowledged", headerName: "Acknowledged", flex: 1, minWidth: 100 },
+    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1, minWidth: 100 },
     {
       field: "action",
       headerName: "Action",
       flex: 1,
+      minWidth: 100,
       renderCell: (params) => (
         <Button
           variant="contained"
@@ -804,13 +794,15 @@ const Dashboard = ({ }) => {
           const program = data[0]?.name;
 
           response = await fetch(
-          `${process.env.REACT_APP_API_BASE_URL}/api/dashboard-stats?program=${program}`
-          );
+          `${process.env.REACT_APP_API_BASE_URL}/api/dashboard-stats?program=${program}`, {
+            credentials: "include", // Required to send session cookie
+          });
         }
         else {
           response = await fetch(
-            `${process.env.REACT_APP_API_BASE_URL}/api/dashboard-stats`
-          );
+            `${process.env.REACT_APP_API_BASE_URL}/api/dashboard-stats`, {
+              credentials: "include", // Required to send session cookie
+          });
         }
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
@@ -1533,11 +1525,104 @@ const Dashboard = ({ }) => {
                                 columns={mentorColumns}
                                 pageSize={5}
                                 rowsPerPageOptions={[5, 10]}
+                                getRowHeight={() => 'auto'}
+                                // REFERERENCE for GridToolbar
+                                sx={{
+                                  "& .MuiDataGrid-cell": {
+                                    display: "flex",
+                                    alignItems: "center", // vertical centering
+                                    paddingTop: "12px",
+                                    paddingBottom: "12px",
+                                  },
+                                  "& .MuiDataGrid-columnHeader": {
+                                    alignItems: "center", // optional: center header label vertically
+                                  },
+                                  "& .MuiDataGrid-cellContent": {
+                                    whiteSpace: "normal", // allow line wrap
+                                    wordBreak: "break-word",
+                                  },
+                                  "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+                                  color: `${colors.grey[100]} !important`,
+                                  },
+                                }}
+                                slots={{ toolbar: GridToolbar }}
                             />
                         </Box>
                     ) : (
                         <Typography>No evaluations available.</Typography>
                     )}
+                </Box>
+
+                {/* Quick Action Panel */}
+                <Box
+                    gridColumn="span 12"
+                    gridRow="span 1"
+                    bgcolor={colors.primary[400]}
+                    padding="20px"
+                    marginTop={3}
+                >
+                    <Typography
+                        variant="h4"
+                        fontWeight="bold"
+                        color={colors.greenAccent[500]}
+                        marginBottom="15px"
+                    >
+                        Quick Actions Panel
+                    </Typography>
+
+                    <Box
+                        display="flex"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        gap={2}
+                        width="100%"
+                    >
+                        <Button
+                            variant="contained"
+                            startIcon={<SupervisorAccountOutlinedIcon />}
+                            onClick={() => navigate("/mentorships")}
+                            sx={{
+                                flexGrow: 1,
+                                backgroundColor: colors.blueAccent[800],
+                                color: colors.grey[100],
+                                "&:hover": {
+                                    backgroundColor: colors.blueAccent[900],
+                                },
+                            }}
+                        >
+                            Manage Mentorships
+                        </Button>
+                        <Button
+                            variant="contained"
+                            startIcon={<CalendarMonthOutlinedIcon />}
+                            onClick={() => navigate("/scheduling")}
+                            sx={{
+                                flexGrow: 1,
+                                backgroundColor: colors.blueAccent[600],
+                                color: colors.grey[100],
+                                "&:hover": {
+                                    backgroundColor: colors.blueAccent[700],
+                                },
+                            }}
+                        >
+                            Appoint a Schedule
+                        </Button>
+                        <Button
+                            variant="contained"
+                            startIcon={<AssignmentTurnedInOutlinedIcon />}
+                            onClick={() => navigate("/assess")}
+                            sx={{
+                                flexGrow: 1,
+                                backgroundColor: colors.greenAccent[600],
+                                color: colors.grey[100],
+                                "&:hover": {
+                                    backgroundColor: colors.greenAccent[800],
+                                },
+                            }}
+                        >
+                            Evaluate Social Enterprises
+                        </Button>
+                    </Box>
                 </Box>
                 
                  {/* Upcoming Mentoring Sessions */}
