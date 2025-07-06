@@ -174,7 +174,7 @@ const FinancialAnalytics = ({}) => {
     if (!point || !point.x) return;
 
     const date = new Date(point.x);
-    const monthKey = date.toLocaleString("default", { month: "long" });
+    const monthKey = date.toLocaleString("default", { month: "long" }); 
     const year = date.getFullYear();
     const key = `${monthKey} ${year}`;
 
