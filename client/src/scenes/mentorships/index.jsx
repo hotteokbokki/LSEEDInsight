@@ -15,6 +15,7 @@ import {
   DialogActions,
   TextField,
   MenuItem,
+  Link,
 } from "@mui/material";
 import Switch from "@mui/material/Switch";
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
@@ -33,12 +34,24 @@ const Mentorships = () => {
 
   const userSession = JSON.parse(localStorage.getItem("user"));
   const [copySuccessOpen, setCopySuccessOpen] = useState(false);
+  const [copiedRegisterLinkSnackBar, setCopiedRegisterLinkSnackBar] = useState(false);
   const handleCopyOTP = () => {
     navigator.clipboard.writeText(generatedOTP)
       .then(() => {
         console.log('OTP copied to clipboard!');
         setOtpDialogOpen(false);
         setCopySuccessOpen(true);
+      })
+      .catch((err) => {
+        console.error('Failed to copy OTP:', err);
+      });
+  };
+    const handleCopyRegisterLink = () => {
+    navigator.clipboard.writeText("https://t.me/LSEED_Bot")
+      .then(() => {
+        console.log('Register link copied to clipboard!');
+        setOtpDialogOpen(false);
+        setCopiedRegisterLinkSnackBar(true);
       })
       .catch((err) => {
         console.error('Failed to copy OTP:', err);
@@ -288,6 +301,7 @@ const Mentorships = () => {
           )}
         </Box>
       </Box>
+
       {/* OTP Dialog */}
       <Dialog
         open={otpDialogOpen}
@@ -296,17 +310,17 @@ const Mentorships = () => {
         fullWidth
         PaperProps={{
           style: {
-            backgroundColor: "#fff",     // Main dialog background is white
-            color: "#000",                // Default text color is black
-            border: "1px solid #000",     // Optional: subtle border for contrast
-            borderRadius: "8px",          // Slightly rounded corners
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)"  // Softer shadow
+            backgroundColor: "#fff",
+            color: "#000",
+            border: "1px solid #000",
+            borderRadius: "8px",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
           },
         }}
       >
         <DialogTitle
           sx={{
-            backgroundColor: "#1E4D2B",  // DLSU green header
+            backgroundColor: "#1E4D2B",
             color: "#fff",
             textAlign: "center",
             fontWeight: "bold",
@@ -314,32 +328,59 @@ const Mentorships = () => {
             borderTopRightRadius: "8px",
           }}
         >
-          Generated OTP
+          Registration Details
         </DialogTitle>
 
         <DialogContent
           sx={{
             textAlign: "center",
             padding: "24px",
-            backgroundColor: "#fff",  // Explicit white background
-            color: "#000",            // Black text
+            backgroundColor: "#fff",
+            color: "#000",
           }}
         >
           <Typography
-            variant="h4"
+            variant="body1"
+            color="#000"
+            gutterBottom
+          >
+            Share this OTP with the Social Enterprise to complete their registration.
+          </Typography>
+
+          <Typography
+            variant="h6"
             fontWeight="bold"
             color="#000"
             gutterBottom
           >
             {generatedOTP}
           </Typography>
+
           <Typography
-            variant="subtitle1"
+            variant="body2"
             color="#000"
+            sx={{ marginTop: "16px" }}
           >
-            Share this OTP with the user to complete their signup.
+            They can register through our Telegram bot:
           </Typography>
+
+          <Link
+            href="https://t.me/LSEED_Bot"
+            target="_blank"
+            rel="noopener"
+            underline="hover"
+            sx={{
+              color: "#1E4D2B",
+              fontWeight: "bold",
+              fontSize: "16px",
+              display: "block",
+              marginTop: "4px",
+            }}
+          >
+            @LSEED_Bot
+          </Link>
         </DialogContent>
+
         <DialogActions
           sx={{
             borderTop: "1px solid #000",
@@ -347,6 +388,20 @@ const Mentorships = () => {
             padding: "16px",
           }}
         >
+          <Button
+            onClick={handleCopyRegisterLink}
+            variant="outlined"
+            sx={{
+              borderColor: "#000",
+              color: "#000",
+              "&:hover": {
+                backgroundColor: "#f0f0f0",
+              },
+            }}
+          >
+            Copy Register Link
+          </Button>
+
           <Button
             variant="outlined"
             onClick={handleCopyOTP}
@@ -374,6 +429,22 @@ const Mentorships = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={copiedRegisterLinkSnackBar}
+        autoHideDuration={3000}
+        onClose={() => setCopiedRegisterLinkSnackBar(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setCopiedRegisterLinkSnackBar(false)}
+          severity="success"
+          sx={{ width: "100%" }}
+        >
+          Register Link copied to clipboard!
+        </Alert>
+      </Snackbar>
+
       <Snackbar
         open={copySuccessOpen}
         autoHideDuration={3000}

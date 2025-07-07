@@ -31,6 +31,7 @@ const Login = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [passwordStrength, setPasswordStrength] = useState("");
   const [passwordsMatch, setPasswordsMatch] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [passwordChecklist, setPasswordChecklist] = useState({
     length: false,
     uppercase: false,
@@ -299,15 +300,25 @@ const Login = () => {
                   </div>
                   <div className="input-box">
                     <i className="fas fa-lock"></i>
+                    
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       name="password"
                       placeholder="Enter your password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                     />
+                    
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="show-password-button"
+                    >
+                      <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                    </button>
                   </div>
+
                   <div className="text">
                     <Link to="/forgot-password">Forgot password?</Link>
                   </div>

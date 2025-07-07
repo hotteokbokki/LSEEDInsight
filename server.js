@@ -110,15 +110,15 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 const inviteToken = uuidv4();
 
+const allowedOrigin = process.env.NODE_ENV === 'production'
+  ? process.env.PROD_CORS_URL
+  : process.env.DEV_CORS_URL;
+
 app.use(cors({
-  origin: [
-    "http://localhost:3000"
-  ],
+  origin: allowedOrigin,
   credentials: true
 }));
 
-//"http://localhost:3000" include this if for testing
-//"https://polished-moth-usefully.ngrok-free.app" include this if for deployment
 app.use(cookieParser());
 
 app.use(express.json());
@@ -126,6 +126,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.set('trust proxy', 1);
 
+// Session Configuration
 app.use(session({
   store: new pgSession({
     pool: pgDatabase,
@@ -135,9 +136,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,       // true if HTTPS only in production
+    secure: process.env.NODE_ENV === 'production',     // true if HTTPS only in production
     httpOnly: true,
-    sameSite: 'lax',     // none only in production
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',  // none only in production
     maxAge: 1000 * 60 * 60 * 24,
   },
 }));
@@ -1179,7 +1180,7 @@ app.post("/accept-mentor-application", async (req, res) => {
 
     // 1. Get application
     const result = await pgDatabase.query(
-      `SELECT * FROM mentor_form_application WHERE id = $1`,
+      `SELECT * FROM mentor_form_application WHERE id = $1 FOR UPDATE`,
       [applicationId]
     );
 
@@ -1286,6 +1287,7 @@ app.post("/accept-mentor-application", async (req, res) => {
 
             <p style="margin: 0 0 16px;">
               Your account has now been granted mentor access. You may continue using your existing login credentials to access mentor features.
+              <a href="${process.env.WEBHOOK_BASE_URL}" style="color: #1E4D2B; text-decoration: underline;">Click here to Login</a>
             </p>
 
             <p style="margin: 0;">
@@ -1367,6 +1369,8 @@ app.post("/accept-mentor-application", async (req, res) => {
 
           <p style="margin: 0 0 16px;">
             You may now log in using the credentials you submitted during signup.
+            <br/>
+            <a href="${process.env.WEBHOOK_BASE_URL}" style="color: #1E4D2B; text-decoration: underline;">Click here to Login</a>
           </p>
 
           <p style="margin: 0;">
@@ -5058,7 +5062,7 @@ ORDER BY n.created_at DESC;
           FROM notification n
           LEFT JOIN socialenterprises se ON n.se_id = se.se_id
           LEFT JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
-          WHERE n.receiver_id = $1 AND n.title != 'Scheduling Approval Needed'
+          WHERE n.receiver_id = $1
           ORDER BY n.created_at DESC;
       `;
     } else {
@@ -5200,37 +5204,29 @@ async function setWebhook(botToken, webhookPath, ngrokUrl) {
   }
 }
 
-// // Start the server (Production)
-// app.listen(PORT, async () => {
-//   console.log(`🚀 Server running on http://localhost:${PORT}`);
-
-//   try {
-//     const baseUrl = process.env.WEBHOOK_BASE_URL;
-//     if (!baseUrl) {
-//       throw new Error("WEBHOOK_BASE_URL is not set in environment variables.");
-//     }
-
-//     console.log(`🌍 Using webhook base URL: ${baseUrl}`);
-
-//     // Set the webhook
-//     await setWebhook(TELEGRAM_BOT_TOKEN, '/webhook-bot1', baseUrl);
-//   } catch (error) {
-//     console.error(`❌ Couldn't set webhook: ${error.message}`);
-//   }
-// });
-
-// Start the server and ngrok tunnel (Testing)
 app.listen(PORT, async () => {
-  console.log(`🚀 Localhost running on: http://localhost:${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 
   try {
+    if (process.env.NODE_ENV === "production") {
+      const baseUrl = process.env.WEBHOOK_BASE_URL;
+      if (!baseUrl) {
+        throw new Error("WEBHOOK_BASE_URL is not set in environment variables.");
+      }
+
+      console.log(`🌍 Using webhook base URL: ${baseUrl}`);
+
+      // Set the webhook
+      await setWebhook(TELEGRAM_BOT_TOKEN, '/webhook-bot1', baseUrl);
+    } else {
       //const ngrokUrl = await ngrok.connect(PORT);
       const ngrokUrl = process.env.NGROK_DOMAIN;
       console.log(`🌍 Ngrok tunnel running at: ${ngrokUrl}`);
 
       // Set webhooks for both bots
       await setWebhook(TELEGRAM_BOT_TOKEN, '/webhook-bot1', ngrokUrl);
+    }
   } catch (error) {
-      console.log(`❌ Couldn't tunnel ngrok: ${error.message}`);
+    console.error(`❌ Error setting webhook: ${error.message}`);
   }
 });

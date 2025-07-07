@@ -1696,4 +1696,24 @@ body {
   .custom-dialog-button {
     color: black;
   }
+
+  .input-box .show-password-button {
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 5px;
+  cursor: pointer;
+  color: #777;                /* match the eye icon color */
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.input-box .show-password-button:hover {
+color: #333;
+}
   

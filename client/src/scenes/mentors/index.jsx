@@ -987,19 +987,351 @@ const Mentors = ( {} ) => {
       </Box>
       {/* ADD MENTOR BUTTON AND EDIT TOGGLE */}
       <Box display="flex" gap="10px" mt="20px">
-        <Button
-          variant="contained"
-          sx={{
-            backgroundColor: colors.greenAccent[500],
-            color: "black",
-            "&:hover": {
-              backgroundColor: colors.greenAccent[600],
-            },
-          }}
-          onClick={handleDialogOpen}
-        >
-          Add Mentorship
-        </Button>
+        <Box display="flex" alignItems="center" gap={2}>
+          <Button
+            variant="contained"
+            sx={{
+              backgroundColor: colors.greenAccent[500],
+              color: "black",
+              "&:hover": {
+                backgroundColor: colors.greenAccent[600],
+              },
+            }}
+            onClick={handleDialogOpen}
+          >
+            Add Mentorship
+          </Button>
+
+          {/* Add Mentorship Dialog */}
+          <Dialog
+            open={openDialog}
+            onClose={handleDialogClose}
+            maxWidth="md"
+            fullWidth
+            PaperProps={{
+              style: {
+                backgroundColor: "#fff", // White background
+                color: "#000", // Black text
+                border: "1px solid #000", // Black border for contrast
+              },
+            }}
+          >
+            {/* Dialog Title */}
+            <DialogTitle
+              sx={{
+                backgroundColor: "#1E4D2B", // DLSU Green header
+                color: "#fff", // White text
+                textAlign: "center",
+                fontSize: "1.5rem",
+                fontWeight: "bold",
+              }}
+            >
+              Add New Mentorship
+            </DialogTitle>
+
+            {/* Dialog Content */}
+            <DialogContent
+              sx={{
+                padding: "24px",
+                maxHeight: "70vh", // Ensure it doesn't overflow the screen
+                overflowY: "auto", // Enable scrolling if content is too long
+              }}
+            >
+              {/* Place Dropdowns Side by Side */}
+              <Box
+                display="flex"
+                gap={2} // Add spacing between dropdowns
+                alignItems="center" // Align dropdowns vertically
+                mb={2} // Add margin at the bottom
+                marginTop="20px"
+              >
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: "bold",
+                    marginBottom: "8px", // Space between label and dropdown
+                  }}
+                >
+                  Mentor
+                </Typography>
+                {/* Mentor Dropdown */}
+                <FormControl fullWidth margin="normal">
+                  <InputLabel
+                    id="mentor-label"
+                    sx={{
+                      backgroundColor: "#fff",
+                      padding: "0 4px",
+                      "&.Mui-focused": {
+                        backgroundColor: "#fff",
+                      },
+                    }}
+                  >
+                    Select Mentor
+                  </InputLabel>
+                  <Select
+                    labelId="mentor-label"
+                    name="selectedMentor"
+                    value={mentorshipData.selectedMentor || ""}
+                    onChange={(e) =>
+                      setMentorshipData({
+                        ...mentorshipData,
+                        selectedMentor: e.target.value,
+                      })
+                    }
+                    label="Select Mentor"
+                    sx={{
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000",
+                      },
+                      "&:hover .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000",
+                      },
+                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000",
+                      },
+                      "& .MuiSelect-select": {
+                        color: "#000",
+                      },
+                    }}
+                  >
+                    {/* Section Header for Suggested */}
+                    <Box
+                      px={2}
+                      py={1}
+                      display="flex"
+                      alignItems="center"
+                      gap={1}
+                      sx={{ pointerEvents: "none"}}
+                    >
+                      <Typography variant="subtitle2" fontWeight="bold">
+                        Recommended Mentors (Top & Good Match)
+                      </Typography>
+                      <Tooltip title="These mentors match most or all areas with the SE’s critical areas.">
+                        <InfoOutlinedIcon fontSize="small" sx={{ pointerEvents: "auto" }} />
+                      </Tooltip>
+                    </Box>
+
+                    {suggestedMentors.length > 0 ? (
+                      suggestedMentors.map((mentor) => (
+                        <MenuItem
+                          key={mentor.mentor_id}
+                          value={mentor.mentor_id}
+                          disabled={!mentor.is_available_for_assignment}
+                          sx={{
+                            opacity: mentor.is_available_for_assignment ? 1 : 0.5,
+                          }}
+                        >
+                          <Box display="flex" flexDirection="column" alignItems="flex-start">
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <Typography>
+                                {mentor.mentor_firstname} {mentor.mentor_lastname}
+                              </Typography>
+                              <Chip
+                                label="Recommended"
+                                size="small"
+                                color="success"
+                              />
+                              <Chip
+                                label={mentor.is_available_for_assignment ? "Available" : "Unavailable"}
+                                size="small"
+                                color={mentor.is_available_for_assignment ? "success" : "default"}
+                              />
+                            </Box>
+                            <Typography variant="body2" color="text.secondary">
+                              Matched on {mentor.match_count} area
+                              {mentor.match_count !== 1 ? "s" : ""}:{" "}
+                              {mentor.matched_areas?.join(", ") || "N/A"}
+                            </Typography>
+                            {!mentor.is_available_for_assignment && (
+                              <Typography variant="caption" color="error">
+                                Not currently accepting new assignments
+                              </Typography>
+                            )}
+                          </Box>
+                        </MenuItem>
+                      ))
+                    ) : (
+                      <MenuItem disabled>
+                        <Typography variant="body2" color="text.secondary">
+                          No highly matching mentors found.
+                        </Typography>
+                      </MenuItem>
+                    )}
+
+                    {/* Section Header for Others */}
+                    <Box
+                      px={2}
+                      py={1}
+                      display="flex"
+                      alignItems="center"
+                      gap={1}
+                      sx={{ pointerEvents: "none" }}
+                    >
+                      <Typography variant="subtitle2" fontWeight="bold">
+                        Other Available Mentors (Low Match)
+                      </Typography>
+                      <Tooltip title="These mentors matched few or none of the SE’s critical areas.">
+                        <InfoOutlinedIcon fontSize="small" sx={{ pointerEvents: "auto" }} />
+                      </Tooltip>
+                    </Box>
+
+                    {otherMentors.map((mentor) => (
+                      <MenuItem
+                        key={mentor.mentor_id}
+                        value={mentor.mentor_id}
+                        disabled={!mentor.is_available_for_assignment}
+                        sx={{
+                          opacity: mentor.is_available_for_assignment ? 1 : 0.5,
+                        }}
+                      >
+                        <Box display="flex" flexDirection="column" alignItems="flex-start">
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <Typography>
+                              {mentor.mentor_firstname} {mentor.mentor_lastname}
+                            </Typography>
+                            <Chip
+                              label={mentor.is_available_for_assignment ? "Available" : "Unavailable"}
+                              size="small"
+                              color={mentor.is_available_for_assignment ? "success" : "default"}
+                            />
+                          </Box>
+                          <Typography variant="body2" color="text.secondary">
+                            Matched on {mentor.match_count} area
+                            {mentor.match_count !== 1 ? "s" : ""}:{" "}
+                            {mentor.matched_areas?.join(", ") || "N/A"}
+                          </Typography>
+                          {!mentor.is_available_for_assignment && (
+                            <Typography variant="caption" color="error">
+                              Not currently accepting new assignments
+                            </Typography>
+                          )}
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: "bold",
+                    marginBottom: "8px", // Space between label and dropdown
+                  }}
+                >
+                  Social Enterprise
+                </Typography>
+                {/* Social Enterprise Dropdown */}
+                <FormControl fullWidth margin="normal">
+                  <InputLabel
+                    id="mentor-label"
+                    sx={{
+                      backgroundColor: "#fff", // Prevent overlap with the border
+                      padding: "0 4px", // Add padding for readability
+                      "&.Mui-focused": {
+                        backgroundColor: "#fff", // Ensure the background remains white when focused
+                      },
+                    }}
+                  >
+                    Select Social Enterprise
+                  </InputLabel>
+                  <Select
+                    labelId="se-label"
+                    name="selectedSocialEnterprise"
+                    value={mentorshipData.selectedSocialEnterprise}
+                    onChange={(e) => {
+                      const selectedSeId = e.target.value;
+                      console.log("✅ Selected SE ID:", selectedSeId);
+                      setMentorshipData((prev) => ({
+                        ...prev,
+                        selectedSocialEnterprise: selectedSeId,
+                      }));
+                      matchMentors(selectedSeId); // 🔥
+                    }}
+                    label="Select Social Enterprise"
+                    displayEmpty
+                    fullWidth
+                    margin="dense"
+                    sx={{
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000",
+                      },
+                      "&:hover .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000",
+                      },
+                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#000",
+                      },
+                      "& .MuiSelect-select": {
+                        color: "#000",
+                      },
+                    }}
+                  >
+                    <MenuItem disabled value="">
+                      <em>Select Social Enterprise</em>
+                    </MenuItem>
+                    {socialEnterprises.map((se) => (
+                      <MenuItem key={se.id} value={se.id}>
+                        {se.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+            </DialogContent>
+
+            {/* Dialog Actions */}
+            <DialogActions
+              sx={{
+                padding: "16px",
+                borderTop: "1px solid #000", // Separator line
+              }}
+            >
+              <Button
+                onClick={() => {
+                  handleDialogClose(); // Close the dialog
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 500); // Adjust delay if needed
+                }}
+                sx={{
+                  color: "#000",
+                  border: "1px solid #000",
+                  "&:hover": {
+                    backgroundColor: "#f0f0f0", // Hover effect
+                  },
+                }}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                onClick={handleSubmit} // Calls the updated handleSubmit function
+                variant="contained"
+                disabled={
+                  !mentorshipData.selectedMentor ||
+                  !mentorshipData.selectedSocialEnterprise
+                } // 🔥 Disables if either field is empty
+                sx={{
+                  backgroundColor:
+                    mentorshipData.selectedMentor &&
+                    mentorshipData.selectedSocialEnterprise
+                      ? "#1E4D2B"
+                      : "#A0A0A0", // Gray when disabled
+                  color: "#fff",
+                  "&:hover": {
+                    backgroundColor:
+                      mentorshipData.selectedMentor &&
+                      mentorshipData.selectedSocialEnterprise
+                        ? "#145A32"
+                        : "#A0A0A0", // Keep gray on hover if disabled
+                  },
+                }}
+              >
+                Submit
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </Box>
 
         <Box display="flex" alignItems="center" gap={2}>
           {/* Remove Mentorship Button */}
@@ -1207,336 +1539,6 @@ const Mentors = ( {} ) => {
           </Dialog>
         </Box>
       </Box>
-      
-      {/* Add Mentorship Dialog */}
-      <Dialog
-        open={openDialog}
-        onClose={handleDialogClose}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          style: {
-            backgroundColor: "#fff", // White background
-            color: "#000", // Black text
-            border: "1px solid #000", // Black border for contrast
-          },
-        }}
-      >
-        {/* Dialog Title */}
-        <DialogTitle
-          sx={{
-            backgroundColor: "#1E4D2B", // DLSU Green header
-            color: "#fff", // White text
-            textAlign: "center",
-            fontSize: "1.5rem",
-            fontWeight: "bold",
-          }}
-        >
-          Add New Mentorship
-        </DialogTitle>
-
-        {/* Dialog Content */}
-        <DialogContent
-          sx={{
-            padding: "24px",
-            maxHeight: "70vh", // Ensure it doesn't overflow the screen
-            overflowY: "auto", // Enable scrolling if content is too long
-          }}
-        >
-          {/* Place Dropdowns Side by Side */}
-          <Box
-            display="flex"
-            gap={2} // Add spacing between dropdowns
-            alignItems="center" // Align dropdowns vertically
-            mb={2} // Add margin at the bottom
-            marginTop="20px"
-          >
-            <Typography
-              variant="subtitle1"
-              sx={{
-                fontWeight: "bold",
-                marginBottom: "8px", // Space between label and dropdown
-              }}
-            >
-              Mentor
-            </Typography>
-            {/* Mentor Dropdown */}
-            <FormControl fullWidth margin="normal">
-              <InputLabel
-                id="mentor-label"
-                sx={{
-                  backgroundColor: "#fff",
-                  padding: "0 4px",
-                  "&.Mui-focused": {
-                    backgroundColor: "#fff",
-                  },
-                }}
-              >
-                Select Mentor
-              </InputLabel>
-              <Select
-                labelId="mentor-label"
-                name="selectedMentor"
-                value={mentorshipData.selectedMentor || ""}
-                onChange={(e) =>
-                  setMentorshipData({
-                    ...mentorshipData,
-                    selectedMentor: e.target.value,
-                  })
-                }
-                label="Select Mentor"
-                sx={{
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#000",
-                  },
-                  "&:hover .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#000",
-                  },
-                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#000",
-                  },
-                  "& .MuiSelect-select": {
-                    color: "#000",
-                  },
-                }}
-              >
-                {/* Section Header for Suggested */}
-                <Box
-                  px={2}
-                  py={1}
-                  display="flex"
-                  alignItems="center"
-                  gap={1}
-                  sx={{ pointerEvents: "none"}}
-                >
-                  <Typography variant="subtitle2" fontWeight="bold">
-                    Recommended Mentors (Top & Good Match)
-                  </Typography>
-                  <Tooltip title="These mentors match most or all areas with the SE’s critical areas.">
-                    <InfoOutlinedIcon fontSize="small" sx={{ pointerEvents: "auto" }} />
-                  </Tooltip>
-                </Box>
-
-                {suggestedMentors.length > 0 ? (
-                  suggestedMentors.map((mentor) => (
-                    <MenuItem
-                      key={mentor.mentor_id}
-                      value={mentor.mentor_id}
-                      disabled={!mentor.is_available_for_assignment}
-                      sx={{
-                        opacity: mentor.is_available_for_assignment ? 1 : 0.5,
-                      }}
-                    >
-                      <Box display="flex" flexDirection="column" alignItems="flex-start">
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Typography>
-                            {mentor.mentor_firstname} {mentor.mentor_lastname}
-                          </Typography>
-                          <Chip
-                            label="Recommended"
-                            size="small"
-                            color="success"
-                          />
-                          <Chip
-                            label={mentor.is_available_for_assignment ? "Available" : "Unavailable"}
-                            size="small"
-                            color={mentor.is_available_for_assignment ? "success" : "default"}
-                          />
-                        </Box>
-                        <Typography variant="body2" color="text.secondary">
-                          Matched on {mentor.match_count} area
-                          {mentor.match_count !== 1 ? "s" : ""}:{" "}
-                          {mentor.matched_areas?.join(", ") || "N/A"}
-                        </Typography>
-                        {!mentor.is_available_for_assignment && (
-                          <Typography variant="caption" color="error">
-                            Not currently accepting new assignments
-                          </Typography>
-                        )}
-                      </Box>
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem disabled>
-                    <Typography variant="body2" color="text.secondary">
-                      No highly matching mentors found.
-                    </Typography>
-                  </MenuItem>
-                )}
-
-                {/* Section Header for Others */}
-                <Box
-                  px={2}
-                  py={1}
-                  display="flex"
-                  alignItems="center"
-                  gap={1}
-                  sx={{ pointerEvents: "none" }}
-                >
-                  <Typography variant="subtitle2" fontWeight="bold">
-                    Other Available Mentors (Low Match)
-                  </Typography>
-                  <Tooltip title="These mentors matched few or none of the SE’s critical areas.">
-                    <InfoOutlinedIcon fontSize="small" sx={{ pointerEvents: "auto" }} />
-                  </Tooltip>
-                </Box>
-
-                {otherMentors.map((mentor) => (
-                  <MenuItem
-                    key={mentor.mentor_id}
-                    value={mentor.mentor_id}
-                    disabled={!mentor.is_available_for_assignment}
-                    sx={{
-                      opacity: mentor.is_available_for_assignment ? 1 : 0.5,
-                    }}
-                  >
-                    <Box display="flex" flexDirection="column" alignItems="flex-start">
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <Typography>
-                          {mentor.mentor_firstname} {mentor.mentor_lastname}
-                        </Typography>
-                        <Chip
-                          label={mentor.is_available_for_assignment ? "Available" : "Unavailable"}
-                          size="small"
-                          color={mentor.is_available_for_assignment ? "success" : "default"}
-                        />
-                      </Box>
-                      <Typography variant="body2" color="text.secondary">
-                        Matched on {mentor.match_count} area
-                        {mentor.match_count !== 1 ? "s" : ""}:{" "}
-                        {mentor.matched_areas?.join(", ") || "N/A"}
-                      </Typography>
-                      {!mentor.is_available_for_assignment && (
-                        <Typography variant="caption" color="error">
-                          Not currently accepting new assignments
-                        </Typography>
-                      )}
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <Typography
-              variant="subtitle1"
-              sx={{
-                fontWeight: "bold",
-                marginBottom: "8px", // Space between label and dropdown
-              }}
-            >
-              Social Enterprise
-            </Typography>
-            {/* Social Enterprise Dropdown */}
-            <FormControl fullWidth margin="normal">
-              <InputLabel
-                id="mentor-label"
-                sx={{
-                  backgroundColor: "#fff", // Prevent overlap with the border
-                  padding: "0 4px", // Add padding for readability
-                  "&.Mui-focused": {
-                    backgroundColor: "#fff", // Ensure the background remains white when focused
-                  },
-                }}
-              >
-                Select Social Enterprise
-              </InputLabel>
-              <Select
-                labelId="se-label"
-                name="selectedSocialEnterprise"
-                value={mentorshipData.selectedSocialEnterprise}
-                onChange={(e) => {
-                  const selectedSeId = e.target.value;
-                  console.log("✅ Selected SE ID:", selectedSeId);
-                  setMentorshipData((prev) => ({
-                    ...prev,
-                    selectedSocialEnterprise: selectedSeId,
-                  }));
-                  matchMentors(selectedSeId); // 🔥
-                }}
-                label="Select Social Enterprise"
-                displayEmpty
-                fullWidth
-                margin="dense"
-                sx={{
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#000",
-                  },
-                  "&:hover .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#000",
-                  },
-                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#000",
-                  },
-                  "& .MuiSelect-select": {
-                    color: "#000",
-                  },
-                }}
-              >
-                <MenuItem disabled value="">
-                  <em>Select Social Enterprise</em>
-                </MenuItem>
-                {socialEnterprises.map((se) => (
-                  <MenuItem key={se.id} value={se.id}>
-                    {se.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-        </DialogContent>
-
-        {/* Dialog Actions */}
-        <DialogActions
-          sx={{
-            padding: "16px",
-            borderTop: "1px solid #000", // Separator line
-          }}
-        >
-          <Button
-            onClick={() => {
-              handleDialogClose(); // Close the dialog
-              setTimeout(() => {
-                window.location.reload();
-              }, 500); // Adjust delay if needed
-            }}
-            sx={{
-              color: "#000",
-              border: "1px solid #000",
-              "&:hover": {
-                backgroundColor: "#f0f0f0", // Hover effect
-              },
-            }}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            onClick={handleSubmit} // Calls the updated handleSubmit function
-            variant="contained"
-            disabled={
-              !mentorshipData.selectedMentor ||
-              !mentorshipData.selectedSocialEnterprise
-            } // 🔥 Disables if either field is empty
-            sx={{
-              backgroundColor:
-                mentorshipData.selectedMentor &&
-                mentorshipData.selectedSocialEnterprise
-                  ? "#1E4D2B"
-                  : "#A0A0A0", // Gray when disabled
-              color: "#fff",
-              "&:hover": {
-                backgroundColor:
-                  mentorshipData.selectedMentor &&
-                  mentorshipData.selectedSocialEnterprise
-                    ? "#145A32"
-                    : "#A0A0A0", // Keep gray on hover if disabled
-              },
-            }}
-          >
-            Submit
-          </Button>
-        </DialogActions>
-      </Dialog>
       
       {/* SE ASSIGNED Names */}
       <Dialog
