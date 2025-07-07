@@ -24,16 +24,13 @@ const { getSocialEnterprisesByProgram,
         getAllSocialEnterprisesForComparison,
         getFlaggedSEs,
         getAreasOfFocus,
-        getSuggestedMentors,
-        getAcceptedApplications} = require("./controllers/socialenterprisesController");
+        getSuggestedMentors} = require("./controllers/socialenterprisesController");
 require("dotenv").config();
 const { getUsers, getUserName, getLSEEDCoordinators, getLSEEDDirectors } = require("./controllers/usersController");
 const pgDatabase = require("./database.js"); // Import PostgreSQL client
 const pgSession = require("connect-pg-simple")(session);
 const cookieParser = require("cookie-parser");
 const { addProgram } = require("./controllers/programsController");
-const profileRoutes = require("./routes/profileRoutes.js");
-
 const { getMentorsBySocialEnterprises, 
         getMentorById, 
         getAllMentors, 
@@ -45,8 +42,7 @@ const { getMentorsBySocialEnterprises,
         getMostAssignedMentor, 
         getMentorDetails, 
         getMentorCount, 
-        getCriticalAreasByMentorID,
-        getAllMentorsWithMentorships} = require("./controllers/mentorsController.js");
+        getCriticalAreasByMentorID} = require("./controllers/mentorsController.js");
 const { getAllSDG } = require("./controllers/sdgController.js");
 const { getMentorshipsByMentorId, 
         getMentorBySEID, 
@@ -59,7 +55,6 @@ const { getMentorshipsByMentorId,
         getSchedulingHistoryByMentorID,
         getMentorshipCountByMentorID,
         getPendingSchedulesForMentor,
-        getProgramCoordinatorsByMentorshipID,
        } = require("./controllers/mentorshipsController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getEvaluationsByMentorID, 
@@ -94,7 +89,7 @@ const { updateSocialEnterpriseStatus } = require("./controllers/socialenterprise
 const { getPerformanceOverviewBySEID, getEvaluationScoreDistribution, compareSocialEnterprisesPerformance, getMentorAvgRating, getMentorFrequentRating, getAvgRatingForMentor, getPerformanceOverviewForMentor, getAvgRatingGivenByMentor, getCommonRatingGiven } = require("./controllers/evaluationcategoriesController.js");
 const { getMentorQuestions } = require("./controllers/mentorEvaluationsQuestionsController.js");
 const { getPreDefinedComments } = require("./controllers/predefinedcommentsController.js");
-const { getUpcomingSchedulesForMentor, getMentorsByMentoringSessionID } = require("./controllers/mentoringSessionController.js");
+const { getUpcomingSchedulesForMentor } = require("./controllers/mentoringSessionController.js");
 const mentorshipRoutes = require("./routes/mentorships");
 const cashflowRoutes = require("./routes/cashflowRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
@@ -104,7 +99,6 @@ const { getProgramCoordinators,
 const { getApplicationList } = require("./controllers/menteesFormSubmissionsController.js");
 const { getMentorFormApplications } = require("./controllers/mentorFormApplicationController.js");
 const { getSignUpPassword } = require("./controllers/signuppasswordsController.js");
-const { getAuditLogs } = require("./controllers/auditlogsController.js");
 const app = express();
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
@@ -149,7 +143,8 @@ app.use("/api/cashflow", cashflowRoutes);
 app.use("/api/inventory-distribution", inventoryRoutes);
 app.use("/auth", authRoutes);
 app.use("/api/mentorships", mentorshipRoutes);
-app.use("/api/profile", requireAuth, profileRoutes);
+
+app.use(express.static(path.join(__dirname, 'client/build')));
 
 app.post("/api/import/:reportType", async (req, res) => {
   const { reportType } = req.params;
@@ -504,16 +499,7 @@ async function sendMessageWithOptions(chatId, message, options) {
   }
 }
 
-async function sendMentorshipMessage(
-  chatId,
-  mentoring_session_id,
-  mentorship_id,
-  mentorship_date,
-  mentorship_time,
-  zoom_link,
-  mentorFirstName,
-  mentorLastName
-) {
+async function sendMentorshipMessage(chatId, mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link) {
   console.log(`📩 Sending Mentorship Schedule Message to Chat ID: ${chatId}`);
 
   // Ensure it's an array for consistent handling
@@ -521,8 +507,20 @@ async function sendMentorshipMessage(
     mentorship_date = [mentorship_date];
   }
 
-  const mentorName = `${mentorFirstName} ${mentorLastName}`;
-  
+  // Fetch mentor name
+  const mentorResult = await pgDatabase.query(
+    `SELECT mentor_firstname, mentor_lastname FROM mentors 
+     WHERE mentor_id = (SELECT mentor_id FROM mentorships WHERE mentorship_id = $1)`,
+    [mentorship_id]
+  );
+
+  if (mentorResult.rows.length === 0) {
+    console.error(`❌ Mentor not found for mentorship ID ${mentorship_id}`);
+    return;
+  }
+
+  const mentorName = `${mentorResult.rows[0].mentor_firstname} ${mentorResult.rows[0].mentor_lastname}`;
+
   // ✅ Format mentorship date
   let formattedDate;
 
@@ -578,15 +576,6 @@ async function sendMentorshipMessage(
   } else {
     console.error("❌ Failed to send mentorship message.");
   }
-}
-
-function formatTimeLabel(time24) {
-  const [hoursStr, minutesStr] = time24.split(":");
-  let hours = parseInt(hoursStr, 10);
-  const suffix = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12;
-  if (hours === 0) hours = 12;
-  return `${hours}:${minutesStr} ${suffix}`;
 }
 
 app.post("/login", async (req, res) => {
@@ -652,7 +641,7 @@ app.post("/login", async (req, res) => {
     };
     req.session.isAuth = true;
 
-    console.log("Login Session:", req.session);
+    console.log("[authRoutes] Session ID:", req.session);
 
     // Respond appropriately
     if (cleanedRoles.includes("Administrator")) { // Use .includes() for array check
@@ -687,7 +676,7 @@ app.post("/login", async (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
-  console.log("Successfully Logged Out");
+  console.log("[authRoutes] Logging Out");
 
   const sessionId = req.sessionID;
 
@@ -775,7 +764,7 @@ app.post("/apply-as-mentor", async (req, res) => {
       first_name: firstName,
       last_name: lastName,
       email,
-      contactnum: contactno,
+      contact_no: contactno,
       password
     } = userResult.rows[0];
 
@@ -884,6 +873,60 @@ app.post("/signup", async (req, res) => {
       return res.status(400).json({ message: "All required fields must be provided." });
     }
 
+    // ✅ Check if email already exists
+    const existingMentor = await pgDatabase.query(
+      "SELECT * FROM mentor_form_application WHERE email = $1",
+      [email]
+    );
+
+    if (existingMentor.rows.length > 0) {
+      const mentor = existingMentor.rows[0];
+
+      if (mentor.status.toLowerCase() === "inactive") {
+        // ✅ Reactivate the existing mentor
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const updateQuery = `
+          UPDATE mentor_form_application
+          SET first_name = $1,
+              last_name = $2,
+              password = $3,
+              affiliation = $4,
+              motivation = $5,
+              expertise = $6,
+              business_areas = $7,
+              preferred_time = $8,
+              communication_mode = $9,
+              contact_no = $10,
+              status = 'Pending'
+          WHERE email = $11
+          RETURNING *;
+        `;
+
+        const updatedValues = [
+          firstName,
+          lastName,
+          hashedPassword,
+          affiliation,
+          motivation,
+          expertise,
+          businessAreas,
+          updatedPreferredTime,
+          communicationMode,
+          contactno,
+          email,
+        ];
+
+        const result = await pgDatabase.query(updateQuery, updatedValues);
+        return res.status(200).json({
+          message: "Inactive mentor reactivated. Application is now pending.",
+          application: result.rows[0],
+        });
+      } else {
+        return res.status(409).json({ message: "This email is already registered with an active or pending application." });
+      }
+    }
+
     // ✅ Merge "Other" input into preferredTime array
     let updatedPreferredTime = preferredTime.filter(Boolean); // Remove any undefined
     if (updatedPreferredTime.includes("Other") && specificTime?.trim()) {
@@ -934,6 +977,11 @@ app.post("/signup", async (req, res) => {
       return res.status(500).json({ message: "Failed to submit mentor application." });
     }
 
+    res.status(201).json({
+      message: "Mentor application submitted successfully.",
+      application: newApplication,
+    });
+
     const transporter = nodemailer.createTransport({
       service: 'Gmail',
       auth: {
@@ -973,30 +1021,6 @@ app.post("/signup", async (req, res) => {
       `,
     });
 
-    // LSEED-Director notification
-    const lseedDirectors = await getLSEEDDirectors(); // change your function if needed
-
-    if (lseedDirectors && lseedDirectors.length > 0) {
-      const directorTitle = "New Mentor Application";
-      const notificationDirectorMessage = 
-        `A new mentor has submitted an application. Review their details in the mentors page.`;
-
-      for (const director of lseedDirectors) {
-        const receiverId = director.user_id;
-        
-        await pgDatabase.query(
-          `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
-          VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/mentors');`,
-          [receiverId, directorTitle, notificationDirectorMessage]
-        );
-      }
-    }
-
-    res.status(201).json({
-      message: "Mentor application submitted successfully.",
-      application: newApplication,
-    });
-
   } catch (err) {
     console.error("Error during mentor signup:", err);
     res.status(500).json({ message: "An error occurred during mentor signup." });
@@ -1021,7 +1045,7 @@ app.post("/notify-mentor-application-status", async (req, res) => {
       return res.status(404).json({ message: "Application not found." });
     }
 
-    const { first_name, email } = rows[0];
+    const { first_name, last_name, email } = rows[0];
 
     // ✉️ Set up email transport
     const transporter = nodemailer.createTransport({
@@ -1032,30 +1056,57 @@ app.post("/notify-mentor-application-status", async (req, res) => {
       },
     });
 
-    // 📧 Compose Declined email only
-    const subject = "Your LSEED Mentor Application Status";
-    const html = `
-      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
-        <p style="margin: 0 0 16px;">Dear ${first_name},</p>
+    let subject;
+    let html;
 
-        <p style="margin: 0 0 16px;">
-          Thank you for your interest in becoming a mentor at the <strong>LSEED Center</strong>.
-        </p>
+    // ✨ Compose email based on status
+    if (status === "Accepted") {
+      subject = "Your LSEED Mentor Application Has Been Accepted";
+      html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+          <p style="margin: 0 0 16px;">Dear ${first_name},</p>
 
-        <p style="margin: 0 0 16px;">
-          After careful consideration, we regret to inform you that your application has not been approved at this time.
-        </p>
+          <p style="margin: 0 0 16px;">
+            Congratulations! Your application to become a mentor at the <strong>LSEED Center</strong> has been accepted.
+          </p>
 
-        <p style="margin: 0;">
-          We encourage you to stay connected and consider applying again in the future.
-        </p>
+          <p style="margin: 0 0 16px;">
+            You may now log in using the credentials you submitted during signup.
+          </p>
 
-        <p style="margin: 0;">
-          Warm regards,<br/>
-          The LSEED Team
-        </p>
-      </div>
-    `;
+          <p style="margin: 0;">
+            Warm regards,<br/>
+            The LSEED Team
+          </p>
+        </div>
+      `;
+    } else if (status === "Declined") {
+      subject = "Your LSEED Mentor Application Status";
+      html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+          <p style="margin: 0 0 16px;">Dear ${first_name},</p>
+
+          <p style="margin: 0 0 16px;">
+            Thank you for your interest in becoming a mentor at the <strong>LSEED Center</strong>.
+          </p>
+
+          <p style="margin: 0 0 16px;">
+            After careful consideration, we regret to inform you that your application has not been approved at this time.
+          </p>
+
+          <p style="margin: 0;">
+            We encourage you to stay connected and consider applying again in the future.
+          </p>
+
+          <p style="margin: 0;">
+            Warm regards,<br/>
+            The LSEED Team
+          </p>
+        </div>
+      `;
+    } else {
+      return res.status(400).json({ message: "Invalid status value." });
+    }
 
     // ✉️ Send email
     await transporter.sendMail({
@@ -1065,8 +1116,8 @@ app.post("/notify-mentor-application-status", async (req, res) => {
       html,
     });
 
-    console.log(`✅ Declined email sent to ${email}`);
-    res.json({ message: "Decline notification email sent successfully." });
+    console.log(`✅ Status email sent to ${email} (${status})`);
+    res.json({ message: "Email notification sent successfully." });
   } catch (err) {
     console.error("❌ Error sending email:", err);
     res.status(500).json({ message: "Failed to send email notification." });
@@ -1115,9 +1166,6 @@ app.post("/signup-LSEEDCoordinator", async (req, res) => {
       [firstName, lastName, email, hashedPassword, contactno]
     );
 
-    // Add admin log
-
-
     const userId = userResult.rows[0].user_id;
 
     await pgDatabase.query(
@@ -1132,37 +1180,6 @@ app.post("/signup-LSEEDCoordinator", async (req, res) => {
     );
 
     console.log(`✅ New LSEED-Coordinator registered: ${email}`);
-
-    // Create Welcome to LSEED Insight Message to Coordinator
-    const notificationTitle = "Welcome to LSEED Insight!";
-    const notificationWelcomeMessage = 
-    "As a LSEED-Coordinator, you can manage mentors, oversee social enterprises, and facilitate impactful connections that are involved in your assigned program. We're excited to have you on board. Get started by exploring your dashboard and other relevant pages!";
-    
-    await pgDatabase.query(
-      `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route)
-      VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/dashboard/lseed');`,
-      [userId, notificationTitle, notificationWelcomeMessage]
-    )
-
-    // LSEED-Director notification
-    const lseedDirectors = await getLSEEDDirectors(); // change your function if needed
-
-    if (lseedDirectors && lseedDirectors.length > 0) {
-      const directorTitle = "LSEED-Coordinator Sign Up Successful!";
-      const coordinatorName = `${firstName} ${lastName}`;
-      const notificationDirectorMessage = 
-        `LSEED-Coordinator ${coordinatorName} has successfully signed up and joined the system. You may now assign programs or monitor their activities via the Manage Programs Page.`;
-
-      for (const director of lseedDirectors) {
-        const receiverId = director.user_id;
-        
-        await pgDatabase.query(
-          `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
-          VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/programs');`,
-          [receiverId, directorTitle, notificationDirectorMessage]
-        );
-      }
-    }
     res.status(201).json({ message: "Coordinator account created successfully." });
 
   } catch (err) {
@@ -1230,9 +1247,8 @@ app.post("/accept-mentor-application", async (req, res) => {
           email,
           contactnum,
           critical_areas,
-          preferred_mentoring_time,
-          accepted_application_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          preferred_mentoring_time
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           existingUser.user_id,
           existingUser.first_name,
@@ -1240,8 +1256,7 @@ app.post("/accept-mentor-application", async (req, res) => {
           existingUser.email,
           existingUser.contactnum,
           app.business_areas,
-          app.preferred_time,
-          applicationId
+          app.preferred_time
         ]
       );
 
@@ -1250,55 +1265,27 @@ app.post("/accept-mentor-application", async (req, res) => {
         `UPDATE mentor_form_application SET status = 'Approved' WHERE id = $1`,
         [applicationId]
       );
-      
-      // Create Mentor Status Updated Notification
-      const notificationTitle = "Mentor Access Granted";
-      const notificationWelcomeMessage = 
-      "Your application to also serve as a mentor has been approved. You can now use your account to access mentor features, connect with social enterprises, and support them through mentorship. Visit your dashboard to get started.";
-      
-      await pgDatabase.query(
-        `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route)
-        VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/dashboard/mentor');`,
-        [existingUser.user_id, notificationTitle, notificationWelcomeMessage]
-      )
-      
+
       await pgDatabase.query('COMMIT');
 
-      const transporter = nodemailer.createTransport({
-        service: 'Gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
+      const lseedCoordinators = await getLSEEDCoordinators(); // This fetches LSEED Directors/Coordinators
+      if (lseedCoordinators && lseedCoordinators.length > 0) {
+        const notificationTitle = `Mentor Application Approved: ${existingUser.first_name} ${existingUser.last_name}`;
 
-      // ✉️ Send email
-      await transporter.sendMail({
-        from: `"LSEED Center" <${process.env.EMAIL_USER}>`,
-        to: existingUser.email,
-        subject: "Your LSEED Mentor Application Has Been Accepted",
-        html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
-            <p style="margin: 0 0 16px;">Dear ${existingUser.first_name},</p>
+        for (const coordinator of lseedCoordinators) {
+          const receiverId = coordinator.user_id;
+          await pgDatabase.query(
+            `INSERT INTO notification (notification_id, receiver_id, title, created_at, target_route)
+             VALUES (uuid_generate_v4(), $1, $2, NOW(), '/mentors');`,
+            [receiverId, notificationTitle]
+          );
+          console.log(`🔔 Notification sent to LSEED Coordinator ${coordinator.first_name} ${coordinator.last_name}: Mentor application for ${existingUser.first_name} ${existingUser.last_name} approved.`);
+        }
+      } else {
+        console.warn("⚠️ No LSEED Coordinators found to send notification for accepted mentor application.");
+      }
 
-            <p style="margin: 0 0 16px;">
-              Your request to also serve as a mentor within the <strong>LSEED Center</strong> has been approved.
-            </p>
-
-            <p style="margin: 0 0 16px;">
-              Your account has now been granted mentor access. You may continue using your existing login credentials to access mentor features.
-              <a href="${process.env.WEBHOOK_BASE_URL}" style="color: #1E4D2B; text-decoration: underline;">Click here to Login</a>
-            </p>
-
-            <p style="margin: 0;">
-              Warm regards,<br/>
-              <strong>The LSEED Team</strong>
-            </p>
-          </div>
-        `
-      });
-
-      return res.status(201).json({ message: "Mentor successfully added" });
+      return res.status(201).json({ message: "Coordinator successfully added as Mentor." });
     }
 
     // 3. User doesn't exist → normal path, create user account
@@ -1324,9 +1311,8 @@ app.post("/accept-mentor-application", async (req, res) => {
         email,
         contactnum,
         critical_areas,
-        preferred_mentoring_time,
-        accepted_application_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        preferred_mentoring_time
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
         newUserId,
         app.first_name,
@@ -1334,8 +1320,7 @@ app.post("/accept-mentor-application", async (req, res) => {
         app.email,
         app.contact_no,
         app.business_areas,
-        app.preferred_time,
-        applicationId
+        app.preferred_time
       ]
     );
 
@@ -1410,23 +1395,14 @@ app.get("/api/mentors", async (req, res) => {
   }
 });
 
-app.get("/api/mentors-with-mentorships", async (req, res) => {
-  try {
-    const mentors = await getAllMentorsWithMentorships();
-    res.json(mentors);
-  } catch (error) {
-    console.error("❌ Error fetching mentors:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
 app.get("/api/dashboard-stats", async (req, res) => {
   try {
+
     const program = req.query.program || null; // Optional program param
 
-    const mentorshipCount = await getMentorCount();
-    const mentorsWithMentorshipCount = await getMentorshipCount();
-    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount();
+    const mentorshipCount = await getMentorCount(program);
+    const mentorsWithMentorshipCount = await getMentorshipCount(program);
+    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount(program);
 
     // ✅ Fetch the total number of social enterprises
     const totalSocialEnterprises = await getTotalSECount(program);
@@ -1469,26 +1445,8 @@ app.post("/toggle-mentor-availability", async (req, res) => {
   }
 });
 
-app.get("/getAuditLogs", async (req, res) => {
-  try {
-    const { page = 1, limit = 10 } = req.query;
-
-    const auditLogs = await getAuditLogs({ page, limit });
-
-
-
-    res.json(auditLogs);
-  } catch (error) {
-    console.error("Error fetching audit logs:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
 app.post("/invite-coordinator", async (req, res) => {
   const { email } = req.body;
-  const ipAddress = (req.headers['x-forwarded-for'] || req.connection.remoteAddress || '').split(',')[0].trim();
-  const userId = req.session.user?.id;
-
   console.log('POST /invite-coordinator - Inviting email:', email);
 
   if (!email) {
@@ -1552,14 +1510,6 @@ app.post("/invite-coordinator", async (req, res) => {
       `,
     });
 
-    // Add Admin log
-    await pgDatabase.query(
-      `INSERT INTO audit_logs (user_id, action, details, ip_address) VALUES ($1, $2, $3, $4)`,
-      [userId, 'Invited LSEED-Coordinator to create account', JSON.stringify({ invited_email: email }), ipAddress]
-    );
-
-    console.log('Audit Log Insert Debug:', { userId, email, ipAddress });
-   
     res.status(201).json({ message: 'Invitation email sent successfully.' });
 
   } catch (err) {
@@ -1611,14 +1561,15 @@ app.get("/get-mentor-availability", async (req, res) => {
 
 app.get("/api/mentor-stats", async (req, res) => {
   try {
+    const program = req.query.program || null; // Optional program param
 
     // ✅ Fetch data
-    const mentorshipCount = await getMentorCount();
-    const mentorsWithMentorshipCount = await getMentorshipCount();
-    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount();
+    const mentorshipCount = await getMentorCount(program);
+    const mentorsWithMentorshipCount = await getMentorshipCount(program);
+    const mentorsWithoutMentorshipCount = await getWithoutMentorshipCount(program);
     const leastAssignedMentor = await getLeastAssignedMentor();
     const mostAssignedMentor = await getMostAssignedMentor();
-    const totalSECount = await getTotalSECount();
+    const totalSECount = await getTotalSECount(program);
 
     res.json({
       mentorCountTotal: mentorshipCount,
@@ -1907,7 +1858,7 @@ app.post("/evaluate", async (req, res) => {
 
       // ✅ Get mentor's chat ID from Telegram Bot Table
       const chatIdQuery = `
-        SELECT chatid FROM telegrambot WHERE mentor_id = $1 AND se_id = $2;
+        SELECT chatid FROM telegrambot WHERE mentor_id = $1 AND "se_ID" = $2;
       `;
       const chatIdResult = await pgDatabase.query(chatIdQuery, [mentorId, singleSeId]);
 
@@ -2034,35 +1985,6 @@ app.get("/api/admin/users", async (req, res) => {
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
-app.get('/check-mentor-application-status', async (req, res) => {
-  try {
-    // Get user email from your session
-    const userEmail = req.session.user?.email;
-    if (!userEmail) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    // Query
-    const query = 'SELECT status FROM mentor_form_application WHERE email = $1';
-    const { rows } = await pgDatabase.query(query, [userEmail]);
-
-    let allowed;
-    if (rows.length === 0) {
-      // No application yet: allow to apply
-      allowed = true;
-    } else {
-      const status = rows[0].status;
-      // Block if Pending or Approved
-      allowed = !(status === 'Pending' || status === 'Approved');
-    }
-
-    return res.json({ allowed });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -2234,20 +2156,6 @@ app.get("/getAllSDG", async (req, res) => {
     res.json(sdgs); // Send the SDGs as JSON
   } catch (error) {
     console.error("Error fetching SDGs:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
-app.get("/get-accepted-application/:id", async (req, res) => {
-  const { id } = req.params;
-  try {
-    const application = await getAcceptedApplications(id);
-    if (!application) {
-      return res.status(404).json({ message: "Application not found" });
-    }
-    res.json(application);
-  } catch (error) {
-    console.error("Error fetching application by ID:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
@@ -2656,68 +2564,30 @@ app.post("/api/remove-mentorship", async (req, res) => {
     return res.status(400).json({ error: "Mentor ID and Social Enterprise ID are required." });
   }
 
-  const client = await pgDatabase.connect();
-
   try {
-    await client.query("BEGIN");
+    // Begin transaction
+    await pgDatabase.query("BEGIN");
 
-    // Get mentor's name for the message
-    const mentorResult = await client.query(
-      "SELECT mentor_firstname, mentor_lastname FROM mentors WHERE mentor_id = $1",
-      [mentorId]
-    );
+    // Delete mentorship record
+    const deleteMentorship = `
+      DELETE FROM mentorships 
+      WHERE mentor_id = $1 AND se_id = $2
+    `;
+    const result = await pgDatabase.query(deleteMentorship, [mentorId, seId]);
 
-    if (mentorResult.rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Mentor not found." });
-    }
-
-    const mentorName = `${mentorResult.rows[0].mentor_firstname} ${mentorResult.rows[0].mentor_lastname}`;
-
-    // 1️⃣ Get chat IDs for this mentorship
-    const chatResult = await client.query(
-      `SELECT chatid FROM telegrambot WHERE mentor_id = $1 AND se_id = $2`,
-      [mentorId, seId]
-    );
-
-    const chatIds = chatResult.rows.map(row => row.chatid);
-
-    console.log(`Found ${chatIds.length} chat IDs to notify.`);
-
-    // 2️⃣ Send Telegram notifications
-    const messageText = `*NOTICE*\nYour mentorship with *${mentorName}* has been removed by LSEED.`;
-
-    for (const chatId of chatIds) {
-      await sendMessage(chatId, messageText);
-    }
-
-    // 3️⃣ Delete the chat IDs from the telegrambot table
-    await client.query(
-      `DELETE FROM telegrambot WHERE mentor_id = $1 AND se_id = $2`,
-      [mentorId, seId]
-    );
-
-    // 4️⃣ Delete the mentorship record itself
-    const deleteMentorshipResult = await client.query(
-      `DELETE FROM mentorships WHERE mentor_id = $1 AND se_id = $2`,
-      [mentorId, seId]
-    );
-
-    if (deleteMentorshipResult.rowCount === 0) {
-      await client.query("ROLLBACK");
+    if (result.rowCount === 0) {
+      await pgDatabase.query("ROLLBACK");
       return res.status(404).json({ error: "No mentorship record found." });
     }
 
-    await client.query("COMMIT");
+    // Commit transaction
+    await pgDatabase.query("COMMIT");
 
-    res.json({ success: true, message: "Mentorship removed and notifications sent." });
-
+    res.json({ success: true, message: "Mentorship removed successfully!" });
   } catch (error) {
-    await client.query("ROLLBACK");
-    console.error("❌ Error removing mentorship:", error);
+    await pgDatabase.query("ROLLBACK");
+    console.error("❌ Error removing mentorship:", error.message);
     res.status(500).json({ error: "Internal Server Error", details: error.message });
-  } finally {
-    client.release();
   }
 });
 
@@ -2896,23 +2766,6 @@ app.put("/mentor-application/:id/status", async (req, res) => {
     res.sendStatus(200);
   } catch (error) {
     console.error("❌ Failed to update status:", error);
-    res.sendStatus(500);
-  }
-});
-
-// Notification is_read update
-app.put("/api/notifications/:notificationId/read", async (req, res) => {
-  const { notificationId } = req.params;
-
-  try {
-    await pgDatabase.query(
-      `UPDATE notification SET is_read = true WHERE notification_id = $1`,
-      [notificationId]
-    );
-
-    res.sendStatus(200);
-  } catch (error) {
-    console.error("❌ Failed to mark notification as read:", error);
     res.sendStatus(500);
   }
 });
@@ -3500,13 +3353,13 @@ app.post("/webhook-bot1", async (req, res) => {
 
                   // 3. Construct notification title
                   const notificationTitle = `Evaluation Acknowledged by ${seName}`;
-                  const notificationMessage = `Your evaluation for ${seName} has been acknowledged.`
 
+                  //JM EDIT
                   // 4. Insert notification for the mentor
                   await pgDatabase.query(
-                      `INSERT INTO notification (notification_id, receiver_id, se_id, title, message, created_at, target_route)
-                      VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/assess');`,
-                      [mentor_id, se_id, notificationTitle, notificationMessage]
+                      `INSERT INTO notification (notification_id, receiver_id, se_id, title, created_at, target_route)
+                      VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/mentorships');`,
+                      [mentor_id, se_id, notificationTitle]
                   );
                   console.log(`🔔 Notification sent to mentor ${mentor_id}: Evaluation for ${seName} acknowledged.`);
               } else {
@@ -3557,7 +3410,7 @@ app.post("/webhook-bot1", async (req, res) => {
                           p.name AS program_name,
                           TO_CHAR(ms.mentoring_session_date, 'FMMonth DD, YYYY') AS mentoring_session_date,
                           CONCAT(TO_CHAR(ms.start_time, 'HH24:MI'), ' - ', TO_CHAR(ms.end_time, 'HH24:MI')) AS mentoring_session_time,
-                          ms.status, ms.zoom_link, mt.mentor_id
+                          ms.status, ms.zoom_link
                    FROM mentorships m
                    JOIN mentoring_session ms ON m.mentorship_id = ms.mentorship_id
                    JOIN mentors mt ON m.mentor_id = mt.mentor_id
@@ -3591,18 +3444,7 @@ app.post("/webhook-bot1", async (req, res) => {
       
               await sendMessage(chatId, confirmationMessage);
               console.log("✅ Acceptance process completed successfully.");
-
-              //NOTIFICATION HERE
-              // ✅ After all messages sent, insert ONE notification for the mentor
-              const notificationTitle = `Confirmed Mentoring Session`;
-              const notificationMessage = `${sessionDetails.team_name} has accepted your proposed schedule. Your upcoming mentoring session is on ${sessionDetails.mentoring_session_date} at ${sessionDetails.mentoring_session_time}.`;
-
-              await pgDatabase.query(
-                `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
-                VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/scheduling');`,
-                [sessionDetails.mentor_id, notificationTitle, notificationMessage]
-              );
-
+      
               res.sendStatus(200);
               return;
           } catch (error) {
@@ -3613,6 +3455,7 @@ app.post("/webhook-bot1", async (req, res) => {
           }
         }
       
+        
         if (data.startsWith("declineschedule_")) {
             const parts = data.split("_");
         
@@ -3677,22 +3520,6 @@ app.post("/webhook-bot1", async (req, res) => {
         
                 await sendMessage(chatId, declineMessage);
                 console.log("✅ Decline process completed successfully.");
-
-                  // Inline keyboard for Accept/Decline
-                  const options = [
-                    [
-                      { text: `📅 Suggest New Schedule`, callback_data: `suggestnewschedule_${mentoring_session_id}` },
-                      { text: `❌ Cancel`, callback_data: `cancel_${mentoring_session_id}` }
-                    ]
-                  ];
-
-                  const sentSuggestSchedule = await sendMessageWithOptions(
-                    chatId,
-                    "📅 Would you like to suggest a new mentoring session schedule?",
-                    options
-                  );
-
-                  userStates[chatId] = { sentSuggestScheduleId: sentSuggestSchedule?.message_id };
         
                 res.sendStatus(200);
                 return;
@@ -3702,555 +3529,6 @@ app.post("/webhook-bot1", async (req, res) => {
                 await sendMessage(chatId, "❌ Failed to process decline.");
                 return res.sendStatus(500);
             }
-        }
-
-        if (data.startsWith("suggestnewschedule_")) {
-          const parts = data.split("_");
-
-          await deletePreviousMessages(chatId, ["sentSuggestScheduleId"]);
-
-          if (parts.length < 2) {
-            console.error("❌ Invalid suggest callback format:", data);
-            return res.sendStatus(400);
-          }
-
-          const mentoring_session_id = parts[1];
-          const messageId = callbackQuery.message.message_id;
-
-          console.log(`🔹 Starting suggest new schedule for mentoring session ${mentoring_session_id}`);
-          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
-
-          // ✅ Build month options
-          const now = new Date();
-          const currentMonthIndex = now.getMonth();
-          const currentYear = now.getFullYear();
-
-          const monthNames = [
-            "January","February","March","April","May","June",
-            "July","August","September","October","November","December"
-          ];
-
-          // Prepare userState storage for month mapping
-          if (!userStates[chatId]) userStates[chatId] = {};
-          userStates[chatId].monthChoices = {};
-
-          const inlineMonthOptions = [];
-          for (let i = 0; i < 6; i++) {
-            const monthIndex = (currentMonthIndex + i) % 12;
-            const yearOffset = Math.floor((currentMonthIndex + i) / 12);
-            const year = currentYear + yearOffset;
-
-            // ✅ Store the real month/year mapping in userState
-            userStates[chatId].monthChoices[i] = {
-              monthIndex,
-              monthName: monthNames[monthIndex],
-              year
-            };
-
-            // ✅ Make button callback short
-            inlineMonthOptions.push([
-              { 
-                text: `📅 ${monthNames[monthIndex]} ${year}`, 
-                callback_data: `selectday_${i}_${mentoring_session_id}` 
-              }
-            ]);
-          }
-
-          // ✅ Send the month picker message
-          const sentMonthPicker = await sendMessageWithOptions(
-            chatId,
-            "📅 Please choose the month for your new mentoring session schedule:",
-            inlineMonthOptions
-          );
-
-          userStates[chatId].sentMonthPickerId = sentMonthPicker?.message_id;
-
-          return res.sendStatus(200);
-        }
-
-        if (data.startsWith("selectday_")) {
-          const parts = data.split("_");
-
-          await deletePreviousMessages(chatId, ["sentMonthPickerId"]);
-
-          if (parts.length < 3) {
-            console.error("❌ Invalid selectday callback format:", data);
-            return res.sendStatus(400);
-          }
-
-          const choiceIndex = parseInt(parts[1], 10);
-          const mentoring_session_id = parts[2];
-          const messageId = callbackQuery.message.message_id;
-
-          console.log(`🔹 User chose month index: ${choiceIndex} for session ${mentoring_session_id}`);
-          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
-
-          // ✅ Retrieve the actual month/year from userState
-          const monthChoice = userStates[chatId]?.monthChoices?.[choiceIndex];
-          if (!monthChoice) {
-            console.error("❌ Invalid or expired month choice index:", choiceIndex);
-            return res.sendStatus(400);
-          }
-
-          const selectedMonthName = monthChoice.monthName;
-          const selectedYear = monthChoice.year;
-          const selectedMonthIndex = monthChoice.monthIndex;
-
-          console.log(`✅ Resolved month: ${selectedMonthName} ${selectedYear}`);
-
-          // ✅ Figure out valid day range
-          const now = new Date();
-          const isCurrentMonthAndYear =
-            (selectedYear === now.getFullYear() && selectedMonthIndex === now.getMonth());
-
-          const daysInMonth = new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
-          const startDay = isCurrentMonthAndYear ? now.getDate() : 1;
-
-          // ✅ Save chosen month/year in userState for later use
-          if (!userStates[chatId]) userStates[chatId] = {};
-          userStates[chatId].selectedMonthName = selectedMonthName;
-          userStates[chatId].selectedYear = selectedYear;
-          userStates[chatId].mentoringSessionId = mentoring_session_id;
-
-          // ✅ Build day buttons
-          const inlineDayOptions = [];
-          for (let d = startDay; d <= daysInMonth; d++) {
-            inlineDayOptions.push([
-              {
-                text: `📅 ${d}`,
-                callback_data: `selecttime_${d}`
-              }
-            ]);
-          }
-
-          // ✅ Send the day picker
-          const sentDayPicker = await sendMessageWithOptions(
-            chatId,
-            `📅 Please choose a day in ${selectedMonthName} ${selectedYear}:`,
-            inlineDayOptions
-          );
-
-          userStates[chatId].sentDayPickerId = sentDayPicker?.message_id;
-
-          return res.sendStatus(200);
-        }
-
-        if (data.startsWith("selecttime_")) {
-          const parts = data.split("_");
-
-          await deletePreviousMessages(chatId, ["sentDayPickerId"]);
-
-          if (parts.length < 2) {
-            console.error("❌ Invalid selecttime callback format:", data);
-            return res.sendStatus(400);
-          }
-
-          const selectedDay = parseInt(parts[1], 10);
-          const messageId = callbackQuery.message.message_id;
-
-          console.log(`🔹 User chose day: ${selectedDay}`);
-          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
-
-          // ✅ Get month/year/sessionId from userState
-          const userState = userStates[chatId];
-          if (!userState || !userState.selectedMonthName || !userState.selectedYear || !userState.mentoringSessionId) {
-            console.error("❌ Missing context in userStates");
-            await sendMessage(chatId, "⚠️ Sorry, something went wrong. Please start the scheduling process again.");
-            return res.sendStatus(400);
-          }
-
-          const selectedMonthName = userState.selectedMonthName;
-          const selectedYear = userState.selectedYear;
-          const mentoring_session_id = userState.mentoringSessionId;
-
-          console.log(`✅ Resolved full date: ${selectedDay} ${selectedMonthName} ${selectedYear} for session ${mentoring_session_id}`);
-
-          // ✅ Determine month index
-          const monthNames = [
-            "January","February","March","April","May","June",
-            "July","August","September","October","November","December"
-          ];
-          const selectedMonthIndex = monthNames.indexOf(selectedMonthName);
-
-          if (selectedMonthIndex === -1) {
-            console.error("❌ Invalid month name in userState:", selectedMonthName);
-            return res.sendStatus(400);
-          }
-
-          // ✅ Define all available time slots
-          const allTimeSlots = [
-            "08:00", "09:00", "10:00",
-            "11:00", "12:00", "13:00",
-            "14:00", "15:00", "16:00", "17:00"
-          ];
-
-          // ✅ Filter time slots if the day is today
-          const now = new Date();
-          const isToday =
-            selectedYear === now.getFullYear() &&
-            selectedMonthIndex === now.getMonth() &&
-            selectedDay === now.getDate();
-
-          const validTimeSlots = allTimeSlots.filter(timeStr => {
-            if (!isToday) return true;
-            const [hours, minutes] = timeStr.split(":").map(Number);
-            if (hours > now.getHours()) return true;
-            if (hours === now.getHours() && minutes > now.getMinutes()) return true;
-            return false;
-          });
-
-          if (validTimeSlots.length === 0) {
-            await sendMessageWithOptions(
-              chatId,
-              "❗️ No available time slots remaining for today. Please choose another day.",
-              [
-                [
-                  { text: "🔙 Back to Months", callback_data: `suggestnewschedule_${mentoring_session_id}` }
-                ]
-              ]
-            );
-            return res.sendStatus(200);
-          }
-
-          // ✅ Store selected day in userState
-          userState.selectedDay = selectedDay;
-
-          // ✅ Build time buttons
-          const inlineTimeOptions = validTimeSlots.map(timeStr => ([
-            {
-              text: `🕒 ${formatTimeLabel(timeStr)}`,
-              callback_data: `selectEndTime_${timeStr}`
-            }
-          ]));
-
-          // ✅ Send the time picker message
-          const sentTimePicker = await sendMessageWithOptions(
-            chatId,
-            `🕒 Please choose a START time on ${selectedMonthName} ${selectedDay}, ${selectedYear}:`,
-            inlineTimeOptions
-          );
-
-          userStates[chatId].sentTimePickerId = sentTimePicker?.message_id;
-
-          return res.sendStatus(200);
-        }
-
-        if (data.startsWith("selectEndTime_")) {
-          const parts = data.split("_");
-
-          await deletePreviousMessages(chatId, ["sentTimePickerId"]);
-
-          if (parts.length < 2) {
-            console.error("❌ Invalid selectEndTime callback format:", data);
-            return res.sendStatus(400);
-          }
-
-          const selectedStartTime = parts[1].trim();
-          const messageId = callbackQuery.message.message_id;
-
-          const userState = userStates[chatId];
-          if (
-            !userState || 
-            !userState.selectedDay || 
-            !userState.selectedMonthName || 
-            !userState.selectedYear || 
-            !userState.mentoringSessionId
-          ) {
-            console.error("❌ Missing context in userStates");
-            await sendMessage(chatId, "⚠️ Something went wrong. Please start the scheduling again.");
-            return res.sendStatus(400);
-          }
-
-          const selectedDay = userState.selectedDay;
-          const selectedMonthName = userState.selectedMonthName;
-          const selectedYear = userState.selectedYear;
-          const mentoring_session_id = userState.mentoringSessionId;
-
-          console.log(`🔹 User chose START time: ${selectedStartTime} on ${selectedDay} ${selectedMonthName} ${selectedYear} for session ${mentoring_session_id}`);
-          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
-
-          const allTimeSlots = [
-            "08:00", "09:00", "10:00",
-            "11:00", "12:00", "13:00",
-            "14:00", "15:00", "16:00", "17:00"
-          ];
-
-          function isTimeAfter(a, b) {
-            const [aH, aM] = a.split(":").map(Number);
-            const [bH, bM] = b.split(":").map(Number);
-            return aH > bH || (aH === bH && aM > bM);
-          }
-
-          const validEndTimes = allTimeSlots.filter(timeStr => isTimeAfter(timeStr, selectedStartTime));
-
-          if (validEndTimes.length === 0) {
-            await sendMessageWithOptions(
-              chatId,
-              "❗️ No valid end times after that start time. Please choose an earlier start.",
-              [[
-                { text: "🔙 Back to Start Times", callback_data: `selecttime_${selectedDay}` }
-              ]]
-            );
-            return res.sendStatus(200);
-          }
-
-          // ✅ Store selectedStartTime in userState
-          userState.selectedStartTime = selectedStartTime;
-
-          const inlineEndTimeOptions = validEndTimes.map(timeStr => ([
-            {
-              text: `🕒 ${formatTimeLabel(timeStr)}`,
-              callback_data: `confirmschedule_${timeStr}`
-            }
-          ]));
-
-          // ✅ Send the end time picker message
-          const sentEndTimePicker = await sendMessageWithOptions(
-            chatId,
-            `🕒 Please choose an END time after ${formatTimeLabel(selectedStartTime)} on ${selectedMonthName} ${selectedDay}, ${selectedYear}:`,
-            inlineEndTimeOptions
-          );
-
-          userStates[chatId].sentEndTimePickerId = sentEndTimePicker?.message_id;
-
-          return res.sendStatus(200);
-        }
-
-        if (data.startsWith("confirmschedule_")) {
-          const parts = data.split("_");
-
-          await deletePreviousMessages(chatId, ["sentEndTimePickerId"]);
-
-          if (parts.length < 2) {
-            console.error("❌ Invalid confirmschedule callback format:", data);
-            return res.sendStatus(400);
-          }
-
-          const selectedEndTime = parts[1].trim();
-          const messageId = callbackQuery.message.message_id;
-
-          const userState = userStates[chatId];
-          if (
-            !userState || 
-            !userState.selectedStartTime || 
-            !userState.selectedDay || 
-            !userState.selectedMonthName || 
-            !userState.selectedYear || 
-            !userState.mentoringSessionId
-          ) {
-            console.error("❌ Missing context in userStates");
-            await sendMessage(chatId, "⚠️ Something went wrong. Please start the scheduling again.");
-            return res.sendStatus(400);
-          }
-
-          const selectedStartTime = userState.selectedStartTime;
-          const selectedDay = userState.selectedDay;
-          const selectedMonthName = userState.selectedMonthName;
-          const selectedYear = userState.selectedYear;
-          const mentoring_session_id = userState.mentoringSessionId;
-
-          console.log(`🔹 User selected START ${selectedStartTime} and END ${selectedEndTime} on ${selectedDay} ${selectedMonthName} ${selectedYear} for session ${mentoring_session_id}`);
-          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
-
-          // ✅ Store the end time in userState
-          userState.selectedEndTime = selectedEndTime;
-
-          // ✅ Build inline buttons
-          const confirmOptions = [
-            [
-              { 
-                text: "✅ Confirm", 
-                callback_data: `saveSchedule_confirm`
-              }
-            ],
-            [
-              { 
-                text: "🔙 Pick Again", 
-                callback_data: `suggestnewschedule_${mentoring_session_id}`
-              }
-            ]
-          ];
-
-          // ✅ Send confirmation message
-          const sentConfirm = await sendMessageWithOptions(
-            chatId,
-            `📌 Please confirm your suggested mentoring session schedule:\n\n` +
-            `📅 *Date:* ${selectedMonthName} ${selectedDay}, ${selectedYear}\n` +
-            `🕒 *Start:* ${formatTimeLabel(selectedStartTime)}\n` +
-            `🕒 *End:* ${formatTimeLabel(selectedEndTime)}`,
-            confirmOptions
-          );
-
-          userStates[chatId].sentSuggestScheduleId = sentConfirm?.message_id;
-
-          return res.sendStatus(200);
-        }
-
-        if (data.startsWith("saveSchedule_confirm")) {
-          await deletePreviousMessages(chatId, ["sentSuggestScheduleId"]);
-
-          const userState = userStates[chatId];
-          if (
-            !userState ||
-            !userState.selectedStartTime ||
-            !userState.selectedEndTime ||
-            !userState.selectedDay ||
-            !userState.selectedMonthName ||
-            !userState.selectedYear ||
-            !userState.mentoringSessionId
-          ) {
-            console.error("❌ Missing schedule data in userStates");
-            await sendMessage(chatId, "⚠️ Something went wrong. Please start the scheduling again.");
-            return res.sendStatus(400);
-          }
-
-          const selectedStartTime = userState.selectedStartTime;
-          const selectedEndTime = userState.selectedEndTime;
-          const selectedDay = userState.selectedDay;
-          const selectedMonthName = userState.selectedMonthName;
-          const selectedYear = userState.selectedYear;
-          const mentoring_session_id = userState.mentoringSessionId;
-          const messageId = callbackQuery.message.message_id;
-
-          console.log(`🔹 Saving schedule: START ${selectedStartTime}, END ${selectedEndTime}, DATE ${selectedDay} ${selectedMonthName} ${selectedYear} for session ${mentoring_session_id}`);
-          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
-
-          // ✅ Convert month name to month index
-          const monthNames = [
-            "January","February","March","April","May","June",
-            "July","August","September","October","November","December"
-          ];
-          const selectedMonthIndex = monthNames.indexOf(selectedMonthName);
-          if (selectedMonthIndex === -1) {
-            console.error("❌ Invalid month name:", selectedMonthName);
-            return res.sendStatus(400);
-          }
-
-          // ✅ Format the date for storage as YYYY-MM-DD
-          const monthNumber = String(selectedMonthIndex + 1).padStart(2, '0');
-          const dayNumber = String(selectedDay).padStart(2, '0');
-          const mentoringSessionDate = `${selectedYear}-${monthNumber}-${dayNumber}`;
-
-          console.log(`✅ Formatted Date: ${mentoringSessionDate}`);
-
-          try {
-            const query = `
-              SELECT mSess.mentoring_session_id, m.mentor_id, se.team_name
-              FROM mentoring_session AS mSess
-              JOIN mentorships AS ms ON mSess.mentorship_id = ms.mentorship_id
-              JOIN socialenterprises AS se ON se.se_id = ms.se_id
-              JOIN mentors AS m ON m.mentor_id = ms.mentor_id
-              WHERE mSess.mentoring_session_id = $1;
-            `;
-
-            const { rows } = await pgDatabase.query(query, [mentoring_session_id]);
-
-            if (rows.length === 0) {
-              return res.status(404).json({ error: "Mentorship session not found" });
-            }
-
-            const row = rows[0];
-
-            const notificationTitle = 'Your mentoring session has been declined';
-            const notificationMessage = 
-              `${row.team_name} has declined your proposed mentoring session schedule, but suggested a new one:\n\n` +
-              `📅 Date: ${selectedMonthName} ${selectedDay}, ${selectedYear}\n` +
-              `🕒 Start: ${formatTimeLabel(selectedStartTime)}\n` +
-              `🕒 End: ${formatTimeLabel(selectedEndTime)}\n\n` +
-              `Please review this proposed schedule and appoint if available.`;
-
-            await pgDatabase.query(
-              `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
-              VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/scheduling');`,
-              [row.mentor_id, notificationTitle, notificationMessage]
-            );
-
-            // ✅ Notify the user
-            await sendMessage(chatId,
-              `✅ Your new proposed mentoring session schedule has been sent:\n\n` +
-              `📅 *Date:* ${selectedMonthName} ${selectedDay}, ${selectedYear}\n` +
-              `🕒 *Start:* ${formatTimeLabel(selectedStartTime)}\n` +
-              `🕒 *End:* ${formatTimeLabel(selectedEndTime)}\n\n` +
-              `The mentor will now review this proposed schedule.`
-            );
-
-            userStates[chatId] = {};  // clear temp state
-
-            return res.sendStatus(200);
-          } catch (error) {
-            console.error("❌ Error saving new schedule:", error);
-            await sendMessage(chatId, "❌ Failed to save the new schedule. Please try again.");
-            return res.sendStatus(500);
-          }
-        }
-
-        if (data.startsWith("cancel_")) {
-          const parts = data.split("_");
-        
-          await deletePreviousMessages(chatId, ["sentSuggestScheduleId"]);
-          
-          if (parts.length < 2) {
-            console.error("❌ Invalid decline callback format:", data);
-            return res.sendStatus(400);
-          }
-          
-          const mentoring_session_id = parts[1]; // Use mentoring_session_id instead of mentorship_id
-          const messageId = callbackQuery.message.message_id;
-          
-          console.log(`🔹 Canceling suggesting a mentoring session ${mentoring_session_id}`);
-          console.log(`📌 Chat ID: ${chatId}, Message ID: ${messageId}`);
-
-          try {
-            // ✅ Step 1: Validate UUID format
-            if (!/^[0-9a-fA-F-]{36}$/.test(mentoring_session_id)) {
-                console.error(`❌ Invalid mentoring_session_id format: ${mentoring_session_id}`);
-                return res.sendStatus(400);
-            }
-    
-            // ✅ Step 2: Fetch mentoring session details
-            const result = await pgDatabase.query(
-                `SELECT ms.mentoring_session_id, m.mentorship_id, se.team_name, 
-                        CONCAT(mt.mentor_firstname, ' ', mt.mentor_lastname) AS mentor_name,
-                        p.name AS program_name,
-                        TO_CHAR(ms.mentoring_session_date, 'FMMonth DD, YYYY') AS mentoring_session_date,
-                        CONCAT(TO_CHAR(ms.start_time, 'HH24:MI'), ' - ', TO_CHAR(ms.end_time, 'HH24:MI')) AS mentoring_session_time,
-                        ms.status, ms.zoom_link, mt.mentor_id
-                FROM mentorships m
-                JOIN mentoring_session ms ON m.mentorship_id = ms.mentorship_id
-                JOIN mentors mt ON m.mentor_id = mt.mentor_id
-                JOIN socialenterprises se ON m.se_id = se.se_id
-                JOIN programs p ON p.program_id = se.program_id
-                WHERE ms.mentoring_session_id = $1`,
-                [mentoring_session_id]
-            );
-    
-            if (result.rows.length === 0) {
-                console.warn(`⚠️ No mentoring session found for ID ${mentoring_session_id}`);
-                return res.sendStatus(404);
-            }
-    
-            const sessionDetails = result.rows[0];
-            console.log(`🔍 Found Mentoring Session:`, sessionDetails);
-
-            //NOTIFICATION HERE
-            // ✅ After all messages sent, insert ONE notification for the mentor
-            const notificationTitle = `Mentoring Session Declined`;
-            const notificationMessage = `${sessionDetails.team_name} has declined your proposed schedule. Please propose a new date and time for the mentoring session.`;
-            
-            await pgDatabase.query(
-              `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
-              VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/scheduling');`,
-              [sessionDetails.mentor_id, notificationTitle, notificationMessage]
-            );
-    
-            res.sendStatus(200);
-            return;
-          } catch (error) {
-              console.error("❌ Error handling decline:", error);
-              console.log("🛑 Error Stack:", error.stack);
-              await sendMessage(chatId, "❌ Failed to process decline.");
-              return res.sendStatus(500);
-          }
         }
         
         if (data.startsWith("mentoreval_")) {
@@ -4498,20 +3776,20 @@ app.post("/api/googleform-webhook", async (req, res) => {
     const lseedDirectors = await getLSEEDDirectors(); // change your function if needed
 
     if (lseedDirectors && lseedDirectors.length > 0) {
-      const notificationTitle = `New Social Enterprise Application`;
-      const notificationMessage = 
-        `A new social enterprise (${team_name}) has submitted an application. Review their details in the mentors page.`;
+      const notificationTitle = `New Social Enterprise Application: ${team_name}`;
       
       for (const director of lseedDirectors) {
         const receiverId = director.user_id;
         
         await pgDatabase.query(
-          `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
-          VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/socialenterprise');`,
-          [receiverId, notificationTitle, notificationMessage]
+          `INSERT INTO notification (notification_id, receiver_id, title, created_at, target_route) 
+          VALUES (uuid_generate_v4(), $1, $2, NOW(), '/socialenterprise');`,
+          [receiverId, notificationTitle]
         );
       }
     }
+
+    res.sendStatus(200);
 
     if(focal_email) {
 
@@ -4559,8 +3837,6 @@ app.post("/api/googleform-webhook", async (req, res) => {
           </div>
         `,
       });
-
-      res.sendStatus(200);
     } else {
       console.log(`⚠️ No focal_email provided for ${team_name}. Skipping email.`);
     }
@@ -4614,116 +3890,168 @@ app.post("/api/mentorships", async (req, res) => {
 });
 
 app.post("/approveMentorship", async (req, res) => {
-  const { mentoring_session_id, mentorship_id, mentorship_date, mentorship_time, zoom_link } = req.body;
+  const {
+    mentoring_session_id,
+    mentorship_id,
+    mentorship_date,
+    mentorship_time,
+    zoom_link,
+    sender_id,
+  } = req.body;
+
+  if (!sender_id) return res.status(400).json({ error: "Missing sender_id" });
 
   try {
-    const query = `
+    // 1. Role check
+    const roleQuery = `
+      SELECT 1 FROM user_has_roles
+      WHERE user_id = $1 AND role_name = 'LSEED-Director';
+    `;
+    const roleCheck = await pgDatabase.query(roleQuery, [sender_id]);
+    if (roleCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Only LSEED-Director can approve sessions" });
+    }
+
+    // 2. Approve session
+    const updateQuery = `
       UPDATE mentoring_session
-      SET status = 'Pending SE'  -- Change this to the desired status
+      SET status = 'Pending SE'
       WHERE mentoring_session_id = $1
       RETURNING *;
     `;
+    const { rows } = await pgDatabase.query(updateQuery, [mentoring_session_id]);
+    if (rows.length === 0) return res.status(404).json({ error: "Session not found" });
 
-    const { rows } = await pgDatabase.query(query, [mentoring_session_id]);
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Mentorship not found" });
-    }
-
-    // Retrieve chat IDs for the mentorship
-    const chatQuery = `
-        SELECT tg.chatid, m.mentor_firstname, m.mentor_lastname, m.mentor_id, s.team_name
-        FROM telegrambot AS tg
-        JOIN mentors AS m ON m.mentor_id = tg.mentor_id
-        JOIN mentorships AS ms ON ms.mentor_id = m.mentor_id
-        JOIN socialenterprises AS s ON s.se_id = ms.se_id
-        WHERE ms.mentorship_id = $1;
+    // 3. Get mentor and SE info
+    const infoQuery = `
+      SELECT m.mentor_id AS receiver_id, m.se_id
+      FROM mentorships m
+      WHERE m.mentorship_id = $1;
     `;
+    const infoResult = await pgDatabase.query(infoQuery, [mentorship_id]);
+    const { receiver_id, se_id } = infoResult.rows[0];
 
-    const chatResult = await pgDatabase.query(chatQuery, [mentorship_id]);
+    // 4. Get sender's name
+    const senderQuery = `SELECT first_name, last_name FROM users WHERE user_id = $1;`;
+    const senderResult = await pgDatabase.query(senderQuery, [sender_id]);
+    const senderName = `${senderResult.rows[0].first_name} ${senderResult.rows[0].last_name}`;
 
-    if (chatResult.rows.length > 0) {
-      console.log(`📩 Sending Mentorship Message to ${chatResult.rows.length} Chat IDs`);
+    // 5. Format session date/time
+    const sessionQuery = `SELECT start_time FROM mentoring_session WHERE mentoring_session_id = $1;`;
+    const sessionResult = await pgDatabase.query(sessionQuery, [mentoring_session_id]);
+    const startTime = new Date(sessionResult.rows[0].start_time);
+    const formattedStart = startTime.toLocaleString("en-US", { timeZone: "Asia/Manila" });
 
-      // ✅ We just need the first row to get mentor_id and team_name
-      const { mentor_id, team_name } = chatResult.rows[0];
-
-      for (const row of chatResult.rows) {
-        const chatId = row.chatid;
-
-        console.log(`📤 Sending Mentorship Message to Chat ID: ${chatId}`);
-
-        await sendMentorshipMessage(
-          chatId,
-          mentoring_session_id,
-          mentorship_id,
-          mentorship_date,
-          mentorship_time,
-          zoom_link,
-          row.mentor_firstname,
-          row.mentor_lastname
-        );
-      }
-
-      // ✅ After all messages sent, insert ONE notification for the mentor
-      const notificationTitle = 'Your mentoring session has been approved';
-      const notificationMessage = `Your pending mentoring session has been sent to ${team_name} for schedule confirmation`;
-
-      await pgDatabase.query(
-        `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
-        VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/scheduling');`,
-        [mentor_id, notificationTitle, notificationMessage]
+    // 6. Send notification
+    const title = `Session approved by ${senderName} on ${formattedStart}`;
+    const notifQuery = `
+      INSERT INTO notification (
+        notification_id,
+        receiver_id,
+        se_id,
+        title,
+        mentoring_session_id,
+        created_at,
+        sender_id
+      )
+      VALUES (
+        uuid_generate_v4(), $1, $2, $3, $4, NOW(), $5
       );
+    `;
+    await pgDatabase.query(notifQuery, [receiver_id, se_id, title, mentoring_session_id, sender_id]);
 
-      console.log(`✅ Single notification inserted for mentor ID: ${mentor_id}`);
-    } else {
-      console.warn(`⚠️ No chat IDs found for mentorship ${mentorship_id}`);
-    }
-
-    res.json({ message: "Mentorship approved", mentorship: rows[0] });
+    res.json({ message: "Mentorship approved and mentor notified", mentorship: rows[0] });
   } catch (error) {
-    console.error("Database error:", error);
+    console.error("❌ Approve Error:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
+
+
+
+
+
 
 app.post("/declineMentorship", async (req, res) => {
-  const { mentoring_session_id } = req.body;
+  const { mentoring_session_id, sender_id } = req.body;
 
-  console.log("Declining mentorship with ID:", mentoring_session_id);
+  if (!sender_id) return res.status(400).json({ error: "Missing sender_id" });
 
   try {
-    const query = `
-      UPDATE mentoring_session
-      SET status = 'Declined'  -- Use 'Declined' instead of 'Decline'
-      WHERE mentoring_session_id = $1
-      RETURNING *;
+    // 1. Role check
+    const roleQuery = `
+      SELECT 1 FROM user_has_roles
+      WHERE user_id = $1 AND role_name = 'LSEED-Director';
     `;
-
-    const { rows } = await pgDatabase.query(query, [mentoring_session_id]);
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Mentorship session not found" });
+    const roleCheck = await pgDatabase.query(roleQuery, [sender_id]);
+    if (roleCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Only LSEED-Director can decline sessions" });
     }
 
-    const mentorResult = await getMentorsByMentoringSessionID(mentoring_session_id);
+    // 2. Decline session
+    const updateQuery = `
+      UPDATE mentoring_session
+      SET status = 'Declined'
+      WHERE mentoring_session_id = $1
+      RETURNING mentorship_id, start_time;
+    `;
+    const { rows } = await pgDatabase.query(updateQuery, [mentoring_session_id]);
+    if (rows.length === 0) return res.status(404).json({ error: "Session not found" });
 
-    const notificationTitle = 'Your mentoring session has been declined'
-    const notificationMessage = 
-      `Your requested mentoring session has been declined by the Social Enterprise. Please review the schedule and propose a new date if needed.`;
+    const { mentorship_id, start_time } = rows[0];
+    const formattedStart = new Date(start_time).toLocaleString("en-US", { timeZone: "Asia/Manila" });
 
-    await pgDatabase.query(
-      `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
-      VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/scheduling');`,
-      [mentorResult.mentor_id, notificationTitle, notificationMessage]
-    );
+    // 3. Get mentor and SE info
+    const infoQuery = `
+      SELECT m.mentor_id AS receiver_id, m.se_id
+      FROM mentorships m
+      WHERE m.mentorship_id = $1;
+    `;
+    const infoResult = await pgDatabase.query(infoQuery, [mentorship_id]);
+    const { receiver_id, se_id } = infoResult.rows[0];
 
-    res.json({ message: "Mentorship declined", mentorship: rows[0] });
+    // 4. Get sender's name
+    const senderQuery = `SELECT first_name, last_name FROM users WHERE user_id = $1;`;
+    const senderResult = await pgDatabase.query(senderQuery, [sender_id]);
+    const senderName = `${senderResult.rows[0].first_name} ${senderResult.rows[0].last_name}`;
+
+    // 5. Send notification
+    const title = `Session request declined`;
+    const notifQuery = `
+      INSERT INTO notification (
+        notification_id,
+        receiver_id,
+        se_id,
+        title,
+        mentoring_session_id,
+        created_at,
+        sender_id
+      )
+      VALUES (
+        uuid_generate_v4(), $1, $2, $3, $4, NOW(), $5
+      );
+    `;
+    await pgDatabase.query(notifQuery, [
+      receiver_id,
+      se_id,
+      `${title} by ${senderName} on ${formattedStart}`,
+      mentoring_session_id,
+      sender_id,
+    ]);
+
+    res.json({ message: "Mentorship declined and mentor notified" });
   } catch (error) {
-    console.error("Database error:", error.message);
+    console.error("❌ Decline Error:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
+
+
+
 
 app.post("/updateMentorshipDate", async (req, res) => {
   console.log("🔹 Received request at /updateMentorshipDate");
@@ -4761,56 +4089,70 @@ app.post("/updateMentorshipDate", async (req, res) => {
     ]);
 
     const newSession = sessionResult.rows[0];
+    const mentoringSessionId = newSession.mentoring_session_id;
 
-    const mentorQuery = `
-      SELECT m.mentor_id, m.mentor_firstname, m.mentor_lastname
-      FROM mentorships AS ms
-      JOIN mentors AS m ON m.mentor_id = ms.mentor_id
-      WHERE ms.mentorship_id = $1;
+    // 2. Get mentor (sender_id), se_id, team_name
+    const mentorshipQuery = `
+      SELECT m.mentor_id AS sender_id, m.se_id, se.team_name
+      FROM mentorships m
+      JOIN socialenterprises se ON m.se_id = se.se_id
+      WHERE m.mentorship_id = $1;
     `;
-    const mentorResult = await pgDatabase.query(mentorQuery, [mentorship_id]);
 
-    let mentorName = "A mentor";
-    if (mentorResult.rows.length > 0) {
-      const { mentor_firstname, mentor_lastname } = mentorResult.rows[0];
-      mentorName = `${mentor_firstname} ${mentor_lastname}`;
+    const mentorshipResult = await pgDatabase.query(mentorshipQuery, [
+      mentorship_id,
+    ]);
+
+    if (mentorshipResult.rows.length === 0) {
+      return res.status(404).json({ error: "Mentorship not found" });
     }
 
-    const lseedUsers = await getProgramCoordinatorsByMentorshipID(mentorship_id);
-    const lseedDirectors = await getLSEEDDirectors();
+    const { sender_id, se_id, team_name } = mentorshipResult.rows[0];
 
-    // Notify Directors
-    if (lseedDirectors && lseedDirectors.length > 0) {
-      const directorTitle = "Mentoring Session Needs Approval";
-      const notificationDirectorMessage = 
-        `${mentorName} has booked a new mentoring session. Please review and approve the session in the dashboard or scheduling matrix page.`;
+    // 3. Get LSEED-Coordinator and LSEED-Director users
+  const recipientsQuery = `
+  SELECT user_id, role_name
+  FROM user_has_roles
+  WHERE role_name IN ('LSEED-Coordinator', 'LSEED-Director');
+`;
 
-      for (const director of lseedDirectors) {
-        const receiverId = director.user_id;
-        
-        await pgDatabase.query(
-          `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
-          VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/scheduling');`,
-          [receiverId, directorTitle, notificationDirectorMessage]
-        );
+const recipientsResult = await pgDatabase.query(recipientsQuery);
+const recipients = recipientsResult.rows;
+
+    // 4. Insert notifications
+    const insertNotifQuery = `
+      INSERT INTO notification (
+        notification_id,
+        receiver_id,
+        se_id,
+        title,
+        mentoring_session_id,
+        created_at,
+        sender_id
+      )
+      VALUES (
+        uuid_generate_v4(),
+        $1, $2, 'Scheduling Approval Needed', $3, NOW(), $4
+      );
+    `;
+
+    for (const recipient of recipients) {
+      const { user_id: receiver_id, role_name } = recipient;
+
+      // Skip LSEED-Coordinator if they are also the mentor
+      if (receiver_id === sender_id && role_name === "LSEED-Coordinator") {
+        console.log("⚠️ Skipped notifying coordinator (same as mentor):", receiver_id);
+        continue;
       }
-    }
 
-    // Notify Program Coordinators
-    if (lseedUsers && lseedUsers.length > 0) {
-      const coordinatorTitle = "Mentoring Session Needs Approval";
-      const notificationCoordinatorMessage = 
-        `${mentorName} has booked a new mentoring session. Please review the schedule in the dashboard or scheduling matrix page.`;
+      await pgDatabase.query(insertNotifQuery, [
+        receiver_id,
+        se_id,
+        mentoringSessionId,
+        sender_id,
+      ]);
 
-      for (const user of lseedUsers) {
-        const receiverId = user.user_id;
-
-        await pgDatabase.query(
-          `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
-          VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/scheduling');`,
-          [receiverId, coordinatorTitle, notificationCoordinatorMessage]
-        );
-      }
+      console.log(`🔔 Notification sent to ${receiver_id} (${role_name})`);
     }
 
     console.log(`✅ Mentorship ${mentorship_id} scheduled. Notifications sent.`);
@@ -4820,6 +4162,7 @@ app.post("/updateMentorshipDate", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 app.get("/getMentorshipDates", async (req, res) => {
   const { mentor_id } = req.query;
@@ -4997,6 +4340,7 @@ async function updateUser(id, updatedUser) {
 app.get("/api/notifications", async (req, res) => {
   try {
       const { receiver_id } = req.query;
+      console.log("🧾 Receiver ID from query:", receiver_id);
 
       if (!receiver_id) {
           return res.status(400).json({ message: "Receiver ID is required" });
@@ -5028,6 +4372,7 @@ app.get("/api/notifications", async (req, res) => {
       ? userResult.rows[0].roles
       : [];
 
+      console.log("🔑 User Roles:", userRoles);
     // Determine the user's effective role for notification purposes
     const isLSEEDUser = userRoles.some(role => 
   role === "LSEED-Coordinator" || 
@@ -5045,7 +4390,7 @@ app.get("/api/notifications", async (req, res) => {
       query = `
           SELECT n.notification_id, n.title, n.created_at,
        COALESCE(u.first_name || ' ' || u.last_name, 'System') AS sender_name,
-       n.se_id, se.team_name AS se_name, ms.status, n.target_route, n.message, n.is_read
+       n.se_id, se.team_name AS se_name, ms.status, n.target_route
 FROM notification n
 LEFT JOIN users u ON n.sender_id = u.user_id
 LEFT JOIN socialenterprises se ON n.se_id = se.se_id
@@ -5058,7 +4403,7 @@ ORDER BY n.created_at DESC;
       // Mentors only get status change notifications
       query = `
           SELECT n.notification_id, n.title, n.created_at,
-                  n.se_id, se.team_name AS se_name, ms.status, n.target_route, n.message, n.is_read
+                  n.se_id, se.team_name AS se_name, ms.status, n.target_route
           FROM notification n
           LEFT JOIN socialenterprises se ON n.se_id = se.se_id
           LEFT JOIN mentoring_session ms ON n.mentoring_session_id = ms.mentoring_session_id
@@ -5072,9 +4417,9 @@ ORDER BY n.created_at DESC;
     }
 
     const result = await pgDatabase.query(query, queryParams); // Use queryParams for the SQL values
-// console.log("📤 Running notification query for:", isLSEEDUser ? "LSEED" : isMentorUser ? "Mentor" : "None");
-// console.log("🧵 Final SQL:", query);
-// console.log("📩 Notifications fetched:", result.rows.length);
+console.log("📤 Running notification query for:", isLSEEDUser ? "LSEED" : isMentorUser ? "Mentor" : "None");
+console.log("🧵 Final SQL:", query);
+console.log("📩 Notifications fetched:", result.rows.length);
 
     if (result.rows.length === 0) {
       return res.status(200).json([]); // Return empty array if no notifications
@@ -5131,48 +4476,48 @@ app.get("/api/financial-statements", async (req, res) => {
   }
 });
 
-// DELETE?
-// // ==========================
-// // 📌 API: Check Pending Meetings (Telegram Notification)
-// // ==========================
-// app.get("/checkPendingMeetings", async (req, res) => {
-//   try {
-//     console.log("🔍 Running checkPendingMeetings API...");
 
-//     const query = `
-//       SELECT m.mentorship_id, m.se_id, m.mentorship_date, t.chatid
-//       FROM mentorships m
-//       JOIN telegrambot t ON m.se_id = t.se_id
-//       WHERE m.telegramstatus = 'Pending'
-//     `;
+// ==========================
+// 📌 API: Check Pending Meetings (Telegram Notification)
+// ==========================
+app.get("/checkPendingMeetings", async (req, res) => {
+  try {
+    console.log("🔍 Running checkPendingMeetings API...");
 
-//     const result = await pgDatabase.query(query);
-//     console.log("📄 Query Result:", result.rows);
+    const query = `
+      SELECT m.mentorship_id, m.se_id, m.mentorship_date, t.chatid
+      FROM mentorships m
+      JOIN telegrambot t ON m.se_id = t."se_ID"
+      WHERE m.telegramstatus = 'Pending'
+    `;
 
-//     if (result.rows.length === 0) {
-//       console.log("❌ No pending mentorships found.");
-//       return res.json({ message: "No pending mentorship requests." });
-//     }
+    const result = await pgDatabase.query(query);
+    console.log("📄 Query Result:", result.rows);
 
-//     for (const row of result.rows) {
-//       const { mentorship_id, se_id, mentorship_date, chatid } = row;
+    if (result.rows.length === 0) {
+      console.log("❌ No pending mentorships found.");
+      return res.json({ message: "No pending mentorship requests." });
+    }
 
-//       if (!chatid) {
-//         console.warn(`⚠️ No Telegram chat ID found for SE ID ${se_id}`);
-//         continue;
-//       }
+    for (const row of result.rows) {
+      const { mentorship_id, se_id, mentorship_date, chatid } = row;
 
-//       console.log(`📩 Sending message to Chat ID: ${chatid} for mentorship ${mentorship_id}`);
-//       sendMentorshipMessage(chatid, mentorship_id, mentorship_date);
-//     }
+      if (!chatid) {
+        console.warn(`⚠️ No Telegram chat ID found for SE ID ${se_id}`);
+        continue;
+      }
 
-//     res.json({ success: true, message: "Mentorship messages sent." });
+      console.log(`📩 Sending message to Chat ID: ${chatid} for mentorship ${mentorship_id}`);
+      sendMentorshipMessage(chatid, mentorship_id, mentorship_date);
+    }
 
-//   } catch (error) {
-//     console.error("❌ ERROR in /checkPendingMeetings:", error.stack);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
+    res.json({ success: true, message: "Mentorship messages sent." });
+
+  } catch (error) {
+    console.error("❌ ERROR in /checkPendingMeetings:", error.stack);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 // ✅ THEN serve React static files
 app.use(express.static(path.join(__dirname, 'client/build')));
