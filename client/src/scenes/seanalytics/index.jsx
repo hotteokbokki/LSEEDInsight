@@ -145,9 +145,7 @@ const SEAnalytics = () => {
             fetch(`${process.env.REACT_APP_API_BASE_URL}/api/common-challenges/${id}`),
             fetch(`${process.env.REACT_APP_API_BASE_URL}/api/likert-data/${id}`),
             fetch(`${process.env.REACT_APP_API_BASE_URL}/api/radar-data/${id}`),
-            axios.get(`${process.env.REACT_APP_API_BASE_URL}/getMentorEvaluationsBySEID`, {
-              params: { se_id: id }
-            }),
+            fetch(`${process.env.REACT_APP_API_BASE_URL}/getMentorEvaluationsBySEID/${id}`),
           ]);
 
           const [
@@ -159,10 +157,31 @@ const SEAnalytics = () => {
             evaluationsResult
           ] = analyticsResults;
 
+          console.log("analyticsResults:", analyticsResults);
+
+          // Evaluations
+          if (evaluationsResult.status === "fulfilled") {
+            const rawEvaluations = await evaluationsResult.value.json();
+            console.log("Raw Evaluations", rawEvaluations);
+
+            const formattedEvaluationsData = rawEvaluations.map((evaluation) => ({
+              id: evaluation.evaluation_id,
+              evaluator_id: evaluation.evaluation_id,
+              evaluator_name: evaluation.evaluator_name,
+              social_enterprise: evaluation.social_enterprise,
+              evaluation_date: evaluation.evaluation_date,
+              acknowledged: evaluation.acknowledged ? "Yes" : "No",
+            }));
+
+            console.log("Evaluation Data", formattedEvaluationsData);
+            setEvaluationsData(formattedEvaluationsData);
+          } else {
+            console.warn("No evaluations found or failed to fetch.");
+          }
+
           // Stats
           if (statsResult.status === "fulfilled") {
             const statsData = await statsResult.value.json();
-            console.log("Stats Data", statsData);
             setStats({
               registeredUsers: Number(statsData.registeredUsers?.[0]?.total_users) || 0,
               totalEvaluations: statsData.totalEvaluations?.[0]?.total_evaluations || "0",
@@ -177,7 +196,6 @@ const SEAnalytics = () => {
           // Critical Areas
           if (criticalAreasResult.status === "fulfilled") {
             const criticalAreasData = await criticalAreasResult.value.json();
-            console.log("Critical Areas", criticalAreasData);
             setCriticalAreas(criticalAreasData);
           }
 
@@ -214,22 +232,6 @@ const SEAnalytics = () => {
             } else {
               console.error("Invalid radar data format", radarChartData);
             }
-          }
-
-          // Evaluations
-          if (evaluationsResult.status === "fulfilled") {
-            const rawEvaluations = evaluationsResult.value.data;
-            const formattedEvaluationsData = rawEvaluations.map((evaluation) => ({
-              id: evaluation.evaluation_id,
-              evaluation_id: evaluation.evaluation_id,
-              evaluator_name: evaluation.evaluator_name,
-              social_enterprise: evaluation.social_enterprise,
-              evaluation_date: evaluation.evaluation_date,
-              acknowledged: evaluation.acknowledged ? "Yes" : "No",
-            }));
-            setEvaluationsData(formattedEvaluationsData);
-          } else {
-            console.warn("No evaluations found or failed to fetch.");
           }
         }
       } catch (error) {
@@ -417,7 +419,7 @@ const SEAnalytics = () => {
         <Button
           variant="contained"
           style={{ backgroundColor: colors.primary[600], color: "white" }}
-          onClick={() => handleViewExistingEvaluation(params.row.evaluation_id)}
+          onClick={() => handleViewExistingEvaluation(params.row.id)}
         >
           View
         </Button>
