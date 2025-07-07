@@ -496,9 +496,9 @@ const Scheduling = ({}) => {
       !endTime ||
       !zoomLink
     ) {
-      alert(
-        "All fields are required: SE, Date, Start Time, End Time, Zoom Link."
-      );
+      setSnackbarMessage("All fields are required: SE, Date, Start Time, End Time, Zoom Link.");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
       return;
     }
 
@@ -506,8 +506,7 @@ const Scheduling = ({}) => {
       setIsLoading(true);
 
       const teamName = selectedSE?.team_name || "Selected SE";
-      const displayDate =
-        selectedDate?.format("MMMM D, YYYY") || "selected date";
+      const displayDate = selectedDate?.format("MMMM D, YYYY") || "selected date";
       const displayStartTime = startTime?.format("HH:mm") || "start time";
       const displayEndTime = endTime?.format("HH:mm") || "end time";
 
@@ -517,9 +516,7 @@ const Scheduling = ({}) => {
         : null;
       const formattedStartTime =
         selectedDate?.isValid?.() && startTime?.isValid?.()
-          ? `${selectedDate.format("YYYY-MM-DD")} ${startTime.format(
-              "HH:mm:ss"
-            )}`
+          ? `${selectedDate.format("YYYY-MM-DD")} ${startTime.format("HH:mm:ss")}`
           : null;
 
       const formattedEndTime =
@@ -529,6 +526,17 @@ const Scheduling = ({}) => {
 
       if (!formattedDate || !formattedStartTime || !formattedEndTime) {
         throw new Error("Invalid date or time format.");
+      }
+
+      // ✅ Check that start time is not in the past
+      const now = dayjs();
+      const selectedStart = dayjs(`${formattedDate} ${startTime.format("HH:mm:ss")}`);
+      if (selectedStart.isBefore(now)) {
+        setSnackbarMessage("Start time must not be in the past. Please choose a future time.");
+        setSnackbarSeverity("error");
+        setSnackbarOpen(true);
+        setIsLoading(false);
+        return;
       }
 
       const requestBody = {
@@ -551,7 +559,6 @@ const Scheduling = ({}) => {
       );
 
       if (!response.ok) {
-        // ✅ Get detailed error response (JSON or text)
         const errorMessage = await response.json().catch(() => response.text());
         throw new Error(`Failed to update: ${JSON.stringify(errorMessage)}`);
       }
@@ -561,7 +568,7 @@ const Scheduling = ({}) => {
       );
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
-      handleCloseSEModal(); // ✅ Close modal
+      handleCloseSEModal();
 
       setTimeout(() => {
         window.location.reload();
@@ -570,7 +577,6 @@ const Scheduling = ({}) => {
       console.error("❌ Error updating mentorship date:", error.message);
       let message = error.message;
       try {
-        // Try to parse JSON inside message
         const parsed = JSON.parse(message.replace(/^Failed to update: /, ""));
         if (parsed && parsed.error) {
           message = parsed.error;
