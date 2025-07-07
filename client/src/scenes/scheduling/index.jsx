@@ -59,6 +59,7 @@ const Scheduling = ({}) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [selectedTime, setSelectedTime] = useState(dayjs().startOf("hour"));
+  const now = dayjs();
   {/* REFERENCE DELETE THIS LATER ON FOR SNACKBAR */}
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -421,9 +422,7 @@ const Scheduling = ({}) => {
       setIsLoading(true);
 
       const response = await fetch(
-        `${
-          process.env.REACT_APP_API_BASE_URL
-        }/getMentorshipsbyID?mentor_id=${encodeURIComponent(user.id)}`
+        `${process.env.REACT_APP_API_BASE_URL}/getMentorshipsbyID?mentor_id=${encodeURIComponent(user.id)}`
       );
       const data = await response.json();
 
@@ -435,16 +434,43 @@ const Scheduling = ({}) => {
         return;
       }
 
-      const updatedSocialEnterprises = data.map((se) => ({
-        id: se.id,
-        mentor_id: se.mentor_id,
-        se_id: se.se_id,
-        team_name: se.se || "Unknown Team",
-        program_name: se.program || "Unknown Program",
-        sdg_name: se.sdgs || "No SDG Name",
-        preferred_times: se.preferred_mentoring_time || [],
-        time_note: se.mentoring_time_note || "No Time Note",
-      }));
+      const updatedSocialEnterprises = [];
+
+      for (const se of data) {
+        try {
+          const checkResponse = await fetch(
+            `${process.env.REACT_APP_API_BASE_URL}/checkTelegramRegistration?mentor_id=${encodeURIComponent(se.mentor_id)}&se_id=${encodeURIComponent(se.se_id)}`
+          );
+          const checkData = await checkResponse.json();
+
+          updatedSocialEnterprises.push({
+            id: se.id,
+            mentor_id: se.mentor_id,
+            se_id: se.se_id,
+            team_name: se.se || "Unknown Team",
+            program_name: se.program || "Unknown Program",
+            sdg_name: se.sdgs || "No SDG Name",
+            preferred_times: se.preferred_mentoring_time || [],
+            time_note: se.mentoring_time_note || "No Time Note",
+            telegramRegistered: checkData.exists || false
+          });
+        } catch (error) {
+          console.error("Error checking telegram registration:", error);
+
+          // Assume not registered on error
+          updatedSocialEnterprises.push({
+            id: se.id,
+            mentor_id: se.mentor_id,
+            se_id: se.se_id,
+            team_name: se.se || "Unknown Team",
+            program_name: se.program || "Unknown Program",
+            sdg_name: se.sdgs || "No SDG Name",
+            preferred_times: se.preferred_mentoring_time || [],
+            time_note: se.mentoring_time_note || "No Time Note",
+            telegramRegistered: false
+          });
+        }
+      }
 
       setSocialEnterprises(updatedSocialEnterprises);
     } catch (error) {
@@ -453,6 +479,7 @@ const Scheduling = ({}) => {
       setIsLoading(false);
     }
   };
+
 
   const handleConfirmDate = async () => {
     console.log("SE ID:", selectedSE?.id);
@@ -1414,10 +1441,10 @@ const Scheduling = ({}) => {
                   sx={{
                     mb: 2,
                     fontWeight: "bold",
-                    color: "#1E4D2B",
+                    color: "#d32f2f",
                   }}
                 >
-                  Select a Social Enterprise for Mentoring Session
+                  You have not yet selected a Social Enterprise
                 </Typography>
               )}
 
@@ -1426,6 +1453,7 @@ const Scheduling = ({}) => {
                   <ListItem key={se.id} disablePadding>
                     <ListItemButton
                       onClick={() => handleSelectSE(se)}
+                      disabled={!se.telegramRegistered}
                       sx={{
                         marginBottom: "6px",
                         border:
@@ -1434,6 +1462,7 @@ const Scheduling = ({}) => {
                         "&:hover": {
                           backgroundColor: "#f0f0f0",
                         },
+                        opacity: se.telegramRegistered ? 1 : 0.6, // Make disabled entries look grayed out
                       }}
                     >
                       <ListItemText
@@ -1442,9 +1471,24 @@ const Scheduling = ({}) => {
                           <Box component="span" sx={{ display: "block" }}>
                             {se.program_name}
                             <br />
-                            <strong>Preferred Times:</strong> {se.preferred_times.length > 0 ? se.preferred_times.join(", ") : "None"}
+                            <strong>Preferred Times:</strong>{" "}
+                            {se.preferred_times.length > 0 ? se.preferred_times.join(", ") : "None"}
                             <br />
                             <strong>Time Notes:</strong> {se.time_note}
+                            <br />
+                            {!se.telegramRegistered && (
+                              <Typography
+                                variant="caption"
+                                color="error"
+                                sx={{
+                                  display: "block",
+                                  marginTop: "4px",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                Please let the social enterprise register in Telegram.
+                              </Typography>
+                            )}
                           </Box>
                         }
                         primaryTypographyProps={{
@@ -1517,6 +1561,7 @@ const Scheduling = ({}) => {
                     label="Start Time"
                     value={startTime}
                     onChange={handleStartTimeChange}
+                    minTime={now}
                     slotProps={{
                       textField: {
                         fullWidth: true,

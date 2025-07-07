@@ -105,3 +105,21 @@ exports.getSocialEnterprisesUsersByProgram = async (program_id) => {
     return []; // Return an empty array instead of null
   }
 };
+
+exports.checkTelegramBotTable = async (mentorID, seID) => {
+  try {
+    const query = `
+      SELECT 1 FROM "telegrambot"
+      WHERE "mentor_id" = $1 AND "se_id" = $2
+      LIMIT 1;
+    `;
+
+    const result = await pgDatabase.query(query, [mentorID, seID]);
+
+    // ✅ If any row is found, exists = true
+    return result.rows.length > 0;
+  } catch (error) {
+    console.error("❌ Error checking telegrambot table:", error);
+    throw error;
+  }
+};

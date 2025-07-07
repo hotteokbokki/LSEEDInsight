@@ -11,7 +11,7 @@ const axios = require("axios");
 const path = require('path');
 const ngrok = require("ngrok"); // Exposes your local server to the internet
 const { getPrograms, getProgramNameByID, getProgramCount, getProgramsForTelegram, getAllPrograms } = require("./controllers/programsController");
-const { getTelegramUsers, insertTelegramUser, getSocialEnterprisesUsersByProgram, countTelegramUsers } = require("./controllers/telegrambotController");
+const { getTelegramUsers, insertTelegramUser, getSocialEnterprisesUsersByProgram, countTelegramUsers, checkTelegramBotTable } = require("./controllers/telegrambotController");
 const { getSocialEnterprisesByProgram, 
         getSocialEnterpriseByID, 
         getAllSocialEnterprises, 
@@ -2451,6 +2451,22 @@ app.get("/getEvaluationDetails", async (req, res) => {
   } catch (error) {
       console.error("❌ Error fetching evaluation details:", error);
       res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/checkTelegramRegistration", async (req, res) => {
+  const { mentor_id, se_id } = req.query;
+
+  if (!mentor_id || !se_id) {
+    return res.status(400).json({ message: "mentor_id and se_id are required" });
+  }
+
+  try {
+    const exists = await checkTelegramBotTable(mentor_id, se_id); // Your DB query
+    return res.json({ exists });
+  } catch (err) {
+    console.error("❌ Error checking telegram registration:", err);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
