@@ -3047,7 +3047,7 @@ app.post("/api/social-enterprises", async (req, res) => {
         subject: 'Congratulations! Your Application to the LSEED Program Has Been Accepted',
         html: `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
-            <p>Dear ${socialEnterpriseData.team_name || "Your"} Team,</p>
+            <p>Dear ${socialEnterpriseData.name || "Your"} Team,</p>
 
             <p>
               Congratulations! Your application to join the <strong>LSEED Center’s Social Enterprise Development Program</strong> has been <strong>accepted</strong>.
@@ -4725,14 +4725,18 @@ app.post("/declineMentorship", async (req, res) => {
 
     const mentorResult = await getMentorsByMentoringSessionID(mentoring_session_id);
 
+    if (mentorResult.length === 0) {
+      throw new Error('No mentor found for this mentoring_session_id');
+    }
+    
     const notificationTitle = 'Your mentoring session has been declined'
     const notificationMessage = 
       `Your requested mentoring session has been declined by the Social Enterprise. Please review the schedule and propose a new date if needed.`;
-
+    
     await pgDatabase.query(
       `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
       VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/scheduling');`,
-      [mentorResult.mentor_id, notificationTitle, notificationMessage]
+      [mentorResult[0].mentor_id, notificationTitle, notificationMessage]
     );
 
     res.json({ message: "Mentorship declined", mentorship: rows[0] });

@@ -2,16 +2,19 @@ import { ResponsiveHeatMap } from "@nivo/heatmap";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
 import { useState, useEffect } from "react";
-import { Box, Select, MenuItem, Typography, Tooltip, IconButton } from "@mui/material";
+import { Box, Select, MenuItem, Typography, Tooltip, IconButton, Button } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { useAuth } from "../context/authContext";
 
-const HeatmapWrapper = ( {} ) => {
+const HeatmapWrapper = ({ }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [heatMapStats, setHeatMapStats] = useState([]);
   const [period, setPeriod] = useState("overall"); // Default to quarterly
   const { user } = useAuth();
+  const [currentPage, setCurrentPage] = useState(0); // for pagination
+  const [selectedSE, setSelectedSE] = useState(""); // "" means no filter (show all paginated)
+  const SEsPerPage = 10;
   const isLSEEDCoordinator = user?.roles?.includes("LSEED-Coordinator");
 
   useEffect(() => {
@@ -26,7 +29,7 @@ const HeatmapWrapper = ( {} ) => {
           });
 
           const data = await res.json();
-          const program = data[0]?.name; 
+          const program = data[0]?.name;
 
           response = await fetch(
             `${process.env.REACT_APP_API_BASE_URL}/heatmap-stats?period=${period}&program=${program}`
@@ -56,7 +59,32 @@ const HeatmapWrapper = ( {} ) => {
     fetchHeatMapStats();
   }, [period]); // 🔄 Re-fetch data when `period` changes
 
-  const transformedData = heatMapStats.map(
+  const uniqueSEs = Array.from(
+    new Set(heatMapStats.map((item) => item.team_name))
+  );
+
+  const filteredHeatMapStats = selectedSE
+    ? heatMapStats.filter((item) => item.team_name === selectedSE)
+    : heatMapStats;
+
+  const groupByTeamName = filteredHeatMapStats.reduce((acc, item) => {
+    if (!acc[item.team_name]) {
+      acc[item.team_name] = [];
+    }
+    acc[item.team_name].push(item);
+    return acc;
+  }, {});
+
+  const seGroups = Object.values(groupByTeamName); // grouped by team_name
+
+  const paginatedSEGroups = seGroups.slice(
+    currentPage * SEsPerPage,
+    (currentPage + 1) * SEsPerPage
+  );
+
+  const paginatedHeatmapRows = paginatedSEGroups.flat();
+
+  const transformedData = paginatedHeatmapRows.map(
     ({ abbr, team_name, ...scores }) => ({
       id: abbr,
       team_name,
@@ -67,8 +95,6 @@ const HeatmapWrapper = ( {} ) => {
       })),
     })
   );
-
-  console.log(transformedData);
 
   return (
     <Box>
@@ -84,7 +110,7 @@ const HeatmapWrapper = ( {} ) => {
             fontWeight="bold"
             color={colors.greenAccent[500]}
           >
-            Heat Map
+            Heat Map (in Alphabetical Order)
           </Typography>
 
           {/* Tooltip for Heat Map explanation */}
@@ -124,27 +150,64 @@ const HeatmapWrapper = ( {} ) => {
             </IconButton>
           </Tooltip>
         </Box>
-        {/* Period Selector */}
-        <Box
-          display="flex"
-          justifyContent="flex-end"
-          alignItems="center"
-          mb={2}
-        >
+        {/* Right side - Period Select + Show All */}
+        <Box display="flex" alignItems="center" gap={1}>
           <Select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
             sx={{
-              minWidth: 120,
-              bordercolor: colors.grey[100],
+              height: "40px",         // Match button height
+              minWidth: 120,          // Match button width
               backgroundColor: colors.blueAccent[600],
               color: colors.grey[100],
+              bordercolor: colors.grey[100],
+              fontWeight: "bold",
+              "& .MuiSelect-icon": {
+                color: colors.grey[100], // dropdown arrow color
+              },
+              "& fieldset": {
+                border: "none",         // remove default border
+              },
             }}
           >
             <MenuItem value="overall">Overall</MenuItem>
             <MenuItem value="quarterly">Quarterly</MenuItem>
             <MenuItem value="yearly">Yearly</MenuItem>
           </Select>
+
+          <Select
+            value={selectedSE}
+            onChange={(e) => {
+              setSelectedSE(e.target.value);
+              setCurrentPage(0); // optional: reset pagination
+            }}
+            displayEmpty
+            sx={{
+              height: "40px",
+              minWidth: 200,
+              backgroundColor: colors.blueAccent[600],
+              color: colors.grey[100],
+              bordercolor: colors.grey[100],
+              fontWeight: "bold",
+              "& .MuiSelect-icon": {
+                color: colors.grey[100],
+              },
+              "& fieldset": {
+                border: "none",
+              },
+            }}
+          >
+            <MenuItem value="">
+              All SEs
+            </MenuItem>
+            {uniqueSEs.map((se) => (
+              <MenuItem key={se} value={se}>
+                {se}
+              </MenuItem>
+            ))}
+          </Select>
+
+
         </Box>
       </Box>
       <div
@@ -249,6 +312,69 @@ const HeatmapWrapper = ( {} ) => {
               },
             }}
           />
+          <div className="flex justify-center items-center mt-4">
+            {!selectedSE ? (
+              <>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  disabled={currentPage === 0}
+                  onClick={() => setCurrentPage((prev) => prev - 1)}
+                  sx={{
+                    mx: 2,
+                    height: "fit-content",
+                    backgroundColor: colors.blueAccent[600],
+                    color: colors.grey[100],
+                    "&:disabled": {
+                      backgroundColor: colors.grey[600],
+                      color: colors.grey[300],
+                    },
+                  }}
+                >
+                  ◀ Prev
+                </Button>
+
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  disabled={(currentPage + 1) * SEsPerPage >= seGroups.length}
+                  onClick={() => setCurrentPage((prev) => prev + 1)}
+                  sx={{
+                    mx: 2,
+                    height: "fit-content",
+                    backgroundColor: colors.blueAccent[600],
+                    color: colors.grey[100],
+                    "&:disabled": {
+                      backgroundColor: colors.grey[600],
+                      color: colors.grey[300],
+                    },
+                  }}
+                >
+                  Next ▶
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setSelectedSE(""); // or null, depending on what you used
+                  setCurrentPage(0); // reset page
+                }}
+                sx={{
+                  height: "40px",
+                  backgroundColor: colors.blueAccent[600],
+                  color: colors.grey[100],
+                  borderColor: colors.grey[100],
+                  fontWeight: "bold",
+                  "&:hover": {
+                    backgroundColor: colors.blueAccent[700],
+                  },
+                }}
+              >
+                Clear Filter
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Color Legend */}

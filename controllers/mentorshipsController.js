@@ -48,7 +48,7 @@ exports.getMentorshipsByMentorId = async (mentor_id) => {
 exports.getMentorshipsForScheduling = async (mentor_id) => {
     try {
         const query = `
-          SELECT 
+          SELECT
               ms.mentorship_id AS id, 
               m.mentor_id, 
               CONCAT(m.mentor_firstname, ' ', m.mentor_lastname) AS Mentor, 
@@ -63,14 +63,13 @@ exports.getMentorshipsForScheduling = async (mentor_id) => {
           JOIN mentors AS m ON m.mentor_id = ms.mentor_id
           JOIN programs AS p ON se.program_id = p.program_id
           JOIN sdg AS sdg ON sdg.sdg_id = ANY(se.sdg_id)
-
-          -- THIS LEFT JOIN WILL CHECK IF THERE IS A SESSION
-          LEFT JOIN mentoring_session AS session ON session.mentorship_id = ms.mentorship_id
-
-          -- EXCLUDE mentorships that have a session already
-          WHERE m.mentor_id = $1
-            AND session.mentorship_id IS NULL
-
+          WHERE m.mentor_id =$1
+            AND NOT EXISTS (
+                SELECT 1
+                FROM mentoring_session AS session
+                WHERE session.mentorship_id = ms.mentorship_id
+                  AND session.status IN ('Pending', 'Pending SE', 'Accepted', 'In Progress')
+            )
           GROUP BY 
               ms.mentorship_id, 
               m.mentor_id, 
@@ -78,6 +77,8 @@ exports.getMentorshipsForScheduling = async (mentor_id) => {
               se.se_id, 
               SE, 
               Program;
+
+          SELECT * FROM mentoring_session;
         `;
     
         const values = [mentor_id];

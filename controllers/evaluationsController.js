@@ -345,7 +345,6 @@ exports.getTopSEPerformance = async (period = "overall", program = null, mentor_
                     FROM QuarterlyRatings
                     GROUP BY se_id, social_enterprise
                     ORDER BY weighted_avg_rating DESC
-                    LIMIT 3
                 )
                 SELECT 
                     q.se_id,
@@ -408,7 +407,6 @@ exports.getTopSEPerformance = async (period = "overall", program = null, mentor_
                     FROM QuarterlyRatings
                     GROUP BY se_id, social_enterprise
                     ORDER BY weighted_avg_rating DESC
-                    LIMIT 3
                 )
                 SELECT 
                     q.se_id,
@@ -473,7 +471,6 @@ exports.getTopSEPerformance = async (period = "overall", program = null, mentor_
                     FROM QuarterlyRatings
                     GROUP BY se_id, social_enterprise
                     ORDER BY weighted_avg_rating DESC
-                    LIMIT 3
                 )
                 SELECT 
                     q.se_id,
@@ -601,7 +598,7 @@ exports.getStatsForHeatmap = async (period = "overall", program = null) => {
 			JOIN public.programs p ON p.program_id = se.program_id
 			${programFilter}
             GROUP BY se.se_id, se.team_name, se.abbr
-            ORDER BY se.team_name;
+            ORDER BY se.abbr;
         `;
         const result = await pgDatabase.query(query);
 
@@ -1033,7 +1030,6 @@ exports.getSELeaderboards= async (program = null) => {
                 GROUP BY wr.se_id, wr.social_enterprise, wr.full_name
                 HAVING COUNT(wr.se_id) >= 3  -- Ensure sufficient evaluations per SE
                 ORDER BY weighted_avg_rating DESC, simple_avg_rating DESC
-                LIMIT 10
             )
             SELECT 
                 t.se_id, 

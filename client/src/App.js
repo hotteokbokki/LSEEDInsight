@@ -24,8 +24,6 @@ import ProfilePage from "./scenes/profile";
 import { ColorModeContext, useMode } from "./theme";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import MentorshipAnalytics from "./scenes/analytics-mentorship";
-import MentorDashboard from "./scenes/mentordashboard";
 import CoordinatorSignup from "./scenes/coordinator-signup";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import ForgotPassword from "./scenes/forgotpassword";

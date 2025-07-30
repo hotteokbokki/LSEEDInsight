@@ -40,7 +40,7 @@ const LineChart = ({ data, isDashboard = false, dateRange = 60 }) => {
         tooltip: { container: { color: colors.primary[500] } },
       }}
       colors={isDashboard ? { datum: "color" } : { scheme: "nivo" }}
-      margin={{ top: 50, right: 210, bottom: 50, left: 60 }}
+      margin={{ top: 50, right: 180, bottom: 60, left: 60 }}
       xScale={{
         type: "point",
         domain: xAxisDates, // ✅ Controlled inside LineChart

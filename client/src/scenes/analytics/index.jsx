@@ -1,4 +1,4 @@
-import { Box, useTheme, Typography, Tooltip, IconButton } from "@mui/material";
+import { Box, useTheme, Typography, Tooltip, IconButton, Button } from "@mui/material";
 import Header from "../../components/Header";
 import HorizontalBarChart from "../../components/HorizontalBarChart";
 import DualAxisLineChart from "../../components/DualAxisLineChart";
@@ -20,12 +20,37 @@ import { tokens } from "../../theme";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/authContext";
 
-const Analytics = ( {}) => {
+const Analytics = ({ }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [stats, setStats] = useState(null);
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [showAll, setShowAll] = useState(false);
   const { user } = useAuth();
   const isLSEEDCoordinator = user?.roles?.includes("LSEED-Coordinator");
+  const [currentPage, setCurrentPage] = useState(0);
+  const SEsPerPage = 10;
+
+  // Group data by SE
+  const groupBySE = leaderboardData.reduce((acc, item) => {
+    if (!acc[item.social_enterprise]) {
+      acc[item.social_enterprise] = [];
+    }
+    acc[item.social_enterprise].push(item);
+    return acc;
+  }, {});
+
+  const seGroups = Object.values(groupBySE);
+
+  const paginatedData = showAll
+    ? seGroups
+      .slice(currentPage * SEsPerPage, (currentPage + 1) * SEsPerPage)
+      .flat()
+    : leaderboardData
+      .slice()
+      .sort((a, b) => parseFloat(b.overall_weighted_avg_rating) - parseFloat(a.overall_weighted_avg_rating))
+      .slice(0, 10);
+
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -49,6 +74,11 @@ const Analytics = ( {}) => {
           );
         }
         const data = await response.json();
+
+        const fullLeaderboard = data.leaderboardData || [];
+
+        // Store everything in state, but only show top 10 initially
+        setLeaderboardData(fullLeaderboard);
 
         setStats(data);
       } catch (error) {
@@ -91,16 +121,15 @@ const Analytics = ( {}) => {
             progress={
               stats.totalSocialEnterprises / (stats.previousMonthSECount || 1)
             }
-            increase={`${
-              stats.previousMonthSECount > 0
-                ? (
-                    ((stats.totalSocialEnterprises -
-                      stats.previousMonthSECount) /
-                      stats.previousMonthSECount) *
-                    100
-                  ).toFixed(2)
-                : 0
-            }%`}
+            increase={`${stats.previousMonthSECount > 0
+              ? (
+                ((stats.totalSocialEnterprises -
+                  stats.previousMonthSECount) /
+                  stats.previousMonthSECount) *
+                100
+              ).toFixed(2)
+              : 0
+              }%`}
             icon={
               <EmailIcon
                 sx={{ fontSize: "26px", color: colors.greenAccent[500] }} // 🔄 Updated icon
@@ -173,9 +202,8 @@ const Analytics = ( {}) => {
           p="20px"
         >
           <StatBox
-            title={`${stats.growthScoreTotal} ${
-              stats.growthScore?.[0]?.abbr || "N/A"
-            }`}
+            title={`${stats.growthScoreTotal} ${stats.growthScore?.[0]?.abbr || "N/A"
+              }`}
             subtitle="SE with Significant Growth"
             progress={Math.min(stats.cumulativeGrowth / 100, 1)} // ✅ Cap at 100%
             increase={`${stats.cumulativeGrowth}%`}
@@ -214,7 +242,7 @@ const Analytics = ( {}) => {
           backgroundColor={colors.primary[400]}
           p="20px"
         >
-          <Box 
+          <Box
             display="flex"
             justifyContent="space-between"
             alignItems="center"
@@ -320,78 +348,149 @@ const Analytics = ( {}) => {
                 fontWeight="bold"
                 color={colors.greenAccent[500]}
               >
-                {stats?.leaderboardData?.length > 0
-                  ? "Leaderboard - Ratings"
-                  : ""}
+                {leaderboardData.length > 0 ? "Leaderboard - Ratings" : ""}
               </Typography>
 
-              {/* Tooltip Icon */}
-              <Tooltip
-                title={
-                  <Box sx={{ maxWidth: 300, p: 1 }}>
-                    <Typography variant="body1" fontWeight="bold">
-                      What is this leaderboard? 🏆
-                    </Typography>
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      This chart ranks Social Enterprises (SEs) based on their{" "}
-                      <strong>evaluation performance</strong> over the last 12 months.
-                    </Typography>
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="body2">
-                        🔹 <strong>Weighted Average Rating</strong> – Recent months are given more weight.
+              {/* Right-side controls: Show All button + Tooltip */}
+              <Box display="flex" alignItems="center" gap={1}>
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setShowAll((prev) => !prev);
+                    setCurrentPage(0); // reset page when toggling
+                  }}
+                  sx={{
+                    height: "40px",
+                    minWidth: 120,
+                    bordercolor: colors.grey[100],
+                    backgroundColor: colors.blueAccent[600],
+                    color: colors.grey[100],
+                    fontWeight: "bold",
+                    "&:hover": {
+                      backgroundColor: colors.blueAccent[700],
+                    },
+                  }}
+                >
+                  {showAll ? "Show Top 10" : "Show All"}
+                </Button>
+
+                {/* Tooltip beside button */}
+                <Tooltip
+                  title={
+                    <Box sx={{ maxWidth: 300, p: 1 }}>
+                      <Typography variant="body1" fontWeight="bold">
+                        What is this leaderboard? 🏆
                       </Typography>
-                      <Typography variant="body2" sx={{ mt: 0.5 }}>
-                        🔹 <strong>Simple Average Rating</strong> – Plain average across months.
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        This chart ranks Social Enterprises (SEs) based on their{" "}
+                        <strong>evaluation performance</strong> over the last 12 months.
+                      </Typography>
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="body2">
+                          🔹 <strong>Weighted Average Rating</strong> – Emphasizes recent evaluations more heavily. SEs that performed well consistently and recently are ranked higher.
+                        </Typography>
+                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                          🔹 <strong>Simple Average Rating</strong> – Straight average of monthly scores, used to show trend differences.
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" sx={{ mt: 2 }}>
+                        Color indicators:
+                      </Typography>
+                      <Box sx={{ mt: 1, pl: 1 }}>
+                        <Typography variant="body2" sx={{ color: colors.greenAccent[500] }}>
+                          🟩 Green – SE is improving (recent rating higher than overall average)
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: colors.redAccent[500], mt: 0.5 }}>
+                          🟥 Red – SE’s recent performance is declining
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: colors.grey[400], mt: 0.5 }}>
+                          ◻️ Grey – Performance is stable
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" sx={{ mt: 2 }}>
+                        Only SEs with <strong>3 or more evaluations</strong> in the past year are included to ensure fair comparisons.
+                      </Typography>
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        Use this leaderboard to identify <strong>top-performing</strong> SEs and monitor shifts in performance over time.
                       </Typography>
                     </Box>
-                    <Typography variant="body2" sx={{ mt: 2 }}>
-                      Color indicators:
-                    </Typography>
-                    <Box sx={{ mt: 1, pl: 1 }}>
-                      <Typography variant="body2" sx={{ color: colors.greenAccent[500] }}>
-                        🟩 Green – SE is improving (recent &gt; past)
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: colors.redAccent[500], mt: 0.5 }}>
-                        🟥 Red – SE's recent performance declined
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: colors.grey[400], mt: 0.5 }}>
-                        ◻️ Grey – No significant change
-                      </Typography>
-                    </Box>
-                    <Typography variant="body2" sx={{ mt: 2 }}>
-                      Only SEs with <strong>at least 3 evaluations</strong> in the past year are shown.
-                    </Typography>
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      Use this leaderboard to spot <strong>high performers</strong> and recent trends.
-                    </Typography>
-                  </Box>
-                }
-                arrow
-                placement="top"
-              >
-                <IconButton sx={{ color: colors.grey[300] }}>
-                  <HelpOutlineIcon />
-                </IconButton>
-              </Tooltip>
+                  }
+                  arrow
+                  placement="top"
+                >
+                  <IconButton sx={{ color: colors.grey[300] }}>
+                    <HelpOutlineIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </Box>
 
-            <Box height="100%">
-              {stats?.leaderboardData ? (
-                stats.leaderboardData.length > 0 ? (
-                  <LeaderboardChart data={stats.leaderboardData} />
-                ) : (
-                  <Typography
-                    variant="h6"
-                    color={colors.grey[300]}
-                    textAlign="center"
-                  >
-                    Leaderboards Unavailable
+            <Box height="100%" display="flex" alignItems="center">
+              {/* Prev Button - Only when showAll */}
+              {showAll && (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  disabled={currentPage === 0}
+                  onClick={() => setCurrentPage((prev) => prev - 1)}
+                  sx={{
+                    mx: 2,
+                    height: "fit-content",
+                    backgroundColor: colors.blueAccent[600],
+                    color: colors.grey[100],
+                    "&:disabled": {
+                      backgroundColor: colors.grey[600],
+                      color: colors.grey[300],
+                    },
+                  }}
+                >
+                  ◀ Prev
+                </Button>
+              )}
+
+              {/* Chart in the center */}
+              <Box
+                flexGrow={1}
+                minWidth={0}
+                overflow="hidden"
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+                height="100%"
+                sx={{
+                  pl: showAll ? 0 : 2,
+                  pr: showAll ? 0 : 2,
+                }}
+              >
+                {leaderboardData.length === 0 ? (
+                  <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+                    No data available for plotting.
                   </Typography>
-                )
-              ) : (
-                <Typography variant="h6" color="red" textAlign="center">
-                  Error loading data
-                </Typography>
+                ) : (
+                  <LeaderboardChart data={paginatedData} />
+                )}
+              </Box>
+
+              {/* Next Button - Only when showAll */}
+              {showAll && (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  disabled={(currentPage + 1) * SEsPerPage >= seGroups.length}
+                  onClick={() => setCurrentPage((prev) => prev + 1)}
+                  sx={{
+                    mx: 2,
+                    height: "fit-content",
+                    backgroundColor: colors.blueAccent[600],
+                    color: colors.grey[100],
+                    "&:disabled": {
+                      backgroundColor: colors.grey[600],
+                      color: colors.grey[300],
+                    },
+                  }}
+                >
+                  Next ▶
+                </Button>
               )}
             </Box>
           </Box>
