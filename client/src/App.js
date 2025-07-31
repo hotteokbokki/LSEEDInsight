@@ -31,6 +31,7 @@ import ResetPassword from "./scenes/resetpassword";
 import FinancialAnalytics from "./scenes/financial-analytics";
 import PublicLayout from "./layouts/PublicLayout";
 import AppLayout from "./layouts/AppLayout";
+import CollaborationDashboard from "./scenes/collaborationdashboard";
 
 const App = () => {
   const [theme, colorMode] = useMode();
@@ -53,14 +54,14 @@ const App = () => {
 
 const ProtectedRoute = ({ allowedRoles }) => {
   const { user } = useAuth();
-  
+
   if (!user) {
     return <Navigate to="/" replace />;
   }
-  
+
   // Assuming user.roles is an array from the backend
   const userRoles = Array.isArray(user.roles) ? user.roles : user.roles.split(',').map(role => role.trim());
-  
+
 
   // Define roles that have full access to all protected routes
   const privilegedRoles = ["LSEED-Director"];
@@ -129,7 +130,7 @@ const MainContent = () => {
           <Route path="/financial-analytics" element={<FinancialAnalytics />} />
         </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={["LSEED-Director", "LSEED-Coordinator","Mentor"]} />}>
+        <Route element={<ProtectedRoute allowedRoles={["LSEED-Director", "LSEED-Coordinator", "Mentor"]} />}>
           <Route path="/assess" element={<EvaluatePage />} />
         </Route>
 
@@ -149,6 +150,10 @@ const MainContent = () => {
 
         <Route element={<ProtectedRoute allowedRoles={["LSEED-Coordinator", "Mentor", "Guest User", "LSEED-Director"]} />}>
           <Route path="/se-analytics/:id" element={<SEAnalytics />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={["Mentor"]} />}>
+          <Route path="/collaboration-dashboard" element={<CollaborationDashboard />} />
         </Route>
 
         <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} />} />

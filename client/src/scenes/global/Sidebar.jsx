@@ -27,11 +27,11 @@ import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
+import HandshakeOutlinedIcon from "@mui/icons-material/HandshakeOutlined";
 import { useAuth } from "../../context/authContext";
 import { createCalendarEvents } from "../../components/googleCalendar";
 import AccountBalanceOutlinedIcon from "@mui/icons-material/AccountBalanceOutlined";
 import { useGoogleLogin } from "@react-oauth/google";
-import axios from "axios";
 
 const Item = ({ title, to, icon, selected, setSelected }) => {
   const theme = useTheme();
@@ -87,7 +87,6 @@ const Sidebar = ({ }) => {
     };
   }, [isCoordinatorView]); // Add isCoordinatorView as a dependency
 
-
   // Determine the default selected item based on the current route
   const getSelectedTitle = () => {
     const routeMap = {
@@ -105,6 +104,7 @@ const Sidebar = ({ }) => {
       "/programs": "Manage Programs",
       "/signup": "Register Mentor",
       "/financial-analytics": "Financial Analytics",
+      "/collaboration-dashboard": "Collaboration Portal",
     };
     return routeMap[location.pathname] || "Dashboard";
   };
@@ -268,6 +268,7 @@ const Sidebar = ({ }) => {
                 >
                   <Typography variant="body1">Scheduling Matrix</Typography>
                 </MenuItem>
+                <Item title="Collaboration Portal" to="/collaboration-dashboard" icon={<HandshakeOutlinedIcon />} selected={selected} setSelected={setSelected} />
               </>
             ) : null}
 

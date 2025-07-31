@@ -60,6 +60,8 @@ const { getMentorshipsByMentorId,
         getMentorshipCountByMentorID,
         getPendingSchedulesForMentor,
         getProgramCoordinatorsByMentorshipID,
+        getSuggestedCollaborations,
+        getCollaborators,
        } = require("./controllers/mentorshipsController.js");
 const { addSocialEnterprise } = require("./controllers/socialenterprisesController");
 const { getEvaluationsByMentorID, 
@@ -105,6 +107,7 @@ const { getApplicationList } = require("./controllers/menteesFormSubmissionsCont
 const { getMentorFormApplications } = require("./controllers/mentorFormApplicationController.js");
 const { getSignUpPassword } = require("./controllers/signuppasswordsController.js");
 const { getAuditLogs } = require("./controllers/auditlogsController.js");
+const { requestCollaborationInsert } = require("./controllers/mentorshipcollaborationController.js");
 const app = express();
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
@@ -2110,6 +2113,46 @@ app.post("/api/assign-program-coordinator", async (req, res) => {
     // Log the error and send an appropriate error response
     console.error("API Error assigning program coordinator:", error);
     res.status(500).json({ message: "Failed to update program assignment.", error: error.message });
+  }
+});
+
+app.post("/api/mentorship/request-collaboration", async (req, res) => {
+  try {
+    const { mentorship_id_1, mentorship_id_2 } = req.body;
+    // Call controller function to handle insert
+    await requestCollaborationInsert(mentorship_id_1, mentorship_id_2);
+
+    res.status(201).json({ message: "Collaboration request submitted." });
+  } catch (error) {
+    console.error("Error requesting collaboration:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/mentorship/suggested-collaborations/:mentorship_id", async (req, res) => {
+  try {
+    const userId = req.session.user?.id; // Safely extract from session
+    const mentorship_id = req.params.mentorship_id
+
+    const collaborationStats = await getSuggestedCollaborations(userId, mentorship_id);
+
+    res.json(collaborationStats);
+  } catch (error) {
+    console.error("Error fetching collaboration stats:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/mentorship/get-collaborators", async (req, res) => {
+  try {
+    const userId = req.session.user?.id; // Safely extract from session
+
+    const collaborators = await getCollaborators(userId);
+
+    res.json(collaborators);
+  } catch (error) {
+    console.error("Error fetching collaborators:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
