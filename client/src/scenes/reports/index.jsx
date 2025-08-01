@@ -13,7 +13,6 @@ import {
 } from "@mui/material";
 import Header from "../../components/Header";
 import { tokens } from "../../theme";
-import Papa from "papaparse";
 import * as XLSX from "xlsx";
 
 const Reports = () => {
@@ -32,7 +31,7 @@ const Reports = () => {
   };
 
   const normalizeColumnName = (colName) => {
-    return String(colName).toLowerCase().replace(/[^a-z0-9]/g, "");
+    return String(colName || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   };
 
   const columnMapping = {
@@ -47,7 +46,7 @@ const Reports = () => {
       "total_assets": "total_assets",
       "totalassets": "total_assets",
       "total_liabilities": "total_liabilities",
-      "totalliabilities": "totalliabilities",
+      "totalliabilities": "total_liabilities",
       "owner_equity": "owner_equity",
       "ownerequity": "owner_equity",
     },
@@ -61,65 +60,56 @@ const Reports = () => {
     },
     cash_in: {
       "date": "date",
-      "sales": "sales",
-      "other_revenue": "otherRevenue", // Example: if "Other Revenue" in sheet
-      "otherrevenue": "otherRevenue",
-      "assets": "assets",
-      "liability": "liability",
-      "owner_capital": "ownerCapital",
-      "ownercapital": "ownerCapital",
-      "notes": "notes",
       "cash": "cash",
+      "sales": "sales",
+      "otherRevenue": "otherRevenue",
+      "rawMaterials": "rawMaterials", // Individual component
+      "cashUnderAssets": "cashUnderAssets", // Individual component
+      "savings": "savings", // Individual component
+      "assets": "assets", // Aggregated
+      "liability": "liability",
+      "ownerCapital": "ownerCapital",
+      "notes": "notes",
+      "enteredBy": "enteredBy",
     },
     cash_out: {
       "date": "date",
       "cash": "cash",
-      "expenses": "expenses",
-      "assets": "assets",
+      "utilities": "utilities", // Individual component
+      "officesupplies": "officeSupplies", // Individual component
+      "expenses": "expenses", // Aggregated
+      "cashunderassets": "cashUnderAssets", // Individual component
+      "investments": "investments", // Individual component
+      "savings": "savings", // Individual component
+      "assets": "assets", // Aggregated
       "inventory": "inventory",
       "liability": "liability",
-      "owner_withdrawal": "ownerWithdrawal",
-      "ownerwithdrawal": "ownerWithdrawal",
+      "ownerswithdrawals": "ownerWithdrawal",
       "notes": "notes",
+      "enteredby": "enteredBy",
     },
   };
 
-  const getMappedColumnName = (reportType, sheetColName) => {
-    const normalizedSheetColName = normalizeColumnName(sheetColName);
-    return columnMapping[reportType]?.[normalizedSheetColName] || null;
-  };
+  const parseNumericValue = (value) => {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    
+    if (typeof value === 'string') {
+      const cleanedValue = value.replace(/,/g, '').trim();
 
-  const guessCsvReportType = (headers) => {
-    const normalizedHeaders = headers.map(normalizeColumnName);
+      const excelErrorStrings = ['#N/A', '#REF!', '#NAME?', '#VALUE!', '#DIV/0!', '#NULL!', '#NUM!'];
+      if (excelErrorStrings.includes(cleanedValue.toUpperCase())) {
+          return null;
+      }
 
-    if (
-      normalizedHeaders.includes("itemname") ||
-      normalizedHeaders.includes("qty") ||
-      normalizedHeaders.includes("quantity")
-    ) {
-      return "inventory_report";
+      if (cleanedValue === '') {
+        return null;
+      }
+      const parsed = parseFloat(cleanedValue);
+      return isNaN(parsed) ? null : parsed;
     }
-    if (
-      normalizedHeaders.includes("totalrevenue") ||
-      normalizedHeaders.includes("netincome") ||
-      normalizedHeaders.includes("totalassets")
-    ) {
-      return "financial_statements";
-    }
-    if (
-      normalizedHeaders.includes("sales") ||
-      normalizedHeaders.includes("ownercapital")
-    ) {
-      return "cash_in";
-    }
-    if (
-      normalizedHeaders.includes("expenses") ||
-      normalizedHeaders.includes("ownerwithdrawal")
-    ) {
-      return "cash_out";
-    }
-
-    return null;
+    return value;
   };
 
   const handleFileChange = (event) => {
@@ -129,105 +119,202 @@ const Reports = () => {
     setFileName(file.name);
     setParsedData({});
 
-    const isCSV = file.name.endsWith(".csv");
-    const isXLSX = file.name.endsWith(".xlsx");
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const newParsedData = {};
 
-    if (isCSV) {
-      Papa.parse(file, {
-        header: true,
-        complete: (results) => {
-          const currentSelectedReportType = selectedReportType;
+      workbook.SheetNames.forEach((sheetName) => {
+        const worksheet = workbook.Sheets[sheetName];
+        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
 
-          if (currentSelectedReportType) {
-            const transformedData = results.data
-              .map((row) => {
-                const newRow = {};
-                for (const key in row) {
-                  const mappedKey = getMappedColumnName(currentSelectedReportType, key);
-                  if (mappedKey) {
-                    newRow[mappedKey] = row[key];
+        if (rawData.length === 0) return;
+
+        let targetTable = null;
+        let dataRows = [];
+
+        const lowerSheetName = sheetName.toLowerCase();
+        const lowerFileName = file.name.toLowerCase();
+
+        if (lowerSheetName.includes("cash in") || lowerFileName.includes("cash in")) {
+          targetTable = "cash_in";
+        } else if (lowerSheetName.includes("cash out") || lowerFileName.includes("cash out")) {
+          targetTable = "cash_out";
+        } else if (lowerSheetName.includes("inventory report") || lowerFileName.includes("inventory report")) {
+          targetTable = "inventory_report";
+        } else if (lowerSheetName.includes("financial statements") || lowerFileName.includes("financial statements")) {
+          targetTable = "financial_statements";
+        }
+
+        if (targetTable === "cash_in" || targetTable === "cash_out") {
+          if (rawData.length < 6) {
+            console.warn(`File '${file.name}' or sheet '${sheetName}' does not have enough rows for expected Cash In/Out format. Skipping special processing.`);
+            dataRows = rawData.slice(1);
+          } else {
+            dataRows = rawData.slice(5);
+          }
+        } else {
+          dataRows = rawData.slice(1);
+        }
+
+        const filteredDataRows = dataRows.filter(row => {
+          const firstCell = String(row[0] || '').trim().toLowerCase();
+          
+          if (firstCell.startsWith("totals:") || firstCell.startsWith("(")) {
+            return false;
+          }
+
+          if (firstCell === '') {
+            return false;
+          }
+
+          return true;
+        });
+
+        const transformedSheetData = filteredDataRows.map((row) => {
+          console.log("Full row array from XLSX for a data row:", row);
+          const newRow = {};
+
+          if (targetTable === "cash_in") {
+            const dateValue = String(row[0] || '').trim();
+            if (dateValue !== '') newRow["date"] = dateValue;
+
+            const cash = parseNumericValue(row[1]);
+            if (cash !== null) newRow["cash"] = cash;
+
+            const sales = parseNumericValue(row[2]);
+            if (sales !== null) newRow["sales"] = sales;
+
+            const otherRevenue = parseNumericValue(row[3]);
+            if (otherRevenue !== null) newRow["otherRevenue"] = otherRevenue;
+
+            const rawMaterials = parseNumericValue(row[4]);
+            if (rawMaterials !== null) newRow["rawMaterials"] = rawMaterials;
+            
+            const cashUnderAssets = parseNumericValue(row[5]);
+            if (cashUnderAssets !== null) newRow["cashUnderAssets"] = cashUnderAssets;
+
+            const savings = parseNumericValue(row[6]);
+            if (savings !== null) newRow["savings"] = savings;
+
+            let totalAssets = 0;
+            let hasAnyAssetComponent = false;
+            if (rawMaterials !== null) { totalAssets += rawMaterials; hasAnyAssetComponent = true; }
+            if (cashUnderAssets !== null) { totalAssets += cashUnderAssets; hasAnyAssetComponent = true; }
+            if (savings !== null) { totalAssets += savings; hasAnyAssetComponent = true; }
+
+            if (totalAssets !== 0) {
+              newRow["assets"] = totalAssets;
+            } else if (hasAnyAssetComponent) {
+              newRow["assets"] = 0;
+            }
+
+            const liability = parseNumericValue(row[7]);
+            if (liability !== null) newRow["liability"] = liability;
+
+            const ownerCapital = parseNumericValue(row[8]);
+            if (ownerCapital !== null) newRow["ownerCapital"] = ownerCapital;
+
+            const notesValue = String(row[9] || '').trim();
+            if (notesValue !== '') newRow["notes"] = notesValue;
+
+            const enteredByValue = String(row[10] || '').trim();
+            if (enteredByValue !== '') newRow["enteredBy"] = enteredByValue;
+
+          } else if (targetTable === "cash_out") {
+            const dateValue = String(row[0] || '').trim();
+            if (dateValue !== '') newRow["date"] = dateValue;
+
+            const cash = parseNumericValue(row[1]);
+            if (cash !== null) newRow["cash"] = cash;
+
+            const utilities = parseNumericValue(row[3]);
+            if (utilities !== null) newRow["utilities"] = utilities;
+
+            const officeSupplies = parseNumericValue(row[4]);
+            if (officeSupplies !== null) newRow["officeSupplies"] = officeSupplies;
+
+            let totalExpenses = 0;
+            let hasAnyExpenseComponent = false;
+            if (utilities !== null) { totalExpenses += utilities; hasAnyExpenseComponent = true; }
+            if (officeSupplies !== null) { totalExpenses += officeSupplies; hasAnyExpenseComponent = true; }
+
+            if (totalExpenses !== 0) {
+              newRow["expenses"] = totalExpenses;
+            } else if (hasAnyExpenseComponent) {
+                newRow["expenses"] = 0;
+            }
+
+            const cashUnderAssets = parseNumericValue(row[10]);
+            if (cashUnderAssets !== null) newRow["cashUnderAssets"] = cashUnderAssets;
+
+            const investments = parseNumericValue(row[11]);
+            if (investments !== null) newRow["investments"] = investments;
+
+            const savings = parseNumericValue(row[12]);
+            if (savings !== null) newRow["savings"] = savings;
+
+            let totalAssets = 0;
+            let hasAnyAssetComponent = false;
+            if (cashUnderAssets !== null) { totalAssets += cashUnderAssets; hasAnyAssetComponent = true; }
+            if (investments !== null) { totalAssets += investments; hasAnyAssetComponent = true; }
+            if (savings !== null) { totalAssets += savings; hasAnyAssetComponent = true; }
+
+            if (totalAssets !== 0) {
+              newRow["assets"] = totalAssets;
+            } else if (hasAnyAssetComponent) {
+                newRow["assets"] = 0;
+            }
+
+            const inventory = parseNumericValue(row[13]);
+            if (inventory !== null) newRow["inventory"] = inventory;
+
+            const liability = parseNumericValue(row[14]);
+            if (liability !== null) newRow["liability"] = liability;
+
+            const ownerWithdrawal = parseNumericValue(row[15]);
+            if (ownerWithdrawal !== null) newRow["ownerWithdrawal"] = ownerWithdrawal;
+
+            const notesValue = String(row[16] || '').trim();
+            if (notesValue !== '') newRow["notes"] = notesValue;
+
+            const enteredByValue = String(row[17] || '').trim();
+            if (enteredByValue !== '') newRow["enteredBy"] = enteredByValue;
+
+          } else {
+            const mainHeader = rawData[0];
+            mainHeader.forEach((header, index) => {
+              const mappedColName = columnMapping[targetTable]?.[normalizeColumnName(header)];
+              if (mappedColName) {
+                let value = row[index];
+                if (typeof value === 'string') {
+                  const cleanedValue = value.replace(/,/g, '').trim();
+                  if (cleanedValue === '') {
+                    value = null;
+                  } else if (!isNaN(parseFloat(cleanedValue))) {
+                    value = parseFloat(cleanedValue);
                   }
                 }
-                return newRow;
-              })
-              .filter((row) => Object.keys(row).length > 0);
-
-            if (transformedData.length > 0) {
-              setParsedData({ [currentSelectedReportType]: transformedData });
-            } else {
-              alert(
-                `No valid data found after mapping for ${formatTableName(
-                  currentSelectedReportType
-                )}. Check column headers.`
-              );
-              setFileName("");
-            }
-          } else {
-            alert("Please select a specific report type from the dropdown before uploading a CSV.");
-            setFileName("");
+                if (value !== null && value !== undefined && value !== '') {
+                    newRow[mappedColName] = value;
+                }
+              }
+            });
           }
-        },
-        error: (err) => {
-          console.error("CSV parsing error:", err);
-          alert("Error parsing CSV file. Please check its format.");
-          setFileName("");
+
+          return newRow;
+        }).filter(row => Object.keys(row).length > 0);
+
+        if (transformedSheetData.length > 0) {
+          newParsedData[targetTable] = transformedSheetData;
+        } else {
+          console.warn(`Sheet '${sheetName}' parsed but yielded no valid mapped data. Skipping.`);
         }
       });
-    } else if (isXLSX) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
-        const newParsedData = {};
-
-        workbook.SheetNames.forEach((sheetName) => {
-          const worksheet = workbook.Sheets[sheetName];
-          const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
-
-          if (json.length === 0) return;
-
-          const headerRow = json[0];
-          const dataRows = json.slice(1);
-
-          let targetTable = null;
-          if (sheetName.toLowerCase().includes("cash in")) {
-            targetTable = "cash_in";
-          } else if (sheetName.toLowerCase().includes("cash out")) {
-            targetTable = "cash_out";
-          } else if (sheetName.toLowerCase().includes("inventory report")) {
-            targetTable = "inventory_report";
-          } else if (sheetName.toLowerCase().includes("financial statements")) {
-            targetTable = "financial_statements";
-          }
-
-          if (targetTable) {
-            const transformedSheetData = dataRows.map((row) => {
-              const newRow = {};
-              headerRow.forEach((header, index) => {
-                const mappedColName = getMappedColumnName(targetTable, header);
-                if (mappedColName && row[index] !== undefined && row[index] !== null) {
-                  newRow[mappedColName] = row[index];
-                }
-              });
-              return newRow;
-            }).filter(row => Object.keys(row).length > 0);
-
-            if (transformedSheetData.length > 0) {
-              newParsedData[targetTable] = transformedSheetData;
-            } else {
-                console.warn(`Sheet '${sheetName}' parsed but yielded no valid mapped data. Skipping.`);
-            }
-          } else {
-            console.warn(`Sheet '${sheetName}' does not match any known report type. Skipping.`);
-          }
-        });
-        setParsedData(newParsedData);
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      alert("Please upload a .csv or .xlsx file.");
-      setFileName("");
-    }
+      setParsedData(newParsedData);
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const handleImport = async () => {
@@ -253,9 +340,7 @@ const Reports = () => {
       const missingCols = expectedColsForType.filter(col => !actualCols.includes(col));
 
       if (missingCols.length > 0) {
-        alert(`For ${formatTableName(reportType)}: Missing potentially required columns: ${missingCols.join(", ")}. Please ensure the correct columns are present or mapped.`);
-        allImportsSuccessful = false;
-        continue;
+        console.warn(`Potential missing columns based on local mapping for ${formatTableName(reportType)}: ${missingCols.join(", ")}. Backend might have further validation.`);
       }
 
       console.log(`Sending to backend for ${reportType}:`, {
@@ -277,7 +362,7 @@ const Reports = () => {
         console.log(`${formatTableName(reportType)} import successful!`);
       } catch (err) {
         console.error(`Import error for ${formatTableName(reportType)}:`, err);
-        allImportsSuccessful = false; // Mark failure
+        allImportsSuccessful = false;
 
         let errorMessage = `Import failed for ${formatTableName(reportType)}: `;
         if (err.response) {
@@ -344,7 +429,6 @@ const Reports = () => {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
   };
-
 
   return (
     <Box m="20px">
@@ -415,7 +499,7 @@ const Reports = () => {
             }}
           >
             <InputLabel id="report-type-label" sx={{ color: "white" }}>
-              Select Report Type
+              Select Report Type (for CSV only)
             </InputLabel>
             <Select
               labelId="report-type-label"
@@ -428,6 +512,7 @@ const Reports = () => {
                 "& .MuiSvgIcon-root": { color: "white" },
               }}
             >
+              <MenuItem value=""><em>None (XLSX sheets will be auto-detected)</em></MenuItem>
               {reportTables.map((table) => (
                 <MenuItem key={table} value={table} sx={{ color: "white" }}>
                   {formatTableName(table)}
@@ -504,36 +589,41 @@ const Reports = () => {
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr>
-                        {Object.keys(parsedData[reportTypeKey][0] || {}).map((key) => (
-                          <th
-                            key={key}
-                            style={{
-                              border: "1px solid #ddd",
-                              padding: "8px",
-                              background: "#222",
-                              color: "#fff",
-                            }}
-                          >
-                            {key}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {parsedData[reportTypeKey].slice(0, 5).map((row, index) => (
-                        <tr key={index}>
-                          {Object.values(row).map((val, i) => (
-                            <td
-                              key={i}
+                        {/* Get keys from the first row of the specific reportTypeKey data for headers */}
+                        {parsedData[reportTypeKey] && parsedData[reportTypeKey].length > 0 &&
+                          Object.keys(parsedData[reportTypeKey][0]).map((key) => (
+                            <th
+                              key={key}
                               style={{
                                 border: "1px solid #ddd",
                                 padding: "8px",
-                                color: "#eee",
+                                background: "#222",
+                                color: "#fff",
                               }}
                             >
-                              {val}
-                            </td>
+                              {key}
+                            </th>
                           ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* Slice the specific reportTypeKey data for rows */}
+                      {parsedData[reportTypeKey] && parsedData[reportTypeKey].slice(0, 5).map((row, index) => (
+                        <tr key={index}>
+                          {/* Iterate over the keys of the first row to ensure consistent column order */}
+                          {parsedData[reportTypeKey] && parsedData[reportTypeKey].length > 0 &&
+                            Object.keys(parsedData[reportTypeKey][0]).map((key, i) => (
+                              <td
+                                key={i}
+                                style={{
+                                  border: "1px solid #ddd",
+                                  padding: "8px",
+                                  color: "#eee",
+                                }}
+                              >
+                                {row[key]}
+                              </td>
+                            ))}
                         </tr>
                       ))}
                     </tbody>
