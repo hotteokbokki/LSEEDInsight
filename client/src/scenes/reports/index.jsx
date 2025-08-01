@@ -21,11 +21,105 @@ const Reports = () => {
   const colors = tokens(theme.palette.mode);
 
   const fileInputRef = useRef(null);
-  const [parsedData, setParsedData] = useState([]);
+  const [parsedData, setParsedData] = useState({});
   const [fileName, setFileName] = useState("");
+  const [selectedSE, setSelectedSE] = useState("");
+  const [socialEnterprises, setSocialEnterprises] = useState([]);
+  const [selectedReportType, setSelectedReportType] = useState("");
 
   const handleButtonClick = () => {
     fileInputRef.current.click();
+  };
+
+  const normalizeColumnName = (colName) => {
+    return String(colName).toLowerCase().replace(/[^a-z0-9]/g, "");
+  };
+
+  const columnMapping = {
+    financial_statements: {
+      "date": "date",
+      "total_revenue": "total_revenue",
+      "totalrevenue": "total_revenue",
+      "total_expenses": "total_expenses",
+      "totalexpenses": "total_expenses",
+      "net_income": "net_income",
+      "netincome": "net_income",
+      "total_assets": "total_assets",
+      "totalassets": "total_assets",
+      "total_liabilities": "total_liabilities",
+      "totalliabilities": "totalliabilities",
+      "owner_equity": "owner_equity",
+      "ownerequity": "owner_equity",
+    },
+    inventory_report: {
+      "item_name": "item_name",
+      "itemname": "item_name",
+      "qty": "qty",
+      "quantity": "qty",
+      "price": "price",
+      "amount": "amount",
+    },
+    cash_in: {
+      "date": "date",
+      "sales": "sales",
+      "other_revenue": "otherRevenue", // Example: if "Other Revenue" in sheet
+      "otherrevenue": "otherRevenue",
+      "assets": "assets",
+      "liability": "liability",
+      "owner_capital": "ownerCapital",
+      "ownercapital": "ownerCapital",
+      "notes": "notes",
+      "cash": "cash",
+    },
+    cash_out: {
+      "date": "date",
+      "cash": "cash",
+      "expenses": "expenses",
+      "assets": "assets",
+      "inventory": "inventory",
+      "liability": "liability",
+      "owner_withdrawal": "ownerWithdrawal",
+      "ownerwithdrawal": "ownerWithdrawal",
+      "notes": "notes",
+    },
+  };
+
+  const getMappedColumnName = (reportType, sheetColName) => {
+    const normalizedSheetColName = normalizeColumnName(sheetColName);
+    return columnMapping[reportType]?.[normalizedSheetColName] || null;
+  };
+
+  const guessCsvReportType = (headers) => {
+    const normalizedHeaders = headers.map(normalizeColumnName);
+
+    if (
+      normalizedHeaders.includes("itemname") ||
+      normalizedHeaders.includes("qty") ||
+      normalizedHeaders.includes("quantity")
+    ) {
+      return "inventory_report";
+    }
+    if (
+      normalizedHeaders.includes("totalrevenue") ||
+      normalizedHeaders.includes("netincome") ||
+      normalizedHeaders.includes("totalassets")
+    ) {
+      return "financial_statements";
+    }
+    if (
+      normalizedHeaders.includes("sales") ||
+      normalizedHeaders.includes("ownercapital")
+    ) {
+      return "cash_in";
+    }
+    if (
+      normalizedHeaders.includes("expenses") ||
+      normalizedHeaders.includes("ownerwithdrawal")
+    ) {
+      return "cash_out";
+    }
+
+    return null;
   };
 
   const handleFileChange = (event) => {
@@ -33,6 +127,7 @@ const Reports = () => {
     if (!file) return;
 
     setFileName(file.name);
+    setParsedData({});
 
     const isCSV = file.name.endsWith(".csv");
     const isXLSX = file.name.endsWith(".xlsx");
@@ -41,71 +136,176 @@ const Reports = () => {
       Papa.parse(file, {
         header: true,
         complete: (results) => {
-          setParsedData(results.data);
+          const currentSelectedReportType = selectedReportType;
+
+          if (currentSelectedReportType) {
+            const transformedData = results.data
+              .map((row) => {
+                const newRow = {};
+                for (const key in row) {
+                  const mappedKey = getMappedColumnName(currentSelectedReportType, key);
+                  if (mappedKey) {
+                    newRow[mappedKey] = row[key];
+                  }
+                }
+                return newRow;
+              })
+              .filter((row) => Object.keys(row).length > 0);
+
+            if (transformedData.length > 0) {
+              setParsedData({ [currentSelectedReportType]: transformedData });
+            } else {
+              alert(
+                `No valid data found after mapping for ${formatTableName(
+                  currentSelectedReportType
+                )}. Check column headers.`
+              );
+              setFileName("");
+            }
+          } else {
+            alert("Please select a specific report type from the dropdown before uploading a CSV.");
+            setFileName("");
+          }
         },
+        error: (err) => {
+          console.error("CSV parsing error:", err);
+          alert("Error parsing CSV file. Please check its format.");
+          setFileName("");
+        }
       });
     } else if (isXLSX) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array" });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(worksheet);
-        setParsedData(json);
+        const newParsedData = {};
+
+        workbook.SheetNames.forEach((sheetName) => {
+          const worksheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
+
+          if (json.length === 0) return;
+
+          const headerRow = json[0];
+          const dataRows = json.slice(1);
+
+          let targetTable = null;
+          if (sheetName.toLowerCase().includes("cash in")) {
+            targetTable = "cash_in";
+          } else if (sheetName.toLowerCase().includes("cash out")) {
+            targetTable = "cash_out";
+          } else if (sheetName.toLowerCase().includes("inventory report")) {
+            targetTable = "inventory_report";
+          } else if (sheetName.toLowerCase().includes("financial statements")) {
+            targetTable = "financial_statements";
+          }
+
+          if (targetTable) {
+            const transformedSheetData = dataRows.map((row) => {
+              const newRow = {};
+              headerRow.forEach((header, index) => {
+                const mappedColName = getMappedColumnName(targetTable, header);
+                if (mappedColName && row[index] !== undefined && row[index] !== null) {
+                  newRow[mappedColName] = row[index];
+                }
+              });
+              return newRow;
+            }).filter(row => Object.keys(row).length > 0);
+
+            if (transformedSheetData.length > 0) {
+              newParsedData[targetTable] = transformedSheetData;
+            } else {
+                console.warn(`Sheet '${sheetName}' parsed but yielded no valid mapped data. Skipping.`);
+            }
+          } else {
+            console.warn(`Sheet '${sheetName}' does not match any known report type. Skipping.`);
+          }
+        });
+        setParsedData(newParsedData);
       };
       reader.readAsArrayBuffer(file);
     } else {
       alert("Please upload a .csv or .xlsx file.");
+      setFileName("");
     }
   };
 
-  const handleImport = () => {
-  const requiredCols = expectedColumns[selectedReportType] || [];
-  const actualCols = Object.keys(parsedData[0] || {});
-  const missingCols = requiredCols.filter((col) => !actualCols.includes(col));
+  const handleImport = async () => {
+    if (!selectedSE) {
+      alert("Please select a Social Enterprise before importing.");
+      return;
+    }
+    if (Object.keys(parsedData).length === 0) {
+      alert("No data to import. Please upload a file first.");
+      return;
+    }
 
-  console.log("Sending to backend:", {
-  se_id: selectedSE,
-  data: parsedData,
-});
+    let allImportsSuccessful = true;
+    for (const reportType in parsedData) {
+      const dataToImport = parsedData[reportType];
+      if (dataToImport.length === 0) {
+        console.log(`No data for ${formatTableName(reportType)}. Skipping import.`);
+        continue;
+      }
 
-  if (missingCols.length > 0) {
-    alert(`Missing required columns: ${missingCols.join(", ")}`);
-    return;
-  }
+      const expectedColsForType = Object.values(columnMapping[reportType] || {});
+      const actualCols = Object.keys(dataToImport[0] || {});
+      const missingCols = expectedColsForType.filter(col => !actualCols.includes(col));
 
-  // Proceed to API call with selectedSE and parsedData
-  axios.post(
-  `${process.env.REACT_APP_API_BASE_URL}/api/import/${selectedReportType}`,
-  {
-    se_id: selectedSE,
-    data: parsedData,
-  },
-  {
-    withCredentials: true, // very important for session to work!
-  }
-)
+      if (missingCols.length > 0) {
+        alert(`For ${formatTableName(reportType)}: Missing potentially required columns: ${missingCols.join(", ")}. Please ensure the correct columns are present or mapped.`);
+        allImportsSuccessful = false;
+        continue;
+      }
 
-  .then(() => {
-    alert("Import successful!");
-    setParsedData([]);
+      console.log(`Sending to backend for ${reportType}:`, {
+        se_id: selectedSE,
+        data: dataToImport,
+      });
+
+      try {
+        await axios.post(
+          `${process.env.REACT_APP_API_BASE_URL}/api/import/${reportType}`,
+          {
+            se_id: selectedSE,
+            data: dataToImport,
+          },
+          {
+            withCredentials: true,
+          }
+        );
+        console.log(`${formatTableName(reportType)} import successful!`);
+      } catch (err) {
+        console.error(`Import error for ${formatTableName(reportType)}:`, err);
+        allImportsSuccessful = false; // Mark failure
+
+        let errorMessage = `Import failed for ${formatTableName(reportType)}: `;
+        if (err.response) {
+          if (err.response.status === 400 && err.response.data?.message === "Missing required columns") {
+            errorMessage += `${err.response.data.message}. Missing: ${err.response.data.missingFields?.join(", ")}`;
+          } else if (err.response.data?.message) {
+            errorMessage += err.response.data.message;
+          } else {
+            errorMessage += `Server responded with status ${err.response.status}.`;
+          }
+        } else {
+          errorMessage += `Network error or server unavailable.`;
+        }
+        alert(errorMessage);
+      }
+    }
+
+    if (allImportsSuccessful) {
+      alert("All selected reports imported successfully!");
+    } else {
+      alert("Some reports failed to import. Check the console for details.");
+    }
+    setParsedData({});
     setFileName("");
-  })
-  .catch((err) => {
-  console.error("Import error:", err);
-
-  if (err.response && err.response.status === 400 && err.response.data?.message === "Missing required columns") {
-    alert(`File upload failed: ${err.response.data.message}. Missing: ${err.response.data.missingFields?.join(", ")}`);
-  } else if (err.response && err.response.status === 400) {
-    alert(`File upload failed: ${err.response.data.message}`);
-  } else {
-    alert("Import failed due to server error.");
-  }
-});
-};
+  };
 
   const handleCancel = () => {
-    setParsedData([]);
+    setParsedData({});
     setFileName("");
   };
 
@@ -113,19 +313,16 @@ const Reports = () => {
     alert("Google Drive import not yet implemented. Placeholder button.");
     // TODO: Integrate Google Picker API
   };
-  const [selectedSE, setSelectedSE] = useState("");
 
   const handleSEChange = (event) => {
     setSelectedSE(event.target.value);
   };
 
-  const [socialEnterprises, setSocialEnterprises] = useState([]);
-
   useEffect(() => {
     const fetchSEs = async () => {
       try {
         const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/getAllSocialEnterprisesForComparison`);
-        setSocialEnterprises(response.data); // Assuming response contains [{ se_id, abbr }, ...]
+        setSocialEnterprises(response.data);
       } catch (error) {
         console.error("Error fetching SE list:", error);
       }
@@ -135,28 +332,19 @@ const Reports = () => {
   }, []);
 
   const reportTables = [
-  "financial_statements",
-  "cash_in",
-  "cash_out",
-  "inventory_report",
-];
+    "financial_statements",
+    "cash_in",
+    "cash_out",
+    "inventory_report",
+  ];
 
-const formatTableName = (name) => {
-  return name
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-};
+  const formatTableName = (name) => {
+    return name
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
 
-const expectedColumns = {
-  financial_statements: ["date","total_revenue","total_expenses","net_income","total_assets","total_liabilities","owner_equity"],
-  inventory_report: ["item_name", "qty", "price", "amount"],
-  cash_in: ["date", "sales", "otherRevenue", "assets", "liability", "ownerCapital", "notes", "cash"],
-  cash_out: ["date", "cash", "expenses", "assets", "inventory", "liability", "ownerWithdrawal", "notes"],
-
-};
-
-const [selectedReportType, setSelectedReportType] = useState("");
 
   return (
     <Box m="20px">
@@ -187,7 +375,7 @@ const [selectedReportType, setSelectedReportType] = useState("");
             }}
           >
             <InputLabel id="se-select-label" sx={{ color: "white" }}>
-            Select Social Enterprise
+              Select Social Enterprise
             </InputLabel>
             <Select
               labelId="se-select-label"
@@ -232,7 +420,7 @@ const [selectedReportType, setSelectedReportType] = useState("");
             <Select
               labelId="report-type-label"
               value={selectedReportType}
-              label="Select Report Type"
+              label="Select Report Type (for CSV only)"
               onChange={(e) => setSelectedReportType(e.target.value)}
               sx={{
                 color: "white",
@@ -292,60 +480,67 @@ const [selectedReportType, setSelectedReportType] = useState("");
           />
         </Box>
 
-        {/* Preview Table */}
-        {parsedData.length > 0 && (
+        {/* Preview Table - Show preview for the first detected sheet if multiple, or for the selected CSV type */}
+        {Object.keys(parsedData).length > 0 && (
           <Box mt={2} width="100%" bgcolor={colors.primary[400]} p={2}>
             <Typography variant="h4" color={colors.greenAccent[500]} mb={2}>
               Preview: {fileName}
             </Typography>
 
-            <Box
-              sx={{
-                overflowX: "auto",
-                maxHeight: "300px",
-                border: "1px solid #ccc",
-                borderRadius: "8px",
-                padding: "10px",
-              }}
-            >
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    {Object.keys(parsedData[0]).map((key) => (
-                      <th
-                        key={key}
-                        style={{
-                          border: "1px solid #ddd",
-                          padding: "8px",
-                          background: "#222",
-                          color: "#fff",
-                        }}
-                      >
-                        {key}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {parsedData.slice(0, 5).map((row, index) => (
-                    <tr key={index}>
-                      {Object.values(row).map((val, i) => (
-                        <td
-                          key={i}
-                          style={{
-                            border: "1px solid #ddd",
-                            padding: "8px",
-                            color: "#eee",
-                          }}
-                        >
-                          {val}
-                        </td>
+            {Object.keys(parsedData).map((reportTypeKey) => (
+              <Box key={reportTypeKey} mb={4}>
+                <Typography variant="h5" color={colors.grey[100]} mb={1}>
+                  {formatTableName(reportTypeKey)} Data Preview (First 5 Rows)
+                </Typography>
+                <Box
+                  sx={{
+                    overflowX: "auto",
+                    maxHeight: "300px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    padding: "10px",
+                  }}
+                >
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        {Object.keys(parsedData[reportTypeKey][0] || {}).map((key) => (
+                          <th
+                            key={key}
+                            style={{
+                              border: "1px solid #ddd",
+                              padding: "8px",
+                              background: "#222",
+                              color: "#fff",
+                            }}
+                          >
+                            {key}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedData[reportTypeKey].slice(0, 5).map((row, index) => (
+                        <tr key={index}>
+                          {Object.values(row).map((val, i) => (
+                            <td
+                              key={i}
+                              style={{
+                                border: "1px solid #ddd",
+                                padding: "8px",
+                                color: "#eee",
+                              }}
+                            >
+                              {val}
+                            </td>
+                          ))}
+                        </tr>
                       ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Box>
+                    </tbody>
+                  </table>
+                </Box>
+              </Box>
+            ))}
 
             {/* Action Buttons */}
             <Box display="flex" gap={2} mt={2}>
@@ -353,6 +548,7 @@ const [selectedReportType, setSelectedReportType] = useState("");
                 variant="contained"
                 color="success"
                 onClick={handleImport}
+                disabled={Object.keys(parsedData).length === 0 || !selectedSE}
               >
                 Import to Database
               </Button>
