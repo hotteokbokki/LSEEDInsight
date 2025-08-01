@@ -107,7 +107,7 @@ const { getApplicationList } = require("./controllers/menteesFormSubmissionsCont
 const { getMentorFormApplications } = require("./controllers/mentorFormApplicationController.js");
 const { getSignUpPassword } = require("./controllers/signuppasswordsController.js");
 const { getAuditLogs } = require("./controllers/auditlogsController.js");
-const { requestCollaborationInsert } = require("./controllers/mentorshipcollaborationController.js");
+const { requestCollaborationInsert, getExistingCollaborations, getCollaborationRequests } = require("./controllers/mentorshipcollaborationController.js");
 const app = express();
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
@@ -2118,9 +2118,9 @@ app.post("/api/assign-program-coordinator", async (req, res) => {
 
 app.post("/api/mentorship/request-collaboration", async (req, res) => {
   try {
-    const { mentorship_id_1, mentorship_id_2 } = req.body;
+    const { collaboration_request_details } = req.body;
     // Call controller function to handle insert
-    await requestCollaborationInsert(mentorship_id_1, mentorship_id_2);
+    await requestCollaborationInsert(collaboration_request_details);
 
     res.status(201).json({ message: "Collaboration request submitted." });
   } catch (error) {
@@ -2139,6 +2139,32 @@ app.get("/api/mentorship/suggested-collaborations/:mentorship_id", async (req, r
     res.json(collaborationStats);
   } catch (error) {
     console.error("Error fetching collaboration stats:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/mentorship/get-collaborations", async (req, res) => {
+  try {
+    const userId = req.session.user?.id; // Safely extract from session
+
+    const collaborations = await getExistingCollaborations(userId);
+
+    res.json(collaborations);
+  } catch (error) {
+    console.error("Error fetching collaborators:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/mentorship/get-collaboration-requests", async (req, res) => {
+  try {
+    const userId = req.session.user?.id; // Safely extract from session
+
+    const collaborationRequests = await getCollaborationRequests(userId);
+
+    res.json(collaborationRequests);
+  } catch (error) {
+    console.error("Error fetching collaborators:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
