@@ -117,7 +117,7 @@ const Reports = () => {
     if (!file) return;
 
     setFileName(file.name);
-    setParsedData({});
+    setParsedData({}); // Reset parsed data
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -133,18 +133,52 @@ const Reports = () => {
 
         let targetTable = null;
         let dataRows = [];
+        let globalReportDate = null;
+        let globalItemName = null;
 
         const lowerSheetName = sheetName.toLowerCase();
         const lowerFileName = file.name.toLowerCase();
 
         if (lowerSheetName.includes("cash in") || lowerFileName.includes("cash in")) {
           targetTable = "cash_in";
+          const dateCell = String(rawData[1]?.[0] || '').trim();
+          if (dateCell.toLowerCase().startsWith("month:")) {
+              globalReportDate = dateCell.substring(dateCell.indexOf(':') + 1).trim();
+          } else if (dateCell.toLowerCase().startsWith("date:")) {
+              globalReportDate = dateCell.substring(dateCell.indexOf(':') + 1).trim();
+          }
         } else if (lowerSheetName.includes("cash out") || lowerFileName.includes("cash out")) {
           targetTable = "cash_out";
-        } else if (lowerSheetName.includes("inventory report") || lowerFileName.includes("inventory report")) {
+          const dateCell = String(rawData[1]?.[0] || '').trim();
+          if (dateCell.toLowerCase().startsWith("month:")) {
+              globalReportDate = dateCell.substring(dateCell.indexOf(':') + 1).trim();
+          } else if (dateCell.toLowerCase().startsWith("date:")) {
+              globalReportDate = dateCell.substring(dateCell.indexOf(':') + 1).trim();
+          }
+        } else if (lowerSheetName.includes("inventory report") || lowerFileName.includes("inventory report") || selectedReportType === "inventory_report") {
           targetTable = "inventory_report";
+          const dateCell = String(rawData[1]?.[0] || '').trim();
+          if (dateCell.toLowerCase().startsWith("date:")) {
+              globalReportDate = dateCell.substring(dateCell.indexOf(':') + 1).trim();
+          } else if (dateCell.toLowerCase().startsWith("month:")) {
+              globalReportDate = dateCell.substring(dateCell.indexOf(':') + 1).trim();
+          }
+
+          const itemNameHeaderCell = String(rawData[4]?.[0] || '').trim();
+          if (itemNameHeaderCell.toLowerCase().startsWith("item name:")) {
+              globalItemName = itemNameHeaderCell.substring(itemNameHeaderCell.indexOf(':') + 1).trim();
+          }
         } else if (lowerSheetName.includes("financial statements") || lowerFileName.includes("financial statements")) {
           targetTable = "financial_statements";
+        }
+
+        if (!targetTable && selectedReportType) {
+          targetTable = selectedReportType;
+        }
+
+        if (!targetTable) {
+          console.warn(`Skipping sheet '${sheetName}' because target table could not be determined.`);
+          return;
         }
 
         if (targetTable === "cash_in" || targetTable === "cash_out") {
@@ -154,6 +188,13 @@ const Reports = () => {
           } else {
             dataRows = rawData.slice(5);
           }
+        } else if (targetTable === "inventory_report") {
+            if (rawData.length < 6) {
+                console.warn(`File '${file.name}' or sheet '${sheetName}' does not have enough rows for expected Inventory Report format. Skipping special processing.`);
+                dataRows = rawData.slice(1);
+            } else {
+                dataRows = rawData.slice(5);
+            }
         } else {
           dataRows = rawData.slice(1);
         }
@@ -161,7 +202,18 @@ const Reports = () => {
         const filteredDataRows = dataRows.filter(row => {
           const firstCell = String(row[0] || '').trim().toLowerCase();
           
-          if (firstCell.startsWith("totals:") || firstCell.startsWith("(")) {
+          if (firstCell.startsWith("totals:") || 
+              firstCell.startsWith("(") ||
+              firstCell === 'less: final count' ||
+              firstCell === 'add: purchases' ||
+              firstCell === 'total cost of goods sold' ||
+              firstCell === 'weighted average formula' ||
+              firstCell === 'price of final count =' ||
+              firstCell === 'total amount of purchases' ||
+              firstCell === 'total quantity' ||
+              firstCell === 'final count' ||
+              firstCell === 'final total cost of goods sold'
+             ) {
             return false;
           }
 
@@ -171,14 +223,17 @@ const Reports = () => {
 
           return true;
         });
+        let currentActiveItemName = globalItemName; 
 
         const transformedSheetData = filteredDataRows.map((row) => {
-          console.log("Full row array from XLSX for a data row:", row);
           const newRow = {};
 
           if (targetTable === "cash_in") {
+            if (globalReportDate !== null) {
+                newRow["month"] = globalReportDate;
+            }
             const dateValue = String(row[0] || '').trim();
-            if (dateValue !== '') newRow["date"] = dateValue;
+            if (dateValue !== '') newRow["date_col_from_csv"] = dateValue;
 
             const cash = parseNumericValue(row[1]);
             if (cash !== null) newRow["cash"] = cash;
@@ -223,8 +278,12 @@ const Reports = () => {
             if (enteredByValue !== '') newRow["enteredBy"] = enteredByValue;
 
           } else if (targetTable === "cash_out") {
+            if (globalReportDate !== null) {
+                newRow["month"] = globalReportDate;
+            }
+
             const dateValue = String(row[0] || '').trim();
-            if (dateValue !== '') newRow["date"] = dateValue;
+            if (dateValue !== '') newRow["date_col_from_csv"] = dateValue;
 
             const cash = parseNumericValue(row[1]);
             if (cash !== null) newRow["cash"] = cash;
@@ -282,7 +341,34 @@ const Reports = () => {
             const enteredByValue = String(row[17] || '').trim();
             if (enteredByValue !== '') newRow["enteredBy"] = enteredByValue;
 
-          } else {
+        } else if (targetTable === "inventory_report") {
+            if (globalReportDate !== null) {
+                newRow["month"] = globalReportDate;
+            }
+
+            const rawItemLabel = String(row[0] || '').trim();
+
+            if (rawItemLabel.toLowerCase().startsWith('item name:')) {
+                currentActiveItemName = rawItemLabel.substring(rawItemLabel.indexOf(':') + 1).trim();
+                return null;
+            }
+
+            if (rawItemLabel.toLowerCase() === 'beggining inventory' && currentActiveItemName !== null) {
+                newRow["item_name"] = currentActiveItemName;
+            } else if (rawItemLabel !== '') {
+                newRow["item_name"] = rawItemLabel;
+            }
+
+            const qty = parseNumericValue(row[1]);
+            if (qty !== null) newRow["qty"] = qty;
+
+            const price = parseNumericValue(row[2]);
+            if (price !== null) newRow["price"] = price;
+
+            const amount = parseNumericValue(row[3]);
+            if (amount !== null) newRow["amount"] = amount;
+
+        } else {
             const mainHeader = rawData[0];
             mainHeader.forEach((header, index) => {
               const mappedColName = columnMapping[targetTable]?.[normalizeColumnName(header)];
@@ -304,7 +390,7 @@ const Reports = () => {
           }
 
           return newRow;
-        }).filter(row => Object.keys(row).length > 0);
+        }).filter(row => row !== null && Object.keys(row).length > 0);
 
         if (transformedSheetData.length > 0) {
           newParsedData[targetTable] = transformedSheetData;
