@@ -50,7 +50,7 @@ const Login = () => {
     // Mentor-Specific Info
     affiliation: "",
     motivation: "",
-    expertise: "",
+    // expertise: "",
     businessAreas: [],
     preferredTime: [],
     specificTime: "",
@@ -455,7 +455,12 @@ const Login = () => {
                         key: "motivation",
                         multiline: true,
                       },
-                      { label: "Areas of Expertise", key: "expertise", multiline: true, },
+                      // Commented out due to redundancy with Business Areas.
+                      // { 
+                      //   label: "Areas of Expertise", 
+                      //   key: "expertise", 
+                      //   multiline: true, 
+                      // },
                     ].map((field) => (
                       <TextField
                         key={field.key}

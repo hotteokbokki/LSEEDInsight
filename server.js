@@ -868,7 +868,7 @@ app.post("/signup", async (req, res) => {
     password,
     affiliation,
     motivation,
-    expertise,
+    // expertise,
     businessAreas,
     preferredTime,
     specificTime, // optional field for "Other"
@@ -879,7 +879,8 @@ app.post("/signup", async (req, res) => {
     // ✅ Validate required fields
     if (
       !firstName || !lastName || !email || !contactno || !password ||
-      !affiliation || !motivation || !expertise ||
+      !affiliation || !motivation || 
+      // !expertise ||
       !Array.isArray(businessAreas) || businessAreas.length === 0 ||
       !Array.isArray(preferredTime) || preferredTime.length === 0 ||
       !Array.isArray(communicationMode) || communicationMode.length === 0
@@ -906,13 +907,12 @@ app.post("/signup", async (req, res) => {
         password,
         affiliation,
         motivation,
-        expertise,
         business_areas,
         preferred_time,
         communication_mode,
         status,
         contact_no
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'Pending',$11)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'Pending',$10)
       RETURNING *;
     `;
 
@@ -923,7 +923,6 @@ app.post("/signup", async (req, res) => {
       hashedPassword,
       affiliation,
       motivation,
-      expertise,
       businessAreas,
       updatedPreferredTime,
       communicationMode,
