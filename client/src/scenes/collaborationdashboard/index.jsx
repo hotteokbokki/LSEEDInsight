@@ -66,10 +66,18 @@ const CollaborationDashboard = () => {
     setAnchorEl(null);
   };
 
-  const handleMenuAction = (action, request) => {
+  const handleMenuAction = async (action, request) => {
     if (action === "View") {
-      setSelectedRequest(request);  // This now sets the object
-      setOpen(true);                // Open the dialog
+      try {
+        const res = await axios.get(
+          `${process.env.REACT_APP_API_BASE_URL}/api/mentorship/view-collaboration-request/${request.mentorship_collaboration_request_id}`
+        );
+        setSelectedRequest(res.data[0]);
+        setOpen(true);
+        console.log("DEBUG: ", selectedRequest)
+      } catch (err) {
+        console.error("Error fetching full request details:", err);
+      }
     }
     handleCloseMenu();
   };
@@ -216,12 +224,12 @@ const CollaborationDashboard = () => {
 
   const collaborationColumns = [
     {
-      field: "collaborating_se_name",
+      field: "seeking_collaboration_se_name",
       headerName: "Collaborating SE",
       flex: 1,
     },
     {
-      field: "collaborating_mentor_name",
+      field: "seeking_collaboration_mentor_name",
       headerName: "Mentor",
       flex: 1,
     },
@@ -229,9 +237,16 @@ const CollaborationDashboard = () => {
       field: "created_at",
       headerName: "Started On",
       flex: 1,
+      valueFormatter: (params) => {
+        return new Date(params.value).toLocaleDateString("en-PH", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+      },
     },
     {
-      field: "is_active",
+      field: "status",
       headerName: "Status",
       flex: 0.5,
       renderCell: (params) => (
@@ -249,10 +264,10 @@ const CollaborationDashboard = () => {
           variant="contained"
           sx={{
             color: "#fff",
-            backgroundColor: colors.greenAccent[500], // Custom color
+            backgroundColor: colors.greenAccent[500],
             "&:hover": { backgroundColor: colors.greenAccent[700] },
           }}
-          onClick={() => handleViewSE(params.row.collaborating_se_id)}
+          onClick={() => handleViewSE(params.row.seeking_collaboration_se_id)}
         >
           View SE
         </Button>
@@ -1063,7 +1078,7 @@ const CollaborationDashboard = () => {
                 </TableCell>
               </TableRow>
               <TableRow>
-                <TableCell sx={{ color: colors.grey[300], fontWeight: "bold" }}>Your SE</TableCell>
+                <TableCell sx={{ color: colors.grey[300], fontWeight: "bold" }}>Your Mentorship SE</TableCell>
                 <TableCell sx={{ color: colors.grey[100] }}>
                   {selectedRequest?.suggested_collaboration_se_name} ({selectedRequest?.suggested_collaboration_se_abbreviation})
                 </TableCell>
@@ -1072,13 +1087,13 @@ const CollaborationDashboard = () => {
                 <TableCell sx={{ color: colors.grey[300], fontWeight: "bold" }}>Purpose</TableCell>
                 <TableCell sx={{ color: colors.grey[100] }}>
                   {selectedRequest?.tier === 1 && (
-                    <>Mentor is collaborating to <strong>complement your SE’s weaknesses with their strengths</strong>.</>
+                    <>The collaborating SE is seeking support to <strong>address their weaknesses by leveraging your SE’s strengths</strong>.</>
                   )}
                   {selectedRequest?.tier === 2 && (
-                    <>Mentor is collaborating due to <strong>shared strengths</strong> between both SEs.</>
+                    <>The collaborating SE sees value in working with your SE due to <strong>shared strengths</strong> in key areas.</>
                   )}
                   {selectedRequest?.tier === 3 && (
-                    <>Mentor is collaborating to <strong>mutually address shared weaknesses</strong>.</>
+                    <>The collaborating SE wants to <strong>mutually address shared weaknesses</strong> through collaboration.</>
                   )}
                 </TableCell>
               </TableRow>
@@ -1117,11 +1132,19 @@ const CollaborationDashboard = () => {
                         const sgs_weaknesses = selectedRequest?.suggested_collaboration_se_weaknesses ?? [];
 
                         const isTier1Highlight =
-                          selectedRequest?.tier === 1 && (scs_strengths.includes(cat) || sgs_weaknesses.includes(cat));
+                          selectedRequest?.tier === 1 &&
+                          scs_weaknesses.includes(cat) &&
+                          sgs_strengths.includes(cat);
+
                         const isTier2Highlight =
-                          selectedRequest?.tier === 2 && scs_strengths.includes(cat) && sgs_strengths.includes(cat);
+                          selectedRequest?.tier === 2 &&
+                          scs_strengths.includes(cat) &&
+                          sgs_strengths.includes(cat);
+
                         const isTier3Highlight =
-                          selectedRequest?.tier === 3 && scs_weaknesses.includes(cat) && sgs_weaknesses.includes(cat);
+                          selectedRequest?.tier === 3 &&
+                          scs_weaknesses.includes(cat) &&
+                          sgs_weaknesses.includes(cat);
 
                         const highlight = isTier1Highlight || isTier2Highlight || isTier3Highlight;
 

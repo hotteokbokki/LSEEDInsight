@@ -1,6 +1,6 @@
 const pgDatabase = require('../database.js');
 
-// Fetches existing collaborations
+// Fetches existing collaborations based on the new table structure
 exports.getExistingCollaborations = async (user_id) => {
   try {
     const query = `
@@ -9,39 +9,43 @@ exports.getExistingCollaborations = async (user_id) => {
         mc.created_at,
         mc.status AS is_active,
 
-        -- Collaborating SE name and ID (the one NOT owned by the given mentor)
+        -- Collaborating SE info (the SE not owned by the current mentor)
         CASE
-          WHEN m1.mentor_id = $1 THEN se2.team_name
-          ELSE se1.team_name
+          WHEN s.mentor_id = $1 THEN sce.team_name
+          ELSE se.team_name
         END AS collaborating_se_name,
 
         CASE
-          WHEN m1.mentor_id = $1 THEN se2.se_id
-          ELSE se1.se_id
+          WHEN s.mentor_id = $1 THEN sce.se_id
+          ELSE se.se_id
         END AS collaborating_se_id,
 
-        -- Collaborating mentor's name (from mentors table)
+        -- Collaborating mentor info (not the logged-in mentor)
         CASE
-          WHEN m1.mentor_id = $1 THEN CONCAT(m2_mentor.mentor_firstname, ' ', m2_mentor.mentor_lastname)
-          ELSE CONCAT(m1_mentor.mentor_firstname, ' ', m1_mentor.mentor_lastname)
+          WHEN s.mentor_id = $1 THEN CONCAT(sc_mentor.mentor_firstname, ' ', sc_mentor.mentor_lastname)
+          ELSE CONCAT(s_mentor.mentor_firstname, ' ', s_mentor.mentor_lastname)
         END AS collaborating_mentor_name
 
       FROM mentorship_collaborations mc
-      JOIN mentorships m1 ON mc.mentorship_id_1 = m1.mentorship_id
-      JOIN mentorships m2 ON mc.mentorship_id_2 = m2.mentorship_id
+      -- Join on seeking and suggested mentorships
+      JOIN mentorships s ON mc.seeking_collaboration_mentorship_id = s.mentorship_id
+      JOIN mentorships sc ON mc.suggested_collaborator_mentorship_id = sc.mentorship_id
 
-      JOIN socialenterprises se1 ON m1.se_id = se1.se_id
-      JOIN socialenterprises se2 ON m2.se_id = se2.se_id
+      -- Join to SEs
+      JOIN socialenterprises se ON s.se_id = se.se_id
+      JOIN socialenterprises sce ON sc.se_id = sce.se_id
 
-      JOIN mentors m1_mentor ON m1.mentor_id = m1_mentor.mentor_id
-      JOIN mentors m2_mentor ON m2.mentor_id = m2_mentor.mentor_id
+      -- Join to mentors
+      JOIN mentors s_mentor ON s.mentor_id = s_mentor.mentor_id
+      JOIN mentors sc_mentor ON sc.mentor_id = sc_mentor.mentor_id
 
-      WHERE m1.mentor_id = $1 OR m2.mentor_id = $1
+      -- Filter by current mentor ID
+      WHERE s.mentor_id = $1 OR sc.mentor_id = $1
       ORDER BY mc.created_at DESC;
     `;
 
     const result = await pgDatabase.query(query, [user_id]);
-    return result.rows; // ✅ Return the data!
+    return result.rows;
   } catch (error) {
     console.error("❌ Error fetching mentorship collaborations:", error);
     throw error;
@@ -53,24 +57,11 @@ exports.getCollaborationRequests = async (mentor_id) => {
     const query = `
       SELECT
         mentorship_collaboration_request_id,
-        tier,
         created_at,
 
         -- Collaborating SE: the one that initiated the request
-        seeking_collaboration_mentor_name,
         seeking_collaboration_se_name,
-        seeking_collaboration_se_abbreviation,
-
-        -- Your SE: the mentorship by the suggested mentor
-        suggested_collaboration_mentor_name,
-        suggested_collaboration_se_name,
-        suggested_collaboration_se_abbreviation,
-
-        matched_categories,
-        seeking_collaboration_se_strengths,
-        seeking_collaboration_se_weaknesses,
-        suggested_collaboration_se_strengths,
-        suggested_collaboration_se_weaknesses
+        seeking_collaboration_se_abbreviation
 
       FROM mentorship_collaboration_requests
       WHERE suggested_collaboration_mentor_id = $1
@@ -78,6 +69,36 @@ exports.getCollaborationRequests = async (mentor_id) => {
     `;
 
     const result = await pgDatabase.query(query, [mentor_id]);
+    return result.rows;
+  } catch (error) {
+    console.error("❌ Error fetching collaboration requests for mentor:", error);
+    throw error;
+  }
+};
+
+exports.getCollaborationRequestDetails = async (mentorship_collaboration_request_id) => {
+  try {
+    const query = `
+      SELECT
+        mentorship_collaboration_request_id,
+        tier,
+        created_at,
+        seeking_collaboration_mentor_name,
+        seeking_collaboration_se_name,
+        seeking_collaboration_se_abbreviation,
+        suggested_collaboration_mentor_name,
+        suggested_collaboration_se_name,
+        suggested_collaboration_se_abbreviation,
+        matched_categories,
+        seeking_collaboration_se_strengths,
+        seeking_collaboration_se_weaknesses,
+        suggested_collaboration_se_strengths,
+        suggested_collaboration_se_weaknesses
+      FROM mentorship_collaboration_requests
+      WHERE mentorship_collaboration_request_id = $1
+    `;
+
+    const result = await pgDatabase.query(query, [mentorship_collaboration_request_id]);
     return result.rows;
   } catch (error) {
     console.error("❌ Error fetching collaboration requests for mentor:", error);
@@ -123,6 +144,7 @@ exports.requestCollaborationInsert = async (collaboration) => {
       suggested_collaboration_se_weaknesses,
       created_at,
       suggested_collaboration_mentor_id,
+      collaborationCardId,
     } = collaboration;
 
     const query = `
@@ -140,13 +162,15 @@ exports.requestCollaborationInsert = async (collaboration) => {
         suggested_collaboration_se_strengths,
         suggested_collaboration_se_weaknesses,
         created_at,
-        suggested_collaboration_mentor_id
+        suggested_collaboration_mentor_id,
+        collaboration_card_id
       )
       VALUES (
         $1, $2, $3, $4,
         $5, $6, $7,
         $8, $9, $10,
-        $11, $12, $13, $14
+        $11, $12, $13, $14,
+        $15
       )
     `;
 
@@ -165,6 +189,7 @@ exports.requestCollaborationInsert = async (collaboration) => {
       suggested_collaboration_se_weaknesses,
       created_at,
       suggested_collaboration_mentor_id,
+      collaborationCardId,
     ]);
   } catch (error) {
     console.error("❌ Error inserting mentorship collaboration request:", error);

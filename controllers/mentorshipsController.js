@@ -62,15 +62,15 @@ exports.getCollaborators = async (mentor_id) => {
       JOIN programs AS p ON se.program_id = p.program_id
       JOIN sdg AS sdg ON sdg.sdg_id = ANY(se.sdg_id)
 
-      -- Exclude mentorships that already have a collaboration
+      -- Exclude mentorships that are already involved in a collaboration
       LEFT JOIN mentorship_collaborations mc1 
-        ON mc1.mentorship_id_1 = mt.mentorship_id
+        ON mc1.seeking_collaboration_mentorship_id = mt.mentorship_id
       LEFT JOIN mentorship_collaborations mc2 
-        ON mc2.mentorship_id_2 = mt.mentorship_id
+        ON mc2.suggested_collaborator_mentorship_id = mt.mentorship_id
 
       WHERE mt.mentor_id = $1
-        AND mc1.mentorship_id_1 IS NULL
-        AND mc2.mentorship_id_2 IS NULL
+        AND mc1.seeking_collaboration_mentorship_id IS NULL
+        AND mc2.suggested_collaborator_mentorship_id IS NULL
 
       GROUP BY 
         mt.mentorship_id,
@@ -496,6 +496,7 @@ exports.getSuggestedCollaborations = async (mentor_id, mentorship_id) => {
         FROM weaknesses a
         JOIN strengths b ON a.category_name = b.category_name AND a.mentorship_id <> b.mentorship_id
         GROUP BY a.mentorship_id, b.mentorship_id
+        HAVING COUNT(*) >= 3
       ),
 
       shared_strengths AS (
@@ -508,6 +509,7 @@ exports.getSuggestedCollaborations = async (mentor_id, mentorship_id) => {
         FROM strengths a
         JOIN strengths b ON a.category_name = b.category_name AND a.mentorship_id <> b.mentorship_id
         GROUP BY a.mentorship_id, b.mentorship_id
+        HAVING COUNT(*) >= 3
       ),
 
       shared_weaknesses AS (
@@ -520,6 +522,7 @@ exports.getSuggestedCollaborations = async (mentor_id, mentorship_id) => {
         FROM weaknesses a
         JOIN weaknesses b ON a.category_name = b.category_name AND a.mentorship_id <> b.mentorship_id
         GROUP BY a.mentorship_id, b.mentorship_id
+        HAVING COUNT(*) >= 3
       ),
 
       all_matches AS (
@@ -533,14 +536,14 @@ exports.getSuggestedCollaborations = async (mentor_id, mentorship_id) => {
       ranked_recommendations AS (
         SELECT 
           am.priority,
-          am.mentorship_a AS mentorship_id,
-          ma.mentor_id AS mentor_id,
+          ma.mentorship_id,
+          ma.mentor_id,
           ma.se_id AS seeking_collaboration_se_id,
           mna.mentor_firstname || ' ' || mna.mentor_lastname AS seeking_collaboration_mentor_name,
           se_a.team_name AS seeking_collaboration_se_name,
           se_a.abbr AS seeking_collaboration_se_abbreviation,
 
-          am.mentorship_b AS suggested_collaboration_mentorship_id,
+          mb.mentorship_id AS suggested_collaborator_mentorship_id,
           mb.mentor_id AS suggested_collaboration_mentor_id,
           mb.se_id AS suggested_collaboration_se_id,
           mnb.mentor_firstname || ' ' || mnb.mentor_lastname AS suggested_collaboration_mentor_name,
@@ -550,7 +553,7 @@ exports.getSuggestedCollaborations = async (mentor_id, mentorship_id) => {
           am.match_count,
           am.matched_categories,
           ROW_NUMBER() OVER (
-            PARTITION BY am.mentorship_a, am.priority
+            PARTITION BY ma.mentorship_id, am.priority
             ORDER BY am.match_count DESC, mnb.mentor_firstname
           ) AS row_num
         FROM all_matches am
@@ -565,14 +568,24 @@ exports.getSuggestedCollaborations = async (mentor_id, mentorship_id) => {
           AND mb.mentor_id <> ma.mentor_id
           AND NOT EXISTS (
             SELECT 1 FROM mentorship_collaborations mc
-            WHERE (mc.mentorship_id_1 = am.mentorship_a AND mc.mentorship_id_2 = am.mentorship_b)
-              OR (mc.mentorship_id_1 = am.mentorship_b AND mc.mentorship_id_2 = am.mentorship_a)
+            WHERE (mc.seeking_collaboration_mentorship_id = am.mentorship_a AND mc.suggested_collaborator_mentorship_id = am.mentorship_b)
+              OR (mc.seeking_collaboration_mentorship_id = am.mentorship_b AND mc.suggested_collaborator_mentorship_id = am.mentorship_a)
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM mentorship_collaboration_requests req
+            WHERE req.collaboration_card_id = CAST(mb.se_id AS text) || '_' || CAST(ma.se_id AS text)
+          )
+          -- ✅ NEW: Prevent suggestion if a request already exists for same seeking SE + tier
+          AND NOT EXISTS (
+            SELECT 1 FROM mentorship_collaboration_requests req
+            WHERE SPLIT_PART(req.collaboration_card_id, '_', 2)::UUID = ma.se_id
+              AND req.tier = am.priority
           )
       ),
 
       fallback_options AS (
         SELECT 
-          m.mentorship_id AS suggested_collaboration_mentorship_id,
+          m.mentorship_id AS suggested_collaborator_mentorship_id,
           m.mentor_id AS suggested_collaboration_mentor_id,
           m.se_id AS suggested_collaboration_se_id,
           mentors.mentor_firstname || ' ' || mentors.mentor_lastname AS suggested_collaboration_mentor_name,
@@ -604,16 +617,21 @@ exports.getSuggestedCollaborations = async (mentor_id, mentorship_id) => {
         WHERE m.mentorship_id <> $2
           AND m.mentor_id <> $1
           AND m.mentorship_id NOT IN (
-            SELECT suggested_collaboration_mentorship_id FROM ranked_recommendations WHERE row_num = 1
+            SELECT suggested_collaborator_mentorship_id FROM mentorship_collaborations WHERE seeking_collaboration_mentorship_id = $2
+            UNION
+            SELECT seeking_collaboration_mentorship_id FROM mentorship_collaborations WHERE suggested_collaborator_mentorship_id = $2
+          )
+          AND CAST(m.se_id AS TEXT) || '_' || (
+            SELECT CAST(se_id AS TEXT) FROM mentorships WHERE mentorship_id = $2
+          ) NOT IN (
+            SELECT collaboration_card_id FROM mentorship_collaboration_requests
           )
           AND m.mentorship_id NOT IN (
-            SELECT mentorship_id_2 FROM mentorship_collaborations WHERE mentorship_id_1 = $2
-            UNION
-            SELECT mentorship_id_1 FROM mentorship_collaborations WHERE mentorship_id_2 = $2
+            SELECT suggested_collaborator_mentorship_id FROM ranked_recommendations WHERE row_num = 1
           )
       )
 
-      -- Final Output
+      -- Final output
       SELECT 
         rr.priority AS tier,
         NULL AS subtier,
@@ -645,23 +663,23 @@ exports.getSuggestedCollaborations = async (mentor_id, mentorship_id) => {
       ) wa ON true
       LEFT JOIN LATERAL (
         SELECT ARRAY_AGG(category_name ORDER BY category_name) AS strengths
-        FROM mentorship_traits WHERE mentorship_id = rr.suggested_collaboration_mentorship_id AND avg_rating > 3
+        FROM mentorship_traits WHERE mentorship_id = rr.suggested_collaborator_mentorship_id AND avg_rating > 3
       ) sb ON true
       LEFT JOIN LATERAL (
         SELECT ARRAY_AGG(category_name ORDER BY category_name) AS weaknesses
-        FROM mentorship_traits WHERE mentorship_id = rr.suggested_collaboration_mentorship_id AND avg_rating <= 3
+        FROM mentorship_traits WHERE mentorship_id = rr.suggested_collaborator_mentorship_id AND avg_rating <= 3
       ) wb ON true
       WHERE rr.row_num = 1
 
       UNION ALL
 
       SELECT 
-        f.priority AS tier,
+        f.priority,
         f.subtier,
-        mna.mentor_firstname || ' ' || mna.mentor_lastname AS seeking_collaboration_mentor_name,
-        se_a.team_name AS seeking_collaboration_se_name,
-        se_a.abbr AS seeking_collaboration_se_abbreviation,
-        se_a.se_id AS seeking_collaboration_se_id,
+        mna.mentor_firstname || ' ' || mna.mentor_lastname,
+        se_a.team_name,
+        se_a.abbr,
+        se_a.se_id,
         f.suggested_collaboration_mentor_name,
         f.suggested_collaboration_mentor_id,
         f.suggested_collaboration_se_name,
@@ -673,19 +691,19 @@ exports.getSuggestedCollaborations = async (mentor_id, mentorship_id) => {
             SELECT ARRAY_AGG(w1.category_name ORDER BY w1.category_name)
             FROM weaknesses w1
             JOIN strengths s1 ON w1.category_name = s1.category_name
-            WHERE w1.mentorship_id = ma.mentorship_id AND s1.mentorship_id = f.suggested_collaboration_mentorship_id
+            WHERE w1.mentorship_id = ma.mentorship_id AND s1.mentorship_id = f.suggested_collaborator_mentorship_id
           )
           WHEN f.subtier = 2 THEN (
             SELECT ARRAY_AGG(s2.category_name ORDER BY s2.category_name)
             FROM strengths s2
             JOIN strengths s3 ON s2.category_name = s3.category_name
-            WHERE s2.mentorship_id = ma.mentorship_id AND s3.mentorship_id = f.suggested_collaboration_mentorship_id
+            WHERE s2.mentorship_id = ma.mentorship_id AND s3.mentorship_id = f.suggested_collaborator_mentorship_id
           )
           WHEN f.subtier = 3 THEN (
             SELECT ARRAY_AGG(w2.category_name ORDER BY w2.category_name)
             FROM weaknesses w2
             JOIN weaknesses w3 ON w2.category_name = w3.category_name
-            WHERE w2.mentorship_id = ma.mentorship_id AND w3.mentorship_id = f.suggested_collaboration_mentorship_id
+            WHERE w2.mentorship_id = ma.mentorship_id AND w3.mentorship_id = f.suggested_collaborator_mentorship_id
           )
           ELSE ARRAY[]::text[]
         END AS matched_categories,
@@ -695,7 +713,7 @@ exports.getSuggestedCollaborations = async (mentor_id, mentorship_id) => {
         sb.strengths,
         wb.weaknesses,
 
-        NOW() AS created_at
+        NOW()
       FROM fallback_options f
       JOIN mentorships ma ON ma.mentorship_id = $2
       JOIN mentors mna ON mna.mentor_id = ma.mentor_id
@@ -710,11 +728,11 @@ exports.getSuggestedCollaborations = async (mentor_id, mentorship_id) => {
       ) wa ON true
       LEFT JOIN LATERAL (
         SELECT ARRAY_AGG(category_name ORDER BY category_name) AS strengths
-        FROM mentorship_traits WHERE mentorship_id = f.suggested_collaboration_mentorship_id AND avg_rating > 3
+        FROM mentorship_traits WHERE mentorship_id = f.suggested_collaborator_mentorship_id AND avg_rating > 3
       ) sb ON true
       LEFT JOIN LATERAL (
         SELECT ARRAY_AGG(category_name ORDER BY category_name) AS weaknesses
-        FROM mentorship_traits WHERE mentorship_id = f.suggested_collaboration_mentorship_id AND avg_rating <= 3
+        FROM mentorship_traits WHERE mentorship_id = f.suggested_collaborator_mentorship_id AND avg_rating <= 3
       ) wb ON true
       ORDER BY tier, subtier NULLS LAST;
     `;
@@ -722,7 +740,7 @@ exports.getSuggestedCollaborations = async (mentor_id, mentorship_id) => {
     const result = await pgDatabase.query(query, [mentor_id, mentorship_id]);
     return result.rows;
   } catch (error) {
-    console.error("❌ Error fetching collaboration stats:", error);
+    console.error("❌ Error fetching suggested collaborations:", error);
     return [];
   }
 };
