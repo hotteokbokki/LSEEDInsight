@@ -63,10 +63,10 @@ const Reports = () => {
       "cash": "cash",
       "sales": "sales",
       "otherRevenue": "otherRevenue",
-      "rawMaterials": "rawMaterials", // Individual component
-      "cashUnderAssets": "cashUnderAssets", // Individual component
-      "savings": "savings", // Individual component
-      "assets": "assets", // Aggregated
+      "rawMaterials": "rawMaterials",
+      "cashUnderAssets": "cashUnderAssets",
+      "savings": "savings",
+      "assets": "assets",
       "liability": "liability",
       "ownerCapital": "ownerCapital",
       "notes": "notes",
@@ -75,13 +75,13 @@ const Reports = () => {
     cash_out: {
       "date": "date",
       "cash": "cash",
-      "utilities": "utilities", // Individual component
-      "officesupplies": "officeSupplies", // Individual component
-      "expenses": "expenses", // Aggregated
-      "cashunderassets": "cashUnderAssets", // Individual component
-      "investments": "investments", // Individual component
-      "savings": "savings", // Individual component
-      "assets": "assets", // Aggregated
+      "utilities": "utilities",
+      "officesupplies": "officeSupplies",
+      "expenses": "expenses",
+      "cashunderassets": "cashUnderAssets",
+      "investments": "investments",
+      "savings": "savings",
+      "assets": "assets",
       "inventory": "inventory",
       "liability": "liability",
       "ownerswithdrawals": "ownerWithdrawal",
@@ -394,11 +394,6 @@ const Reports = () => {
     setFileName("");
   };
 
-  const handleGoogleDriveImport = () => {
-    alert("Google Drive import not yet implemented. Placeholder button.");
-    // TODO: Integrate Google Picker API
-  };
-
   const handleSEChange = (event) => {
     setSelectedSE(event.target.value);
   };
@@ -499,7 +494,7 @@ const Reports = () => {
             }}
           >
             <InputLabel id="report-type-label" sx={{ color: "white" }}>
-              Select Report Type (for CSV only)
+              Select Report Type
             </InputLabel>
             <Select
               labelId="report-type-label"
@@ -545,15 +540,6 @@ const Reports = () => {
             onClick={handleButtonClick}
           >
             Upload from Device
-          </Button>
-
-          <Button
-            variant="contained"
-            color="info"
-            sx={{ fontSize: "16px", py: "10px", flexGrow: 1 }}
-            onClick={handleGoogleDriveImport}
-          >
-            Choose from Google Drive
           </Button>
 
           <input
