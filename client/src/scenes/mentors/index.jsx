@@ -54,7 +54,7 @@ const Mentors = ( {} ) => {
   const [formData, setFormData] = useState({
     affiliation: "",
     motivation: "",
-    expertise: "",
+    // expertise: "",
     businessAreas: [],
     preferredTime: [],
     specificTime: "",
@@ -370,7 +370,7 @@ const Mentors = ( {} ) => {
       setFormData({
         affiliation: "",
         motivation: "",
-        expertise: "",
+        // expertise: "",
         businessAreas: [],
         preferredTime: [],
         specificTime: "",
@@ -1875,7 +1875,10 @@ const Mentors = ( {} ) => {
                 key: "motivation",
                 multiline: true,
               },
-              { label: "Areas of Expertise", key: "expertise" },
+              // { 
+              //   label: "Areas of Expertise", 
+              //   key: "expertise" 
+              // },
             ].map((field) => (
               <TextField
                 key={field.key}
@@ -1974,7 +1977,7 @@ const Mentors = ( {} ) => {
                 </Typography>
               </Grid>
               <Grid item xs={6}><strong>Name:</strong> {selectedApplication.first_name} {selectedApplication.last_name}</Grid>
-              <Grid item xs={6}><strong>Expertise:</strong> {selectedApplication.expertise}</Grid>
+              {/* <Grid item xs={6}><strong>Expertise:</strong> {selectedApplication.expertise}</Grid> */}
               <Grid item xs={6}><strong>Email:</strong> {selectedApplication.email}</Grid>
               <Grid item xs={6}><strong>Contact No. :</strong> {selectedApplication.contact_no}</Grid>
               <Grid item xs={6}><strong>Affiliation:</strong> {selectedApplication.affiliation}</Grid>
