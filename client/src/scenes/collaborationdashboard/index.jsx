@@ -814,7 +814,7 @@ const CollaborationDashboard = () => {
 
                           <Button
                             variant="contained"
-                            onClick={() => handleRequestCollaboration(item.mentorship_b)}
+                            onClick={() => handleRequestCollaboration(item)}
                             sx={{
                               mt: 2,
                               backgroundColor: "#1E4D2B",
@@ -1086,13 +1086,15 @@ const CollaborationDashboard = () => {
               <TableRow>
                 <TableCell sx={{ color: colors.grey[300], fontWeight: "bold" }}>Purpose</TableCell>
                 <TableCell sx={{ color: colors.grey[100] }}>
-                  {selectedRequest?.tier === 1 && (
+                  {(selectedRequest?.tier === 1 || (selectedRequest?.tier === 4 && selectedRequest?.subtier === 1)) && (
                     <>The collaborating SE is seeking support to <strong>address their weaknesses by leveraging your SE’s strengths</strong>.</>
                   )}
-                  {selectedRequest?.tier === 2 && (
+
+                  {(selectedRequest?.tier === 2 || (selectedRequest?.tier === 4 && selectedRequest?.subtier === 2)) && (
                     <>The collaborating SE sees value in working with your SE due to <strong>shared strengths</strong> in key areas.</>
                   )}
-                  {selectedRequest?.tier === 3 && (
+
+                  {(selectedRequest?.tier === 3 || (selectedRequest?.tier === 4 && selectedRequest?.subtier === 3)) && (
                     <>The collaborating SE wants to <strong>mutually address shared weaknesses</strong> through collaboration.</>
                   )}
                 </TableCell>
@@ -1132,17 +1134,17 @@ const CollaborationDashboard = () => {
                         const sgs_weaknesses = selectedRequest?.suggested_collaboration_se_weaknesses ?? [];
 
                         const isTier1Highlight =
-                          selectedRequest?.tier === 1 &&
+                          (selectedRequest?.tier === 1 || (selectedRequest?.tier === 4 && selectedRequest?.subtier === 1)) &&
                           scs_weaknesses.includes(cat) &&
                           sgs_strengths.includes(cat);
 
                         const isTier2Highlight =
-                          selectedRequest?.tier === 2 &&
+                          (selectedRequest?.tier === 2 || (selectedRequest?.tier === 4 && selectedRequest?.subtier === 2)) &&
                           scs_strengths.includes(cat) &&
                           sgs_strengths.includes(cat);
 
                         const isTier3Highlight =
-                          selectedRequest?.tier === 3 &&
+                          (selectedRequest?.tier === 3 || (selectedRequest?.tier === 4 && selectedRequest?.subtier === 3)) &&
                           scs_weaknesses.includes(cat) &&
                           sgs_weaknesses.includes(cat);
 

@@ -93,7 +93,8 @@ exports.getCollaborationRequestDetails = async (mentorship_collaboration_request
         seeking_collaboration_se_strengths,
         seeking_collaboration_se_weaknesses,
         suggested_collaboration_se_strengths,
-        suggested_collaboration_se_weaknesses
+        suggested_collaboration_se_weaknesses,
+        subtier
       FROM mentorship_collaboration_requests
       WHERE mentorship_collaboration_request_id = $1
     `;
@@ -145,6 +146,7 @@ exports.requestCollaborationInsert = async (collaboration) => {
       created_at,
       suggested_collaboration_mentor_id,
       collaborationCardId,
+      subtier,
     } = collaboration;
 
     const query = `
@@ -163,14 +165,15 @@ exports.requestCollaborationInsert = async (collaboration) => {
         suggested_collaboration_se_weaknesses,
         created_at,
         suggested_collaboration_mentor_id,
-        collaboration_card_id
+        collaboration_card_id,
+        subtier
       )
       VALUES (
         $1, $2, $3, $4,
         $5, $6, $7,
         $8, $9, $10,
         $11, $12, $13, $14,
-        $15
+        $15, $16
       )
     `;
 
@@ -190,6 +193,7 @@ exports.requestCollaborationInsert = async (collaboration) => {
       created_at,
       suggested_collaboration_mentor_id,
       collaborationCardId,
+      subtier,
     ]);
   } catch (error) {
     console.error("❌ Error inserting mentorship collaboration request:", error);
