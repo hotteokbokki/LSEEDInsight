@@ -107,7 +107,7 @@ const { getApplicationList } = require("./controllers/menteesFormSubmissionsCont
 const { getMentorFormApplications } = require("./controllers/mentorFormApplicationController.js");
 const { getSignUpPassword } = require("./controllers/signuppasswordsController.js");
 const { getAuditLogs } = require("./controllers/auditlogsController.js");
-const { requestCollaborationInsert, getExistingCollaborations, getCollaborationRequests, getCollaborationRequestDetails } = require("./controllers/mentorshipcollaborationController.js");
+const { requestCollaborationInsert, getExistingCollaborations, getCollaborationRequests, getCollaborationRequestDetails, insertCollaboration } = require("./controllers/mentorshipcollaborationController.js");
 const app = express();
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
@@ -2115,11 +2115,52 @@ app.post("/api/assign-program-coordinator", async (req, res) => {
   }
 });
 
-app.post("/api/mentorship/request-collaboration", async (req, res) => {
+app.post("/api/mentorship/insert-collaboration", async (req, res) => {
   try {
     const { collaboration_request_details } = req.body;
 
-    console.log("REQ:", collaboration_request_details)
+    // Extract SE IDs from collaboration_card_id
+    const cardId = collaboration_request_details.collaboration_card_id;
+    
+    const match = cardId.match(
+      /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})_([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/
+    );
+
+    const seeking_collaboration_se_id = match[1];
+    const suggested_collaboration_se_id = match[2];
+
+    // Insert the collaboration request
+    const mentorDetails = await getMentorBySEID(seeking_collaboration_se_id);
+
+    const suggested_mentorship = await getMentorBySEID(suggested_collaboration_se_id)
+
+    // Insert the collaboration request
+    await insertCollaboration(collaboration_request_details, mentorDetails.mentorship_id, suggested_mentorship.mentorship_id);
+
+    // 🔔 Send notification to the suggested mentor
+    const seekingMentorName = collaboration_request_details.seeking_collaboration_mentor_name;
+    const suggestedMentorName = collaboration_request_details.suggested_collaboration_mentor_name;
+    const seName = collaboration_request_details.seeking_collaboration_se_name;
+
+    const notificationTitle = `Collaboration Accepted for ${seName}`;
+    const notificationMessage = `${suggestedMentorName} has accepted collaborating with your mentorship SE, ${seekingMentorName}.`;
+
+    await pgDatabase.query(
+      `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route)
+       VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/collaboration-dashboard');`,
+      [mentorDetails.mentor_id, notificationTitle, notificationMessage]
+    );
+
+    res.status(200).json({ message: "Collaboration request submitted and notification sent." });
+  } catch (error) {
+    console.error("Error inserting collaboration:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.post("/api/mentorship/request-collaboration", async (req, res) => {
+  try {
+    const { collaboration_request_details } = req.body;
 
     // Insert the collaboration request
     await requestCollaborationInsert(collaboration_request_details);

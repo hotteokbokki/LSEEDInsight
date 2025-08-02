@@ -74,7 +74,22 @@ const CollaborationDashboard = () => {
         );
         setSelectedRequest(res.data[0]);
         setOpen(true);
-        console.log("DEBUG: ", selectedRequest)
+      } catch (err) {
+        console.error("Error fetching full request details:", err);
+      }
+    } else if (action === "Accept") {
+      try {
+        let res = await axios.post(
+          `${process.env.REACT_APP_API_BASE_URL}/api/mentorship/insert-collaboration`, {
+          collaboration_request_details: request
+        }
+        );
+        if (res.status === 200) {
+          setSnackbarMessage("Collaboration Accepted Successfully");
+          setSnackbarSeverity("success");
+          setSnackbarOpen(true);
+          setOpen(false);
+        }
       } catch (err) {
         console.error("Error fetching full request details:", err);
       }
@@ -135,6 +150,7 @@ const CollaborationDashboard = () => {
               day: "numeric",
             })
             : "—",
+          roleLabel: item.initiated_by_user ? "Mentorship SE" : "Collaborated SE",
         }));
 
         setExistingCollaborations(sanitizedData);
@@ -224,29 +240,27 @@ const CollaborationDashboard = () => {
 
   const collaborationColumns = [
     {
-      field: "seeking_collaboration_se_name",
-      headerName: "Collaborating SE",
+      field: "own_se_name",
+      headerName: "Your Mentorship SE",
       flex: 1,
     },
     {
-      field: "seeking_collaboration_mentor_name",
-      headerName: "Mentor",
+      field: "collaborating_se_name",
+      headerName: "Collaborated SE Name",
+      flex: 1,
+    },
+    {
+      field: "collaborating_mentor_name",
+      headerName: "Collaborated Mentor Name",
       flex: 1,
     },
     {
       field: "created_at",
       headerName: "Started On",
       flex: 1,
-      valueFormatter: (params) => {
-        return new Date(params.value).toLocaleDateString("en-PH", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
-      },
     },
     {
-      field: "status",
+      field: "is_active",
       headerName: "Status",
       flex: 0.5,
       renderCell: (params) => (

@@ -146,7 +146,8 @@ exports.getMentorBySEID = async (se_id) => {
           SELECT 
             m.mentor_id, 
             m.mentor_firstname, 
-            m.mentor_lastname 
+            m.mentor_lastname,
+            ms.mentorship_id
           FROM mentorships AS ms 
           JOIN mentors AS m ON ms.mentor_id = m.mentor_id 
           WHERE ms.se_id = $1
@@ -160,7 +161,8 @@ exports.getMentorBySEID = async (se_id) => {
     return result.rows.length > 0
       ? {
         name: `${result.rows[0].mentor_firstname} ${result.rows[0].mentor_lastname}`,
-        mentor_id: result.rows[0].mentor_id
+        mentor_id: result.rows[0].mentor_id,
+        mentorship_id: result.rows[0].mentorship_id
       }
       : null; // Return null if no mentor is found
   } catch (error) {

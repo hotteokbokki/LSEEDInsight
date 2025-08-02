@@ -1,6 +1,5 @@
 const pgDatabase = require('../database.js');
 
-// Fetches existing collaborations based on the new table structure
 exports.getExistingCollaborations = async (user_id) => {
   try {
     const query = `
@@ -9,37 +8,46 @@ exports.getExistingCollaborations = async (user_id) => {
         mc.created_at,
         mc.status AS is_active,
 
-        -- Collaborating SE info (the SE not owned by the current mentor)
+        -- Determine who is the user's mentorship
         CASE
-          WHEN s.mentor_id = $1 THEN sce.team_name
-          ELSE se.team_name
-        END AS collaborating_se_name,
+          WHEN s.mentor_id = $1 THEN s.se_id
+          ELSE sc.se_id
+        END AS own_se_id,
+
+        CASE
+          WHEN s.mentor_id = $1 THEN se.team_name
+          ELSE sce.team_name
+        END AS own_se_name,
 
         CASE
           WHEN s.mentor_id = $1 THEN sce.se_id
           ELSE se.se_id
         END AS collaborating_se_id,
 
-        -- Collaborating mentor info (not the logged-in mentor)
+        CASE
+          WHEN s.mentor_id = $1 THEN sce.team_name
+          ELSE se.team_name
+        END AS collaborating_se_name,
+
+        -- Mentor names
         CASE
           WHEN s.mentor_id = $1 THEN CONCAT(sc_mentor.mentor_firstname, ' ', sc_mentor.mentor_lastname)
           ELSE CONCAT(s_mentor.mentor_firstname, ' ', s_mentor.mentor_lastname)
-        END AS collaborating_mentor_name
+        END AS collaborating_mentor_name,
+
+        -- Flag if the user was the one who initiated
+        CASE
+          WHEN s.mentor_id = $1 THEN true
+          ELSE false
+        END AS initiated_by_user
 
       FROM mentorship_collaborations mc
-      -- Join on seeking and suggested mentorships
       JOIN mentorships s ON mc.seeking_collaboration_mentorship_id = s.mentorship_id
       JOIN mentorships sc ON mc.suggested_collaborator_mentorship_id = sc.mentorship_id
-
-      -- Join to SEs
       JOIN socialenterprises se ON s.se_id = se.se_id
       JOIN socialenterprises sce ON sc.se_id = sce.se_id
-
-      -- Join to mentors
       JOIN mentors s_mentor ON s.mentor_id = s_mentor.mentor_id
       JOIN mentors sc_mentor ON sc.mentor_id = sc_mentor.mentor_id
-
-      -- Filter by current mentor ID
       WHERE s.mentor_id = $1 OR sc.mentor_id = $1
       ORDER BY mc.created_at DESC;
     `;
@@ -61,10 +69,11 @@ exports.getCollaborationRequests = async (mentor_id) => {
 
         -- Collaborating SE: the one that initiated the request
         seeking_collaboration_se_name,
-        seeking_collaboration_se_abbreviation
-
+        seeking_collaboration_se_abbreviation,
+        collaboration_card_id,
+        tier
       FROM mentorship_collaboration_requests
-      WHERE suggested_collaboration_mentor_id = $1
+      WHERE suggested_collaboration_mentor_id = $1 AND status = 'Pending'
       ORDER BY created_at DESC;
     `;
 
@@ -107,24 +116,56 @@ exports.getCollaborationRequestDetails = async (mentorship_collaboration_request
   }
 };
 
-//TODO: MAYBE NEED
-// Inserts a collaboration request between two mentorships
-exports.insertCollaboration = async (mentorship_id_1, mentorship_id_2, tier_id) => {
+exports.insertCollaboration = async (
+  collaboration_request_details,
+  seeking_collaboration_mentorship_id,
+  suggested_collaborator_mentorship_id
+) => {
+  const client = await pgDatabase.connect();
+
   try {
-    const query = `
-      INSERT INTO mentorship_collaborations (mentorship_id_1, mentorship_id_2, tier_id)
-      VALUES (
-        LEAST($1::uuid, $2::uuid),
-        GREATEST($1::uuid, $2::uuid),
-        $3
-      )
+    const {
+      tier,
+      mentorship_collaboration_request_id,
+    } = collaboration_request_details;
+
+    await client.query('BEGIN'); // Start transaction
+
+    const insertQuery = `
+      INSERT INTO mentorship_collaborations 
+      (seeking_collaboration_mentorship_id, suggested_collaborator_mentorship_id, 
+      tier_id, mentorship_collaboration_request_id)
+      VALUES ($1, $2, $3, $4)
       ON CONFLICT DO NOTHING;
     `;
 
-    await pgDatabase.query(query, [mentorship_id_1, mentorship_id_2, tier_id]);
+    const insertResult = await client.query(insertQuery, [
+      seeking_collaboration_mentorship_id,
+      suggested_collaborator_mentorship_id,
+      tier,
+      mentorship_collaboration_request_id
+    ]);
+
+    // Check if the INSERT actually happened (not skipped due to conflict)
+    if (insertResult.rowCount === 0) {
+      throw new Error("Collaboration already exists — no insert performed.");
+    }
+
+    const updateQuery = `
+      UPDATE mentorship_collaboration_requests
+      SET status = 'Accepted'
+      WHERE mentorship_collaboration_request_id = $1;
+    `;
+
+    await client.query(updateQuery, [mentorship_collaboration_request_id]);
+
+    await client.query('COMMIT'); // ✅ Commit if all succeeds
   } catch (error) {
+    await client.query('ROLLBACK'); // ❌ Rollback if any error
     console.error("❌ Error inserting mentorship collaboration:", error);
     throw error;
+  } finally {
+    client.release(); // Always release the client back to the pool
   }
 };
 
