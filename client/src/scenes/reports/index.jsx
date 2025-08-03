@@ -283,7 +283,7 @@ const Reports = () => {
             }
 
             const dateValue = String(row[0] || '').trim();
-            if (dateValue !== '') newRow["date_col_from_csv"] = dateValue;
+            if (dateValue !== '') newRow["date"] = dateValue;
 
             const cash = parseNumericValue(row[1]);
             if (cash !== null) newRow["cash"] = cash;
