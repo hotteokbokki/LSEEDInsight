@@ -384,6 +384,10 @@ const FinancialAnalytics = ({}) => {
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 10);
 
+  const worstRevenueSEsData = [...aggregatedLatestSEs.values()]
+  .sort((a, b) => a.revenue - b.revenue)
+  .slice(0, 10);
+
   const latestProfitRecords = latestRecords.map((item) => ({
     name: item.se_abbr ?? item.se_id,
     profit: Number(item.total_revenue || 0) - Number(item.total_expenses || 0),
@@ -646,11 +650,11 @@ const FinancialAnalytics = ({}) => {
           fontWeight="bold"
           color={colors.greenAccent[500]}
         >
-          Worst 5 Social Enterprises by Revenue
+          Worst 10 Social Enterprises by Revenue
         </Typography>
         <Box height="400px">
           <FinancialBarChart
-            data={topRevenueSEsData}
+            data={worstRevenueSEsData}
             dataKey="revenue"
             label="Worst Revenue"
           />
