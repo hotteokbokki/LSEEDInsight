@@ -2121,7 +2121,7 @@ app.post("/api/mentorship/insert-collaboration", async (req, res) => {
 
     // Extract SE IDs from collaboration_card_id
     const cardId = collaboration_request_details.collaboration_card_id;
-    
+
     const match = cardId.match(
       /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})_([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/
     );
@@ -2654,26 +2654,66 @@ app.get("/api/top-se-performance", async (req, res) => {
   try {
     const period = req.query.period;
     const program = req.query.program || null;
+    const se_id = req.query.se_id || null;
 
+    const user_id = req.session.user?.id;
     let mentor_id = null;
+
+    // Check if the user is acting as a mentor
     if (
-      (req.session.user?.activeRole === "Mentor") ||
+      req.session.user?.activeRole === "Mentor" ||
       (req.session.user?.roles?.includes("Mentor") && !req.session.user?.activeRole)
     ) {
-      mentor_id = req.session.user.id;
+      mentor_id = user_id;
     }
 
-    const se_id = req.query.se_id || null;
-    // Check mentor_id before assigning to result
-    // Fetch the top SE performance based on the period
+    if (se_id && mentor_id) {
+      // Step 1: Check if user is the direct mentor
+      const seMentorCheckQuery = `
+        SELECT mentor_id FROM mentorships
+        WHERE se_id = $1
+        LIMIT 1;
+      `;
+      const mentorResult = await pgDatabase.query(seMentorCheckQuery, [se_id]);
+
+      const actualMentorId = mentorResult.rows[0]?.mentor_id;
+
+      if (!actualMentorId) {
+        return res.status(404).json({ message: "SE not found or not part of any mentorship." });
+      }
+
+      // Step 2: If user is the mentor, proceed
+      if (actualMentorId === user_id) {
+        mentor_id = user_id; // Confirm assignment for clarity
+      } else {
+        // Step 3: Check if user is a collaborator on a mentorship tied to this SE
+        const collabCheckQuery = `
+          SELECT 1
+          FROM mentorship_collaborations mc
+          JOIN mentorships ms_suggested ON mc.suggested_collaborator_mentorship_id = ms_suggested.mentorship_id
+          JOIN mentorships ms_seeking ON mc.seeking_collaboration_mentorship_id = ms_seeking.mentorship_id
+          WHERE mc.status = true
+            AND $1 = ANY (ARRAY[ms_suggested.mentor_id, ms_seeking.mentor_id])
+            AND $2 = ANY (ARRAY[ms_suggested.se_id, ms_seeking.se_id])
+          LIMIT 1;
+        `;
+        const collabCheck = await pgDatabase.query(collabCheckQuery, [user_id, se_id]);
+
+        if (collabCheck.rows.length === 0) {
+          return res.status(403).json({ message: "Access denied: You are not authorized to view this SE." });
+        }
+
+        // ✅ User is a collaborator, use the SE's assigned mentor_id
+        mentor_id = actualMentorId;
+      }
+    }
+    // Proceed to fetch SE performance
     const result = await getTopSEPerformance(period, program, mentor_id, se_id);
 
-    // If no data is found
     if (result.length === 0) {
       return res.status(404).json({ message: "No performance data available" });
     }
 
-    // Return the fetched data
     res.json(result);
   } catch (error) {
     console.error("Error fetching top SE performance:", error);

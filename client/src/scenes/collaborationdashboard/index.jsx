@@ -281,7 +281,7 @@ const CollaborationDashboard = () => {
             backgroundColor: colors.greenAccent[500],
             "&:hover": { backgroundColor: colors.greenAccent[700] },
           }}
-          onClick={() => handleViewSE(params.row.seeking_collaboration_se_id)}
+          onClick={() => handleViewSE(params.row.collaborating_se_id)}
         >
           View SE
         </Button>

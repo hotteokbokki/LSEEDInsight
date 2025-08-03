@@ -19,9 +19,6 @@ const SEPerformanceTrendChart = ({ selectedSEId = null }) => {
   const isCoordinator = user?.roles?.includes("LSEED-Coordinator");
   const isMentor = user?.roles?.includes("Mentor");
 
-  // KEN MAY BUG DITO
-  // Sa debug lumalabas na true kahit ung mode ko sa system is mentor mode, dapat false na yan 
-
   useEffect(() => {
     const fetchTopPerformers = async () => {
       try {
