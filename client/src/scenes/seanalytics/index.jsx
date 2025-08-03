@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import {
   Box,
@@ -25,6 +25,7 @@ import StarIcon from "@mui/icons-material/Star";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import { tokens } from "../../theme";
 import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
+import DownloadIcon from "@mui/icons-material/Download";
 import PieChart from "../../components/PieChart";
 import LikertChart from "../../components/LikertChart";
 import RadarChart from "../../components/RadarChart";
@@ -44,6 +45,9 @@ const SEAnalytics = () => {
   const { id } = useParams(); // Extract the `id` from the URL
   const [selectedSEId, setSelectedSEId] = useState(id); // State to manage selected SE
   const [socialEnterprises, setSocialEnterprises] = useState([]); // List of all social enterprises
+  const performanceOverviewChart = useRef(null);
+  const painPointsChart = useRef(null);
+  const [isExporting, setIsExporting] = useState(false);
   const [selectedSE, setSelectedSE] = useState(null); // Selected social enterprise object
   const [pieData, setPieData] = useState([]); // Real common challenges data
   const [likertData, setLikertData] = useState([]); // Real Likert scale data
@@ -249,6 +253,77 @@ const SEAnalytics = () => {
     (item) => item.se_id === selectedSEId
   );
 
+  const handleDownloadRadarImage = () => {
+    setIsExporting(true);
+
+    setTimeout(async () => {
+      const radarSVG = performanceOverviewChart.current?.querySelector("svg");
+      const pieSVG = painPointsChart.current?.querySelector("svg");
+
+      if (!radarSVG || !pieSVG) {
+        setIsExporting(false);
+        return alert("One or both charts not found");
+      }
+
+      const serialize = (svg) => new XMLSerializer().serializeToString(svg);
+
+      const svgToBase64 = async (svgData, bbox) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = bbox.width;
+        canvas.height = bbox.height;
+        const ctx = canvas.getContext("2d");
+        const img = new Image();
+        const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+
+        return new Promise((resolve) => {
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0);
+            URL.revokeObjectURL(url);
+            resolve(canvas.toDataURL("image/png"));
+          };
+          img.src = url;
+        });
+      };
+
+      try {
+        const radarData = serialize(radarSVG);
+        const pieData = serialize(pieSVG);
+
+        const radarBBox = radarSVG.getBoundingClientRect();
+        const pieBBox = pieSVG.getBoundingClientRect();
+
+        const radarBase64 = await svgToBase64(radarData, radarBBox);
+        const pieBase64 = await svgToBase64(pieData, pieBBox);
+
+        const response = await axios.post(
+          `${process.env.REACT_APP_API_BASE_URL}/api/adhoc-report`,
+          {
+            chartImageRadar: radarBase64,
+            chartImagePie: pieBase64,
+            se_id: selectedSE?.id,
+            period: "quarterly",
+          },
+          {
+            responseType: "blob",
+          }
+        );
+
+        const blobUrl = URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = `Adhoc_Report_${selectedSE?.abbr || "Report"}.pdf`;
+        a.click();
+      } catch (err) {
+        console.error("❌ Failed to generate report:", err);
+        alert("Failed to generate report");
+      } finally {
+        setIsExporting(false);
+      }
+    }, 100);
+  };
+
+
   // Process financial data for StatBoxes and charts specific to the selected SE
   const currentSEFinancialMetrics = {
     totalRevenue: 0,
@@ -291,10 +366,10 @@ const SEAnalytics = () => {
     : "0.00";
   const grossProfitMargin = currentSEFinancialMetrics.totalRevenue
     ? (
-        ((currentSEFinancialMetrics.totalRevenue - currentSEFinancialMetrics.totalExpenses) /
-          currentSEFinancialMetrics.totalRevenue) *
-        100
-      ).toFixed(2)
+      ((currentSEFinancialMetrics.totalRevenue - currentSEFinancialMetrics.totalExpenses) /
+        currentSEFinancialMetrics.totalRevenue) *
+      100
+    ).toFixed(2)
     : "0.00";
   const debtToAssetRatio = currentSEFinancialMetrics.totalAssets
     ? (currentSEFinancialMetrics.totalLiabilities / currentSEFinancialMetrics.totalAssets).toFixed(2)
@@ -354,7 +429,7 @@ const SEAnalytics = () => {
   ];
 
   const filteredInventoryData = inventoryData.filter(
-  (item) => item.se_abbr === selectedSE?.abbr
+    (item) => item.se_abbr === selectedSE?.abbr
   );
 
   // Total Inventory Value by Item (filtered by SE)
@@ -407,9 +482,9 @@ const SEAnalytics = () => {
 
   const columns = [
     { field: "social_enterprise", headerName: "Social Enterprise", flex: 1, minWidth: 150 },
-    { field: "evaluator_name", headerName: "Evaluator", flex: 1, minWidth: 150  },
-    { field: "acknowledged", headerName: "Acknowledged", flex: 1, minWidth: 150  },
-    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1, minWidth: 150  },
+    { field: "evaluator_name", headerName: "Evaluator", flex: 1, minWidth: 150 },
+    { field: "acknowledged", headerName: "Acknowledged", flex: 1, minWidth: 150 },
+    { field: "evaluation_date", headerName: "Evaluation Date", flex: 1, minWidth: 150 },
     {
       field: "action",
       headerName: "Action",
@@ -490,41 +565,26 @@ const SEAnalytics = () => {
   return (
     <Box m="20px">
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        {/* Back Button and Dropdown Container */}
-        <Box display="flex" alignItems="center" gap="10px">
-          {/* Page Title */}
-          <Typography variant="h4" fontWeight="bold" color={colors.grey[100]}>
-            {selectedSE ? `${selectedSE.name} Analytics` : "Loading..."}
-          </Typography>
-        </Box>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        {/* Left: SE Name */}
+        <Typography variant="h4" fontWeight="bold" color={colors.grey[100]}>
+          {selectedSE ? `${selectedSE.name} Analytics` : "Loading..."}
+        </Typography>
+
+        {/* Right: Export Button */}
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<DownloadIcon />}
+          onClick={handleDownloadRadarImage}
+        >
+          Generate Report
+        </Button>
       </Box>
 
       <Box mt="10px" p="10px" backgroundColor={colors.primary[500]} borderRadius="8px">
-    
-      {/* Description Section */}
-      <Box sx={{ mb: 4 }}>
-        <Typography
-          variant="h6"
-          color={colors.grey[100]}
-          gutterBottom
-          sx={{ fontWeight: 'bold' }}
-        >
-          Description
-        </Typography>
-        <Typography
-          variant="body1"
-          color={colors.grey[300]}
-          sx={{ lineHeight: 1.6 }}
-        >
-          {selectedSE?.description?.trim()
-            ? selectedSE.description
-            : "No description provided."}
-        </Typography>
-      </Box>
 
-      {/* SDGs Involved */}
-      {selectedSE?.sdgs?.length > 0 && (
+        {/* Description Section */}
         <Box sx={{ mb: 4 }}>
           <Typography
             variant="h6"
@@ -532,59 +592,81 @@ const SEAnalytics = () => {
             gutterBottom
             sx={{ fontWeight: 'bold' }}
           >
-            SDGs Involved
+            Description
           </Typography>
-          <TableContainer
+          <Typography
+            variant="body1"
+            color={colors.grey[300]}
+            sx={{ lineHeight: 1.6 }}
+          >
+            {selectedSE?.description?.trim()
+              ? selectedSE.description
+              : "No description provided."}
+          </Typography>
+        </Box>
+
+        {/* SDGs Involved */}
+        {selectedSE?.sdgs?.length > 0 && (
+          <Box sx={{ mb: 4 }}>
+            <Typography
+              variant="h6"
+              color={colors.grey[100]}
+              gutterBottom
+              sx={{ fontWeight: 'bold' }}
+            >
+              SDGs Involved
+            </Typography>
+            <TableContainer
+              sx={{
+                maxWidth: 400,
+                backgroundColor: colors.primary[500],
+                borderRadius: 2,
+                boxShadow: 2,
+              }}
+            >
+              <Table size="small">
+                <TableBody>
+                  {selectedSE.sdgs.map((sdg, index) => (
+                    <TableRow key={index}>
+                      <TableCell
+                        sx={{
+                          color: colors.grey[100],
+                          borderBottom: 'none',
+                          py: 1.5,
+                        }}
+                      >
+                        {sdg}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        )}
+
+        {/* More Info Button */}
+        <Box sx={{ mt: 2 }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={() => setMoreOpen(true)}
             sx={{
-              maxWidth: 400,
-              backgroundColor: colors.primary[500],
-              borderRadius: 2,
-              boxShadow: 2,
+              borderColor: colors.grey[300],
+              color: colors.grey[100],
+              '&:hover': {
+                backgroundColor: colors.grey[800],
+                borderColor: colors.grey[100],
+              },
+              textTransform: 'none',
+              fontWeight: 'bold',
+              px: 3,
+              py: 1,
             }}
           >
-            <Table size="small">
-              <TableBody>
-                {selectedSE.sdgs.map((sdg, index) => (
-                  <TableRow key={index}>
-                    <TableCell
-                      sx={{
-                        color: colors.grey[100],
-                        borderBottom: 'none',
-                        py: 1.5,
-                      }}
-                    >
-                      {sdg}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+            More Info
+          </Button>
         </Box>
-      )}
-
-      {/* More Info Button */}
-      <Box sx={{ mt: 2 }}>
-        <Button
-          variant="outlined"
-          color="secondary"
-          onClick={() => setMoreOpen(true)}
-          sx={{
-            borderColor: colors.grey[300],
-            color: colors.grey[100],
-            '&:hover': {
-              backgroundColor: colors.grey[800],
-              borderColor: colors.grey[100],
-            },
-            textTransform: 'none',
-            fontWeight: 'bold',
-            px: 3,
-            py: 1,
-          }}
-        >
-          More Info
-        </Button>
-      </Box>
 
         <Dialog
           open={moreOpen}
@@ -859,7 +941,7 @@ const SEAnalytics = () => {
             sx={{ "& .MuiBox-root.css-1ntui4p": { display: "none" } }}
             icon={
               <StarIcon
-                sx={{ fontSize: "26px", color: colors.blueAccent[500]} }
+                sx={{ fontSize: "26px", color: colors.blueAccent[500] }}
               />
             }
           />
@@ -915,25 +997,25 @@ const SEAnalytics = () => {
             getRowId={(row) => row.id}
             getRowHeight={() => 'auto'}
             sx={{
-                "& .MuiDataGrid-cell": {
-                  display: "flex",
-                  alignItems: "center", // vertical centering
-                  paddingTop: "12px",
-                  paddingBottom: "12px",
-                },
-                "& .MuiDataGrid-columnHeader": {
-                  alignItems: "center", // optional: center header label vertically
-                },
-                "& .MuiDataGrid-cellContent": {
-                  whiteSpace: "normal",
-                  wordBreak: "break-word",
-                  overflowWrap: "break-word",
-                },
-                "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+              "& .MuiDataGrid-cell": {
+                display: "flex",
+                alignItems: "center", // vertical centering
+                paddingTop: "12px",
+                paddingBottom: "12px",
+              },
+              "& .MuiDataGrid-columnHeader": {
+                alignItems: "center", // optional: center header label vertically
+              },
+              "& .MuiDataGrid-cellContent": {
+                whiteSpace: "normal",
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
+              },
+              "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
                 color: `${colors.grey[100]} !important`,
-                },
-              }}
-              slots={{ toolbar: GridToolbar }}
+              },
+            }}
+            slots={{ toolbar: GridToolbar }}
           />
         </Box>
         {/* AREAS OF FOCUS TABLE */}
@@ -1071,7 +1153,7 @@ const SEAnalytics = () => {
 
               {/* Categories Section */}
               {selectedEvaluation.categories &&
-              selectedEvaluation.categories.length > 0 ? (
+                selectedEvaluation.categories.length > 0 ? (
                 selectedEvaluation.categories.map((category, index) => (
                   <Box
                     key={index}
@@ -1158,13 +1240,14 @@ const SEAnalytics = () => {
           display="flex"
           justifyContent="center"
           alignItems="center"
+          ref={painPointsChart}
         >
           {pieData.length === 0 ? (
             <Typography variant="h6" color={colors.grey[300]}>
               No common challenges found.
             </Typography>
           ) : (
-            <PieChart data={pieData} />
+            <PieChart data={pieData} isExporting={isExporting} />
           )}
         </Box>
       </Box>
@@ -1213,13 +1296,14 @@ const SEAnalytics = () => {
           display="flex"
           justifyContent="center"
           alignItems="center"
+          ref={performanceOverviewChart}
         >
           {radarData.length === 0 ? (
             <Typography variant="h6" color={colors.grey[300]}>
               Performance Overview Unavailable.
             </Typography>
           ) : (
-            <RadarChart radarData={radarData} />
+            <RadarChart radarData={radarData} isExporting={isExporting} />
           )}
         </Box>
       </Box>

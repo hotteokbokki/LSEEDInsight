@@ -33,6 +33,7 @@ const pgSession = require("connect-pg-simple")(session);
 const cookieParser = require("cookie-parser");
 const { addProgram } = require("./controllers/programsController");
 const profileRoutes = require("./routes/profileRoutes.js");
+const PDFDocument = require("pdfkit");
 
 const { getMentorsBySocialEnterprises,
   getMentorById,
@@ -153,6 +154,7 @@ app.use("/api/inventory-distribution", inventoryRoutes);
 app.use("/auth", authRoutes);
 app.use("/api/mentorships", mentorshipRoutes);
 app.use("/api/profile", requireAuth, profileRoutes);
+app.use(express.json({ limit: "10mb" }));
 
 app.post("/api/import/:reportType", async (req, res) => {
   const { reportType } = req.params;
@@ -2718,6 +2720,235 @@ app.get("/api/top-se-performance", async (req, res) => {
   } catch (error) {
     console.error("Error fetching top SE performance:", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.post("/api/adhoc-report", async (req, res) => {
+  try {
+    const { chartImageRadar, chartImagePie, se_id, period } = req.body;
+    if (!chartImageRadar || !chartImagePie) {
+      return res.status(400).json({ message: "Missing chart image(s)" });
+    }
+
+    const imageBuffer = Buffer.from(chartImageRadar.split(",")[1], "base64");
+    const performanceOverviewResult = await getPerformanceOverviewBySEID(se_id);
+    const avgEvaluationScore = await avgRatingPerSE(se_id);
+
+    const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 40 });
+
+    const chunks = [];
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => {
+      const pdfBuffer = Buffer.concat(chunks);
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename=adhoc_report.pdf`,
+      });
+      res.send(pdfBuffer);
+    });
+
+    // ─── Top Section ───
+    doc.fontSize(20).text("ADHOC Report");
+    doc.moveDown(0.5);
+    doc.fontSize(12)
+      .text(`Average Evaluation Score: ${avgEvaluationScore[0].avg_rating || "N/A"}`)
+      .text(`Period: ${period || "N/A"}`);
+    doc.moveDown(1);
+
+    doc.fontSize(16).text("Analytics Summary", { underline: true });
+    doc.moveDown(0.5);
+
+    doc.fontSize(14).text("Performance Overview");
+    doc.moveDown(0.5);
+    doc.image(imageBuffer, { fit: [700, 180], align: "center" });
+    doc.moveDown(1);
+
+    // ─── Bottom Section: 2-Column Layout ───
+    const startY = doc.y;
+    const boxWidth = 250;
+    const boxHeight = 45;
+    const boxSpacingY = 10;
+
+    // 1. Left Column: Category Score Boxes (3 rows × 2 columns)
+    const col1X = 40;
+    const col2X = col1X + boxWidth + 20;
+    const boxesPerColumn = 3;
+
+    performanceOverviewResult.slice(0, 6).forEach((item, index) => {
+      const col = Math.floor(index / boxesPerColumn); // 0 or 1
+      const row = index % boxesPerColumn;
+
+      const x = col === 0 ? col1X : col2X;
+      const y = startY + row * (boxHeight + boxSpacingY);
+
+      doc.rect(x, y, boxWidth, boxHeight).stroke();
+      doc.fontSize(9)
+        .text(`Category: ${item.category}`, x + 10, y + 10)
+        .text(`Score: ${item.score}`, x + 10, y + 25);
+    });
+
+    // 2. Right Column: Insights List
+    const strengths = performanceOverviewResult.filter(r => r.score > 3).map(r => r.category);
+    const weaknesses = performanceOverviewResult.filter(r => r.score <= 3).map(r => r.category);
+
+    // Insights right beside 2-column box grid
+    const insightX = col2X + boxWidth + 40; // right of both score columns
+    let insightY = startY;
+
+    doc.fontSize(12).text("Insights", insightX, insightY);
+    insightY += 20;
+
+    doc.fontSize(10).text("Strengths:", insightX, insightY);
+    insightY += 15;
+    if (strengths.length > 0) {
+      strengths.forEach((s) => {
+        doc.text(`• ${s}`, insightX + 10, insightY);
+        insightY += 14;
+      });
+    } else {
+      doc.text("• None", insightX + 10, insightY);
+      insightY += 14;
+    }
+
+    insightY += 10;
+    doc.text("Weaknesses:", insightX, insightY);
+    insightY += 15;
+    if (weaknesses.length > 0) {
+      weaknesses.forEach((w) => {
+        doc.text(`• ${w}`, insightX + 10, insightY);
+        insightY += 14;
+      });
+    } else {
+      doc.text("• None", insightX + 10, insightY);
+    }
+
+    // ─── Page 2: Recurring Issues Pie Chart ───
+    doc.addPage();
+
+    // Decode base64 to buffer
+    const pieBuffer = Buffer.from(chartImagePie.split(",")[1], "base64");
+
+    // Add heading
+    doc.fontSize(14).text("Recurring Issues", {
+      align: "left",
+    });
+
+    doc.moveDown(1);
+
+    // Draw the chart image inline (let it affect doc.y naturally)
+    doc.image(pieBuffer, {
+      fit: [700, 400],
+      align: "center",
+      valign: "top",
+    });
+
+    // Add spacing after image
+    doc.moveDown(2);
+
+    // Fetch recurring issue data
+    const commonChallenges = await getCommonChallengesBySEID(se_id);
+
+    const mainKeyPainPoint = commonChallenges.reduce((max, item) => {
+      const score = item.count * item.percentage; // Combined weight
+      const maxScore = max.count * max.percentage;
+      return score > maxScore ? item : max;
+    });
+
+    // ─── Bottom Section: 2-Column Layout ───
+    const starYPage2 = doc.y;
+    const leftX = 40;
+    const rightX = 400;
+    const boxSpacingYPage2 = 10;
+    const maxWidth = 320;
+
+    doc.fontSize(12).text("Common Challenges", leftX, starYPage2, {
+      underline: true,
+    });
+    doc.text("Insights", rightX, starYPage2, { underline: true });
+
+    let leftY = starYPage2 + 20;
+    let rightY = starYPage2 + 20;
+
+    doc.fontSize(10);
+    for (const item of commonChallenges) {
+      const isMainPainPoint = item.category === mainKeyPainPoint.category && item.comment === mainKeyPainPoint.comment;
+
+      const challengeText = `${item.percentage}% of recurring issues relate to ${item.category}, where evaluators cited “${item.comment}” in ${item.count} separate evaluations.`;
+
+      // Optional: Add label if it's the main issue
+      if (isMainPainPoint) {
+        doc.font("Helvetica-Bold").fillColor("red").text("Main Key Pain Point", leftX, leftY);
+        leftY += 14; // Adjust for label spacing
+        doc.fillColor("black").font("Helvetica"); // Reset to default
+      }
+
+      doc.text(challengeText, leftX, leftY, {
+        width: maxWidth,
+        align: "left",
+        lineGap: 2,
+      });
+
+      const textHeightLeft = doc.heightOfString(challengeText, { width: maxWidth });
+      leftY += textHeightLeft + boxSpacingYPage2;
+
+      // Generate Insight
+      let insight = "";
+      const cat = item.category;
+      const comment = item.comment.toLowerCase();
+
+      if (cat === "Teamwork") {
+        insight = comment.includes("not participating")
+          ? "Teamwork appears to be a key pain point, with many members not contributing. This suggests a need to foster collaboration and engagement."
+          : "Challenges in teamwork reflect gaps in group dynamics or morale—team-building may help.";
+      } else if (cat === "Financial Planning/Management") {
+        insight = comment.includes("no reports")
+          ? "Financial systems are underdeveloped. Foundational financial tracking and planning should be established."
+          : "Some financial efforts exist but remain incomplete—follow-through on reports and structured planning is needed.";
+      } else if (cat === "Marketing Plan/Execution") {
+        insight = comment.includes("no plans")
+          ? "Marketing strategy is lacking entirely. Guidance in planning and outreach is needed."
+          : "Marketing has started but lacks execution—support in turning ideas into action could be beneficial.";
+      } else if (cat === "Product/Service Design/Planning") {
+        insight = comment.includes("no reports")
+          ? "Product/Service planning is missing. Consider starting with basic reporting and design planning."
+          : "Initial product/service documentation exists but needs structure and completion.";
+      } else if (cat === "Human Resource Management") {
+        insight = comment.includes("no reports")
+          ? "HR processes are undeveloped—efforts should be made to draft plans and define HR practices."
+          : "There is some HR planning effort, but documentation is lacking—follow-through and organization are key.";
+      } else if (cat === "Logistics") {
+        insight = comment.includes("no plans")
+          ? "Logistics is a major issue, with a complete lack of plans—basic logistical mapping and coordination tools should be introduced."
+          : "Some logistics planning exists, but execution is weak—focus on implementing existing plans.";
+      } else {
+        insight = `The category "${cat}" shows notable underperformance—mentorship and structured planning are recommended.`;
+      }
+
+      // Optional: Highlight insight if it's the main key pain point
+      if (isMainPainPoint) {
+        doc.font("Helvetica-Bold").fillColor("red");
+      }
+
+      doc.text(insight, rightX, rightY, {
+        width: maxWidth,
+        align: "left",
+        lineGap: 2,
+      });
+
+      const textHeightRight = doc.heightOfString(insight, { width: maxWidth });
+      rightY += textHeightRight + boxSpacingYPage2;
+
+      // Reset font and color after emphasis
+      if (isMainPainPoint) {
+        doc.font("Helvetica").fillColor("black");
+      }
+    }
+
+    // ✅ End the PDF only after everything is added
+    doc.end();
+  } catch (err) {
+    console.error("❌ Error generating report:", err);
+    res.status(500).json({ message: "Failed to generate PDF" });
   }
 });
 
