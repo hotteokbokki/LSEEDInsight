@@ -125,8 +125,9 @@ app.use(cors({
 
 app.use(cookieParser());
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Set size limits BEFORE any routes
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 app.set('trust proxy', 1);
 
@@ -154,7 +155,6 @@ app.use("/api/inventory-distribution", inventoryRoutes);
 app.use("/auth", authRoutes);
 app.use("/api/mentorships", mentorshipRoutes);
 app.use("/api/profile", requireAuth, profileRoutes);
-app.use(express.json({ limit: "10mb" }));
 
 app.post("/api/import/:reportType", async (req, res) => {
   const { reportType } = req.params;
@@ -2725,14 +2725,19 @@ app.get("/api/top-se-performance", async (req, res) => {
 
 app.post("/api/adhoc-report", async (req, res) => {
   try {
-    const { chartImageRadar, chartImagePie, se_id, period } = req.body;
-    if (!chartImageRadar || !chartImagePie) {
+    const { chartImageRadar, chartImagePie, se_id, period, scoreDistributionLikert } = req.body;
+    if (!chartImageRadar || !chartImagePie || !scoreDistributionLikert) {
       return res.status(400).json({ message: "Missing chart image(s)" });
     }
 
     const imageBuffer = Buffer.from(chartImageRadar.split(",")[1], "base64");
+    const pieBuffer = Buffer.from(chartImagePie.split(",")[1], "base64");
+    const likertBuffer = Buffer.from(scoreDistributionLikert.split(",")[1], "base64");
+
     const performanceOverviewResult = await getPerformanceOverviewBySEID(se_id);
     const avgEvaluationScore = await avgRatingPerSE(se_id);
+    const numberOfEvaluations = await getTotalEvaluationCount(se_id);
+    const socialEnterpriseDetails = await getSocialEnterpriseByID(se_id)
 
     const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 40 });
 
@@ -2747,14 +2752,26 @@ app.post("/api/adhoc-report", async (req, res) => {
       res.send(pdfBuffer);
     });
 
-    // ─── Top Section ───
-    doc.fontSize(20).text("ADHOC Report");
-    doc.moveDown(0.5);
-    doc.fontSize(12)
-      .text(`Average Evaluation Score: ${avgEvaluationScore[0].avg_rating || "N/A"}`)
-      .text(`Period: ${period || "N/A"}`);
-    doc.moveDown(1);
+    // ─── Title Section ───
+    doc.fontSize(20).text(`${socialEnterpriseDetails.team_name} Analytics Report`, { align: "left" });
+    doc.fontSize(12);
 
+    // Column positions
+    const leftColX = 40;
+    const rightColX = 350;
+    const sectionTopY = 80;
+    let leftY = sectionTopY;
+    let rightY = sectionTopY;
+
+    // Left Column
+    doc.text(`Average Evaluation Score: ${avgEvaluationScore[0]?.avg_rating || "N/A"}`, leftColX, leftY);
+    leftY += 16;
+    doc.text(`Number of Evaluations: ${numberOfEvaluations[0]?.total_evaluations || "N/A"}`, leftColX, leftY);
+
+    // Move below taller column
+    doc.y = Math.max(leftY, rightY) + 20;
+
+    // ─── Analytics Section ───
     doc.fontSize(16).text("Analytics Summary", { underline: true });
     doc.moveDown(0.5);
 
@@ -2768,16 +2785,13 @@ app.post("/api/adhoc-report", async (req, res) => {
     const boxWidth = 250;
     const boxHeight = 45;
     const boxSpacingY = 10;
-
-    // 1. Left Column: Category Score Boxes (3 rows × 2 columns)
     const col1X = 40;
     const col2X = col1X + boxWidth + 20;
     const boxesPerColumn = 3;
 
     performanceOverviewResult.slice(0, 6).forEach((item, index) => {
-      const col = Math.floor(index / boxesPerColumn); // 0 or 1
+      const col = Math.floor(index / boxesPerColumn);
       const row = index % boxesPerColumn;
-
       const x = col === 0 ? col1X : col2X;
       const y = startY + row * (boxHeight + boxSpacingY);
 
@@ -2787,12 +2801,10 @@ app.post("/api/adhoc-report", async (req, res) => {
         .text(`Score: ${item.score}`, x + 10, y + 25);
     });
 
-    // 2. Right Column: Insights List
+    // Insights Section
     const strengths = performanceOverviewResult.filter(r => r.score > 3).map(r => r.category);
     const weaknesses = performanceOverviewResult.filter(r => r.score <= 3).map(r => r.category);
-
-    // Insights right beside 2-column box grid
-    const insightX = col2X + boxWidth + 40; // right of both score columns
+    const insightX = col2X + boxWidth + 40;
     let insightY = startY;
 
     doc.fontSize(12).text("Insights", insightX, insightY);
@@ -2822,79 +2834,56 @@ app.post("/api/adhoc-report", async (req, res) => {
       doc.text("• None", insightX + 10, insightY);
     }
 
-    // ─── Page 2: Recurring Issues Pie Chart ───
+    // ─── Page 2: Recurring Issues ───
     doc.addPage();
-
-    // Decode base64 to buffer
-    const pieBuffer = Buffer.from(chartImagePie.split(",")[1], "base64");
-
-    // Add heading
-    doc.fontSize(14).text("Recurring Issues", {
-      align: "left",
-    });
-
+    doc.fontSize(14).text("Recurring Issues", { align: "left" });
     doc.moveDown(1);
-
-    // Draw the chart image inline (let it affect doc.y naturally)
-    doc.image(pieBuffer, {
-      fit: [700, 400],
-      align: "center",
-      valign: "top",
-    });
-
-    // Add spacing after image
+    doc.image(pieBuffer, { fit: [700, 400], align: "center", valign: "top" });
     doc.moveDown(2);
 
-    // Fetch recurring issue data
     const commonChallenges = await getCommonChallengesBySEID(se_id);
-
     const mainKeyPainPoint = commonChallenges.reduce((max, item) => {
-      const score = item.count * item.percentage; // Combined weight
+      const score = item.count * item.percentage;
       const maxScore = max.count * max.percentage;
       return score > maxScore ? item : max;
     });
 
-    // ─── Bottom Section: 2-Column Layout ───
-    const starYPage2 = doc.y;
+    const startYPage2 = doc.y;
     const leftX = 40;
     const rightX = 400;
     const boxSpacingYPage2 = 10;
     const maxWidth = 320;
 
-    doc.fontSize(12).text("Common Challenges", leftX, starYPage2, {
-      underline: true,
-    });
-    doc.text("Insights", rightX, starYPage2, { underline: true });
+    doc.fontSize(12).text("Common Challenges", leftX, startYPage2, { underline: true });
+    doc.text("Insights", rightX, startYPage2, { underline: true });
 
-    let leftY = starYPage2 + 20;
-    let rightY = starYPage2 + 20;
-
+    let leftYPage2 = startYPage2 + 20;
+    let rightYPage2 = startYPage2 + 20;
     doc.fontSize(10);
+
     for (const item of commonChallenges) {
-      const isMainPainPoint = item.category === mainKeyPainPoint.category && item.comment === mainKeyPainPoint.comment;
+      const isMain = item.category === mainKeyPainPoint.category && item.comment === mainKeyPainPoint.comment;
+      const challengeText = `${item.percentage}% of recurring issues relate to ${item.category}, where evaluators cited “${item.comment}” in ${item.count} evaluations.`;
 
-      const challengeText = `${item.percentage}% of recurring issues relate to ${item.category}, where evaluators cited “${item.comment}” in ${item.count} separate evaluations.`;
-
-      // Optional: Add label if it's the main issue
-      if (isMainPainPoint) {
-        doc.font("Helvetica-Bold").fillColor("red").text("Main Key Pain Point", leftX, leftY);
-        leftY += 14; // Adjust for label spacing
-        doc.fillColor("black").font("Helvetica"); // Reset to default
+      if (isMain) {
+        doc.font("Helvetica-Bold").fillColor("red").text("Main Key Pain Point", leftX, leftYPage2);
+        leftYPage2 += 14;
+        doc.font("Helvetica").fillColor("black");
       }
 
-      doc.text(challengeText, leftX, leftY, {
+      doc.text(challengeText, leftX, leftYPage2, {
         width: maxWidth,
         align: "left",
         lineGap: 2,
       });
 
-      const textHeightLeft = doc.heightOfString(challengeText, { width: maxWidth });
-      leftY += textHeightLeft + boxSpacingYPage2;
+      const hLeft = doc.heightOfString(challengeText, { width: maxWidth });
+      leftYPage2 += hLeft + boxSpacingYPage2;
 
-      // Generate Insight
-      let insight = "";
+      // Insight logic
       const cat = item.category;
       const comment = item.comment.toLowerCase();
+      let insight = "";
 
       if (cat === "Teamwork") {
         insight = comment.includes("not participating")
@@ -2924,27 +2913,154 @@ app.post("/api/adhoc-report", async (req, res) => {
         insight = `The category "${cat}" shows notable underperformance—mentorship and structured planning are recommended.`;
       }
 
-      // Optional: Highlight insight if it's the main key pain point
-      if (isMainPainPoint) {
-        doc.font("Helvetica-Bold").fillColor("red");
-      }
-
-      doc.text(insight, rightX, rightY, {
+      if (isMain) doc.font("Helvetica-Bold").fillColor("red");
+      doc.text(insight, rightX, rightYPage2, {
         width: maxWidth,
         align: "left",
         lineGap: 2,
       });
-
-      const textHeightRight = doc.heightOfString(insight, { width: maxWidth });
-      rightY += textHeightRight + boxSpacingYPage2;
-
-      // Reset font and color after emphasis
-      if (isMainPainPoint) {
-        doc.font("Helvetica").fillColor("black");
-      }
+      const hRight = doc.heightOfString(insight, { width: maxWidth });
+      rightYPage2 += hRight + boxSpacingYPage2;
+      if (isMain) doc.font("Helvetica").fillColor("black");
     }
 
-    // ✅ End the PDF only after everything is added
+    // ─── Page 3: Rating Distribution ───
+    doc.addPage();
+    doc.fontSize(14).text("Category Score Distribution", { align: "left" });
+    doc.moveDown(1);
+
+    // Chart
+    doc.image(likertBuffer, {
+      fit: [700, 300],
+      align: "center",
+      valign: "top",
+    });
+    doc.moveDown(2);
+
+    // Fetch ratings
+    const rawRatings = await getPermanceScoreBySEID(se_id);
+    const ratingGrouped = {};
+    rawRatings.forEach(({ category_name, rating, rating_count }) => {
+      if (!ratingGrouped[category_name]) ratingGrouped[category_name] = {};
+      ratingGrouped[category_name][rating] = parseInt(rating_count);
+    });
+
+    // Layout config
+    const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
+    const scoreDistributionScoreLeftAxis = 40;
+    const scoreDistributionGapY = 10;
+    const columnWidth = 180;
+    const blockHeight = 90;
+    const columnsPerRow = 3;
+
+    doc.fontSize(12).text("Score Breakdown", scoreDistributionScoreLeftAxis, doc.y, { underline: true });
+    doc.moveDown(1);
+    doc.fontSize(10);
+
+    const categories = Object.entries(ratingGrouped);
+    categories.forEach(([category, ratings], index) => {
+      const col = index % columnsPerRow;
+      const row = Math.floor(index / columnsPerRow);
+      const x = scoreDistributionScoreLeftAxis + col * columnWidth;
+      const y = 350 + row * blockHeight;
+
+      doc.font("Helvetica-Bold").text(category, x, y);
+
+      for (let r = 1; r <= 5; r++) {
+        const count = ratings[r] || 0;
+        doc.font("Helvetica").text(`${r} Star: ${count}`, x + 15, y + r * 12);
+      }
+    });
+
+    // ─── Page 4: Insights ───
+    doc.addPage();
+    const page4AxisX = 40;
+    const page4AxisY = doc.y;
+    const page4MaxWidth = 520;
+    const page4GapY = 10;
+    const page4Height = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
+
+    doc.fontSize(12).text("Insights", page4AxisX, page4AxisY, { underline: true });
+    doc.moveDown(1);
+    doc.fontSize(10);
+    let currentPage4Y = doc.y + 10;
+
+    // Advice Map
+    const categoryAdviceMap = {
+      "Marketing Plan/Execution": "Consider building a structured marketing roadmap, including branding, channels, and timeline execution.",
+      "Teamwork": "Group dynamics might need improvement—explore peer motivation, accountability practices, and better communication norms.",
+      "Logistics": "To streamline operations, evaluate supply chain workflows and introduce tools for scheduling or delivery optimization.",
+      "Financial Planning/Management": "Ensure budgeting, reporting, and forecasting frameworks are in place and consistently followed.",
+      "Product/Service Design/Planning": "Encourage user feedback loops, prototyping cycles, and iteration strategies.",
+      "Human Resource Management": "Consider formalizing recruitment, training, and performance appraisal systems.",
+    };
+
+    // Generate insights
+    for (const [category, ratings] of Object.entries(ratingGrouped)) {
+      const total = Object.values(ratings).reduce((sum, val) => sum + val, 0);
+      const weighted = Object.entries(ratings).reduce(
+        (acc, [r, c]) => acc + parseInt(r) * c,
+        0
+      );
+      const average = total > 0 ? (weighted / total).toFixed(2) : "N/A";
+
+      const score1 = ratings[1] || 0;
+      const score2 = ratings[2] || 0;
+      const score3 = ratings[3] || 0;
+      const score4 = ratings[4] || 0;
+      const score5 = ratings[5] || 0;
+
+      // Determine key remark
+      let remark = "";
+      if (average >= 4 && score4 + score5 >= total * 0.7) {
+        remark = "Strong performance with most evaluators awarding high marks. The SE demonstrates confidence and consistency in this area.";
+      } else if (average >= 4) {
+        remark = "Generally strong area, though a few ratings suggest opportunities to reach excellence with more consistency.";
+      } else if (average >= 3) {
+        if (score1 + score2 >= total * 0.3) {
+          remark = "Mixed performance. While some scores are favorable, a notable proportion of low ratings suggests deeper inconsistencies.";
+        } else {
+          remark = "Moderate strength. There is foundational capability here, but enhancements could help reach best-in-class execution.";
+        }
+      } else if (average <= 2) {
+        remark = "This category is underperforming. A high concentration of low scores indicates a need for structured support and attention.";
+      } else {
+        remark = "Inconsistent performance. Low and mid-tier ratings dominate—suggests unclear processes or insufficient capability.";
+      }
+
+      const advice = categoryAdviceMap[category] ? ` ${categoryAdviceMap[category]}` : "";
+
+      // Combine and format the insight block
+      const title = `${category}`;
+      const avgLine = `Average Score: ${average}`;
+      const fullInsight = `${remark}${advice}`;
+
+      const titleHeight = doc.heightOfString(title, { width: page4MaxWidth });
+      const avgLineHeight = doc.heightOfString(avgLine, { width: page4MaxWidth });
+      const fullInsightHeight = doc.heightOfString(fullInsight, { width: page4MaxWidth });
+
+      const totalHeight = titleHeight + avgLineHeight + fullInsightHeight + page4GapY;
+
+      // Add new page if needed
+      if (currentPage4Y + totalHeight > page4Height) {
+        doc.addPage();
+        currentPage4Y = doc.y;
+      }
+
+      // Render
+      doc.font("Helvetica-Bold").text(title, page4AxisX, currentPage4Y, { width: page4MaxWidth });
+      currentPage4Y += titleHeight;
+
+      doc.font("Helvetica-Bold").text(avgLine, page4AxisX, currentPage4Y, { width: page4MaxWidth });
+      currentPage4Y += avgLineHeight;
+
+      doc.font("Helvetica").text(fullInsight, page4AxisX, currentPage4Y, {
+        width: page4MaxWidth,
+        lineGap: 2,
+      });
+      currentPage4Y += fullInsightHeight + page4GapY;
+    }
+
     doc.end();
   } catch (err) {
     console.error("❌ Error generating report:", err);

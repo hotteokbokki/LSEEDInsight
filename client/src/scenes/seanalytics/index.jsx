@@ -47,6 +47,7 @@ const SEAnalytics = () => {
   const [socialEnterprises, setSocialEnterprises] = useState([]); // List of all social enterprises
   const performanceOverviewChart = useRef(null);
   const painPointsChart = useRef(null);
+  const scoreDistributionChart = useRef(null);
   const [isExporting, setIsExporting] = useState(false);
   const [selectedSE, setSelectedSE] = useState(null); // Selected social enterprise object
   const [pieData, setPieData] = useState([]); // Real common challenges data
@@ -259,8 +260,9 @@ const SEAnalytics = () => {
     setTimeout(async () => {
       const radarSVG = performanceOverviewChart.current?.querySelector("svg");
       const pieSVG = painPointsChart.current?.querySelector("svg");
+      const likertSVG = scoreDistributionChart.current?.querySelector("svg");
 
-      if (!radarSVG || !pieSVG) {
+      if (!radarSVG || !pieSVG || !likertSVG) {
         setIsExporting(false);
         return alert("One or both charts not found");
       }
@@ -289,18 +291,22 @@ const SEAnalytics = () => {
       try {
         const radarData = serialize(radarSVG);
         const pieData = serialize(pieSVG);
+        const likertData = serialize(likertSVG);
 
         const radarBBox = radarSVG.getBoundingClientRect();
         const pieBBox = pieSVG.getBoundingClientRect();
+        const likertBBox = likertSVG.getBoundingClientRect();
 
         const radarBase64 = await svgToBase64(radarData, radarBBox);
         const pieBase64 = await svgToBase64(pieData, pieBBox);
+        const likertBase64 = await svgToBase64(likertData, likertBBox);
 
         const response = await axios.post(
           `${process.env.REACT_APP_API_BASE_URL}/api/adhoc-report`,
           {
             chartImageRadar: radarBase64,
             chartImagePie: pieBase64,
+            scoreDistributionLikert: likertBase64,
             se_id: selectedSE?.id,
             period: "quarterly",
           },
@@ -322,7 +328,6 @@ const SEAnalytics = () => {
       }
     }, 100);
   };
-
 
   // Process financial data for StatBoxes and charts specific to the selected SE
   const currentSEFinancialMetrics = {
@@ -1268,6 +1273,7 @@ const SEAnalytics = () => {
           display="flex"
           justifyContent="center"
           alignItems="center"
+          ref={scoreDistributionChart}
         >
           {likertData.length === 0 ? (
             <Typography variant="h6" color={colors.grey[300]}>
