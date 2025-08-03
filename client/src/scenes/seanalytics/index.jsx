@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import axios from "axios";
 import {
   Box,
@@ -8,6 +8,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Menu,
   Dialog,
   DialogActions,
   DialogContent,
@@ -34,7 +35,7 @@ import { useTheme } from "@mui/material/styles";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import StatBox from "../../components/StatBox";
 import DualAxisLineChart from "../../components/DualAxisLineChart";
-import ScatterPlot from "../../components/ScatterPlot";
+import CashFlowChart from "../../components/CashFlowChart.jsx";
 import PeopleIcon from "@mui/icons-material/People";
 import InventoryValuePie from "../../components/TotalInventoryPieChart.jsx";
 import InventoryTurnoverBar from "../../components/InventoryTurnoverBarChart.jsx";
@@ -73,6 +74,8 @@ const SEAnalytics = () => {
   const [financialData, setFinancialData] = useState([]);
   const [cashFlowRaw, setCashFlowRaw] = useState([]);
   const [inventoryData, setInventoryData] = useState([]);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
 
   useEffect(() => {
     const fetchApplicationDetails = async () => {
@@ -133,14 +136,34 @@ const SEAnalytics = () => {
         // "If cash flow fails, show inventory and financial statements anyway."
 
         // Fetch financial-related data (still use Promise.all since all must succeed)
-        const [financialResponse, cashFlowResponse, inventoryResponse] = await Promise.all([
+        const results = await Promise.allSettled([
           axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/financial-statements`),
           axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/cashflow`),
           axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/inventory-distribution`),
         ]);
-        setFinancialData(financialResponse.data);
-        setCashFlowRaw(cashFlowResponse.data);
-        setInventoryData(inventoryResponse.data);
+
+        const [financialResult, cashFlowResult, inventoryResult] = results;
+
+        // Handle financial data
+        if (financialResult.status === "fulfilled") {
+          setFinancialData(financialResult.value.data);
+        } else {
+          console.error("Failed to fetch financial data:", financialResult.reason);
+        }
+
+        // Handle cash flow data
+        if (cashFlowResult.status === "fulfilled") {
+          setCashFlowRaw(cashFlowResult.value.data);
+        } else {
+          console.error("Failed to fetch cash flow data:", cashFlowResult.reason);
+        }
+
+        // Handle inventory data
+        if (inventoryResult.status === "fulfilled") {
+          setInventoryData(inventoryResult.value.data);
+        } else {
+          console.error("Failed to fetch inventory data:", inventoryResult.reason);
+        }
 
         // Fetch SE-specific analytics (with fallbacks)
         if (id) {
@@ -254,7 +277,29 @@ const SEAnalytics = () => {
     (item) => item.se_id === selectedSEId
   );
 
-  const handleDownloadRadarImage = () => {
+  const handleMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleGenerateReport = (type) => {
+    handleClose();
+    if (type === "collaboration") {
+      handleGenerateCollaborationReport(); // or handleCollaborationReport()
+    } else if (type === "stakeholder") {
+      handleDownloadStakeholderReport();
+    }
+  };
+
+  const handleDownloadStakeholderReport = () => {
+    // Your logic for generating stakeholder PDF
+  };
+
+
+  const handleGenerateCollaborationReport = () => {
     setIsExporting(true);
 
     setTimeout(async () => {
@@ -380,58 +425,157 @@ const SEAnalytics = () => {
     ? (currentSEFinancialMetrics.totalLiabilities / currentSEFinancialMetrics.totalAssets).toFixed(2)
     : "0.00";
 
-  // Format revenue vs expenses for DualAxisLineChart (for selected SE)
-  const selectedSERevenueVsExpensesData = [
-    {
-      id: "Revenue",
-      color: colors.greenAccent[500],
-      data: currentSEFinancialMetrics.revenueVsExpenses.map(d => ({ x: d.x, y: d.revenue }))
-    },
-    {
-      id: "Expenses",
-      color: colors.redAccent[500],
-      data: currentSEFinancialMetrics.revenueVsExpenses.map(d => ({ x: d.x, y: d.expenses }))
-    },
-  ];
+  const getQuarterLabel = (date) => {
+    const month = date.getMonth();
+    const year = date.getFullYear();
+    if (month >= 0 && month <= 2) return `Q1 ${year}`;
+    if (month >= 3 && month <= 5) return `Q2 ${year}`;
+    if (month >= 6 && month <= 8) return `Q3 ${year}`;
+    return `Q4 ${year}`;
+  };
 
-  // Format owner's equity for DualAxisLineChart (for selected SE)
-  const sortedEquityTrend = [...currentSEFinancialMetrics.equityTrend].sort(
-    (a, b) => new Date(a.x) - new Date(b.x)
-  );
+  const selectedSERevenueVsExpensesData = useMemo(() => {
+    if (!currentSEFinancialMetrics?.revenueVsExpenses?.length) return [];
 
-  // Then format for the chart
-  const selectedSEEquityTrendData = [
-    {
-      id: "Owner's Equity",
-      color: colors.blueAccent[500],
-      data: sortedEquityTrend.map(d => ({
-        x: new Date(d.x).toLocaleString('default', { month: 'short', year: 'numeric' }),
-        y: d.y
-      }))
-    },
-  ];
+    const quarterBuckets = {};
 
-  // Process cash flow data for the selected SE for ScatterPlot
-  const selectedSECashFlowRaw = cashFlowRaw.filter(
-    (item) => item.se_id === selectedSEId
-  );
+    currentSEFinancialMetrics.revenueVsExpenses.forEach(({ x, revenue, expenses }) => {
+      const date = new Date(x); // Ensure x is parsed as a Date
+      const quarter = getQuarterLabel(date);
 
-  const selectedSECashFlowData = [
-    {
-      id: "Inflow",
-      data: selectedSECashFlowRaw.map(item => ({
-        x: new Date(item.date).toLocaleString('default', { month: 'short', year: 'numeric' }),
-        y: Number(item.inflow)
-      }))
-    },
-    {
-      id: "Outflow",
-      data: selectedSECashFlowRaw.map(item => ({
-        x: new Date(item.date).toLocaleString('default', { month: 'short', year: 'numeric' }),
-        y: Number(item.outflow)
-      }))
-    }
-  ];
+      if (!quarterBuckets[quarter]) {
+        quarterBuckets[quarter] = { revenues: [], expenses: [] };
+      }
+
+      quarterBuckets[quarter].revenues.push(Number(revenue) || 0);
+      quarterBuckets[quarter].expenses.push(Number(expenses) || 0);
+    });
+
+    const revenueData = [];
+    const expenseData = [];
+
+    Object.entries(quarterBuckets).forEach(([quarter, { revenues, expenses }]) => {
+      const avgRevenue = revenues.length
+        ? Math.round(revenues.reduce((sum, val) => sum + val, 0) / revenues.length)
+        : 0;
+
+      const avgExpense = expenses.length
+        ? Math.round(expenses.reduce((sum, val) => sum + val, 0) / expenses.length)
+        : 0;
+
+      revenueData.push({ x: quarter, y: avgRevenue });
+      expenseData.push({ x: quarter, y: avgExpense });
+    });
+
+    return [
+      {
+        id: "Revenue",
+        color: colors.greenAccent[500],
+        data: revenueData,
+      },
+      {
+        id: "Expenses",
+        color: colors.redAccent[500],
+        data: expenseData,
+      },
+    ];
+  }, [currentSEFinancialMetrics]);
+
+  const selectedSEEquityTrendData = useMemo(() => {
+    if (!currentSEFinancialMetrics?.equityTrend?.length) return [];
+
+    const quarterBuckets = {};
+
+    currentSEFinancialMetrics.equityTrend.forEach(({ x, y }) => {
+      const date = new Date(x);
+      const quarter = getQuarterLabel(date);
+
+      if (!quarterBuckets[quarter]) {
+        quarterBuckets[quarter] = [];
+      }
+
+      quarterBuckets[quarter].push(Number(y) || 0);
+    });
+
+    const formattedData = Object.entries(quarterBuckets).map(([quarter, values]) => {
+      const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+      return {
+        x: quarter,
+        y: Math.round(avg),
+      };
+    });
+
+    return [
+      {
+        id: "Owner's Equity",
+        color: colors.blueAccent[500],
+        data: formattedData,
+      },
+    ];
+  }, [currentSEFinancialMetrics]);
+
+  const selectedSECashFlowQuarterly = useMemo(() => {
+    if (!selectedSEId || !Array.isArray(cashFlowRaw)) return [];
+
+    const filtered = cashFlowRaw.filter((item) => item.se_id === selectedSEId);
+    const quarterBuckets = {};
+
+    filtered.forEach((item) => {
+      if (!item?.date) return;
+      const date = new Date(item.date);
+      const quarter = getQuarterLabel(date);
+
+      if (!quarterBuckets[quarter]) {
+        quarterBuckets[quarter] = { inflows: [], outflows: [] };
+      }
+
+      quarterBuckets[quarter].inflows.push(Number(item.inflow) || 0);
+      quarterBuckets[quarter].outflows.push(Number(item.outflow) || 0);
+    });
+
+    const inflowData = [];
+    const outflowData = [];
+
+    Object.entries(quarterBuckets).forEach(([quarter, { inflows, outflows }]) => {
+      const avgInflow = inflows.length
+        ? Math.round(inflows.reduce((sum, v) => sum + v, 0) / inflows.length)
+        : 0;
+
+      const avgOutflow = outflows.length
+        ? Math.round(outflows.reduce((sum, v) => sum + v, 0) / outflows.length)
+        : 0;
+
+      inflowData.push({ x: quarter, y: avgInflow });
+      outflowData.push({ x: quarter, y: avgOutflow });
+    });
+
+    return [
+      { id: "Inflow", data: inflowData },
+      { id: "Outflow", data: outflowData },
+    ];
+  }, [cashFlowRaw, selectedSEId]);
+
+  // ✅ Transform to stacked bar chart format
+  const transformedCashFlowData = useMemo(() => {
+    const inflowMap = new Map();
+    const outflowMap = new Map();
+
+    selectedSECashFlowQuarterly.forEach((entry) => {
+      if (entry.id === "Inflow") {
+        entry.data.forEach(({ x, y }) => inflowMap.set(x, y));
+      } else if (entry.id === "Outflow") {
+        entry.data.forEach(({ x, y }) => outflowMap.set(x, y));
+      }
+    });
+
+    const allQuarters = new Set([...inflowMap.keys(), ...outflowMap.keys()]);
+
+    return Array.from(allQuarters).map((quarter) => ({
+      quarter,
+      Inflow: inflowMap.get(quarter) || 0,
+      Outflow: outflowMap.get(quarter) || 0,
+    }));
+  }, [selectedSECashFlowQuarterly]);
 
   const filteredInventoryData = inventoryData.filter(
     (item) => item.se_abbr === selectedSE?.abbr
@@ -581,10 +725,19 @@ const SEAnalytics = () => {
           variant="contained"
           color="primary"
           startIcon={<DownloadIcon />}
-          onClick={handleDownloadRadarImage}
+          onClick={handleMenuClick}
         >
           Generate Report
         </Button>
+
+        <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+          <MenuItem onClick={() => handleGenerateReport("collaboration")}>
+            For Collaboration
+          </MenuItem>
+          <MenuItem onClick={() => handleGenerateReport("stakeholder")}>
+            For Stakeholders
+          </MenuItem>
+        </Menu>
       </Box>
 
       <Box mt="10px" p="10px" backgroundColor={colors.primary[500]} borderRadius="8px">
@@ -1416,7 +1569,7 @@ const SEAnalytics = () => {
           </Box>
         </Box>
 
-        {/* Cash Flow Scatter Plot for Selected SE */}
+        {/* Cash Flow Quarterly Bar Chart for Selected SE */}
         <Box backgroundColor={colors.primary[400]} p="20px">
           <Typography
             variant="h3"
@@ -1424,13 +1577,17 @@ const SEAnalytics = () => {
             color={colors.greenAccent[500]}
             mb={2}
           >
-            Cash Flow (Inflow vs Outflow)
+            Cash Flow (Inflow vs Outflow per Quarter)
           </Typography>
           <Box height="400px">
-            {selectedSECashFlowData[0]?.data?.length > 0 ? (
-              <ScatterPlot data={selectedSECashFlowData} />
+            {selectedSECashFlowQuarterly.length > 0 ? (
+              <CashFlowChart data={transformedCashFlowData} />
             ) : (
-              <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+              <Typography
+                variant="h6"
+                color={colors.grey[300]}
+                textAlign="center"
+              >
                 No cash flow data available for this SE.
               </Typography>
             )}
