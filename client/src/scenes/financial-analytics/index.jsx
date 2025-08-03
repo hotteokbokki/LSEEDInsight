@@ -23,6 +23,7 @@ const FinancialAnalytics = ({}) => {
   const [financialData, setFinancialData] = useState([]);
   const [cashFlowRaw, setCashFlowRaw] = useState([]);
   const { user } = useAuth();
+  const [firstAverageProfit, setFirstAverageProfit] = useState(0); // Add this state
 
   // Connect to the DB
 
@@ -42,6 +43,25 @@ const FinancialAnalytics = ({}) => {
 
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (financialData.length > 0) {
+      let totalProfitAllSEs = 0;
+      let totalDataPoints = 0;
+
+      financialData.forEach(item => {
+        const totalRevenue = Number(item.total_revenue ?? 0);
+        const totalExpenses = Number(item.total_expenses ?? 0);
+        totalProfitAllSEs += (totalRevenue - totalExpenses);
+        totalDataPoints++;
+      });
+
+      // Calculate the average of all profit data points (not per SE, but globally)
+      if (totalDataPoints > 0) {
+        setFirstAverageProfit(totalProfitAllSEs / totalDataPoints);
+      }
+    }
+  }, [financialData]); // Recalculate if financialData changes
 
   const [inventoryData, setInventoryData] = useState([]);
 
@@ -168,39 +188,89 @@ const FinancialAnalytics = ({}) => {
   const socialEnterprises = Array.from(seMap.values());
 
   const profitOverTimeSeries = socialEnterprises.map((se) => {
-  const seenMonths = new Map();
+  const seenQuarters = new Map();
 
   se.revenueVsExpenses.forEach((point) => {
     if (!point || typeof point.x !== "string" || typeof point.revenue !== "number" || typeof point.expenses !== "number") return;
 
     const date = new Date(point.x);
     if (isNaN(date)) return;
-    const monthKey = date.toLocaleString("default", { month: "long" }); 
+
+    const month = date.getMonth(); // 0-11
     const year = date.getFullYear();
-    const key = `${monthKey} ${year}`;
+    let quarterKey = '';
+    let quarterNum = 0;
+
+    if (month >= 0 && month <= 2) {
+      quarterKey = `Q1 ${year}`;
+      quarterNum = 1;
+    } else if (month >= 3 && month <= 5) {
+      quarterKey = `Q2 ${year}`;
+      quarterNum = 2;
+    } else if (month >= 6 && month <= 8) {
+      quarterKey = `Q3 ${year}`;
+      quarterNum = 3;
+    } else {
+      quarterKey = `Q4 ${year}`;
+      quarterNum = 4;
+    }
 
     const profit = point.revenue - point.expenses;
 
-    if (!seenMonths.has(key)) {
-      seenMonths.set(key, { totalProfit: profit, count: 1 });
+    if (!seenQuarters.has(quarterKey)) {
+      seenQuarters.set(quarterKey, { totalProfit: profit, count: 1, year: year, quarterNum: quarterNum });
     } else {
-      const current = seenMonths.get(key);
-      seenMonths.set(key, {
+      const current = seenQuarters.get(quarterKey);
+      seenQuarters.set(quarterKey, {
         totalProfit: current.totalProfit + profit,
         count: current.count + 1,
+        year: year,
+        quarterNum: quarterNum
       });
     }
   });
 
-  const averagedData = Array.from(seenMonths.entries())
-    .map(([month, { totalProfit, count }]) => ({
-      x: month,
-      y: Number((totalProfit / count).toFixed(2)),
-    }))
+  const averagedData = Array.from(seenQuarters.entries())
+    .map(([key, { totalProfit, count, year, quarterNum }]) => {
+      const averageQuarterlyProfit = totalProfit / count;
+      let starRating = 0;
+
+      if (firstAverageProfit === 0) { // Handle division by zero or if initial avg profit is 0
+          if (averageQuarterlyProfit < 0) {
+              starRating = 1; // Negative profit
+          } else if (averageQuarterlyProfit > 0) {
+              starRating = 3; // Arbitrarily assign 3 if avg is 0 and profit is positive
+          } else {
+              starRating = 0; // Zero profit
+          }
+      } else {
+          if (averageQuarterlyProfit < 0) {
+              starRating = 1; // Negative profit
+          } else if (averageQuarterlyProfit >= 0 && averageQuarterlyProfit < firstAverageProfit) { // From 0 up to, but not including, 100% of average
+              starRating = 2; // Assign 2 stars for this range. This handles what was previously 0.5 * firstAverageProfit up to 1 * firstAverageProfit
+          } else if (averageQuarterlyProfit >= firstAverageProfit && averageQuarterlyProfit < 1.5 * firstAverageProfit) {
+              starRating = 3; // 100% of average profit to less than 150%
+          } else if (averageQuarterlyProfit >= 1.5 * firstAverageProfit && averageQuarterlyProfit < 2 * firstAverageProfit) {
+              starRating = 4; // 150% of average profit to less than 200%
+          } else if (averageQuarterlyProfit >= 2 * firstAverageProfit) {
+              starRating = 5; // 200% of average profit or more
+          }
+      }
+
+      starRating = Math.max(0, Math.min(5, Math.round(starRating)));
+
+      return {
+        x: `${year} Q${quarterNum}`,
+        y: starRating,
+        year: year,
+        quarterNum: quarterNum
+      };
+    })
     .sort((a, b) => {
-      const dateA = new Date(`1 ${a.x}`);
-      const dateB = new Date(`1 ${b.x}`);
-      return dateA - dateB;
+      if (a.year !== b.year) {
+        return a.year - b.year;
+      }
+      return a.quarterNum - b.quarterNum;
     });
 
   return {
@@ -546,7 +616,7 @@ const FinancialAnalytics = ({}) => {
           Profit Over Time (by Social Enterprise)
         </Typography>
         <Box height="400px">
-          <POTLineChart data={profitOverTimeSeries} />
+          <POTLineChart data={profitOverTimeSeries}/>
         </Box>
       </Box>
 

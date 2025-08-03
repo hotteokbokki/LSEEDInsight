@@ -42,7 +42,7 @@ const POTLineChart = ({ data, isDashboard = false, dateRange = 60 }) => {
 
   const allYValues = safeData.flatMap((d) => d.data.map((p) => p.y));
   const minY = allYValues.length ? Math.min(...allYValues, 0) : 0;
-  const maxY = allYValues.length ? Math.max(...allYValues, 5) : 5;
+  const maxY = allYValues.length ? Math.max(...allYValues, 5) : 5; // Ensure max is at least 5 for 0-5 scale
 
   if (safeData.length === 0) {
     return (
@@ -83,12 +83,12 @@ const POTLineChart = ({ data, isDashboard = false, dateRange = 60 }) => {
       }}
       yScale={{
         type: "linear",
-        min: minY,
-        max: maxY,
+        min: minY, // Keep dynamic min, but ensure it's at least 0 if relevant
+        max: maxY, // Keep dynamic max, but ensure it's at least 5 for the scale
         stacked: false,
         reverse: false,
       }}
-      yFormat=" >-.2f"
+      yFormat=" >-.2f" // This formats the tooltip, not the axis labels directly
       curve="catmullRom"
       axisTop={null}
       axisRight={null}
@@ -106,7 +106,17 @@ const POTLineChart = ({ data, isDashboard = false, dateRange = 60 }) => {
         tickSize: 3,
         tickPadding: 5,
         tickRotation: 0,
-        legend: isDashboard ? undefined : "Average Profit",
+        tickValues: [0, 1, 2, 3, 4, 5],
+        format: (value) => {
+          if (value === 0) return "0";
+          if (value === 1) return "1";
+          if (value === 2) return "2";
+          if (value === 3) return "3";
+          if (value === 4) return "4";
+          if (value === 5) return "5";
+          return value;
+        },
+        legend: isDashboard ? undefined : "Profit Rating",
         legendOffset: -40,
         legendPosition: "middle",
       }}
