@@ -2859,6 +2859,350 @@ app.get("/api/top-se-performance", async (req, res) => {
   }
 });
 
+
+
+app.get("/api/overall-radar-data", async (req, res) => {
+  const client = await pgDatabase.connect();
+  try {
+    const query = `
+      SELECT 
+        category_name as category,
+        AVG(CAST(rating as DECIMAL)) as score
+      FROM evaluations e
+      JOIN evaluation_categories ect ON e.evaluation_id = ect.evaluation_id
+      GROUP BY category_name
+      ORDER BY category_name
+    `;
+    
+    const result = await client.query(query);
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching overall radar data:", error);
+    res.status(500).json({ message: "Failed to fetch overall radar data" });
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/api/overall-category-stats", async (req, res) => {
+  const client = await pgDatabase.connect();
+  try {
+    const query = `
+      SELECT 
+        ect.category_name,
+        ect.rating,
+        COUNT(*) as rating_count,
+        AVG(CAST(ect.rating as DECIMAL)) as avg_rating
+      FROM evaluations e
+      JOIN evaluation_categories ect ON e.evaluation_id = ect.evaluation_id
+      GROUP BY ect.category_name, ect.rating
+      ORDER BY ect.category_name, ect.rating
+    `;
+    
+    const result = await client.query(query);
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching overall category stats:", error);
+    res.status(500).json({ message: "Failed to fetch overall category stats" });
+  } finally {
+    client.release();
+  }
+});
+
+// Main endpoint for generating overall evaluation report
+app.post("/api/overall-evaluation-report", async (req, res) => {
+  try {
+    const { chartImageRadar, overallCategoryStats, overallRadarData } = req.body;
+    
+    if (!chartImageRadar) {
+      return res.status(400).json({ message: "Missing radar chart image" });
+    }
+
+    const imageBuffer = Buffer.from(chartImageRadar.split(",")[1], "base64");
+
+    const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 40 });
+
+    const chunks = [];
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => {
+      const pdfBuffer = Buffer.concat(chunks);
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename=overall_evaluation_report.pdf`,
+      });
+      res.send(pdfBuffer);
+    });
+
+    // ─── Title Section ───
+    doc.fontSize(20).text("Overall Social Enterprise Evaluation Report", { align: "left" });
+    doc.fontSize(12);
+
+    // Column positions
+    const leftColX = 40;
+    const rightColX = 350;
+    const sectionTopY = 80;
+    let leftY = sectionTopY;
+    let rightY = sectionTopY;
+
+    // Left Column - Summary Stats
+    const totalEvaluations = Object.values(overallCategoryStats).reduce((sum, stat) => sum + parseInt(stat.rating_count), 0);
+    // Ensure scores are numbers before calculating average
+    const validScores = overallRadarData.filter(cat => cat.score !== undefined && cat.score !== null);
+    const overallAverage = validScores.length > 0 ? 
+      validScores.reduce((sum, cat) => sum + (typeof cat.score === 'number' ? cat.score : parseFloat(cat.score) || 0), 0) / validScores.length : 0;
+    
+    doc.text(`Overall Average Score: ${overallAverage.toFixed(2)}`, leftColX, leftY);
+    leftY += 16;
+    doc.text(`Total Evaluations: ${totalEvaluations}`, leftColX, leftY);
+
+    // Move below taller column
+    doc.y = Math.max(leftY, rightY) + 20;
+
+    // ─── Analytics Section ───
+    doc.fontSize(16).text("Analytics Summary", { underline: true });
+    doc.moveDown(0.5);
+
+    doc.fontSize(14).text("Performance Overview Across All Social Enterprises");
+    doc.moveDown(0.5);
+    doc.image(imageBuffer, { fit: [700, 180], align: "center" });
+    doc.moveDown(1);
+
+    // ─── Bottom Section: 2-Column Layout (similar to ad-hoc report) ───
+    const startY = doc.y;
+    const boxWidth = 250;
+    const boxHeight = 45;
+    const boxSpacingY = 10;
+    const col1X = 40;
+    const col2X = col1X + boxWidth + 20;
+    const boxesPerColumn = 3;
+
+    overallRadarData.slice(0, 6).forEach((item, index) => {
+      const col = Math.floor(index / boxesPerColumn);
+      const row = index % boxesPerColumn;
+      const x = col === 0 ? col1X : col2X;
+      const y = startY + row * (boxHeight + boxSpacingY);
+
+      // Ensure score is a number and handle potential undefined/null values
+      const score = typeof item.score === 'number' ? item.score : parseFloat(item.score) || 0;
+
+      doc.rect(x, y, boxWidth, boxHeight).stroke();
+      doc.fontSize(9)
+        .text(`Category: ${item.category}`, x + 10, y + 10)
+        .text(`Score: ${score.toFixed(2)}`, x + 10, y + 25);
+    });
+
+    // Insights Section (similar to ad-hoc report)
+    const strengths = overallRadarData.filter(r => {
+      const score = typeof r.score === 'number' ? r.score : parseFloat(r.score) || 0;
+      return score > 3;
+    }).map(r => r.category);
+    
+    const weaknesses = overallRadarData.filter(r => {
+      const score = typeof r.score === 'number' ? r.score : parseFloat(r.score) || 0;
+      return score <= 3;
+    }).map(r => r.category);
+    const insightX = col2X + boxWidth + 40;
+    let insightY = startY;
+
+    doc.fontSize(12).text("Overall Insights", insightX, insightY);
+    insightY += 20;
+
+    doc.fontSize(10).text("Program Strengths:", insightX, insightY);
+    insightY += 15;
+    if (strengths.length > 0) {
+      strengths.forEach((s) => {
+        doc.text(`• ${s}`, insightX + 10, insightY);
+        insightY += 14;
+      });
+    } else {
+      doc.text("• All areas need improvement", insightX + 10, insightY);
+      insightY += 14;
+    }
+
+    insightY += 10;
+    doc.text("Areas for Improvement:", insightX, insightY);
+    insightY += 15;
+    if (weaknesses.length > 0) {
+      weaknesses.forEach((w) => {
+        doc.text(`• ${w}`, insightX + 10, insightY);
+        insightY += 14;
+      });
+    } else {
+      doc.text("• All areas performing well", insightX + 10, insightY);
+    }
+
+    // ─── PAGE 2: DETAILED INSIGHTS (Enhanced version) ───
+    doc.addPage();
+    const page2AxisX = 40;
+    const page2AxisY = doc.y;
+    const page2MaxWidth = 520;
+    const page2GapY = 15;
+
+    doc.fontSize(16).text("Detailed Category Analysis & Recommendations", page2AxisX, page2AxisY, { underline: true });
+    doc.moveDown(1);
+    doc.fontSize(10);
+    let currentPage2Y = doc.y + 10;
+
+    // Category advice map (enhanced)
+    const categoryAdviceMap = {
+      "Marketing Plan/Execution": {
+        belowTwo: "Immediate action required: Organize intensive marketing workshops covering digital marketing, branding basics, and customer acquisition strategies. Consider pairing SEs with marketing mentors.",
+        twoToThree: "Schedule regular marketing mentoring sessions focusing on campaign planning, social media strategy, and market research techniques.",
+        aboveThree: "Maintain momentum with advanced marketing workshops on analytics, conversion optimization, and scaling strategies."
+      },
+      "Teamwork": {
+        belowTwo: "Critical intervention needed: Conduct team-building workshops, establish communication protocols, and implement peer accountability systems. Consider leadership training for SE founders.",
+        twoToThree: "Organize collaborative activities and communication skills training. Introduce project management tools to improve coordination.",
+        aboveThree: "Continue fostering collaboration through peer mentoring programs and cross-SE knowledge sharing sessions."
+      },
+      "Logistics": {
+        belowTwo: "Urgent logistics training required: Cover supply chain basics, inventory management, and operational workflow design. Provide templates for logistics planning.",
+        twoToThree: "Offer intermediate logistics mentoring focusing on process optimization and efficiency improvements.",
+        aboveThree: "Focus on advanced logistics strategies including scaling operations and technology integration."
+      },
+      "Financial Planning/Management": {
+        belowTwo: "Immediate financial literacy intervention: Provide basic accounting training, budgeting workshops, and financial reporting templates. Assign financial mentors to struggling SEs.",
+        twoToThree: "Continue financial mentoring with focus on cash flow management, financial forecasting, and investment planning.",
+        aboveThree: "Advance to sophisticated financial strategies including funding acquisition and financial risk management."
+      },
+      "Product/Service Design/Planning": {
+        belowTwo: "Product development bootcamp needed: Cover user research, design thinking, and MVP development. Provide product planning frameworks and templates.",
+        twoToThree: "Regular product mentoring sessions focusing on iterative design, user feedback integration, and market validation.",
+        aboveThree: "Advanced product strategy workshops covering innovation, competitive analysis, and product scaling."
+      },
+      "Human Resource Management": {
+        belowTwo: "HR fundamentals training required: Cover recruitment basics, team structure planning, and basic HR policies. Provide HR documentation templates.",
+        twoToThree: "Intermediate HR mentoring focusing on team development, performance management, and organizational culture.",
+        aboveThree: "Advanced HR strategy sessions covering talent retention, leadership development, and scaling HR practices."
+      }
+    };
+
+    // Process category statistics
+    const categoryGroups = {};
+    overallCategoryStats.forEach(stat => {
+      if (!categoryGroups[stat.category_name]) {
+        categoryGroups[stat.category_name] = {};
+      }
+      categoryGroups[stat.category_name][stat.rating] = parseInt(stat.rating_count);
+    });
+
+    // Generate insights for each category (similar to ad-hoc report style)
+    for (const [category, ratings] of Object.entries(categoryGroups)) {
+      const total = Object.values(ratings).reduce((sum, val) => sum + val, 0);
+      const weighted = Object.entries(ratings).reduce(
+        (acc, [r, c]) => acc + parseInt(r) * c,
+        0
+      );
+      const average = total > 0 ? (weighted / total).toFixed(2) : "0.00";
+
+      const score1 = ratings[1] || 0;
+      const score2 = ratings[2] || 0;
+      const score3 = ratings[3] || 0;
+      const score4 = ratings[4] || 0;
+      const score5 = ratings[5] || 0;
+
+      // Determine key remark (similar to ad-hoc report logic)
+      let remark = "";
+      if (average >= 4 && score4 + score5 >= total * 0.7) {
+        remark = "Strong performance across all SEs with most evaluators awarding high marks. The program demonstrates confidence and consistency in this area.";
+      } else if (average >= 4) {
+        remark = "Generally strong area across SEs, though some ratings suggest opportunities to reach excellence with more consistency.";
+      } else if (average >= 3) {
+        if (score1 + score2 >= total * 0.3) {
+          remark = "Mixed performance across SEs. While some scores are favorable, a notable proportion of low ratings suggests deeper inconsistencies in the program.";
+        } else {
+          remark = "Moderate strength across SEs. There is foundational capability here, but enhancements could help reach best-in-class execution.";
+        }
+      } else if (average <= 2) {
+        remark = "This category is underperforming across all SEs. A high concentration of low scores indicates a need for structured program-wide support and attention.";
+      } else {
+        remark = "Inconsistent performance across SEs. Low and mid-tier ratings dominate—suggests unclear processes or insufficient capability development.";
+      }
+
+      // Get appropriate advice
+      let advice = "";
+      if (average < 2) {
+        advice = categoryAdviceMap[category]?.belowTwo || "Urgent program-wide intervention needed.";
+      } else if (average < 3) {
+        advice = categoryAdviceMap[category]?.twoToThree || "Regular mentoring sessions recommended.";
+      } else {
+        advice = categoryAdviceMap[category]?.aboveThree || "Maintain current strategies and consider advanced training.";
+      }
+
+      // Combine and format the insight block (similar to ad-hoc report)
+      const title = `${category}`;
+      const avgLine = `Program Average Score: ${average} / 5`;
+      const distributionLine = `Distribution: 1(${score1}) 2(${score2}) 3(${score3}) 4(${score4}) 5(${score5})`;
+      const fullInsight = `${remark} ${advice}`;
+
+      const titleHeight = doc.heightOfString(title, { width: page2MaxWidth });
+      const avgLineHeight = doc.heightOfString(avgLine, { width: page2MaxWidth });
+      const distributionHeight = doc.heightOfString(distributionLine, { width: page2MaxWidth });
+      const fullInsightHeight = doc.heightOfString(fullInsight, { width: page2MaxWidth });
+
+      const totalHeight = titleHeight + avgLineHeight + distributionHeight + fullInsightHeight + page2GapY * 2;
+
+      // Add new page if needed
+      const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
+      if (currentPage2Y + totalHeight > pageHeight) {
+        doc.addPage();
+        currentPage2Y = doc.y;
+      }
+
+      // Render (similar to ad-hoc report formatting)
+      doc.font("Helvetica-Bold").text(title, page2AxisX, currentPage2Y, { width: page2MaxWidth });
+      currentPage2Y += titleHeight;
+
+      doc.font("Helvetica-Bold").text(avgLine, page2AxisX, currentPage2Y, { width: page2MaxWidth });
+      currentPage2Y += avgLineHeight;
+
+      doc.font("Helvetica").text(distributionLine, page2AxisX, currentPage2Y, { width: page2MaxWidth });
+      currentPage2Y += distributionHeight + 5;
+
+      doc.font("Helvetica").text(fullInsight, page2AxisX, currentPage2Y, {
+        width: page2MaxWidth,
+        lineGap: 2,
+      });
+      currentPage2Y += fullInsightHeight + page2GapY;
+    }
+
+    // Add overall program recommendations
+    if (currentPage2Y + 100 > doc.page.height - doc.page.margins.top - doc.page.margins.bottom) {
+      doc.addPage();
+      currentPage2Y = doc.y;
+    }
+
+    doc.fontSize(14).font("Helvetica-Bold").text("Overall Program Recommendations", page2AxisX, currentPage2Y, { underline: true });
+    currentPage2Y += 25;
+    doc.fontSize(10).font("Helvetica");
+
+    if (overallAverage < 2.5) {
+      doc.text("• Implement comprehensive mentoring program across all categories", page2AxisX, currentPage2Y);
+      currentPage2Y += 14;
+      doc.text("• Increase frequency of training workshops and support sessions", page2AxisX, currentPage2Y);
+      currentPage2Y += 14;
+      doc.text("• Consider additional resources and dedicated support staff", page2AxisX, currentPage2Y);
+    } else if (overallAverage < 3.5) {
+      doc.text("• Continue current mentoring efforts with targeted improvements", page2AxisX, currentPage2Y);
+      currentPage2Y += 14;
+      doc.text("• Focus resources on weakest performing categories", page2AxisX, currentPage2Y);
+      currentPage2Y += 14;
+      doc.text("• Implement peer learning initiatives between high and low performers", page2AxisX, currentPage2Y);
+    } else {
+      doc.text("• Program is performing well overall - maintain current quality", page2AxisX, currentPage2Y);
+      currentPage2Y += 14;
+      doc.text("• Focus on scaling successful practices to all participating SEs", page2AxisX, currentPage2Y);
+      currentPage2Y += 14;
+      doc.text("• Consider advanced training modules for high-performing SEs", page2AxisX, currentPage2Y);
+    }
+
+    doc.end();
+  } catch (err) {
+    console.error("❌ Error generating overall evaluation report:", err);
+    res.status(500).json({ message: "Failed to generate PDF" });
+  }
+});
+
 app.post("/api/adhoc-report", async (req, res) => {
   try {
     const { chartImageRadar, chartImagePie, se_id, period, scoreDistributionLikert } = req.body;

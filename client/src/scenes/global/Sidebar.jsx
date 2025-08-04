@@ -14,7 +14,7 @@ import {
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { tokens } from "../../theme";
 import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import GridViewOutlinedIcon from "@mui/icons-material/GridViewOutlined";
 import SupervisorAccountOutlinedIcon from "@mui/icons-material/SupervisorAccountOutlined";
 import Diversity2OutlinedIcon from "@mui/icons-material/Diversity2Outlined";
@@ -52,8 +52,8 @@ const Item = ({ title, to, icon, selected, setSelected }) => {
   );
 };
 
-// ⭐️ 
-const Sidebar = ({ }) => {
+// ⭐️
+const Sidebar = ({}) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -71,7 +71,7 @@ const Sidebar = ({ }) => {
   const isLSEEDCoordinator = userRoles.includes("LSEED-Coordinator");
   const hasMentorRole = userRoles.includes("Mentor");
   const isAdministrator = userRoles.includes("Administrator");
-  const isLSEEDUser = userRoles.some(role => role.startsWith("LSEED"));
+  const isLSEEDUser = userRoles.some((role) => role.startsWith("LSEED"));
   const isLSEEDDirector = userRoles.includes("LSEED-Director");
   const shouldShowMinimalSidebar = isAdministrator && !isLSEEDDirector;
 
@@ -79,7 +79,10 @@ const Sidebar = ({ }) => {
   useEffect(() => {
     // Set up the interval to log the prop every 5 seconds (5000 milliseconds)
     const intervalId = setInterval(() => {
-      console.log("Sidebar prop received: isCoordinatorView =", isCoordinatorView);
+      console.log(
+        "Sidebar prop received: isCoordinatorView =",
+        isCoordinatorView
+      );
     }, 5000);
 
     return () => {
@@ -222,7 +225,9 @@ const Sidebar = ({ }) => {
                 {user.firstName || "User"} {user.lastName || "User"}
               </Typography>
               <Typography variant="body2" color={colors.greenAccent[500]}>
-                {user.roles && user.roles.length > 0 ? user.roles.join(" / ") : "No Role Assigned"}
+                {user.roles && user.roles.length > 0
+                  ? user.roles.join(" / ")
+                  : "No Role Assigned"}
               </Typography>
             </Box>
           )}
@@ -233,42 +238,142 @@ const Sidebar = ({ }) => {
             {shouldShowMinimalSidebar ? (
               // 🔒 Minimal Sidebar for Administrator
               <>
-                <Item title="Manage Users" to="/admin" icon={<AdminPanelSettingsOutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="Show Audit Logs" to="/audit-logs" icon={<DescriptionOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item
+                  title="Manage Users"
+                  to="/admin"
+                  icon={<AdminPanelSettingsOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Show Audit Logs"
+                  to="/audit-logs"
+                  icon={<DescriptionOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
               </>
             ) : isCoordinatorView ? (
               // 🧑‍💼 Coordinator or Director View
               <>
-                <Item title="Dashboard" to="/dashboard/lseed" icon={<GridViewOutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="Evaluate" to="/assess" icon={<AssignmentTurnedInOutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="Manage SE" to="/socialenterprise" icon={<Diversity2OutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="LSEED Mentors" to="/mentors" icon={<SettingsAccessibilityOutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="Show Analytics" to="/analytics" icon={<AnalyticsOutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="Financial Analytics" to="/financial-analytics" icon={<AccountBalanceOutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="Show Reports" to="/reports" icon={<GradingOutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="Scheduling Matrix" to="/scheduling" icon={<CalendarMonthOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item
+                  title="Dashboard"
+                  to="/dashboard/lseed"
+                  icon={<GridViewOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Evaluate"
+                  to="/assess"
+                  icon={<AssignmentTurnedInOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Manage SE"
+                  to="/socialenterprise"
+                  icon={<Diversity2OutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="LSEED Mentors"
+                  to="/mentors"
+                  icon={<SettingsAccessibilityOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Evaluation Analytics"
+                  to="/analytics"
+                  icon={<AnalyticsOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Financial Analytics"
+                  to="/financial-analytics"
+                  icon={<AccountBalanceOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Show Reports"
+                  to="/reports"
+                  icon={<GradingOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Scheduling Matrix"
+                  to="/scheduling"
+                  icon={<CalendarMonthOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
                 {isLSEEDDirector && (
-                  <Item title="Manage Programs" to="/programs" icon={<FactCheckOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                  <Item
+                    title="Manage Programs"
+                    to="/programs"
+                    icon={<FactCheckOutlinedIcon />}
+                    selected={selected}
+                    setSelected={setSelected}
+                  />
                 )}
                 {isLSEEDDirector && (
-                  <Item title="Manage Users" to="/admin" icon={<AdminPanelSettingsOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                  <Item
+                    title="Manage Users"
+                    to="/admin"
+                    icon={<AdminPanelSettingsOutlinedIcon />}
+                    selected={selected}
+                    setSelected={setSelected}
+                  />
                 )}
               </>
             ) : hasMentorRole ? (
               // 🧑‍🏫 Mentor View
               <>
-                <Item title="Dashboard" to="/dashboard/mentor" icon={<GridViewOutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="Evaluate" to="/assess" icon={<AssignmentTurnedInOutlinedIcon />} selected={selected} setSelected={setSelected} />
-                <Item title="Manage Mentorships" to="/mentorships" icon={<SupervisorAccountOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item
+                  title="Dashboard"
+                  to="/dashboard/mentor"
+                  icon={<GridViewOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Evaluate"
+                  to="/assess"
+                  icon={<AssignmentTurnedInOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+                <Item
+                  title="Manage Mentorships"
+                  to="/mentorships"
+                  icon={<SupervisorAccountOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
                 <MenuItem
                   active={selected === "Scheduling Matrix"}
                   icon={<CalendarMonthOutlinedIcon />}
                   onClick={() => setOpenDialog(true)}
-                  style={{ color: colors.grey[100], fontWeight: selected === "Scheduling Matrix" ? "bold" : "normal" }}
+                  style={{
+                    color: colors.grey[100],
+                    fontWeight:
+                      selected === "Scheduling Matrix" ? "bold" : "normal",
+                  }}
                 >
                   <Typography variant="body1">Scheduling Matrix</Typography>
                 </MenuItem>
-                <Item title="Collaboration Portal" to="/collaboration-dashboard" icon={<HandshakeOutlinedIcon />} selected={selected} setSelected={setSelected} />
+                <Item
+                  title="Collaboration Portal"
+                  to="/collaboration-dashboard"
+                  icon={<HandshakeOutlinedIcon />}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
               </>
             ) : null}
 
