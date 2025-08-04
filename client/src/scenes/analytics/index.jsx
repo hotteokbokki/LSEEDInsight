@@ -1,4 +1,4 @@
-import { Box, useTheme, Typography, Tooltip, IconButton, Button } from "@mui/material";
+import { Box, useTheme, Typography, Tooltip, IconButton, Button, MenuItem, Menu } from "@mui/material";
 import Header from "../../components/Header";
 import HorizontalBarChart from "../../components/HorizontalBarChart";
 import DualAxisLineChart from "../../components/DualAxisLineChart";
@@ -17,8 +17,11 @@ import TrafficIcon from "@mui/icons-material/Traffic";
 import HeatmapWrapper from "../../components/MyHeatMap";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { tokens } from "../../theme";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useAuth } from "../../context/authContext";
+import { useParams, useNavigate } from "react-router-dom";
+import DownloadIcon from "@mui/icons-material/Download";
+import axios from "axios";
 
 const Analytics = ({ }) => {
   const theme = useTheme();
@@ -27,9 +30,413 @@ const Analytics = ({ }) => {
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [showAll, setShowAll] = useState(false);
   const { user } = useAuth();
+  const { id } = useParams(); // Extract the `id` from the URL
   const isLSEEDCoordinator = user?.roles?.includes("LSEED-Coordinator");
   const [currentPage, setCurrentPage] = useState(0);
   const SEsPerPage = 10;
+  const [selectedSEId, setSelectedSEId] = useState(id); // State to manage selected SE
+
+  const performanceOverviewChart = useRef(null);
+  const painPointsChart = useRef(null);
+  const scoreDistributionChart = useRef(null);
+  const revenueVSexpensesChart = useRef(null);
+  const cashFlowAnalysisChart = useRef(null);
+  const equityChart = useRef(null);
+
+  const [inventoryData, setInventoryData] = useState([]);
+  const [cashFlowRaw, setCashFlowRaw] = useState([]);
+  const [isExporting, setIsExporting] = useState(false);
+  const [selectedSE, setSelectedSE] = useState(null); // Selected social enterprise object
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  const open = Boolean(anchorEl);
+
+  const currentSEFinancialMetrics = {
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netIncome: 0,
+    totalAssets: 0,
+    totalLiabilities: 0,
+    ownerEquity: 0,
+    revenueVsExpenses: [],
+    equityTrend: [],
+  };
+
+  const filteredInventoryData = inventoryData.filter(
+    (item) => item.se_abbr === selectedSE?.abbr
+  );
+
+  const selectedSECashFlowQuarterly = useMemo(() => {
+      if (!selectedSEId || !Array.isArray(cashFlowRaw)) return [];
+  
+      const filtered = cashFlowRaw.filter((item) => item.se_id === selectedSEId);
+      const quarterBuckets = {};
+  
+      filtered.forEach((item) => {
+        if (!item?.date) return;
+        const date = new Date(item.date);
+        const quarter = getQuarterLabel(date);
+  
+        if (!quarterBuckets[quarter]) {
+          quarterBuckets[quarter] = { inflows: [], outflows: [] };
+        }
+  
+        quarterBuckets[quarter].inflows.push(Number(item.inflow) || 0);
+        quarterBuckets[quarter].outflows.push(Number(item.outflow) || 0);
+      });
+  
+      const inflowData = [];
+      const outflowData = [];
+  
+      Object.entries(quarterBuckets).forEach(([quarter, { inflows, outflows }]) => {
+        const avgInflow = inflows.length
+          ? Math.round(inflows.reduce((sum, v) => sum + v, 0) / inflows.length)
+          : 0;
+  
+        const avgOutflow = outflows.length
+          ? Math.round(outflows.reduce((sum, v) => sum + v, 0) / outflows.length)
+          : 0;
+  
+        inflowData.push({ x: quarter, y: avgInflow });
+        outflowData.push({ x: quarter, y: avgOutflow });
+      });
+  
+      return [
+        { id: "Inflow", data: inflowData },
+        { id: "Outflow", data: outflowData },
+      ];
+    }, [cashFlowRaw, selectedSEId]);
+
+  const getQuarterLabel = (date) => {
+    const month = date.getMonth();
+    const year = date.getFullYear();
+    if (month >= 0 && month <= 2) return `Q1 ${year}`;
+    if (month >= 3 && month <= 5) return `Q2 ${year}`;
+    if (month >= 6 && month <= 8) return `Q3 ${year}`;
+    return `Q4 ${year}`;
+  };
+
+  const allItemsInventoryTurnover = {};
+  filteredInventoryData.forEach(({ item_name, qty, price, amount }) => {
+    const priceNum = Number(price);
+    const qtyNum = Number(qty);
+    const totalValue = qtyNum * priceNum; // This is average inventory value for the item
+
+    if (!allItemsInventoryTurnover[item_name]) {
+      allItemsInventoryTurnover[item_name] = { totalCOGS: 0, totalInventoryValue: 0 };
+    }
+    allItemsInventoryTurnover[item_name].totalCOGS += Number(amount); // Sum of 'amount' as COGS
+    allItemsInventoryTurnover[item_name].totalInventoryValue += totalValue; // Sum of inventory value
+  });
+
+  const netProfitMargin = currentSEFinancialMetrics.totalRevenue
+    ? ((currentSEFinancialMetrics.netIncome / currentSEFinancialMetrics.totalRevenue) * 100).toFixed(2)
+    : "0.00";
+  const grossProfitMargin = currentSEFinancialMetrics.totalRevenue
+    ? (
+      ((currentSEFinancialMetrics.totalRevenue - currentSEFinancialMetrics.totalExpenses) /
+        currentSEFinancialMetrics.totalRevenue) *
+      100
+    ).toFixed(2)
+    : "0.00";
+  const debtToAssetRatio = currentSEFinancialMetrics.totalAssets
+    ? (currentSEFinancialMetrics.totalLiabilities / currentSEFinancialMetrics.totalAssets).toFixed(2)
+    : "0.00";
+
+  const inventoryTurnoverByItemData = Object.entries(allItemsInventoryTurnover)
+    .map(([itemName, data]) => {
+      const cogs = data.totalCOGS;
+      const avgInventory = data.totalInventoryValue; // Using total inventory value as avg for simplicity
+      const turnover = avgInventory === 0 ? 0 : parseFloat((cogs / avgInventory).toFixed(2));
+      return { name: itemName, turnover };
+    })
+    .sort((a, b) => b.turnover - a.turnover)
+    .slice(0, 5); // Top 5 items by turnover
+
+  const selectedSEEquityTrendData = useMemo(() => {
+      if (!currentSEFinancialMetrics?.equityTrend?.length) return [];
+  
+      const quarterBuckets = {};
+  
+      currentSEFinancialMetrics.equityTrend.forEach(({ x, y }) => {
+        const date = new Date(x);
+        const quarter = getQuarterLabel(date);
+  
+        if (!quarterBuckets[quarter]) {
+          quarterBuckets[quarter] = [];
+        }
+  
+        quarterBuckets[quarter].push(Number(y) || 0);
+      });
+  
+      const formattedData = Object.entries(quarterBuckets).map(([quarter, values]) => {
+        const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+        return {
+          x: quarter,
+          y: Math.round(avg),
+        };
+      });
+  
+      return [
+        {
+          id: "Equity",
+          color: colors.blueAccent[500],
+          data: formattedData,
+        },
+      ];
+    }, [currentSEFinancialMetrics]);
+
+  const transformedCashFlowData = useMemo(() => {
+      const inflowMap = new Map();
+      const outflowMap = new Map();
+  
+      selectedSECashFlowQuarterly.forEach((entry) => {
+        if (entry.id === "Inflow") {
+          entry.data.forEach(({ x, y }) => inflowMap.set(x, y));
+        } else if (entry.id === "Outflow") {
+          entry.data.forEach(({ x, y }) => outflowMap.set(x, y));
+        }
+      });
+  
+      const allQuarters = new Set([...inflowMap.keys(), ...outflowMap.keys()]);
+  
+      return Array.from(allQuarters).map((quarter) => ({
+        quarter,
+        Inflow: inflowMap.get(quarter) || 0,
+        Outflow: outflowMap.get(quarter) || 0,
+      }));
+    }, [selectedSECashFlowQuarterly]);
+
+  const selectedSERevenueVsExpensesData = useMemo(() => {
+      if (!currentSEFinancialMetrics?.revenueVsExpenses?.length) return [];
+  
+      const quarterBuckets = {};
+  
+      currentSEFinancialMetrics.revenueVsExpenses.forEach(({ x, revenue, expenses }) => {
+        const date = new Date(x); // Ensure x is parsed as a Date
+        const quarter = getQuarterLabel(date);
+  
+        if (!quarterBuckets[quarter]) {
+          quarterBuckets[quarter] = { revenues: [], expenses: [] };
+        }
+  
+        quarterBuckets[quarter].revenues.push(Number(revenue) || 0);
+        quarterBuckets[quarter].expenses.push(Number(expenses) || 0);
+      });
+  
+      const revenueData = [];
+      const expenseData = [];
+  
+      Object.entries(quarterBuckets).forEach(([quarter, { revenues, expenses }]) => {
+        const avgRevenue = revenues.length
+          ? Math.round(revenues.reduce((sum, val) => sum + val, 0) / revenues.length)
+          : null;
+  
+        const avgExpense = expenses.length
+          ? Math.round(expenses.reduce((sum, val) => sum + val, 0) / expenses.length)
+          : null;
+  
+        revenueData.push({ x: quarter, y: avgRevenue });
+        expenseData.push({ x: quarter, y: avgExpense });
+      });
+  
+      return [
+        {
+          id: "Revenue",
+          color: colors.greenAccent[500],
+          data: revenueData,
+        },
+        {
+          id: "Expenses",
+          color: colors.redAccent[500],
+          data: expenseData,
+        },
+      ];
+    }, [currentSEFinancialMetrics]);
+
+  
+
+  
+
+  const handleDownloadStakeholderReport = () => {
+    setIsExporting(true);
+
+    setTimeout(async () => {
+      const revenueSVG = revenueVSexpensesChart.current?.querySelector("svg");
+      const cashFlowSVG = cashFlowAnalysisChart.current?.querySelector("svg");
+      const equitySVG = equityChart.current?.querySelector("svg");
+
+      if (!revenueSVG || !selectedSEId || !currentSEFinancialMetrics || !cashFlowSVG || !equitySVG) {
+        setIsExporting(false);
+        return alert("Revenue chart or data not found");
+      }
+
+      const serialize = (svg) => new XMLSerializer().serializeToString(svg);
+
+      const svgToBase64 = async (svgData, bbox) => {
+        const scale = 3;
+        const canvas = document.createElement("canvas");
+        canvas.width = bbox.width * scale;
+        canvas.height = bbox.height * scale;
+        const ctx = canvas.getContext("2d");
+        ctx.scale(scale, scale); // upscale before drawing
+
+        const img = new Image();
+        const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+
+        return new Promise((resolve) => {
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0);
+            URL.revokeObjectURL(url);
+            resolve(canvas.toDataURL("image/png"));
+          };
+          img.src = url;
+        });
+      };
+
+      try {
+        const revenueSVGData = serialize(revenueSVG);
+        const cashFlowSVGData = serialize(cashFlowSVG);
+        const equitySVGData = serialize(equitySVG);
+
+        const bbox = revenueSVG.getBoundingClientRect();
+        const cashFlowSVGBBox = cashFlowSVG.getBoundingClientRect();
+        const equitySVGBBox = equitySVG.getBoundingClientRect();
+
+        const chartImageBase64 = await svgToBase64(revenueSVGData, bbox);
+        const cashFlowImageBase64 = await svgToBase64(cashFlowSVGData, cashFlowSVGBBox);
+        const equityImageBase64 = await svgToBase64(equitySVGData, equitySVGBBox);
+
+        const response = await axios.post(
+          `${process.env.REACT_APP_API_BASE_URL}/api/financial-report`,
+          {
+            chartImage: chartImageBase64,
+            cashFlowImage: cashFlowImageBase64,
+            equityImage: equityImageBase64,
+            selectedSEId,
+            totalRevenue: currentSEFinancialMetrics.totalRevenue,
+            totalExpenses: currentSEFinancialMetrics.totalExpenses,
+            netIncome: currentSEFinancialMetrics.netIncome,
+            totalAssets: currentSEFinancialMetrics.totalAssets,
+            selectedSERevenueVsExpensesData,
+            transformedCashFlowData,
+            selectedSEEquityTrendData,
+            inventoryTurnoverByItemData,
+            netProfitMargin,
+            grossProfitMargin,
+            debtToAssetRatio
+          },
+          {
+            responseType: "blob",
+          }
+        );
+
+        const blobUrl = URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = `Stakeholder_Report_${selectedSE?.abbr || "Report"}.pdf`;
+        a.click();
+      } catch (err) {
+        console.error("❌ Failed to generate stakeholder report:", err);
+        alert("Failed to generate report");
+      } finally {
+        setIsExporting(false);
+      }
+    }, 100);
+  };
+
+  const handleGenerateCollaborationReport = () => {
+    setIsExporting(true);
+
+    setTimeout(async () => {
+      const radarSVG = performanceOverviewChart.current?.querySelector("svg");
+      const pieSVG = painPointsChart.current?.querySelector("svg");
+      const likertSVG = scoreDistributionChart.current?.querySelector("svg");
+
+      if (!radarSVG || !pieSVG || !likertSVG) {
+        setIsExporting(false);
+        return alert("One or both charts not found");
+      }
+
+      const serialize = (svg) => new XMLSerializer().serializeToString(svg);
+
+      const svgToBase64 = async (svgData, bbox) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = bbox.width;
+        canvas.height = bbox.height;
+        const ctx = canvas.getContext("2d");
+        const img = new Image();
+        const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+
+        return new Promise((resolve) => {
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0);
+            URL.revokeObjectURL(url);
+            resolve(canvas.toDataURL("image/png"));
+          };
+          img.src = url;
+        });
+      };
+
+      try {
+        const radarData = serialize(radarSVG);
+        const pieData = serialize(pieSVG);
+        const likertData = serialize(likertSVG);
+
+        const radarBBox = radarSVG.getBoundingClientRect();
+        const pieBBox = pieSVG.getBoundingClientRect();
+        const likertBBox = likertSVG.getBoundingClientRect();
+
+        const radarBase64 = await svgToBase64(radarData, radarBBox);
+        const pieBase64 = await svgToBase64(pieData, pieBBox);
+        const likertBase64 = await svgToBase64(likertData, likertBBox);
+
+        const response = await axios.post(
+          `${process.env.REACT_APP_API_BASE_URL}/api/adhoc-report`,
+          {
+            chartImageRadar: radarBase64,
+            chartImagePie: pieBase64,
+            scoreDistributionLikert: likertBase64,
+            se_id: selectedSE?.id,
+            period: "quarterly",
+          },
+          {
+            responseType: "blob",
+          }
+        );
+
+        const blobUrl = URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = `Adhoc_Report_${selectedSE?.abbr || "Report"}.pdf`;
+        a.click();
+      } catch (err) {
+        console.error("❌ Failed to generate report:", err);
+        alert("Failed to generate report");
+      } finally {
+        setIsExporting(false);
+      }
+    }, 100);
+  };
+
+  const handleGenerateReport = (type) => {
+    handleClose();
+    if (type === "collaboration") {
+      handleGenerateCollaborationReport(); // or handleCollaborationReport()
+    } else if (type === "stakeholder") {
+      handleDownloadStakeholderReport();
+    }
+  };
+
+  const handleMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
 
   // Group data by SE
   const groupBySE = leaderboardData.reduce((acc, item) => {
@@ -96,6 +503,24 @@ const Analytics = ({ }) => {
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Header title="Analytics" subtitle="Welcome to Analytics" />
+        {/* Right: Export Button */}
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<DownloadIcon />}
+          onClick={handleMenuClick}
+        >
+          Generate Overall Report
+        </Button>
+
+        <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+          <MenuItem onClick={() => handleGenerateReport("collaboration")}>
+            Evaluation Report
+          </MenuItem>
+          <MenuItem onClick={() => handleGenerateReport("stakeholder")}>
+            Financial Report
+          </MenuItem>
+        </Menu>
       </Box>
 
       {/* Row 1 - StatBoxes */}
