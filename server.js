@@ -1202,16 +1202,15 @@ app.post("/notify-mentor-application-status", async (req, res) => {
   }
 });
 
-app.post("/signup-LSEEDCoordinator", async (req, res) => {
+app.post("/signup-lseed-role", async (req, res) => {
   const { firstName, lastName, email, contactno, password, token } = req.body;
 
-  // Validate required fields
   if (!firstName || !lastName || !email || !contactno || !password || !token) {
     return res.status(400).json({ message: "All fields and token are required." });
   }
 
   try {
-    // 1️⃣ Validate the invite token
+    // 1️⃣ Validate the invite token and retrieve role
     const inviteResult = await pgDatabase.query(
       `SELECT * FROM coordinator_invites WHERE token = $1 AND expires_at > NOW()`,
       [token]
@@ -1220,6 +1219,10 @@ app.post("/signup-LSEEDCoordinator", async (req, res) => {
     if (inviteResult.rows.length === 0) {
       return res.status(400).json({ message: "Invalid or expired invite token." });
     }
+
+    const invitedRole = inviteResult.rows[0].role || 'LSEED-Coordinator';
+
+    console.log(invitedRole);
 
     // 2️⃣ Check if email already exists
     const existingUser = await pgDatabase.query(
@@ -1234,24 +1237,22 @@ app.post("/signup-LSEEDCoordinator", async (req, res) => {
     // 3️⃣ Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 4️⃣ Insert new coordinator into users table
+    // 4️⃣ Insert user with correct role
     const userResult = await pgDatabase.query(
       `
       INSERT INTO users (first_name, last_name, email, password, contactnum, roles, isactive)
-      VALUES ($1, $2, $3, $4, $5, 'LSEED-Coordinator', true)
+      VALUES ($1, $2, $3, $4, $5, $6, true)
       RETURNING user_id
       `,
-      [firstName, lastName, email, hashedPassword, contactno]
+      [firstName, lastName, email, hashedPassword, contactno, invitedRole]
     );
-
-    // Add admin log
-
 
     const userId = userResult.rows[0].user_id;
 
+    // Assign role in user_has_roles
     await pgDatabase.query(
       `INSERT INTO user_has_roles (user_id, role_name) VALUES ($1, $2)`,
-      [userId, 'LSEED-Coordinator']
+      [userId, invitedRole]
     );
 
     // 5️⃣ Optionally: delete or mark invite as used
@@ -1260,42 +1261,45 @@ app.post("/signup-LSEEDCoordinator", async (req, res) => {
       [token]
     );
 
-    console.log(`✅ New LSEED-Coordinator registered: ${email}`);
+    console.log(`✅ New ${invitedRole} registered: ${email}`);
 
-    // Create Welcome to LSEED Insight Message to Coordinator
-    const notificationTitle = "Welcome to LSEED Insight!";
-    const notificationWelcomeMessage =
-      "As a LSEED-Coordinator, you can manage mentors, oversee social enterprises, and facilitate impactful connections that are involved in your assigned program. We're excited to have you on board. Get started by exploring your dashboard and other relevant pages!";
+    // 6️⃣ Welcome notification
+    const notificationTitle = `Welcome to LSEED Insight!`;
+    const notificationMessage = invitedRole === 'LSEED-Coordinator'
+      ? "As a LSEED-Coordinator, you can manage mentors, oversee social enterprises, and facilitate impactful connections involved in your assigned program. We're excited to have you on board."
+      : "As a LSEED-Director, you will oversee programs and manage platform-wide operations. Welcome to the LSEED platform!";
+
+    const targetRoute = invitedRole === 'LSEED-Coordinator' ? '/dashboard/lseed' : '/dashboard/director';
 
     await pgDatabase.query(
       `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route)
-      VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/dashboard/lseed');`,
-      [userId, notificationTitle, notificationWelcomeMessage]
-    )
+       VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), $4);`,
+      [userId, notificationTitle, notificationMessage, targetRoute]
+    );
 
-    // LSEED-Director notification
-    const lseedDirectors = await getLSEEDDirectors(); // change your function if needed
+    // 7️⃣ Notify LSEED Directors if a Coordinator just signed up
+    if (invitedRole === 'LSEED-Coordinator') {
+      const lseedDirectors = await getLSEEDDirectors(); // Your function to fetch directors
 
-    if (lseedDirectors && lseedDirectors.length > 0) {
-      const directorTitle = "LSEED-Coordinator Sign Up Successful!";
-      const coordinatorName = `${firstName} ${lastName}`;
-      const notificationDirectorMessage =
-        `LSEED-Coordinator ${coordinatorName} has successfully signed up and joined the system. You may now assign programs or monitor their activities via the Manage Programs Page.`;
+      if (lseedDirectors?.length) {
+        const coordinatorName = `${firstName} ${lastName}`;
+        const directorTitle = "LSEED-Coordinator Sign Up Successful!";
+        const directorMessage = `LSEED-Coordinator ${coordinatorName} has successfully signed up. You may now assign programs or monitor their activities via the Manage Programs page.`;
 
-      for (const director of lseedDirectors) {
-        const receiverId = director.user_id;
-
-        await pgDatabase.query(
-          `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
-          VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/programs');`,
-          [receiverId, directorTitle, notificationDirectorMessage]
-        );
+        for (const director of lseedDirectors) {
+          await pgDatabase.query(
+            `INSERT INTO notification (notification_id, receiver_id, title, message, created_at, target_route) 
+             VALUES (uuid_generate_v4(), $1, $2, $3, NOW(), '/programs');`,
+            [director.user_id, directorTitle, directorMessage]
+          );
+        }
       }
     }
-    res.status(201).json({ message: "Coordinator account created successfully." });
+
+    res.status(201).json({ message: `${invitedRole} account created successfully.` });
 
   } catch (err) {
-    console.error("❌ Error in /signup-LSEEDCoordinator:", err);
+    console.error("❌ Error in /signup-lseed-role:", err);
     res.status(500).json({ message: "Server error. Please try again." });
   }
 });
@@ -1604,8 +1608,6 @@ app.get("/getAuditLogs", async (req, res) => {
 
     const auditLogs = await getAuditLogs({ page, limit });
 
-
-
     res.json(auditLogs);
   } catch (error) {
     console.error("Error fetching audit logs:", error);
@@ -1613,19 +1615,18 @@ app.get("/getAuditLogs", async (req, res) => {
   }
 });
 
-app.post("/invite-coordinator", async (req, res) => {
+app.post("/invite-lseed-user", async (req, res) => {
   const { email } = req.body;
   const ipAddress = (req.headers['x-forwarded-for'] || req.connection.remoteAddress || '').split(',')[0].trim();
   const userId = req.session.user?.id;
-
-  console.log('POST /invite-coordinator - Inviting email:', email);
+  const activeRole = req.session.user?.activeRole;
 
   if (!email) {
     return res.status(400).json({ message: 'Email is required.' });
   }
 
   try {
-    // 1. Optional: check if the email already belongs to an existing user
+    // 1. Check if the email already belongs to an existing user
     const existingUser = await pgDatabase.query(
       'SELECT * FROM users WHERE email = $1',
       [email]
@@ -1635,17 +1636,49 @@ app.post("/invite-coordinator", async (req, res) => {
       return res.status(409).json({ message: 'A user with this email already exists.' });
     }
 
-    // 3. Store in DB
+    // 2. Generate invite token
+    const inviteToken = crypto.randomUUID();
+
+    // 3. Determine role to be assigned on signup
+    const inviteeRole = activeRole === "Administrator" ? "LSEED-Director" : "LSEED-Coordinator";
+
+    // 4. Store in DB
     await pgDatabase.query(
-      'INSERT INTO coordinator_invites (email, token) VALUES ($1, $2)',
-      [email, inviteToken]
+      'INSERT INTO coordinator_invites (email, token, role) VALUES ($1, $2, $3)',
+      [email, inviteToken, inviteeRole]
     );
 
-    // 4. Prepare sign-up page link with token
-    const signUpLink = `${process.env.WEBHOOK_BASE_URL}/coordinator-signup?token=${inviteToken}`;
+    // 5. Prepare sign-up page link
+    const signUpLink = `${process.env.WEBHOOK_BASE_URL}/lseed-signup?token=${inviteToken}`;
     console.log('✅ Sign-up link:', signUpLink);
 
-    // 5. Send the invitation email
+    // 6. Determine who the invite is "from"
+    const invitedBy = activeRole === "Administrator" ? "LSEED Admin Team" : "LSEED Director";
+
+    // 7. Compose email
+    const emailHTML = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
+        <p style="margin: 0 0 16px;">Dear ${inviteeRole},</p>
+
+        <p style="margin: 0 0 16px;">
+          The <strong>${invitedBy}</strong> has invited you to join as a <strong>${inviteeRole}</strong> on the <strong>LSEED platform</strong>.
+        </p>
+
+        <p style="margin: 0 0 16px;">
+          Please click the link below to set up your account:
+        </p>
+
+        <p style="margin: 0 0 16px;">
+          <a href="${signUpLink}" style="color: #1a73e8;">${signUpLink}</a>
+        </p>
+
+        <p style="margin: 0;">
+          <em>This link will expire in 24 hours.</em>
+        </p>
+      </div>
+    `;
+
+    // 8. Send email
     const transporter = nodemailer.createTransport({
       service: 'Gmail',
       auth: {
@@ -1657,42 +1690,20 @@ app.post("/invite-coordinator", async (req, res) => {
     await transporter.sendMail({
       from: `"LSEED Support" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'You have been invited to join LSEED as a Coordinator',
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #000;">
-          <p style="margin: 0 0 16px;">Hi,</p>
-
-          <p style="margin: 0 0 16px;">
-            The <strong>LSEED Director</strong> has invited you to join as a Coordinator on the <strong>LSEED platform</strong>.
-          </p>
-
-          <p style="margin: 0 0 16px;">
-            Click the link below to set up your account:
-          </p>
-
-          <p style="margin: 0 0 16px;">
-            <a href="${signUpLink}" style="color: #1a73e8;">${signUpLink}</a>
-          </p>
-
-          <p style="margin: 0;">
-            This link will expire in 24 hours.
-          </p>
-        </div>
-      `,
+      subject: `You're invited to join LSEED as a ${inviteeRole}`,
+      html: emailHTML,
     });
 
-    // Add Admin log
+    // 9. Audit log
     await pgDatabase.query(
       `INSERT INTO audit_logs (user_id, action, details, ip_address) VALUES ($1, $2, $3, $4)`,
-      [userId, 'Invited LSEED-Coordinator to create account', JSON.stringify({ invited_email: email }), ipAddress]
+      [userId, `Invited ${inviteeRole} to create account`, JSON.stringify({ invited_email: email }), ipAddress]
     );
-
-    console.log('Audit Log Insert Debug:', { userId, email, ipAddress });
 
     res.status(201).json({ message: 'Invitation email sent successfully.' });
 
   } catch (err) {
-    console.error('❌ Error inviting coordinator:', err);
+    console.error('❌ Error inviting user:', err);
     res.status(500).json({ message: 'Something went wrong.' });
   }
 });
@@ -3157,7 +3168,7 @@ app.post("/api/adhoc-report", async (req, res) => {
 
       // Combine and format the insight block
       const title = `${category}`;
-      const avgLine = `Average Score: ${average}`;
+      const avgLine = `Average Score: ${average} / 5`;
       const fullInsight = `${remark}${advice}`;
 
       const titleHeight = doc.heightOfString(title, { width: page4MaxWidth });

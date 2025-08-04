@@ -24,7 +24,7 @@ import ProfilePage from "./scenes/profile";
 import { ColorModeContext, useMode } from "./theme";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import CoordinatorSignup from "./scenes/coordinator-signup";
+import LSEEDSignup from "./scenes/lseed-signup";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import ForgotPassword from "./scenes/forgotpassword";
 import ResetPassword from "./scenes/resetpassword";
@@ -91,7 +91,7 @@ const MainContent = () => {
 
       {/* PUBLIC ROUTES WITHOUT SIDEBAR/TOPBAR */}
       <Route element={<PublicLayout />}>
-        <Route path="/coordinator-signup" element={<CoordinatorSignup />} />
+        <Route path="/lseed-signup" element={<LSEEDSignup />} />
         <Route
           path="/"
           element={

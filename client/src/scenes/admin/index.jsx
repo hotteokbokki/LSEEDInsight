@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   Box,
   Button,
@@ -11,6 +11,7 @@ import axios from "axios";
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
 import { DataGrid } from "@mui/x-data-grid";
+import { useAuth } from "../../context/authContext";
 import { Snackbar, Alert, Dialog, DialogTitle, DialogContent, TextField, DialogActions } from "@mui/material";
 
 const AdminPage = () => {
@@ -23,8 +24,9 @@ const AdminPage = () => {
   const [isSuccessEditPopupOpen, setIsSuccessEditPopupOpen] = useState(false);
   const [showEditButtons, setShowEditButtons] = useState(false);
   const [inviteCoordinatorFormData, setInviteCoordinatorFormData] = useState({
-      email: "",
+    email: "",
   });
+  const { user, isMentorView } = useAuth();
   const [emailError, setEmailError] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -33,6 +35,24 @@ const AdminPage = () => {
   const [openInviteCoordinator, setOpenInviteCoordinator] = useState(false);
   const handleOpenInviteCoordinator = () => setOpenInviteCoordinator(true);
   const handleCloseInviteCoordinator = () => setOpenInviteCoordinator(false);
+
+  const activeRole = (() => {
+    if (!user || !user.roles) return null;
+
+    const hasLSEED = user.roles.some(role => role.startsWith("LSEED"));
+    const hasMentor = user.roles.includes("Mentor");
+
+    if (hasLSEED && hasMentor) {
+      return isMentorView ? "Mentor" : "LSEED-Coordinator";
+    } else if (hasMentor) {
+      return "Mentor";
+    } else if (hasLSEED) {
+      return user.roles.find(r => r.startsWith("LSEED")); // either LSEED-Coordinator or LSEED-Director
+    } else if (user.roles.includes("Administrator")) {
+      return "Administrator";
+    }
+    return null;
+  })();
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -96,9 +116,9 @@ const AdminPage = () => {
 
       // Send the invite request
       const response = await axios.post(
-        `${process.env.REACT_APP_API_BASE_URL}/invite-coordinator`,
-          {email: inviteCoordinatorFormData.email.trim()}, 
-          { withCredentials: true }
+        `${process.env.REACT_APP_API_BASE_URL}/invite-lseed-user`,
+        { email: inviteCoordinatorFormData.email.trim() },
+        { withCredentials: true }
       );
 
       if (response.status === 201) {
@@ -337,7 +357,7 @@ const AdminPage = () => {
           </>
         )}
 
-        {/* Create LSEED-Coordinator Button */}
+        {/* Create LSEED-Coordinator/Director Button */}
         <Button
           variant="contained"
           sx={{
@@ -347,9 +367,13 @@ const AdminPage = () => {
               backgroundColor: colors.greenAccent[600],
             },
           }}
-          onClick={handleOpenInviteCoordinator} 
+          onClick={handleOpenInviteCoordinator}
         >
-          Create LSEED-Coordinator
+          {activeRole === "LSEED-Director"
+            ? "Create LSEED-Coordinator"
+            : activeRole === "Administrator"
+              ? "Create LSEED-Director"
+              : "Create User"}
         </Button>
       </Box>
 
@@ -464,7 +488,7 @@ const AdminPage = () => {
           <Button
             onClick={handleInviteCoordinatorSubmit}
             variant="contained"
-            disabled={!inviteCoordinatorFormData.email} 
+            disabled={!inviteCoordinatorFormData.email}
             sx={{
               backgroundColor:
                 inviteCoordinatorFormData.email

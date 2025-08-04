@@ -1,4 +1,3 @@
-// src/pages/CoordinatorSignup.jsx
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import "../../styles/Login.css";
@@ -11,7 +10,7 @@ import {
   Alert,
 } from "@mui/material";
 
-const CoordinatorSignup = () => {
+const LSEEDSignup = () => {
     const [isFlipped, setIsFlipped] = useState(true);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -158,7 +157,7 @@ const CoordinatorSignup = () => {
         }
 
         try {
-            const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/signup-LSEEDCoordinator`, {
+            const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/signup-lseed-role`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...formData, token }),
@@ -224,7 +223,7 @@ const CoordinatorSignup = () => {
             <img src="backphot.png" alt="Join Us" />
             <div className="text">
             <span className="text-1">
-                Coordinator <br /> Sign-Up
+                LSEED <br /> Sign-Up
             </span>
             </div>
         </div>
@@ -236,7 +235,7 @@ const CoordinatorSignup = () => {
             <div className="signup-form">
                 <div className="signup-scroll">
                 <div className="title">
-                    <h2>COORDINATOR SIGN UP</h2>
+                    <h2>LSEED SIGN UP</h2>
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="input-boxes">
@@ -358,4 +357,4 @@ const CoordinatorSignup = () => {
     );
 };
 
-export default CoordinatorSignup;
+export default LSEEDSignup;
