@@ -123,6 +123,7 @@ app.use(cors({
   credentials: true
 }));
 
+
 app.use(cookieParser());
 
 // Set size limits BEFORE any routes
@@ -2945,7 +2946,23 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
     let rightY = sectionTopY;
 
     // Left Column - Summary Stats
-    const totalEvaluations = Object.values(overallCategoryStats).reduce((sum, stat) => sum + parseInt(stat.rating_count), 0);
+    // FIXED: Calculate total evaluations correctly
+    // Group by category first, then sum ratings within each category to get evaluations per category
+    const categoryGroups = {};
+    overallCategoryStats.forEach(stat => {
+      if (!categoryGroups[stat.category_name]) {
+        categoryGroups[stat.category_name] = 0;
+      }
+      categoryGroups[stat.category_name] += parseInt(stat.rating_count);
+    });
+    
+    // Total evaluations should be the count from any one category (they should all be the same)
+    // Or if you want to be extra safe, take the average or first category
+    const totalEvaluations = Object.values(categoryGroups)[0] || 0;
+    
+    // Alternative approach if categories might have different counts:
+    // const totalEvaluations = Math.max(...Object.values(categoryGroups));
+    
     // Ensure scores are numbers before calculating average
     const validScores = overallRadarData.filter(cat => cat.score !== undefined && cat.score !== null);
     const overallAverage = validScores.length > 0 ? 
@@ -3077,18 +3094,17 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
       }
     };
 
-    // Process category statistics
-    const categoryGroups = {};
-    overallCategoryStats.forEach(stat => {
-      if (!categoryGroups[stat.category_name]) {
-        categoryGroups[stat.category_name] = {};
-      }
-      categoryGroups[stat.category_name][stat.rating] = parseInt(stat.rating_count);
-    });
-
+    // Process category statistics - REUSING the categoryGroups we already calculated
     // Generate insights for each category (similar to ad-hoc report style)
-    for (const [category, ratings] of Object.entries(categoryGroups)) {
-      const total = Object.values(ratings).reduce((sum, val) => sum + val, 0);
+    for (const [category, totalCount] of Object.entries(categoryGroups)) {
+      // Get ratings breakdown for this category
+      const categoryStats = overallCategoryStats.filter(stat => stat.category_name === category);
+      const ratings = {};
+      categoryStats.forEach(stat => {
+        ratings[stat.rating] = parseInt(stat.rating_count);
+      });
+
+      const total = totalCount;
       const weighted = Object.entries(ratings).reduce(
         (acc, [r, c]) => acc + parseInt(r) * c,
         0
