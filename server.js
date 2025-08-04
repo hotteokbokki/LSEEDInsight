@@ -325,6 +325,131 @@ async function sendMessage(chatId, message) {
   }
 }
 
+function generateDynamicOutlook({
+  netIncome,
+  totalAssets,
+  transformedCashFlowData,
+  selectedSEEquityTrendData,
+  inventoryTurnoverByItemData,
+  netProfitMargin,
+  grossProfitMargin,
+  debtToAssetRatio,
+}) {
+  const outlook = [];
+
+  // 1. Net Income
+  if (typeof netIncome === "number") {
+    if (netIncome > 0) {
+      outlook.push("Net income is positive, indicating financial viability.");
+    } else if (netIncome < 0) {
+      outlook.push("Net income is negative, suggesting operational or revenue challenges.");
+    }
+  }
+
+  // 2. Asset Utilization
+  if (typeof netIncome === "number" && typeof totalAssets === "number" && totalAssets > 0) {
+    const roa = netIncome / totalAssets;
+    if (roa >= 0.1) {
+      outlook.push("Assets are generating strong returns, reflecting efficient utilization.");
+    } else if (roa >= 0.05) {
+      outlook.push("Asset utilization is moderate but acceptable.");
+    } else {
+      outlook.push("Assets are underperforming — explore ways to optimize usage.");
+    }
+  }
+
+  // 3. Cashflow Balance & Volatility
+  if (Array.isArray(transformedCashFlowData) && transformedCashFlowData.length > 1) {
+    const inflows = transformedCashFlowData.map(q => q.Inflow).filter(i => i > 0);
+    const outflows = transformedCashFlowData.map(q => q.Outflow).filter(o => o > 0);
+    if (inflows.length && outflows.length) {
+      const avgInflow = inflows.reduce((a, b) => a + b, 0) / inflows.length;
+      const avgOutflow = outflows.reduce((a, b) => a + b, 0) / outflows.length;
+      if (avgInflow > avgOutflow) {
+        outlook.push("Cash inflows exceed outflows, suggesting a healthy cash position.");
+      } else if (avgInflow < avgOutflow) {
+        outlook.push("Cash outflows consistently exceed inflows — liquidity pressure is present.");
+      } else {
+        outlook.push("Cash inflows and outflows are balanced, but margin for error is slim.");
+      }
+    }
+  }
+
+  // 4. Equity Stability
+  const equityData = selectedSEEquityTrendData?.[0]?.data || [];
+  if (equityData.length >= 2) {
+    const values = equityData.map(e => e.y);
+    const start = values[0];
+    const end = values[values.length - 1];
+    if (new Set(values).size === 1) {
+      outlook.push("Equity has remained stable over time.");
+    } else if (end > start) {
+      outlook.push("Equity has grown over time — value retention is improving.");
+    } else {
+      outlook.push("Equity has declined — net worth erosion is a concern.");
+    }
+  }
+
+  // 5. Inventory Turnover
+  if (Array.isArray(inventoryTurnoverByItemData) && inventoryTurnoverByItemData.length > 0) {
+    const turnoverRates = inventoryTurnoverByItemData.map(i => i.turnover);
+    const avg = turnoverRates.reduce((a, b) => a + b, 0) / turnoverRates.length;
+    const high = inventoryTurnoverByItemData.filter(i => i.turnover > avg * 1.25);
+    const low = inventoryTurnoverByItemData.filter(i => i.turnover < avg * 0.75);
+
+    if (high.length && !low.length) {
+      outlook.push("Inventory turnover is generally high — indicating strong sales and low excess stock.");
+    } else if (low.length && !high.length) {
+      outlook.push("Inventory turnover is generally low — review product movement and storage costs.");
+    } else if (high.length && low.length) {
+      outlook.push("Mixed turnover patterns in inventory — consider rebalancing fast and slow-moving items.");
+    } else {
+      outlook.push("Inventory turnover is consistent across products.");
+    }
+  }
+
+  // 6. Net Profit Margin
+  if (typeof netProfitMargin === "string") {
+    if (netProfitMargin > 0.2) {
+      outlook.push("High net profit margin suggests efficient operations and pricing.");
+    } else if (netProfitMargin >= 0.1) {
+      outlook.push("Moderate net profit margin — decent profitability with room for improvement.");
+    } else {
+      outlook.push("Low net profit margin — tighten cost controls or revisit pricing strategies.");
+    }
+  } else {
+    outlook.push("• Net Profit Margin: Data unavailable");
+  }
+
+  // 7. Gross Profit Margin
+  if (typeof grossProfitMargin === "string") {
+    if (grossProfitMargin > 0.6) {
+      outlook.push("Excellent gross margin — production/sourcing costs are well managed.");
+    } else if (grossProfitMargin >= 0.4) {
+      outlook.push("Healthy gross margin — core operations are profitable.");
+    } else {
+      outlook.push("Low gross margin — consider sourcing and production cost optimizations.");
+    }
+  } else {
+    outlook.push("• Gross Profit Margin: Data unavailable");
+  }
+
+  // 8. Debt-to-Asset Ratio
+  if (typeof debtToAssetRatio === "string") {
+    if (debtToAssetRatio > 0.6) {
+      outlook.push("High debt-to-asset ratio — financial leverage is elevated, monitor repayment capacity.");
+    } else if (debtToAssetRatio >= 0.3) {
+      outlook.push("Moderate debt-to-asset ratio — debt is within manageable range.");
+    } else {
+      outlook.push("Low debt-to-asset ratio — minimal risk from external liabilities.");
+    }
+  } else {
+    outlook.push("• Debt-to-Asset Ratio: Data unavailable");
+  }
+
+  return outlook;
+}
+
 function extractEmailFromContactnum(contactnum) {
   if (!contactnum) return "";
 
@@ -3065,6 +3190,386 @@ app.post("/api/adhoc-report", async (req, res) => {
   } catch (err) {
     console.error("❌ Error generating report:", err);
     res.status(500).json({ message: "Failed to generate PDF" });
+  }
+});
+
+app.post("/api/financial-report", async (req, res) => {
+  try {
+    const {
+      chartImage,
+      selectedSEId,
+      totalRevenue,
+      totalExpenses,
+      netIncome,
+      totalAssets,
+      selectedSERevenueVsExpensesData,
+      cashFlowImage,
+      transformedCashFlowData,
+      equityImage,
+      selectedSEEquityTrendData,
+      inventoryTurnoverByItemData,
+      netProfitMargin,
+      grossProfitMargin,
+      debtToAssetRatio
+    } = req.body;
+
+    if (!chartImage || !selectedSEId) {
+      return res.status(400).json({ message: "Missing required data" });
+    }
+
+    const socialEnterpriseDetails = await getSocialEnterpriseByID(selectedSEId);
+    const chartBuffer = Buffer.from(chartImage.split(",")[1], "base64");
+
+    const doc = new PDFDocument({
+      size: "A4",
+      layout: "landscape",
+      margin: 40,
+    });
+
+    const chunks = [];
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => {
+      const pdfBuffer = Buffer.concat(chunks);
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename=${selectedSEId}_Financial_Report.pdf`,
+      });
+      res.send(pdfBuffer);
+    });
+
+    // ─── Title & Summary ───
+    doc.fontSize(20).text(`${socialEnterpriseDetails.team_name} Financial Report`, { align: "left" });
+    doc.fontSize(12);
+    doc.moveDown(0.5);
+
+    const leftColX = 40;
+    let leftY = 80;
+
+    doc.text(`Total Revenue: Php ${Number(totalRevenue).toLocaleString()}`, leftColX, leftY);
+    leftY += 16;
+    doc.text(`Total Expenses: Php ${Number(totalExpenses).toLocaleString()}`, leftColX, leftY);
+    leftY += 16;
+    doc.text(`Net Income: Php ${Number(netIncome).toLocaleString()}`, leftColX, leftY);
+    leftY += 16;
+    doc.text(`Total Assets: Php ${Number(totalAssets).toLocaleString()}`, leftColX, leftY);
+    doc.moveDown(2);
+
+    // ─── Chart ───
+    doc.fontSize(14).text("Revenue vs Expenses Overview", { underline: true });
+    doc.moveDown(1);
+    doc.image(chartBuffer, {
+      fit: [700, 200],
+      align: "center",
+    });
+
+    doc.moveDown(1.5);
+
+    // ─── Insights ───
+    doc.fontSize(14).text("Financial Insights", { underline: true });
+    doc.moveDown(0.5);
+    doc.fontSize(10);
+
+    const insightsX = 40;
+    const maxWidth = 700;
+    const gapY = 14;
+    let insightsY = doc.y;
+
+    const insights = [];
+
+    // ─── General Metrics ───
+    if (totalRevenue > totalExpenses) {
+      insights.push("The enterprise is profitable overall, with revenues exceeding expenses.");
+    } else {
+      insights.push("Overall expenses exceed revenue, suggesting a deficit situation that warrants attention.");
+    }
+
+    if (netIncome < 0) {
+      insights.push("Net income is negative, indicating a loss position. Consider reviewing cost and revenue drivers.");
+    } else {
+      insights.push("The enterprise reports a positive net income, reflecting a financially sound position.");
+    }
+
+    if (totalAssets > 0 && netIncome / totalAssets < 0.05) {
+      insights.push("Return on assets is relatively low. Consider strategies to optimize asset utilization.");
+    } else if (netIncome / totalAssets >= 0.05) {
+      insights.push("Assets are generating good returns, indicating efficient resource deployment.");
+    }
+
+    // ─── Time-Series Analysis ───
+    const revenueSeries = selectedSERevenueVsExpensesData.find(s => s.id === "Revenue");
+    const expenseSeries = selectedSERevenueVsExpensesData.find(s => s.id === "Expenses");
+
+    if (revenueSeries && expenseSeries) {
+      const revData = revenueSeries.data;
+      const expData = expenseSeries.data;
+
+      const revRecent = revData.slice(-2);
+      const expRecent = expData.slice(-2);
+
+      const [revQ1, revQ2] = revRecent.map(p => p.y);
+      const [expQ1, expQ2] = expRecent.map(p => p.y);
+
+      // Quarter-over-quarter trends
+      if (revQ2 > revQ1) {
+        insights.push("Revenue increased in the most recent quarter, reflecting positive momentum.");
+      } else if (revQ2 < revQ1) {
+        insights.push("Revenue declined in the most recent quarter. Investigating underlying drivers is recommended.");
+      } else {
+        insights.push("Revenue remained flat in the last two quarters.");
+      }
+
+      if (expQ2 > expQ1) {
+        insights.push("Expenses rose in the latest quarter. Monitoring cost controls is advised.");
+      } else if (expQ2 < expQ1) {
+        insights.push("Expenses declined recently. Cost-saving initiatives may be taking effect.");
+      } else {
+        insights.push("Expenses remained stable in the past two quarters.");
+      }
+
+      // Best/Worst quarters
+      const maxRev = revData.reduce((a, b) => (a.y > b.y ? a : b));
+      const minRev = revData.reduce((a, b) => (a.y < b.y ? a : b));
+      insights.push(`The highest revenue was recorded in ${maxRev.x} (Php ${maxRev.y.toLocaleString()}).`);
+      insights.push(`The lowest revenue occurred in ${minRev.x} (Php ${minRev.y.toLocaleString()}).`);
+
+      const maxExp = expData.reduce((a, b) => (a.y > b.y ? a : b));
+      const minExp = expData.reduce((a, b) => (a.y < b.y ? a : b));
+      insights.push(`The highest expenses were in ${maxExp.x} (Php ${maxExp.y.toLocaleString()}).`);
+      insights.push(`The lowest expenses occurred in ${minExp.x} (Php ${minExp.y.toLocaleString()}).`);
+
+      // Revenue vs Expense Volatility
+      const revVolatility = revData.map((v, i, arr) => i > 0 ? Math.abs(v.y - arr[i - 1].y) : 0).reduce((a, b) => a + b, 0);
+      const expVolatility = expData.map((v, i, arr) => i > 0 ? Math.abs(v.y - arr[i - 1].y) : 0).reduce((a, b) => a + b, 0);
+
+      if (revVolatility > expVolatility) {
+        insights.push("Revenue has shown more variability than expenses over the reporting period.");
+      } else if (revVolatility < expVolatility) {
+        insights.push("Expenses have fluctuated more than revenue, possibly due to inconsistent cost drivers.");
+      } else {
+        insights.push("Revenue and expenses have fluctuated at a similar pace over time.");
+      }
+    }
+
+    // ─── Render Insights in Three Independent Columns ───
+    const columnWidth = 220;
+    const columnGap = 20;
+    const totalColumns = 3;
+    const columnX = [insightsX, insightsX + columnWidth + columnGap, insightsX + 2 * (columnWidth + columnGap)];
+    const columnYs = [doc.y, doc.y, doc.y]; // Separate Y for each column
+
+    insights.forEach((text, i) => {
+      const colIndex = i % totalColumns;
+      doc.text(`• ${text}`, columnX[colIndex], columnYs[colIndex], {
+        width: columnWidth,
+        align: "left",
+      });
+
+      // Update Y position for that column only
+      const textHeight = doc.heightOfString(`• ${text}`, { width: columnWidth });
+      columnYs[colIndex] += textHeight + 6;
+    });
+
+    // ─── Cashflow Analysis Section ───
+    doc.addPage();
+    doc.fontSize(14).text("Cashflow Analysis", { underline: true });
+    doc.moveDown(1);
+
+    // Cashflow Chart
+    if (cashFlowImage) {
+      const cashFlowBuffer = Buffer.from(cashFlowImage.split(",")[1], "base64");
+      doc.image(cashFlowBuffer, {
+        fit: [700, 200],
+        align: "center",
+      });
+      doc.moveDown(1.5);
+    }
+
+    // Generate Cashflow Insights
+    const cashflowData = transformedCashFlowData; // expect this from frontend
+
+    const cashflowInsights = [];
+
+    if (cashflowData.length > 0) {
+      const highestInflow = cashflowData.reduce((a, b) => (a.Inflow > b.Inflow ? a : b));
+      const highestOutflow = cashflowData.reduce((a, b) => (a.Outflow > b.Outflow ? a : b));
+
+      const inflowOnly = cashflowData.filter(q => q.Inflow > 0).map(q => q.Inflow);
+      const outflowOnly = cashflowData.filter(q => q.Outflow > 0).map(q => q.Outflow);
+
+      const avgInflow = inflowOnly.reduce((a, b) => a + b, 0) / inflowOnly.length;
+      const avgOutflow = outflowOnly.reduce((a, b) => a + b, 0) / outflowOnly.length;
+
+      cashflowInsights.push(`The highest recorded cash inflow was in ${highestInflow.quarter} (Php ${highestInflow.Inflow.toLocaleString()}).`);
+      cashflowInsights.push(`The highest recorded cash outflow was in ${highestOutflow.quarter} (Php ${highestOutflow.Outflow.toLocaleString()}).`);
+
+      cashflowInsights.push(`Average inflow across reporting periods is Php ${Math.round(avgInflow).toLocaleString()}.`);
+      cashflowInsights.push(`Average outflow across reporting periods is Php ${Math.round(avgOutflow).toLocaleString()}.`);
+
+      if (avgInflow > avgOutflow) {
+        cashflowInsights.push("Overall cash position is positive with average inflows exceeding outflows.");
+      } else if (avgInflow < avgOutflow) {
+        cashflowInsights.push("Enterprise is in a negative cashflow situation—monitor spending and improve revenue inflows.");
+      } else {
+        cashflowInsights.push("Average inflows and outflows are balanced. Sustaining this may require tight operational controls.");
+      }
+
+      const q1 = cashflowData[cashflowData.length - 2];
+      const q2 = cashflowData[cashflowData.length - 1];
+      if (q1 && q2) {
+        if (q2.Inflow > q1.Inflow) {
+          cashflowInsights.push("Cash inflow improved in the recent quarter.");
+        } else if (q2.Inflow < q1.Inflow) {
+          cashflowInsights.push("Cash inflow declined in the latest quarter.");
+        }
+
+        if (q2.Outflow > q1.Outflow) {
+          cashflowInsights.push("Cash outflow increased in the recent quarter—monitor financial controls.");
+        } else if (q2.Outflow < q1.Outflow) {
+          cashflowInsights.push("Cash outflow reduced this quarter, indicating possible operational efficiency.");
+        }
+      }
+    } else {
+      cashflowInsights.push("No available cashflow data for analysis.");
+    }
+
+    // Render Cashflow Insights
+    doc.fontSize(14).text("Cashflow Insights", { underline: true });
+    doc.moveDown(0.5);
+    doc.fontSize(10);
+    let cashflowY = doc.y;
+
+    cashflowInsights.forEach((text) => {
+      doc.text(`• ${text}`, insightsX, cashflowY, {
+        width: maxWidth,
+        align: "left",
+      });
+      cashflowY += gapY;
+    });
+
+    // ─── Equity (Net Worth) Analysis ───
+    doc.addPage();
+    doc.fontSize(14).text("Net Worth (Equity) Over Time", { underline: true });
+    doc.moveDown(1);
+    if (equityImage) {
+      const equityBuffer = Buffer.from(equityImage.split(",")[1], "base64");
+      doc.image(equityBuffer, { fit: [700, 200], align: "center" });
+      doc.moveDown(1.5);
+    }
+
+    doc.fontSize(14).text("Equity Insights", { underline: true });
+    doc.moveDown(0.5);
+    doc.fontSize(10);
+    let equityY = doc.y;
+    const equityData = selectedSEEquityTrendData[0]?.data || [];
+    const equityInsights = [];
+    if (equityData.length > 0) {
+      const sorted = [...equityData];
+      const highest = sorted.reduce((a, b) => a.y > b.y ? a : b);
+      const lowest = sorted.reduce((a, b) => a.y < b.y ? a : b);
+      equityInsights.push(`Equity peaked in ${highest.x} at Php ${highest.y.toLocaleString()}, but declined afterwards.`);
+      equityInsights.push(`The lowest equity value was in ${lowest.x} at Php ${lowest.y.toLocaleString()}, raising concerns on retained value.`);
+      if (equityData.length >= 2) {
+        const prev = equityData[equityData.length - 2];
+        const curr = equityData[equityData.length - 1];
+        if (curr.y > prev.y) equityInsights.push("Equity increased in the most recent quarter—potentially from profit or owner contribution.");
+        else if (curr.y < prev.y) equityInsights.push("Equity declined in the recent quarter, possibly due to losses or withdrawals.");
+      }
+      equityInsights.push("Volatility in equity levels suggests instability in net worth—sustained growth strategy needed.");
+      equityInsights.push("No consistent growth trend seen—investors may require reassurance on long-term value creation.");
+    } else {
+      equityInsights.push("No equity trend data available.");
+    }
+    equityInsights.forEach((text) => {
+      doc.text(`• ${text}`, insightsX, equityY, {
+        width: maxWidth,
+        align: "left",
+      });
+      equityY += gapY;
+    });
+
+    // ─── Inventory Turnover Analysis (after Equity) ───
+    const inventoryInsights = [];
+    if (inventoryTurnoverByItemData && inventoryTurnoverByItemData.length > 0) {
+      const turnoverRates = inventoryTurnoverByItemData.map(i => i.turnover);
+      const avgTurnover = turnoverRates.length
+        ? turnoverRates.reduce((a, b) => a + b, 0) / turnoverRates.length
+        : 0.1;
+
+      inventoryInsights.push(`Average turnover rate across inventory: ${(avgTurnover * 100).toFixed(1)}%.`);
+
+      inventoryTurnoverByItemData.forEach(item => {
+        const rate = (item.turnover * 100).toFixed(1);
+        if (item.turnover > avgTurnover * 1.25) {
+          inventoryInsights.push(`- ${item.name}: Turnover at ${rate}%, significantly above average — strong sales.`);
+        } else if (item.turnover < avgTurnover * 0.75) {
+          inventoryInsights.push(`- ${item.name}: Turnover at ${rate}%, below average — monitor for slow movement.`);
+        } else {
+          inventoryInsights.push(`- ${item.name}: Turnover at ${rate}%, consistent with average.`);
+        }
+      });
+    } else {
+      inventoryInsights.push("No inventory turnover data available.");
+    }
+
+    // ─── Stakeholder Summary & Investment Outlook ───
+    doc.addPage();
+    doc.fontSize(14).text("Stakeholder Summary & Investment Outlook", { underline: true });
+    doc.moveDown(1);
+
+    // ─── Display Key Financial Ratios ───
+    doc.fontSize(12).text("Key Financial Ratios", { underline: true });
+    doc.moveDown(0.5);
+    doc.fontSize(10);
+
+    const displayRatio = (label, value) =>
+      typeof value === "string"
+        ? `${label}: ${(value * 100).toFixed(2)}%`
+        : `${label}: Data unavailable`;
+
+    const keyRatios = [
+      displayRatio("Net Profit Margin", netProfitMargin),
+      displayRatio("Gross Profit Margin", grossProfitMargin),
+      displayRatio("Debt-to-Asset Ratio", debtToAssetRatio),
+    ];
+
+    let ratioY = doc.y;
+    keyRatios.forEach((line) => {
+      doc.text(`• ${line}`, 40, ratioY, { width: 700, align: "left" });
+      ratioY += 14;
+    });
+
+    doc.moveDown(1);
+
+    // ─── Financial Outlook Insights ───
+    doc.fontSize(12).text("Outlook Insights", { underline: true });
+    doc.moveDown(0.5);
+    doc.fontSize(10);
+
+    console.log(typeof (netProfitMargin))
+    console.log(typeof (grossProfitMargin))
+    console.log(typeof (debtToAssetRatio))
+
+    const outlookInsights = generateDynamicOutlook({
+      netIncome,
+      totalAssets,
+      transformedCashFlowData,
+      selectedSEEquityTrendData,
+      inventoryTurnoverByItemData,
+      netProfitMargin,
+      grossProfitMargin,
+      debtToAssetRatio,
+    });
+
+    let outlookY = doc.y;
+    outlookInsights.forEach((text) => {
+      doc.text(`• ${text}`, 40, outlookY, { width: 700, align: "left" });
+      outlookY += 14;
+    });
+
+    doc.end();
+  } catch (err) {
+    console.error("❌ Error generating financial report:", err);
+    res.status(500).json({ message: "Failed to generate report" });
   }
 });
 

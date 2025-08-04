@@ -49,6 +49,9 @@ const SEAnalytics = () => {
   const performanceOverviewChart = useRef(null);
   const painPointsChart = useRef(null);
   const scoreDistributionChart = useRef(null);
+  const revenueVSexpensesChart = useRef(null);
+  const cashFlowAnalysisChart = useRef(null);
+  const equityChart = useRef(null);
   const [isExporting, setIsExporting] = useState(false);
   const [selectedSE, setSelectedSE] = useState(null); // Selected social enterprise object
   const [pieData, setPieData] = useState([]); // Real common challenges data
@@ -124,18 +127,7 @@ const SEAnalytics = () => {
           setSelectedSE(initialSE);
           setSelectedSEId(id);
         }
-        //DEBUG
-        // JM Check mo toh, kasi sa current Promise mo once nag error ung isang API error na kaagad yung whole code.
 
-        // ✅ Use Promise.all when the calls are all required together and you want to stop if any fails:
-
-        // "I can't render the financial section unless all parts load successfully."
-
-        // ✅ Use Promise.allSettled when partial data is OK:
-
-        // "If cash flow fails, show inventory and financial statements anyway."
-
-        // Fetch financial-related data (still use Promise.all since all must succeed)
         const results = await Promise.allSettled([
           axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/financial-statements`),
           axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/cashflow`),
@@ -185,12 +177,9 @@ const SEAnalytics = () => {
             evaluationsResult
           ] = analyticsResults;
 
-          console.log("analyticsResults:", analyticsResults);
-
           // Evaluations
           if (evaluationsResult.status === "fulfilled") {
             const rawEvaluations = await evaluationsResult.value.json();
-            console.log("Raw Evaluations", rawEvaluations);
 
             const formattedEvaluationsData = rawEvaluations.map((evaluation) => ({
               id: evaluation.evaluation_id,
@@ -201,7 +190,6 @@ const SEAnalytics = () => {
               acknowledged: evaluation.acknowledged ? "Yes" : "No",
             }));
 
-            console.log("Evaluation Data", formattedEvaluationsData);
             setEvaluationsData(formattedEvaluationsData);
           } else {
             console.warn("No evaluations found or failed to fetch.");
@@ -293,11 +281,6 @@ const SEAnalytics = () => {
       handleDownloadStakeholderReport();
     }
   };
-
-  const handleDownloadStakeholderReport = () => {
-    // Your logic for generating stakeholder PDF
-  };
-
 
   const handleGenerateCollaborationReport = () => {
     setIsExporting(true);
@@ -457,11 +440,11 @@ const SEAnalytics = () => {
     Object.entries(quarterBuckets).forEach(([quarter, { revenues, expenses }]) => {
       const avgRevenue = revenues.length
         ? Math.round(revenues.reduce((sum, val) => sum + val, 0) / revenues.length)
-        : 0;
+        : null;
 
       const avgExpense = expenses.length
         ? Math.round(expenses.reduce((sum, val) => sum + val, 0) / expenses.length)
-        : 0;
+        : null;
 
       revenueData.push({ x: quarter, y: avgRevenue });
       expenseData.push({ x: quarter, y: avgExpense });
@@ -507,7 +490,7 @@ const SEAnalytics = () => {
 
     return [
       {
-        id: "Owner's Equity",
+        id: "Equity",
         color: colors.blueAccent[500],
         data: formattedData,
       },
@@ -628,7 +611,6 @@ const SEAnalytics = () => {
     .sort((a, b) => b.turnover - a.turnover)
     .slice(0, 5); // Top 5 items by turnover
 
-
   const columns = [
     { field: "social_enterprise", headerName: "Social Enterprise", flex: 1, minWidth: 150 },
     { field: "evaluator_name", headerName: "Evaluator", flex: 1, minWidth: 150 },
@@ -652,8 +634,6 @@ const SEAnalytics = () => {
   ];
 
   const handleViewExistingEvaluation = async (evaluation_id) => {
-    console.log("📌 Evaluation ID Passed:", evaluation_id);
-
     try {
       const response = await axios.get(
         `${process.env.REACT_APP_API_BASE_URL}/getEvaluationDetails`,
@@ -698,12 +678,99 @@ const SEAnalytics = () => {
         return acc;
       }, {});
 
-      console.log("✅ Processed Evaluation Data:", groupedEvaluation);
       setSelectedEvaluation(groupedEvaluation);
       setOpenDialog(true);
     } catch (error) {
       console.error("❌ Error fetching evaluation details:", error);
     }
+  };
+
+  const handleDownloadStakeholderReport = () => {
+    setIsExporting(true);
+
+    setTimeout(async () => {
+      const revenueSVG = revenueVSexpensesChart.current?.querySelector("svg");
+      const cashFlowSVG = cashFlowAnalysisChart.current?.querySelector("svg");
+      const equitySVG = equityChart.current?.querySelector("svg");
+
+      if (!revenueSVG || !selectedSEId || !currentSEFinancialMetrics || !cashFlowSVG || !equitySVG) {
+        setIsExporting(false);
+        return alert("Revenue chart or data not found");
+      }
+
+      const serialize = (svg) => new XMLSerializer().serializeToString(svg);
+
+      const svgToBase64 = async (svgData, bbox) => {
+        const scale = 3;
+        const canvas = document.createElement("canvas");
+        canvas.width = bbox.width * scale;
+        canvas.height = bbox.height * scale;
+        const ctx = canvas.getContext("2d");
+        ctx.scale(scale, scale); // upscale before drawing
+
+        const img = new Image();
+        const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+
+        return new Promise((resolve) => {
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0);
+            URL.revokeObjectURL(url);
+            resolve(canvas.toDataURL("image/png"));
+          };
+          img.src = url;
+        });
+      };
+
+      try {
+        const revenueSVGData = serialize(revenueSVG);
+        const cashFlowSVGData = serialize(cashFlowSVG);
+        const equitySVGData = serialize(equitySVG);
+
+        const bbox = revenueSVG.getBoundingClientRect();
+        const cashFlowSVGBBox = cashFlowSVG.getBoundingClientRect();
+        const equitySVGBBox = equitySVG.getBoundingClientRect();
+
+        const chartImageBase64 = await svgToBase64(revenueSVGData, bbox);
+        const cashFlowImageBase64 = await svgToBase64(cashFlowSVGData, cashFlowSVGBBox);
+        const equityImageBase64 = await svgToBase64(equitySVGData, equitySVGBBox);
+
+        const response = await axios.post(
+          `${process.env.REACT_APP_API_BASE_URL}/api/financial-report`,
+          {
+            chartImage: chartImageBase64,
+            cashFlowImage: cashFlowImageBase64,
+            equityImage: equityImageBase64,
+            selectedSEId,
+            totalRevenue: currentSEFinancialMetrics.totalRevenue,
+            totalExpenses: currentSEFinancialMetrics.totalExpenses,
+            netIncome: currentSEFinancialMetrics.netIncome,
+            totalAssets: currentSEFinancialMetrics.totalAssets,
+            selectedSERevenueVsExpensesData,
+            transformedCashFlowData,
+            selectedSEEquityTrendData,
+            inventoryTurnoverByItemData,
+            netProfitMargin,
+            grossProfitMargin,
+            debtToAssetRatio
+          },
+          {
+            responseType: "blob",
+          }
+        );
+
+        const blobUrl = URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = `Stakeholder_Report_${selectedSE?.abbr || "Report"}.pdf`;
+        a.click();
+      } catch (err) {
+        console.error("❌ Failed to generate stakeholder report:", err);
+        alert("Failed to generate report");
+      } finally {
+        setIsExporting(false);
+      }
+    }, 100);
   };
 
   // If no social enterprise is found, show an error message
@@ -732,10 +799,10 @@ const SEAnalytics = () => {
 
         <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
           <MenuItem onClick={() => handleGenerateReport("collaboration")}>
-            For Collaboration
+            Evaluation Report
           </MenuItem>
           <MenuItem onClick={() => handleGenerateReport("stakeholder")}>
-            For Stakeholders
+            Financial Report
           </MenuItem>
         </Menu>
       </Box>
@@ -1549,7 +1616,10 @@ const SEAnalytics = () => {
         </Box>
 
         {/* Revenue vs Expenses Line Chart for Selected SE */}
-        <Box backgroundColor={colors.primary[400]} p="20px">
+        <Box
+          backgroundColor={colors.primary[400]}
+          p="20px"
+        >
           <Typography
             variant="h3"
             fontWeight="bold"
@@ -1558,11 +1628,22 @@ const SEAnalytics = () => {
           >
             Revenue vs Expenses Over Time
           </Typography>
-          <Box height="400px">
+
+          <Box
+            height="400px"
+            ref={revenueVSexpensesChart}
+          >
             {selectedSERevenueVsExpensesData[0]?.data?.length > 0 ? (
-              <DualAxisLineChart data={selectedSERevenueVsExpensesData} />
+              <DualAxisLineChart
+                data={selectedSERevenueVsExpensesData}
+                isExporting={isExporting}
+              />
             ) : (
-              <Typography variant="h6" color={colors.grey[300]} textAlign="center">
+              <Typography
+                variant="h6"
+                color={colors.grey[300]}
+                textAlign="center"
+              >
                 No revenue vs expenses data available for this SE.
               </Typography>
             )}
@@ -1579,7 +1660,7 @@ const SEAnalytics = () => {
           >
             Cash Flow (Inflow vs Outflow per Quarter)
           </Typography>
-          <Box height="400px">
+          <Box height="400px" ref={cashFlowAnalysisChart}>
             {selectedSECashFlowQuarterly.length > 0 ? (
               <CashFlowChart data={transformedCashFlowData} />
             ) : (
@@ -1604,7 +1685,7 @@ const SEAnalytics = () => {
           >
             Owner's Equity Over Time
           </Typography>
-          <Box height="400px">
+          <Box height="400px" ref={equityChart}>
             {selectedSEEquityTrendData[0]?.data?.length > 0 ? (
               <DualAxisLineChart data={selectedSEEquityTrendData} />
             ) : (

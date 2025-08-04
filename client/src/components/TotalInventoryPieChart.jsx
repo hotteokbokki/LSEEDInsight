@@ -6,8 +6,6 @@ const InventoryValuePie = ({ data }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
-  console.log("PieChart data:", data);
-
   return (
     <ResponsivePie
       data={data}

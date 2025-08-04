@@ -65,27 +65,16 @@ const Topbar = ({}) => {
       }
 
       const requestUrl = `${API_BASE_URL}/api/notifications?receiver_id=${user.id}`;
-      console.log("👤 Frontend user ID:", user?.id);
-
-      console.log("🔍 Making request to:", requestUrl);
-      console.log("🔍 Current user:", user); // Add this line
-      console.log("🔍 User roles:", user.roles); // Add this line
 
       const response = await axios.get(requestUrl);
-      console.log("📦 Raw notifications data:", response.data);
-      console.log("📩 Notifications received:", response.data);
-      console.log("📊 Number of notifications:", response.data.length); // Add this line
       setNotifications([...response.data]);
-      console.log("🔔 Updated notifications state:", notifications);
     } catch (error) {
       console.error("❌ Error fetching notifications:", error);
     }
   };
 
   useEffect(() => {
-    console.log("👤 User detected:", user); // ✅ Log user info
     if (user && user.id) {
-      console.log("🔄 Fetching notifications for:", user.id);
       fetchNotifications();
       const interval = setInterval(fetchNotifications, 5000);
       return () => clearInterval(interval);
@@ -198,9 +187,6 @@ const Topbar = ({}) => {
           >
             Notifications
           </Typography>
-
-          {/* Debug JSX */}
-          {console.log("🛠 Rendering Notifications:", notifications)}
 
           {/* Notification Items Container */}
           <Box
