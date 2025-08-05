@@ -2914,7 +2914,7 @@ app.get("/api/overall-category-stats", async (req, res) => {
 app.post("/api/overall-evaluation-report", async (req, res) => {
   try {
     const { chartImageRadar, overallCategoryStats, overallRadarData } = req.body;
-
+    
     if (!chartImageRadar) {
       return res.status(400).json({ message: "Missing radar chart image" });
     }
@@ -2934,39 +2934,46 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
       res.send(pdfBuffer);
     });
 
-    // Helper function to add page numbers (will be called at the end)
-    const addPageNumber = (pageNum, totalPages) => {
-      const pageWidth = doc.page.width;
-      const pageHeight = doc.page.height;
-      const margin = doc.page.margins.bottom;
-      const rightMargin = doc.page.margins.right;
+    // FIXED: Declare variables only once at the top
+    let estimatedTotalPages = 3; // Most reports will have 2-3 pages
+    let currentPageNumber = 1;   // Track current page number
 
-      doc.fontSize(10)
-        .fillColor('gray')
-        .text(`Page ${pageNum} of ${totalPages}`,
-          pageWidth - rightMargin - 80,
-          pageHeight - margin + 10,
-          { align: 'right', width: 80 });
-    };
+    // Helper function to add page number to current page
+  const addPageNumber = (pageNum, totalPages) => {
+  const pageWidth = doc.page.width;
+  const margin = doc.page.margins.top;
+  
+  // Save current settings
+  const currentFontSize = doc._fontSize;
+  
+  doc.fontSize(10)
+     .fillColor('gray')
+     .text(`Page ${pageNum} of ${totalPages}`, 
+           pageWidth - 120, // From right edge
+           margin - 20,     // Above content area
+           { align: 'right', width: 100 });
+  
+  // Restore settings
+  doc.fontSize(currentFontSize);
+  // No font restoration needed since we didn't change it
+};
 
+    // ─── PAGE 1: TITLE AND OVERVIEW ───
+    
     // ─── Title Section ───
-    doc.fontSize(20).fillColor('black').text("Overall Social Enterprise Evaluation Report", { align: "center" });
+    doc.fontSize(20).text("Overall Social Enterprise Evaluation Report", { align: "left" });
     doc.fontSize(12);
 
-    const today = new Date();
-    const formattedDate = today.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-    doc.text(`Generated as of ${formattedDate}`, { align: "left" });
-    doc.moveDown(1); // Add some space after the date
-
-    // Column positions (relative to current doc.y)
+    // Column positions
     const leftColX = 40;
     const rightColX = 350;
+    const sectionTopY = 80;
+    let leftY = sectionTopY;
+    let rightY = sectionTopY;
 
     // Left Column - Summary Stats
+    // FIXED: Calculate total evaluations correctly
+    // Group by category first, then sum ratings within each category to get evaluations per category
     const categoryGroups = {};
     overallCategoryStats.forEach(stat => {
       if (!categoryGroups[stat.category_name]) {
@@ -2974,18 +2981,25 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
       }
       categoryGroups[stat.category_name] += parseInt(stat.rating_count);
     });
-
+    
+    // Total evaluations should be the count from any one category (they should all be the same)
+    // Or if you want to be extra safe, take the average or first category
     const totalEvaluations = Object.values(categoryGroups)[0] || 0;
-
+    
+    // Alternative approach if categories might have different counts:
+    // const totalEvaluations = Math.max(...Object.values(categoryGroups));
+    
+    // Ensure scores are numbers before calculating average
     const validScores = overallRadarData.filter(cat => cat.score !== undefined && cat.score !== null);
-    const overallAverage = validScores.length > 0 ?
+    const overallAverage = validScores.length > 0 ? 
       validScores.reduce((sum, cat) => sum + (typeof cat.score === 'number' ? cat.score : parseFloat(cat.score) || 0), 0) / validScores.length : 0;
+    
+    doc.text(`Overall Average Score: ${overallAverage.toFixed(2)}`, leftColX, leftY);
+    leftY += 16;
+    doc.text(`Total Evaluations: ${totalEvaluations}`, leftColX, leftY);
 
-    // Display summary stats
-    doc.text(`Overall Average Score: ${overallAverage.toFixed(2)}`, leftColX, doc.y);
-    doc.moveDown(0.5);
-    doc.text(`Total Evaluations: ${totalEvaluations}`, leftColX, doc.y);
-    doc.moveDown(1); // Space after summary stats
+    // Move below taller column
+    doc.y = Math.max(leftY, rightY) + 20;
 
     // ─── Analytics Section ───
     doc.fontSize(16).text("Analytics Summary", { underline: true });
@@ -2997,7 +3011,7 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
     doc.moveDown(1);
 
     // ─── Bottom Section: 2-Column Layout (similar to ad-hoc report) ───
-    const startYForBoxes = doc.y; // Capture current Y for box placement
+    const startY = doc.y;
     const boxWidth = 250;
     const boxHeight = 45;
     const boxSpacingY = 10;
@@ -3009,8 +3023,9 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
       const col = Math.floor(index / boxesPerColumn);
       const row = index % boxesPerColumn;
       const x = col === 0 ? col1X : col2X;
-      const y = startYForBoxes + row * (boxHeight + boxSpacingY);
+      const y = startY + row * (boxHeight + boxSpacingY);
 
+      // Ensure score is a number and handle potential undefined/null values
       const score = typeof item.score === 'number' ? item.score : parseFloat(item.score) || 0;
 
       doc.rect(x, y, boxWidth, boxHeight).stroke();
@@ -3019,64 +3034,64 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
         .text(`Score: ${score.toFixed(2)}`, x + 10, y + 25);
     });
 
-    // Move doc.y past the boxes to start Insights section
-    doc.y = startYForBoxes + (boxesPerColumn * (boxHeight + boxSpacingY)) + 20;
-
     // Insights Section (similar to ad-hoc report)
     const strengths = overallRadarData.filter(r => {
       const score = typeof r.score === 'number' ? r.score : parseFloat(r.score) || 0;
       return score > 3;
     }).map(r => r.category);
-
+    
     const weaknesses = overallRadarData.filter(r => {
       const score = typeof r.score === 'number' ? r.score : parseFloat(r.score) || 0;
       return score <= 3;
     }).map(r => r.category);
+    const insightX = col2X + boxWidth + 40;
+    let insightY = startY;
 
-    const insightX = col2X + boxWidth + 40; // Position insights next to the second column of boxes
-    let currentInsightY = startYForBoxes; // Start insights at the same Y as the boxes
+    doc.fontSize(12).text("Overall Insights", insightX, insightY);
+    insightY += 20;
 
-    doc.fontSize(12).text("Overall Insights", insightX, currentInsightY);
-    currentInsightY += 20; // Move down for next text
-
-    doc.fontSize(10).text("Program Strengths:", insightX, currentInsightY);
-    currentInsightY += 15;
+    doc.fontSize(10).text("Program Strengths:", insightX, insightY);
+    insightY += 15;
     if (strengths.length > 0) {
       strengths.forEach((s) => {
-        doc.text(`• ${s}`, insightX + 10, currentInsightY);
-        currentInsightY += 14;
+        doc.text(`• ${s}`, insightX + 10, insightY);
+        insightY += 14;
       });
     } else {
-      doc.text("• All areas need improvement", insightX + 10, currentInsightY);
-      currentInsightY += 14;
+      doc.text("• All areas need improvement", insightX + 10, insightY);
+      insightY += 14;
     }
 
-    currentInsightY += 10;
-    doc.text("Areas for Improvement:", insightX, currentInsightY);
-    currentInsightY += 15;
+    insightY += 10;
+    doc.text("Areas for Improvement:", insightX, insightY);
+    insightY += 15;
     if (weaknesses.length > 0) {
       weaknesses.forEach((w) => {
-        doc.text(`• ${w}`, insightX + 10, currentInsightY);
-        currentInsightY += 14;
+        doc.text(`• ${w}`, insightX + 10, insightY);
+        insightY += 14;
       });
     } else {
-      doc.text("• All areas performing well", insightX + 10, currentInsightY);
+      doc.text("• All areas performing well", insightX + 10, insightY);
     }
 
-    // Move doc.y past the insights section to ensure next content starts below it
-    doc.y = Math.max(doc.y, currentInsightY) + 20;
-
+    // Add page number to first page
+    addPageNumber(currentPageNumber, estimatedTotalPages);
 
     // ─── PAGE 2: DETAILED INSIGHTS (Enhanced version) ───
-    doc.addPage(); // Start a new page for detailed insights
-
+    doc.addPage();
+    currentPageNumber++; // FIXED: Increment instead of setting to 2
+    
     const page2AxisX = 40;
+    const page2AxisY = doc.y;
     const page2MaxWidth = 520;
     const page2GapY = 15;
 
-    doc.fontSize(16).text("Detailed Category Analysis & Recommendations", { underline: true });
+    doc.fontSize(16).text("Detailed Category Analysis & Recommendations", page2AxisX, page2AxisY, { underline: true });
     doc.moveDown(1);
     doc.fontSize(10);
+    let currentPage2Y = doc.y + 10;
+
+    // REMOVED: Duplicate variable declarations that were causing errors
 
     // Category advice map (enhanced)
     const categoryAdviceMap = {
@@ -3115,6 +3130,7 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
     // Process category statistics - REUSING the categoryGroups we already calculated
     // Generate insights for each category (similar to ad-hoc report style)
     for (const [category, totalCount] of Object.entries(categoryGroups)) {
+      // Get ratings breakdown for this category
       const categoryStats = overallCategoryStats.filter(stat => stat.category_name === category);
       const ratings = {};
       categoryStats.forEach(stat => {
@@ -3134,6 +3150,7 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
       const score4 = ratings[4] || 0;
       const score5 = ratings[5] || 0;
 
+      // Determine key remark (similar to ad-hoc report logic)
       let remark = "";
       if (average >= 4 && score4 + score5 >= total * 0.7) {
         remark = "Strong performance across all SEs with most evaluators awarding high marks. The program demonstrates confidence and consistency in this area.";
@@ -3151,6 +3168,7 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
         remark = "Inconsistent performance across SEs. Low and mid-tier ratings dominate—suggests unclear processes or insufficient capability development.";
       }
 
+      // Get appropriate advice
       let advice = "";
       if (average < 2) {
         advice = categoryAdviceMap[category]?.belowTwo || "Urgent program-wide intervention needed.";
@@ -3160,101 +3178,86 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
         advice = categoryAdviceMap[category]?.aboveThree || "Maintain current strategies and consider advanced training.";
       }
 
+      // Combine and format the insight block (similar to ad-hoc report)
       const title = `${category}`;
       const avgLine = `Program Average Score: ${average} / 5`;
       const distributionLine = `Distribution: 1(${score1}) 2(${score2}) 3(${score3}) 4(${score4}) 5(${score5})`;
       const fullInsight = `${remark} ${advice}`;
 
-      // Pre-calculate heights for the current block
       const titleHeight = doc.heightOfString(title, { width: page2MaxWidth });
       const avgLineHeight = doc.heightOfString(avgLine, { width: page2MaxWidth });
       const distributionHeight = doc.heightOfString(distributionLine, { width: page2MaxWidth });
       const fullInsightHeight = doc.heightOfString(fullInsight, { width: page2MaxWidth });
-      const blockHeight = titleHeight + avgLineHeight + distributionHeight + fullInsightHeight + page2GapY * 2;
 
-      // Check if the current block will fit on the remaining page. If not, add a new page.
-      if (doc.y + blockHeight > doc.page.height - doc.page.margins.bottom) {
+      const totalHeight = titleHeight + avgLineHeight + distributionHeight + fullInsightHeight + page2GapY * 2;
+
+      // Add new page if needed
+      const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
+      if (currentPage2Y + totalHeight > pageHeight) {
+        // Add page number to current page before creating new page
+        addPageNumber(currentPageNumber, estimatedTotalPages);
+        
         doc.addPage();
+        currentPageNumber++;
+        currentPage2Y = doc.y;
       }
 
-      // Render the block, letting doc.y manage the vertical position
-      doc.font("Helvetica-Bold").text(title, page2AxisX, doc.y, { width: page2MaxWidth });
-      doc.moveDown(0.2); // Small gap after title
+      // Render (similar to ad-hoc report formatting)
+      doc.font("Helvetica-Bold").text(title, page2AxisX, currentPage2Y, { width: page2MaxWidth });
+      currentPage2Y += titleHeight;
 
-      doc.font("Helvetica-Bold").text(avgLine, page2AxisX, doc.y, { width: page2MaxWidth });
-      doc.moveDown(0.2); // Small gap after average line
+      doc.font("Helvetica-Bold").text(avgLine, page2AxisX, currentPage2Y, { width: page2MaxWidth });
+      currentPage2Y += avgLineHeight;
 
-      doc.font("Helvetica").text(distributionLine, page2AxisX, doc.y, { width: page2MaxWidth });
-      doc.moveDown(0.5); // Gap after distribution line
+      doc.font("Helvetica").text(distributionLine, page2AxisX, currentPage2Y, { width: page2MaxWidth });
+      currentPage2Y += distributionHeight + 5;
 
-      doc.font("Helvetica").text(fullInsight, page2AxisX, doc.y, {
+      doc.font("Helvetica").text(fullInsight, page2AxisX, currentPage2Y, {
         width: page2MaxWidth,
         lineGap: 2,
       });
-      doc.moveDown(1.5); // Larger gap after the full insight block
+      currentPage2Y += fullInsightHeight + page2GapY;
     }
 
     // Add overall program recommendations
-    // Calculate estimated height for recommendations block
-    let recommendationsHeightEstimate = 0;
-    if (overallAverage < 2.5) {
-      recommendationsHeightEstimate = 14 * 3 + 25; // 3 lines of text + title
-    } else if (overallAverage < 3.5) {
-      recommendationsHeightEstimate = 14 * 3 + 25;
-    } else {
-      recommendationsHeightEstimate = 14 * 3 + 25;
-    }
+   
 
-    // Check if recommendations will fit on current page. If not, add a new page.
-    if (doc.y + recommendationsHeightEstimate > doc.page.height - doc.page.margins.bottom) {
-      doc.addPage();
-    }
-
-    doc.fontSize(14).font("Helvetica-Bold").text("Overall Program Recommendations", page2AxisX, doc.y, { underline: true });
-    doc.moveDown(0.8); // Space after title
+    doc.fontSize(14).font("Helvetica-Bold").text("Overall Program Recommendations", page2AxisX, currentPage2Y, { underline: true });
+    currentPage2Y += 25;
     doc.fontSize(10).font("Helvetica");
 
     if (overallAverage < 2.5) {
-      doc.text("• Implement comprehensive mentoring program across all categories", page2AxisX, doc.y);
-      doc.moveDown(0.2);
-      doc.text("• Increase frequency of training workshops and support sessions", page2AxisX, doc.y);
-      doc.moveDown(0.2);
-      doc.text("• Consider additional resources and dedicated support staff", page2AxisX, doc.y);
+      doc.text("• Implement comprehensive mentoring program across all categories", page2AxisX, currentPage2Y);
+      currentPage2Y += 14;
+      doc.text("• Increase frequency of training workshops and support sessions", page2AxisX, currentPage2Y);
+      currentPage2Y += 14;
+      doc.text("• Consider additional resources and dedicated support staff", page2AxisX, currentPage2Y);
     } else if (overallAverage < 3.5) {
-      doc.text("• Continue current mentoring efforts with targeted improvements", page2AxisX, doc.y);
-      doc.moveDown(0.2);
-      doc.text("• Focus resources on weakest performing categories", page2AxisX, doc.y);
-      doc.moveDown(0.2);
-      doc.text("• Implement peer learning initiatives between high and low performers", page2AxisX, doc.y);
+      doc.text("• Continue current mentoring efforts with targeted improvements", page2AxisX, currentPage2Y);
+      currentPage2Y += 14;
+      doc.text("• Focus resources on weakest performing categories", page2AxisX, currentPage2Y);
+      currentPage2Y += 14;
+      doc.text("• Implement peer learning initiatives between high and low performers", page2AxisX, currentPage2Y);
     } else {
-      doc.text("• Program is performing well overall - maintain current quality", page2AxisX, doc.y);
-      doc.moveDown(0.2);
-      doc.text("• Focus on scaling successful practices to all participating SEs", page2AxisX, doc.y);
-      doc.moveDown(0.2);
-      doc.text("• Consider advanced training modules for high-performing SEs", page2AxisX, doc.y);
+      doc.text("• Program is performing well overall - maintain current quality", page2AxisX, currentPage2Y);
+      currentPage2Y += 14;
+      doc.text("• Focus on scaling successful practices to all participating SEs", page2AxisX, currentPage2Y);
+      currentPage2Y += 14;
+      doc.text("• Consider advanced training modules for high-performing SEs", page2AxisX, currentPage2Y);
     }
 
-    // Finalize the document content before adding page numbers
+    // FIXED: Add page number to final page with proper total count
+    // Update the estimated total pages to actual current page count
+    estimatedTotalPages = currentPageNumber;
+    addPageNumber(currentPageNumber, estimatedTotalPages);
+
     doc.end();
-
-    // After doc.end() is called, the total number of pages is known
-    const totalPages = doc.bufferedPageRange().count;
-
-    // Add page numbers to all pages by iterating through them
-    const range = doc.bufferedPageRange(); // Get the page range after all content is added
-    for (let i = range.start; i < range.start + range.count; i++) {
-      doc.switchToPage(i);
-      addPageNumber(i + 1, totalPages);
-    }
-
-    // No need to call doc.end() again here, it's already called above.
-    // The `doc.on("end", ...)` listener will now handle sending the response.
-
   } catch (err) {
     console.error("❌ Error generating overall evaluation report:", err);
     res.status(500).json({ message: "Failed to generate PDF" });
   }
 });
+
 
 app.post("/api/adhoc-report", async (req, res) => {
   try {
