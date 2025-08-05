@@ -604,13 +604,20 @@ const Analytics = ({}) => {
           }
         );
 
+        // Generate filename with current date on frontend
+        const currentDate = new Date();
+        const dateString = currentDate.toISOString().split("T")[0]; // YYYY-MM-DD
+        const filename = `overall_evaluation_report_${dateString}.pdf`;
+
         const blobUrl = URL.createObjectURL(
           new Blob([response.data], { type: "application/pdf" })
         );
         const a = document.createElement("a");
         a.href = blobUrl;
-        a.download = `Overall_Evaluation_Report.pdf`;
+        a.download = filename;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(blobUrl);
       } catch (err) {
         console.error("❌ Failed to generate overall evaluation report:", err);

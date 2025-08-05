@@ -2935,7 +2935,7 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
     });
 
     // FIXED: Declare variables only once at the top
-    let estimatedTotalPages = 3; // Most reports will have 2-3 pages
+    let estimatedTotalPages = 4; // Most reports will have 2-3 pages
     let currentPageNumber = 1;   // Track current page number
 
     // Helper function to add page number to current page
@@ -2961,8 +2961,16 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
     // ─── PAGE 1: TITLE AND OVERVIEW ───
     
     // ─── Title Section ───
-    doc.fontSize(20).text("Overall Social Enterprise Evaluation Report", { align: "left" });
+    doc.fontSize(20).text("Overall Social Enterprise Evaluation Report", { align: "center" });
     doc.fontSize(12);
+
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    doc.text(`Generated as of ${formattedDate}`, { align: "left" });
 
     // Column positions
     const leftColX = 40;
@@ -3248,8 +3256,58 @@ app.post("/api/overall-evaluation-report", async (req, res) => {
 
     // FIXED: Add page number to final page with proper total count
     // Update the estimated total pages to actual current page count
-    estimatedTotalPages = currentPageNumber;
+    estimatedTotalPages = 4;
     addPageNumber(currentPageNumber, estimatedTotalPages);
+
+    // After adding overall program recommendations and before adding final page number:
+doc.addPage();
+currentPageNumber++;
+
+doc.fontSize(16).font("Helvetica-Bold")
+   .text("List of Social Enterprises with Evaluations", 40, doc.y, { underline: true });
+doc.moveDown(1);
+doc.fontSize(10).font("Helvetica");
+
+// ✅ Fetch social enterprises from DB that have evaluations
+const client = await pgDatabase.connect();
+let socialEnterprisesWithEvaluations = [];
+try {
+  const seQuery = `
+    SELECT DISTINCT se.team_name
+    FROM socialenterprises se
+    JOIN evaluations e ON se.se_id = e.se_id
+    ORDER BY se.team_name;
+  `;
+  const result = await client.query(seQuery);
+  socialEnterprisesWithEvaluations = result.rows;
+} catch (dbErr) {
+  console.error("❌ Error fetching social enterprises for report:", dbErr);
+} finally {
+  client.release();
+}
+
+// ✅ Render the list
+if (socialEnterprisesWithEvaluations.length > 0) {
+  let listY = doc.y;
+  socialEnterprisesWithEvaluations.forEach((se, index) => {
+    // Add new page if needed
+    if (listY > doc.page.height - doc.page.margins.bottom - 20) {
+      addPageNumber(currentPageNumber, estimatedTotalPages);
+      doc.addPage();
+      currentPageNumber++;
+      listY = doc.y;
+    }
+    doc.text(`${index + 1}. ${se.team_name}`, 50, listY, { width: 700 });
+    listY += 14;
+  });
+} else {
+  doc.text("No social enterprises with evaluations found.", 50, doc.y);
+}
+
+// ✅ Update total pages count and add page number
+estimatedTotalPages = currentPageNumber;
+addPageNumber(currentPageNumber, estimatedTotalPages);
+
 
     doc.end();
   } catch (err) {
