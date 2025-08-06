@@ -3317,6 +3317,7 @@ addPageNumber(currentPageNumber, estimatedTotalPages);
 });
 
 
+// Updated Adhoc Report Route (Evaluation Report)
 app.post("/api/adhoc-report", async (req, res) => {
   try {
     const { chartImageRadar, chartImagePie, se_id, period, scoreDistributionLikert } = req.body;
@@ -3346,23 +3347,22 @@ app.post("/api/adhoc-report", async (req, res) => {
       res.send(pdfBuffer);
     });
 
-    // ADDED: Declare variables for page numbering
-    let estimatedTotalPages = 4; // Most reports will have 4 pages
-    let currentPageNumber = 1;   // Track current page number
+    // Declare variables for page numbering
+    let estimatedTotalPages = 4;
+    let currentPageNumber = 1;
 
-    // ADDED: Helper function to add page number to current page
+    // Helper function to add page number to current page
     const addPageNumber = (pageNum, totalPages) => {
       const pageWidth = doc.page.width;
       const margin = doc.page.margins.top;
       
-      // Save current settings
       const currentFontSize = doc._fontSize;
       
       doc.fontSize(10)
-        .fillColor('gray')
+        .fillColor('black') // Changed from gray to black
         .text(`Page ${pageNum} of ${totalPages}`, 
-              pageWidth - 120, // From right edge
-              margin - 20,     // Above content area
+              pageWidth - 120,
+              margin - 20,
               { align: 'right', width: 100 });
       
       doc.fontSize(currentFontSize);
@@ -3371,8 +3371,8 @@ app.post("/api/adhoc-report", async (req, res) => {
 
     // ─── PAGE 1: TITLE AND OVERVIEW ───
     
-    // ─── Title Section ───
-    doc.fontSize(20).text(`${socialEnterpriseDetails.team_name} Analytics Report`, { align: "center" });
+    // Title Section
+    doc.fontSize(20).fillColor('black').text(`${socialEnterpriseDetails.team_name} Analytics Report`, { align: "center" });
     doc.fontSize(12);
 
     const today = new Date();
@@ -3381,7 +3381,7 @@ app.post("/api/adhoc-report", async (req, res) => {
       month: "long",
       day: "numeric",
     });
-    doc.text(`Generated as of ${formattedDate}`, { align: "left" });
+    doc.fillColor('black').text(`Generated as of ${formattedDate}`, { align: "left" });
 
     // Column positions
     const leftColX = 40;
@@ -3391,23 +3391,23 @@ app.post("/api/adhoc-report", async (req, res) => {
     let rightY = sectionTopY;
 
     // Left Column
-    doc.text(`Average Evaluation Score: ${avgEvaluationScore[0]?.avg_rating || "N/A"}`, leftColX, leftY);
+    doc.fillColor('black').text(`Average Evaluation Score: ${avgEvaluationScore[0]?.avg_rating || "N/A"}`, leftColX, leftY);
     leftY += 16;
-    doc.text(`Number of Evaluations: ${numberOfEvaluations[0]?.total_evaluations || "N/A"}`, leftColX, leftY);
+    doc.fillColor('black').text(`Number of Evaluations: ${numberOfEvaluations[0]?.total_evaluations || "N/A"}`, leftColX, leftY);
 
     // Move below taller column
     doc.y = Math.max(leftY, rightY) + 20;
 
-    // ─── Analytics Section ───
-    doc.fontSize(16).text("Analytics Summary", { underline: true });
+    // Analytics Section
+    doc.fontSize(16).fillColor('black').text("Analytics Summary", { underline: true });
     doc.moveDown(0.5);
 
-    doc.fontSize(14).text("Performance Overview");
+    doc.fontSize(14).fillColor('black').text("Performance Overview");
     doc.moveDown(0.5);
     doc.image(imageBuffer, { fit: [700, 180], align: "center" });
     doc.moveDown(1);
 
-    // ─── Bottom Section: 2-Column Layout ───
+    // Bottom Section: 2-Column Layout
     const startY = doc.y;
     const boxWidth = 250;
     const boxHeight = 45;
@@ -3422,8 +3422,8 @@ app.post("/api/adhoc-report", async (req, res) => {
       const x = col === 0 ? col1X : col2X;
       const y = startY + row * (boxHeight + boxSpacingY);
 
-      doc.rect(x, y, boxWidth, boxHeight).stroke();
-      doc.fontSize(9)
+      doc.rect(x, y, boxWidth, boxHeight).strokeColor('black').stroke(); // Changed stroke color to black
+      doc.fontSize(9).fillColor('black') // Changed text color to black
         .text(`Category: ${item.category}`, x + 10, y + 10)
         .text(`Score: ${item.score}`, x + 10, y + 25);
     });
@@ -3434,41 +3434,40 @@ app.post("/api/adhoc-report", async (req, res) => {
     const insightX = col2X + boxWidth + 40;
     let insightY = startY;
 
-    doc.fontSize(12).text("Insights", insightX, insightY);
+    doc.fontSize(12).fillColor('black').text("Insights", insightX, insightY);
     insightY += 20;
 
-    doc.fontSize(10).text("Strengths:", insightX, insightY);
+    doc.fontSize(10).fillColor('black').text("Strengths:", insightX, insightY);
     insightY += 15;
     if (strengths.length > 0) {
       strengths.forEach((s) => {
-        doc.text(`• ${s}`, insightX + 10, insightY);
+        doc.fillColor('black').text(`• ${s}`, insightX + 10, insightY);
         insightY += 14;
       });
     } else {
-      doc.text("• None", insightX + 10, insightY);
+      doc.fillColor('black').text("• None", insightX + 10, insightY);
       insightY += 14;
     }
 
     insightY += 10;
-    doc.text("Weaknesses:", insightX, insightY);
+    doc.fillColor('black').text("Weaknesses:", insightX, insightY);
     insightY += 15;
     if (weaknesses.length > 0) {
       weaknesses.forEach((w) => {
-        doc.text(`• ${w}`, insightX + 10, insightY);
+        doc.fillColor('black').text(`• ${w}`, insightX + 10, insightY);
         insightY += 14;
       });
     } else {
-      doc.text("• None", insightX + 10, insightY);
+      doc.fillColor('black').text("• None", insightX + 10, insightY);
     }
 
-    // ADDED: Add page number to first page
     addPageNumber(currentPageNumber, estimatedTotalPages);
 
     // ─── PAGE 2: RECURRING ISSUES ───
     doc.addPage();
     currentPageNumber++;
     
-    doc.fontSize(14).text("Recurring Issues", { align: "left" });
+    doc.fontSize(14).fillColor('black').text("Recurring Issues", { align: "left" });
     doc.moveDown(1);
     doc.image(pieBuffer, { fit: [700, 400], align: "center", valign: "top" });
     doc.moveDown(2);
@@ -3486,8 +3485,8 @@ app.post("/api/adhoc-report", async (req, res) => {
     const boxSpacingYPage2 = 10;
     const maxWidth = 320;
 
-    doc.fontSize(12).text("Common Challenges", leftX, startYPage2, { underline: true });
-    doc.text("Insights", rightX, startYPage2, { underline: true });
+    doc.fontSize(12).fillColor('black').text("Common Challenges", leftX, startYPage2, { underline: true });
+    doc.fillColor('black').text("Insights", rightX, startYPage2, { underline: true });
 
     let leftYPage2 = startYPage2 + 20;
     let rightYPage2 = startYPage2 + 20;
@@ -3503,7 +3502,7 @@ app.post("/api/adhoc-report", async (req, res) => {
         doc.font("Helvetica").fillColor("black");
       }
 
-      doc.text(challengeText, leftX, leftYPage2, {
+      doc.fillColor('black').text(challengeText, leftX, leftYPage2, {
         width: maxWidth,
         align: "left",
         lineGap: 2,
@@ -3512,7 +3511,7 @@ app.post("/api/adhoc-report", async (req, res) => {
       const hLeft = doc.heightOfString(challengeText, { width: maxWidth });
       leftYPage2 += hLeft + boxSpacingYPage2;
 
-      // Insight logic
+      // Insight logic (keeping the existing logic)
       const cat = item.category;
       const comment = item.comment.toLowerCase();
       let insight = "";
@@ -3556,14 +3555,13 @@ app.post("/api/adhoc-report", async (req, res) => {
       if (isMain) doc.font("Helvetica").fillColor("black");
     }
 
-    // ADDED: Add page number to second page
     addPageNumber(currentPageNumber, estimatedTotalPages);
 
     // ─── PAGE 3: RATING DISTRIBUTION ───
     doc.addPage();
-    currentPageNumber++; // ADDED: Increment page number
+    currentPageNumber++;
     
-    doc.fontSize(14).text("Category Score Distribution", { align: "left" });
+    doc.fontSize(14).fillColor('black').text("Category Score Distribution", { align: "left" });
     doc.moveDown(1);
 
     // Chart
@@ -3590,7 +3588,7 @@ app.post("/api/adhoc-report", async (req, res) => {
     const blockHeight = 90;
     const columnsPerRow = 3;
 
-    doc.fontSize(12).text("Score Breakdown", scoreDistributionScoreLeftAxis, doc.y, { underline: true });
+    doc.fontSize(12).fillColor('black').text("Score Breakdown", scoreDistributionScoreLeftAxis, doc.y, { underline: true });
     doc.moveDown(1);
     doc.fontSize(10);
 
@@ -3601,20 +3599,19 @@ app.post("/api/adhoc-report", async (req, res) => {
       const x = scoreDistributionScoreLeftAxis + col * columnWidth;
       const y = 350 + row * blockHeight;
 
-      doc.font("Helvetica-Bold").text(category, x, y);
+      doc.font("Helvetica-Bold").fillColor('black').text(category, x, y); // Changed to black
 
       for (let r = 1; r <= 5; r++) {
         const count = ratings[r] || 0;
-        doc.font("Helvetica").text(`${r} Star: ${count}`, x + 15, y + r * 12);
+        doc.font("Helvetica").fillColor('black').text(`${r} Star: ${count}`, x + 15, y + r * 12); // Changed to black
       }
     });
 
-    // ADDED: Add page number to third page
     addPageNumber(currentPageNumber, estimatedTotalPages);
 
     // ─── PAGE 4: INSIGHTS ───
     doc.addPage();
-    currentPageNumber++; // ADDED: Increment page number
+    currentPageNumber++;
     
     const page4AxisX = 40;
     const page4AxisY = doc.y;
@@ -3622,7 +3619,7 @@ app.post("/api/adhoc-report", async (req, res) => {
     const page4GapY = 10;
     const page4Height = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
 
-    doc.fontSize(12).text("Insights", page4AxisX, page4AxisY, { underline: true });
+    doc.fontSize(12).fillColor('black').text("Insights", page4AxisX, page4AxisY, { underline: true });
     doc.moveDown(1);
     doc.fontSize(10);
     let currentPage4Y = doc.y + 10;
@@ -3683,9 +3680,8 @@ app.post("/api/adhoc-report", async (req, res) => {
 
       const totalHeight = titleHeight + avgLineHeight + fullInsightHeight + page4GapY;
 
-      // MODIFIED: Add new page if needed with proper page numbering
+      // Add new page if needed with proper page numbering
       if (currentPage4Y + totalHeight > page4Height) {
-        // Add page number to current page before creating new page
         addPageNumber(currentPageNumber, estimatedTotalPages);
         
         doc.addPage();
@@ -3694,20 +3690,20 @@ app.post("/api/adhoc-report", async (req, res) => {
       }
 
       // Render
-      doc.font("Helvetica-Bold").text(title, page4AxisX, currentPage4Y, { width: page4MaxWidth });
+      doc.font("Helvetica-Bold").fillColor('black').text(title, page4AxisX, currentPage4Y, { width: page4MaxWidth });
       currentPage4Y += titleHeight;
 
-      doc.font("Helvetica-Bold").text(avgLine, page4AxisX, currentPage4Y, { width: page4MaxWidth });
+      doc.font("Helvetica-Bold").fillColor('black').text(avgLine, page4AxisX, currentPage4Y, { width: page4MaxWidth });
       currentPage4Y += avgLineHeight;
 
-      doc.font("Helvetica").text(fullInsight, page4AxisX, currentPage4Y, {
+      doc.font("Helvetica").fillColor('black').text(fullInsight, page4AxisX, currentPage4Y, {
         width: page4MaxWidth,
         lineGap: 2,
       });
       currentPage4Y += fullInsightHeight + page4GapY;
     }
 
-    // ADDED: Update estimated total pages and add page number to final page
+    // Update estimated total pages and add page number to final page
     estimatedTotalPages = currentPageNumber;
     addPageNumber(currentPageNumber, estimatedTotalPages);
 
@@ -3718,6 +3714,7 @@ app.post("/api/adhoc-report", async (req, res) => {
   }
 });
 
+// Updated Financial Report Route
 app.post("/api/financial-report", async (req, res) => {
   try {
     const {
@@ -3762,58 +3759,56 @@ app.post("/api/financial-report", async (req, res) => {
       res.send(pdfBuffer);
     });
 
-    // ADDED: Declare variables for page numbering
-    let estimatedTotalPages = 4; // Most financial reports will have 4 pages
-    let currentPageNumber = 1;   // Track current page number
+    // Declare variables for page numbering
+    let estimatedTotalPages = 4;
+    let currentPageNumber = 1;
 
-    // ADDED: Helper function to add page number to current page
+    // Helper function to add page number to current page
     const addPageNumber = (pageNum, totalPages) => {
       const pageWidth = doc.page.width;
       const margin = doc.page.margins.top;
       
-      // Save current settings
       const currentFontSize = doc._fontSize;
       
       doc.fontSize(10)
-        .fillColor('gray')
+        .fillColor('black') // Changed from gray to black
         .text(`Page ${pageNum} of ${totalPages}`, 
-              pageWidth - 120, // From right edge
-              margin - 20,     // Above content area
+              pageWidth - 120,
+              margin - 20,
               { align: 'right', width: 100 });
       
-      // Restore settings
       doc.fontSize(currentFontSize);
-      doc.fillColor('black'); // Reset to default text color
+      doc.fillColor('black');
     };
 
-    // ADDED: Helper function to display "No Data Available" message
+    // Helper function to display "No Data Available" message
     const displayNoDataMessage = (title) => {
       const currentY = doc.y;
       const boxHeight = 200;
       const boxWidth = 700;
       const centerX = (doc.page.width - boxWidth) / 2;
       
-      // Draw a light gray border
+      // Draw a black border instead of light gray
       doc.rect(centerX, currentY, boxWidth, boxHeight)
-         .stroke('#cccccc');
+         .strokeColor('black')
+         .stroke();
       
-      // Add "No Data Available" text in center
+      // Add "No Data Available" text in center with black color
       doc.fontSize(16)
-         .fillColor('#999999')
+         .fillColor('black') // Changed from gray to black
          .text('No Data Available', 
                centerX, 
                currentY + (boxHeight / 2) - 10, 
                { width: boxWidth, align: 'center' });
       
-      // Reset color and move position
       doc.fillColor('black');
       doc.y = currentY + boxHeight + 10;
     };
 
     // ─── PAGE 1: TITLE & SUMMARY ───
     
-    // ─── Title & Summary ───
-    doc.fontSize(20).text(`${socialEnterpriseDetails.team_name} Financial Report`, { align: "center" });
+    // Title & Summary
+    doc.fontSize(20).fillColor('black').text(`${socialEnterpriseDetails.team_name} Financial Report`, { align: "center" });
     doc.fontSize(12);
     doc.moveDown(0.5);
 
@@ -3823,25 +3818,25 @@ app.post("/api/financial-report", async (req, res) => {
       month: "long",
       day: "numeric",
     });
-    doc.text(`Generated as of ${formattedDate}`, { align: "left" });
+    doc.fillColor('black').text(`Generated as of ${formattedDate}`, { align: "left" });
 
     const leftColX = 40;
     let leftY = 90;
 
-    doc.text(`Total Revenue: Php ${Number(totalRevenue).toLocaleString()}`, leftColX, leftY);
+    doc.fillColor('black').text(`Total Revenue: Php ${Number(totalRevenue).toLocaleString()}`, leftColX, leftY);
     leftY += 16;
-    doc.text(`Total Expenses: Php ${Number(totalExpenses).toLocaleString()}`, leftColX, leftY);
+    doc.fillColor('black').text(`Total Expenses: Php ${Number(totalExpenses).toLocaleString()}`, leftColX, leftY);
     leftY += 16;
-    doc.text(`Net Income: Php ${Number(netIncome).toLocaleString()}`, leftColX, leftY);
+    doc.fillColor('black').text(`Net Income: Php ${Number(netIncome).toLocaleString()}`, leftColX, leftY);
     leftY += 16;
-    doc.text(`Total Assets: Php ${Number(totalAssets).toLocaleString()}`, leftColX, leftY);
+    doc.fillColor('black').text(`Total Assets: Php ${Number(totalAssets).toLocaleString()}`, leftColX, leftY);
     doc.moveDown(2);
 
-    // ─── Chart ───
-    doc.fontSize(14).text("Revenue vs Expenses Overview", { underline: true });
+    // Chart
+    doc.fontSize(14).fillColor('black').text("Revenue vs Expenses Overview", { underline: true });
     doc.moveDown(1);
     
-    // MODIFIED: Check if chart data exists and is valid
+    // Check if chart data exists and is valid
     const hasRevenueExpenseData = selectedSERevenueVsExpensesData && 
                                  selectedSERevenueVsExpensesData.length > 0 &&
                                  selectedSERevenueVsExpensesData.some(series => series.data && series.data.length > 0);
@@ -3867,8 +3862,8 @@ app.post("/api/financial-report", async (req, res) => {
 
     doc.moveDown(1.5);
 
-    // ─── Insights ───
-    doc.fontSize(14).text("Financial Insights", { underline: true });
+    // Insights
+    doc.fontSize(14).fillColor('black').text("Financial Insights", { underline: true });
     doc.moveDown(0.5);
     doc.fontSize(9);
 
@@ -3879,7 +3874,7 @@ app.post("/api/financial-report", async (req, res) => {
 
     const insights = [];
 
-    // ─── General Metrics ───
+    // General Metrics (keeping existing logic but ensuring black text)
     if (totalRevenue > totalExpenses) {
       insights.push("The enterprise is profitable overall, with revenues exceeding expenses.");
     } else {
@@ -3898,7 +3893,7 @@ app.post("/api/financial-report", async (req, res) => {
       insights.push("Assets are generating good returns, indicating efficient resource deployment.");
     }
 
-    // ─── Time-Series Analysis ───
+    // Time-Series Analysis (keeping existing logic)
     if (hasRevenueExpenseData) {
       const revenueSeries = selectedSERevenueVsExpensesData.find(s => s.id === "Revenue");
       const expenseSeries = selectedSERevenueVsExpensesData.find(s => s.id === "Expenses");
@@ -3913,7 +3908,6 @@ app.post("/api/financial-report", async (req, res) => {
         const [revQ1, revQ2] = revRecent.map(p => p.y);
         const [expQ1, expQ2] = expRecent.map(p => p.y);
 
-        // Quarter-over-quarter trends
         if (revQ2 > revQ1) {
           insights.push("Revenue increased in the most recent quarter, reflecting positive momentum.");
         } else if (revQ2 < revQ1) {
@@ -3930,7 +3924,6 @@ app.post("/api/financial-report", async (req, res) => {
           insights.push("Expenses remained stable in the past two quarters.");
         }
 
-        // Best/Worst quarters
         const maxRev = revData.reduce((a, b) => (a.y > b.y ? a : b));
         const minRev = revData.reduce((a, b) => (a.y < b.y ? a : b));
         insights.push(`The highest revenue was recorded in ${maxRev.x} (Php ${maxRev.y.toLocaleString()}).`);
@@ -3941,7 +3934,6 @@ app.post("/api/financial-report", async (req, res) => {
         insights.push(`The highest expenses were in ${maxExp.x} (Php ${maxExp.y.toLocaleString()}).`);
         insights.push(`The lowest expenses occurred in ${minExp.x} (Php ${minExp.y.toLocaleString()}).`);
 
-        // Revenue vs Expense Volatility
         const revVolatility = revData.map((v, i, arr) => i > 0 ? Math.abs(v.y - arr[i - 1].y) : 0).reduce((a, b) => a + b, 0);
         const expVolatility = expData.map((v, i, arr) => i > 0 ? Math.abs(v.y - arr[i - 1].y) : 0).reduce((a, b) => a + b, 0);
 
@@ -3957,36 +3949,34 @@ app.post("/api/financial-report", async (req, res) => {
       insights.push("No revenue and expense trend data available for detailed analysis.");
     }
 
-    // ─── Render Insights in Three Independent Columns ───
+    // Render Insights in Three Independent Columns with black text
     const columnWidth = 220;
     const columnGap = 20;
     const totalColumns = 3;
     const columnX = [insightsX, insightsX + columnWidth + columnGap, insightsX + 2 * (columnWidth + columnGap)];
-    const columnYs = [doc.y, doc.y, doc.y]; // Separate Y for each column
+    const columnYs = [doc.y, doc.y, doc.y];
 
     insights.forEach((text, i) => {
       const colIndex = i % totalColumns;
-      doc.text(`• ${text}`, columnX[colIndex], columnYs[colIndex], {
+      doc.fillColor('black').text(`• ${text}`, columnX[colIndex], columnYs[colIndex], {
         width: columnWidth,
         align: "left",
       });
 
-      // Update Y position for that column only
       const textHeight = doc.heightOfString(`• ${text}`, { width: columnWidth });
       columnYs[colIndex] += textHeight + 6;
     });
 
-    // ADDED: Add page number to first page
     addPageNumber(currentPageNumber, estimatedTotalPages);
 
     // ─── PAGE 2: CASHFLOW ANALYSIS ───
     doc.addPage();
-    currentPageNumber++; // ADDED: Increment page number
+    currentPageNumber++;
     
-    doc.fontSize(14).text("Cashflow Analysis", { underline: true });
+    doc.fontSize(14).fillColor('black').text("Cashflow Analysis", { underline: true });
     doc.moveDown(1);
 
-    // MODIFIED: Check if cashflow data exists
+    // Check if cashflow data exists
     const hasCashFlowData = transformedCashFlowData && transformedCashFlowData.length > 0;
     
     // Cashflow Chart
@@ -4013,8 +4003,7 @@ app.post("/api/financial-report", async (req, res) => {
     }
 
     // Generate Cashflow Insights
-    const cashflowData = transformedCashFlowData; // expect this from frontend
-
+    const cashflowData = transformedCashFlowData;
     const cashflowInsights = [];
 
     if (hasCashFlowData) {
@@ -4069,31 +4058,30 @@ app.post("/api/financial-report", async (req, res) => {
       cashflowInsights.push("No cashflow data available for analysis.");
     }
 
-    // Render Cashflow Insights
-    doc.fontSize(14).text("Cashflow Insights", { underline: true });
+    // Render Cashflow Insights with black text
+    doc.fontSize(14).fillColor('black').text("Cashflow Insights", { underline: true });
     doc.moveDown(0.5);
     doc.fontSize(10);
     let cashflowY = doc.y;
 
     cashflowInsights.forEach((text) => {
-      doc.text(`• ${text}`, insightsX, cashflowY, {
+      doc.fillColor('black').text(`• ${text}`, insightsX, cashflowY, {
         width: maxWidth,
         align: "left",
       });
       cashflowY += gapY;
     });
 
-    // ADDED: Add page number to second page
     addPageNumber(currentPageNumber, estimatedTotalPages);
 
     // ─── PAGE 3: EQUITY ANALYSIS ───
     doc.addPage();
-    currentPageNumber++; // ADDED: Increment page number
+    currentPageNumber++;
     
-    doc.fontSize(14).text("Net Worth (Equity) Over Time", { underline: true });
+    doc.fontSize(14).fillColor('black').text("Net Worth (Equity) Over Time", { underline: true });
     doc.moveDown(1);
     
-    // MODIFIED: Check if equity data exists
+    // Check if equity data exists
     const hasEquityData = selectedSEEquityTrendData && 
                          selectedSEEquityTrendData.length > 0 && 
                          selectedSEEquityTrendData[0]?.data && 
@@ -4118,7 +4106,7 @@ app.post("/api/financial-report", async (req, res) => {
       doc.moveDown(1.5);
     }
 
-    doc.fontSize(14).text("Equity Insights", { underline: true });
+    doc.fontSize(14).fillColor('black').text("Equity Insights", { underline: true });
     doc.moveDown(0.5);
     doc.fontSize(10);
     let equityY = doc.y;
@@ -4144,14 +4132,14 @@ app.post("/api/financial-report", async (req, res) => {
     }
     
     equityInsights.forEach((text) => {
-      doc.text(`• ${text}`, insightsX, equityY, {
+      doc.fillColor('black').text(`• ${text}`, insightsX, equityY, {
         width: maxWidth,
         align: "left",
       });
       equityY += gapY;
     });
 
-    // ─── Inventory Turnover Analysis (after Equity) ───
+    // Inventory Turnover Analysis (after Equity) with black text
     const inventoryInsights = [];
     if (inventoryTurnoverByItemData && inventoryTurnoverByItemData.length > 0) {
       const turnoverRates = inventoryTurnoverByItemData.map(i => i.turnover);
@@ -4175,18 +4163,17 @@ app.post("/api/financial-report", async (req, res) => {
       inventoryInsights.push("No inventory turnover data available for analysis.");
     }
 
-    // ADDED: Add page number to third page
     addPageNumber(currentPageNumber, estimatedTotalPages);
 
     // ─── PAGE 4: STAKEHOLDER SUMMARY & INVESTMENT OUTLOOK ───
     doc.addPage();
-    currentPageNumber++; // ADDED: Increment page number
+    currentPageNumber++;
     
-    doc.fontSize(14).text("Stakeholder Summary & Investment Outlook", { underline: true });
+    doc.fontSize(14).fillColor('black').text("Stakeholder Summary & Investment Outlook", { underline: true });
     doc.moveDown(1);
 
-    // ─── Display Key Financial Ratios ───
-    doc.fontSize(12).text("Key Financial Ratios", { underline: true });
+    // Display Key Financial Ratios with black text
+    doc.fontSize(12).fillColor('black').text("Key Financial Ratios", { underline: true });
     doc.moveDown(0.5);
     doc.fontSize(10);
 
@@ -4203,20 +4190,16 @@ app.post("/api/financial-report", async (req, res) => {
 
     let ratioY = doc.y;
     keyRatios.forEach((line) => {
-      doc.text(`• ${line}`, 40, ratioY, { width: 700, align: "left" });
+      doc.fillColor('black').text(`• ${line}`, 40, ratioY, { width: 700, align: "left" });
       ratioY += 14;
     });
 
     doc.moveDown(1);
 
-    // ─── Financial Outlook Insights ───
-    doc.fontSize(12).text("Outlook Insights", { underline: true });
+    // Financial Outlook Insights with black text
+    doc.fontSize(12).fillColor('black').text("Outlook Insights", { underline: true });
     doc.moveDown(0.5);
     doc.fontSize(10);
-
-    console.log(typeof (netProfitMargin))
-    console.log(typeof (grossProfitMargin))
-    console.log(typeof (debtToAssetRatio))
 
     const outlookInsights = generateDynamicOutlook({
       netIncome,
@@ -4231,11 +4214,11 @@ app.post("/api/financial-report", async (req, res) => {
 
     let outlookY = doc.y;
     outlookInsights.forEach((text) => {
-      doc.text(`• ${text}`, 40, outlookY, { width: 700, align: "left" });
+      doc.fillColor('black').text(`• ${text}`, 40, outlookY, { width: 700, align: "left" });
       outlookY += 14;
     });
 
-    // ADDED: Update estimated total pages and add page number to final page
+    // Update estimated total pages and add page number to final page
     estimatedTotalPages = currentPageNumber;
     addPageNumber(currentPageNumber, estimatedTotalPages);
 
@@ -4245,6 +4228,8 @@ app.post("/api/financial-report", async (req, res) => {
     res.status(500).json({ message: "Failed to generate report" });
   }
 });
+
+
 
 app.get("/api/mentor-critical-areas/:mentor_id", async (req, res) => {
   try {

@@ -1,11 +1,21 @@
-// components/CashFlowBarChart.jsx
 import { ResponsiveBar } from "@nivo/bar";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
 
-const CashFlowBarChart = ({ data }) => {
+const CashFlowBarChart = ({ data, isExporting = false }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+
+  // Use black colors when exporting for better PDF visibility
+  const textColor = isExporting ? "#000000" : colors.grey[100];
+  const axisColor = isExporting ? "#000000" : colors.grey[100];
+
+  // Custom colors for cash flow: Green for Inflow, Red for Outflow
+  const getBarColor = (bar) => {
+    if (bar.id === "Inflow") return "#4CAF50"; // Green
+    if (bar.id === "Outflow") return "#f44336"; // Red
+    return "#333333"; // Default
+  };
 
   return (
     <ResponsiveBar
@@ -14,10 +24,9 @@ const CashFlowBarChart = ({ data }) => {
       indexBy="quarter"
       margin={{ top: 40, right: 130, bottom: 60, left: 80 }}
       padding={0.3}
-      groupMode="grouped" // or 'stacked' if preferred
-      colors={{ scheme: "nivo" }}
+      groupMode="grouped"
+      colors={getBarColor}
       borderColor={{ from: "color", modifiers: [["darker", 1.6]] }}
-
       axisTop={null}
       axisRight={null}
       axisBottom={{
@@ -37,37 +46,64 @@ const CashFlowBarChart = ({ data }) => {
         legendPosition: "middle",
         legendOffset: -60,
       }}
-
       labelSkipWidth={12}
       labelSkipHeight={12}
-      labelTextColor={{
-        from: "color",
-        modifiers: [["darker", 1.6]],
-      }}
+      labelTextColor="#000000"
+      label={(d) => `₱${d.value.toLocaleString()}`}
+      labelFormat={(label) => label}
       valueFormat={(value) => `₱${value.toLocaleString()}`}
-
       theme={{
         axis: {
+          domain: {
+            line: {
+              stroke: axisColor,
+              strokeWidth: isExporting ? 2 : 1,
+            },
+            labels: {
+              text: {
+                fontSize: isExporting ? 14 : 12,
+                fontWeight: "bold",
+                fill: "#000000",
+              },
+            },
+          },
           ticks: {
+            line: {
+              stroke: axisColor,
+              strokeWidth: isExporting ? 2 : 1,
+            },
             text: {
-              fill: colors.grey[100],
+              fill: textColor,
+              fontSize: isExporting ? 14 : 11,
+              fontWeight: isExporting ? "bold" : "normal",
             },
           },
           legend: {
             text: {
-              fill: colors.grey[100],
+              fill: textColor,
+              fontSize: isExporting ? 16 : 12,
+              fontWeight: isExporting ? "bold" : "normal",
             },
           },
         },
         legends: {
           text: {
-            fill: colors.grey[100],
+            fill: textColor,
+            fontSize: isExporting ? 14 : 11,
+            fontWeight: isExporting ? "bold" : "normal",
+          },
+        },
+        grid: {
+          line: {
+            stroke: axisColor,
+            strokeWidth: isExporting ? 1 : 0.5,
+            strokeOpacity: isExporting ? 0.8 : 0.5,
           },
         },
         tooltip: {
           container: {
-            background: colors.primary[400],
-            color: "#ffffff",
+            background: isExporting ? "#ffffff" : colors.primary[400],
+            color: isExporting ? "#000000" : "#ffffff",
           },
         },
       }}
@@ -81,6 +117,8 @@ const CashFlowBarChart = ({ data }) => {
           itemHeight: 20,
           itemsSpacing: 2,
           symbolSize: 20,
+          itemTextColor: textColor,
+          symbolBorderColor: textColor,
           effects: [
             {
               on: "hover",

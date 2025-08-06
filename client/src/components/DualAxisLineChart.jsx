@@ -2,28 +2,28 @@ import { ResponsiveLine } from "@nivo/line";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
 
-const DualAxisLineChart = ({ data, isDashboard = false, isExporting = false }) => {
+const DualAxisLineChart = ({
+  data,
+  isDashboard = false,
+  isExporting = false,
+}) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
-  const chartPrimaryColor = isExporting
-    ? "#00796b"
-    : theme.palette.mode === "dark"
-    ? colors.greenAccent[500]
-    : colors.greenAccent[400];
+  // Set specific colors based on data type and export state
+  const getLineColor = (seriesId) => {
+    if (seriesId === "Revenue") {
+      return "#4CAF50"; // Green for revenue
+    } else if (seriesId === "Expenses") {
+      return "#f44336"; // Red for expenses
+    } else if (seriesId === "Equity") {
+      return "#4CAF50"; // Green for equity
+    } else {
+      return "#000000"; // Black for other lines
+    }
+  };
 
-  const chartSecondaryColor = isExporting
-    ? "#004d40"
-    : theme.palette.mode === "dark"
-    ? colors.blueAccent[500]
-    : colors.blueAccent[400];
-
-  const axisAndGridColor = isExporting
-    ? "#000000"
-    : theme.palette.mode === "dark"
-    ? colors.grey[100]
-    : "#ffffff";
-
+  const axisAndGridColor = isExporting ? "#000000" : colors.grey[100];
   const textColor = isExporting ? "#000000" : "#ffffff";
 
   const allYValues = data?.flatMap((d) => d.data.map((point) => point.y)) || [];
@@ -32,11 +32,6 @@ const DualAxisLineChart = ({ data, isDashboard = false, isExporting = false }) =
   const yBuffer = (maxDataY - minDataY) * 0.1;
   const minY = minDataY - yBuffer;
   const maxY = maxDataY + yBuffer;
-
-  const colorMap = {
-    Revenue: chartPrimaryColor,
-    Expenses: chartSecondaryColor,
-  };
 
   return (
     <div
@@ -57,37 +52,40 @@ const DualAxisLineChart = ({ data, isDashboard = false, isExporting = false }) =
             domain: {
               line: {
                 stroke: axisAndGridColor,
-                strokeWidth: isExporting ? 1.5 : 1,
+                strokeWidth: isExporting ? 2 : 1,
               },
             },
             legend: {
               text: {
                 fill: textColor,
                 fontSize: isExporting ? 16 : 12,
+                fontWeight: isExporting ? "bold" : "normal",
               },
             },
             ticks: {
               line: {
                 stroke: axisAndGridColor,
-                strokeWidth: isExporting ? 1.5 : 1,
+                strokeWidth: isExporting ? 2 : 1,
               },
               text: {
                 fill: textColor,
                 fontSize: isExporting ? 14 : 11,
+                fontWeight: isExporting ? "bold" : "normal",
               },
             },
           },
           grid: {
             line: {
               stroke: axisAndGridColor,
-              strokeWidth: isExporting ? 1.5 : 1,
-              strokeOpacity: 1,
+              strokeWidth: isExporting ? 2 : 1,
+              strokeOpacity: isExporting ? 0.8 : 1,
             },
           },
           legends: {
             text: {
               fill: textColor,
               fontSize: isExporting ? 14 : 11,
+              fontWeight: isExporting ? "bold" : "normal",
             },
           },
           tooltip: {
@@ -100,7 +98,7 @@ const DualAxisLineChart = ({ data, isDashboard = false, isExporting = false }) =
             },
           },
         }}
-        colors={({ id }) => colorMap[id] || chartPrimaryColor}
+        colors={({ id }) => getLineColor(id)}
         margin={
           isExporting
             ? { top: 80, right: 240, bottom: 100, left: 100 }
@@ -115,7 +113,7 @@ const DualAxisLineChart = ({ data, isDashboard = false, isExporting = false }) =
           reverse: false,
         }}
         yFormat=" >-.2f"
-        curve= "catmullRom" 
+        curve="catmullRom"
         axisTop={null}
         axisRight={null}
         axisBottom={{
@@ -123,7 +121,7 @@ const DualAxisLineChart = ({ data, isDashboard = false, isExporting = false }) =
           tickSize: 0,
           tickPadding: 14,
           tickRotation: data?.length > 6 ? -30 : 0,
-          legend: isExporting ? undefined : (isDashboard ? undefined : "Quarter"),
+          legend: isExporting ? undefined : isDashboard ? undefined : "Quarter",
           legendOffset: isExporting ? 0 : 50,
           legendPosition: "middle",
         }}
@@ -132,17 +130,21 @@ const DualAxisLineChart = ({ data, isDashboard = false, isExporting = false }) =
           tickValues: 7,
           tickSize: 3,
           tickPadding: 5,
-          legend: isExporting ? undefined : (isDashboard ? undefined : "Amount (₱)"),
+          legend: isExporting
+            ? undefined
+            : isDashboard
+            ? undefined
+            : "Amount (₱)",
           legendOffset: -50,
           legendPosition: "middle",
         }}
         enableGridX={false}
         enableGridY={true}
-        pointSize={isExporting ? 14 : 8}
+        pointSize={isExporting ? 12 : 8}
         lineWidth={isExporting ? 4 : 2}
-        pointColor={{ theme: "background" }}
-        pointBorderWidth={2}
-        pointBorderColor={{ from: "serieColor" }}
+        pointColor="#ffffff"
+        pointBorderWidth={isExporting ? 3 : 2}
+        pointBorderColor={({ serieId }) => getLineColor(serieId)}
         pointLabelYOffset={-12}
         useMesh={true}
         legends={[

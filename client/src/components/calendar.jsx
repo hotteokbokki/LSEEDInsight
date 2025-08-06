@@ -126,7 +126,12 @@ const Calendar = ({ events }) => {
           <FullCalendar
             ref={calendarRef}
             height="80vh"
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+            plugins={[
+              dayGridPlugin,
+              timeGridPlugin,
+              interactionPlugin,
+              listPlugin,
+            ]}
             initialView="dayGridMonth"
             headerToolbar={{
               left: "prev,next today",
@@ -183,7 +188,8 @@ const Calendar = ({ events }) => {
                   When:
                 </Typography>
                 <Typography>
-                  {dayjs(selectedEvent.start).format("MMMM D, YYYY⋅h:mm A")} – {dayjs(selectedEvent.end).format("h:mm A")}
+                  {dayjs(selectedEvent.start).format("MMMM D, YYYY⋅h:mm A")} –{" "}
+                  {dayjs(selectedEvent.end).format("h:mm A")}
                 </Typography>
               </Box>
 
@@ -222,7 +228,9 @@ const Calendar = ({ events }) => {
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                     Team:
                   </Typography>
-                  <Typography>{selectedEvent.extendedProps.team_name}</Typography>
+                  <Typography>
+                    {selectedEvent.extendedProps.team_name}
+                  </Typography>
                 </Box>
               )}
 
@@ -232,7 +240,9 @@ const Calendar = ({ events }) => {
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                     Mentor:
                   </Typography>
-                  <Typography>{selectedEvent.extendedProps.mentor_name}</Typography>
+                  <Typography>
+                    {selectedEvent.extendedProps.mentor_name}
+                  </Typography>
                 </Box>
               )}
 
@@ -242,7 +252,9 @@ const Calendar = ({ events }) => {
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                     Program:
                   </Typography>
-                  <Typography>{selectedEvent.extendedProps.program_name}</Typography>
+                  <Typography>
+                    {selectedEvent.extendedProps.program_name}
+                  </Typography>
                 </Box>
               )}
             </DialogContent>

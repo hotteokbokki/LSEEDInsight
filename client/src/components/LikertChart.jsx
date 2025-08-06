@@ -2,13 +2,17 @@ import { ResponsiveBar } from "@nivo/bar";
 import { useTheme } from "@mui/material";
 import { tokens } from "../theme";
 
-const LikertChart = ({ data }) => {
+const LikertChart = ({ data, isExporting = false }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
+  // Use black colors when exporting for better PDF visibility
+  const textColor = isExporting ? "#000000" : colors.grey[100];
+  const axisColor = isExporting ? "#000000" : colors.grey[100];
+
   const transformLikertData = (data) => {
     const categoryMap = {};
-  
+
     data.forEach(({ category_name, rating, rating_count }) => {
       if (!categoryMap[category_name]) {
         categoryMap[category_name] = {
@@ -20,9 +24,12 @@ const LikertChart = ({ data }) => {
           "5 Stars": 0,
         };
       }
-      categoryMap[category_name][`${rating} Stars`] = parseInt(rating_count, 10);
+      categoryMap[category_name][`${rating} Stars`] = parseInt(
+        rating_count,
+        10
+      );
     });
-  
+
     return Object.values(categoryMap);
   };
 
@@ -79,19 +86,54 @@ const LikertChart = ({ data }) => {
       ariaLabel="Likert Chart"
       theme={{
         axis: {
-          domain: { line: { stroke: colors.grey[100] } },
-          legend: { text: { fill: colors.grey[100] } },
+          domain: {
+            line: {
+              stroke: axisColor,
+              strokeWidth: isExporting ? 2 : 1,
+            },
+          },
+          legend: {
+            text: {
+              fill: textColor,
+              fontSize: isExporting ? 16 : 12,
+              fontWeight: isExporting ? "bold" : "normal",
+            },
+          },
           ticks: {
-            line: { stroke: colors.grey[100], strokeWidth: 1 },
-            text: { fill: colors.grey[100] },
+            line: {
+              stroke: axisColor,
+              strokeWidth: isExporting ? 2 : 1,
+            },
+            text: {
+              fill: textColor,
+              fontSize: isExporting ? 14 : 11,
+              fontWeight: isExporting ? "bold" : "normal",
+            },
           },
         },
-        legends: { text: { fill: colors.grey[100] } },
-        tooltip: { container: { color: colors.primary[500] } },
+        legends: {
+          text: {
+            fill: textColor,
+            fontSize: isExporting ? 14 : 11,
+            fontWeight: isExporting ? "bold" : "normal",
+          },
+        },
+        grid: {
+          line: {
+            stroke: axisColor,
+            strokeWidth: isExporting ? 1 : 0.5,
+            strokeOpacity: isExporting ? 0.8 : 0.5,
+          },
+        },
+        tooltip: {
+          container: {
+            color: isExporting ? "#000000" : colors.primary[500],
+            background: isExporting ? "#ffffff" : colors.primary[400],
+          },
+        },
       }}
     />
   );
 };
-
 
 export default LikertChart;
