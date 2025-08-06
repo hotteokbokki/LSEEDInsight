@@ -3786,6 +3786,30 @@ app.post("/api/financial-report", async (req, res) => {
       doc.fillColor('black'); // Reset to default text color
     };
 
+    // ADDED: Helper function to display "No Data Available" message
+    const displayNoDataMessage = (title) => {
+      const currentY = doc.y;
+      const boxHeight = 200;
+      const boxWidth = 700;
+      const centerX = (doc.page.width - boxWidth) / 2;
+      
+      // Draw a light gray border
+      doc.rect(centerX, currentY, boxWidth, boxHeight)
+         .stroke('#cccccc');
+      
+      // Add "No Data Available" text in center
+      doc.fontSize(16)
+         .fillColor('#999999')
+         .text('No Data Available', 
+               centerX, 
+               currentY + (boxHeight / 2) - 10, 
+               { width: boxWidth, align: 'center' });
+      
+      // Reset color and move position
+      doc.fillColor('black');
+      doc.y = currentY + boxHeight + 10;
+    };
+
     // ─── PAGE 1: TITLE & SUMMARY ───
     
     // ─── Title & Summary ───
@@ -3816,10 +3840,20 @@ app.post("/api/financial-report", async (req, res) => {
     // ─── Chart ───
     doc.fontSize(14).text("Revenue vs Expenses Overview", { underline: true });
     doc.moveDown(1);
-    doc.image(chartBuffer, {
-      fit: [700, 200],
-      align: "center",
-    });
+    
+    // MODIFIED: Check if chart data exists and is valid
+    const hasRevenueExpenseData = selectedSERevenueVsExpensesData && 
+                                 selectedSERevenueVsExpensesData.length > 0 &&
+                                 selectedSERevenueVsExpensesData.some(series => series.data && series.data.length > 0);
+    
+    if (hasRevenueExpenseData && chartImage) {
+      doc.image(chartBuffer, {
+        fit: [700, 200],
+        align: "center",
+      });
+    } else {
+      displayNoDataMessage("Revenue vs Expenses Overview");
+    }
 
     doc.moveDown(1.5);
 
@@ -3855,58 +3889,62 @@ app.post("/api/financial-report", async (req, res) => {
     }
 
     // ─── Time-Series Analysis ───
-    const revenueSeries = selectedSERevenueVsExpensesData.find(s => s.id === "Revenue");
-    const expenseSeries = selectedSERevenueVsExpensesData.find(s => s.id === "Expenses");
+    if (hasRevenueExpenseData) {
+      const revenueSeries = selectedSERevenueVsExpensesData.find(s => s.id === "Revenue");
+      const expenseSeries = selectedSERevenueVsExpensesData.find(s => s.id === "Expenses");
 
-    if (revenueSeries && expenseSeries) {
-      const revData = revenueSeries.data;
-      const expData = expenseSeries.data;
+      if (revenueSeries && expenseSeries) {
+        const revData = revenueSeries.data;
+        const expData = expenseSeries.data;
 
-      const revRecent = revData.slice(-2);
-      const expRecent = expData.slice(-2);
+        const revRecent = revData.slice(-2);
+        const expRecent = expData.slice(-2);
 
-      const [revQ1, revQ2] = revRecent.map(p => p.y);
-      const [expQ1, expQ2] = expRecent.map(p => p.y);
+        const [revQ1, revQ2] = revRecent.map(p => p.y);
+        const [expQ1, expQ2] = expRecent.map(p => p.y);
 
-      // Quarter-over-quarter trends
-      if (revQ2 > revQ1) {
-        insights.push("Revenue increased in the most recent quarter, reflecting positive momentum.");
-      } else if (revQ2 < revQ1) {
-        insights.push("Revenue declined in the most recent quarter. Investigating underlying drivers is recommended.");
-      } else {
-        insights.push("Revenue remained flat in the last two quarters.");
+        // Quarter-over-quarter trends
+        if (revQ2 > revQ1) {
+          insights.push("Revenue increased in the most recent quarter, reflecting positive momentum.");
+        } else if (revQ2 < revQ1) {
+          insights.push("Revenue declined in the most recent quarter. Investigating underlying drivers is recommended.");
+        } else {
+          insights.push("Revenue remained flat in the last two quarters.");
+        }
+
+        if (expQ2 > expQ1) {
+          insights.push("Expenses rose in the latest quarter. Monitoring cost controls is advised.");
+        } else if (expQ2 < expQ1) {
+          insights.push("Expenses declined recently. Cost-saving initiatives may be taking effect.");
+        } else {
+          insights.push("Expenses remained stable in the past two quarters.");
+        }
+
+        // Best/Worst quarters
+        const maxRev = revData.reduce((a, b) => (a.y > b.y ? a : b));
+        const minRev = revData.reduce((a, b) => (a.y < b.y ? a : b));
+        insights.push(`The highest revenue was recorded in ${maxRev.x} (Php ${maxRev.y.toLocaleString()}).`);
+        insights.push(`The lowest revenue occurred in ${minRev.x} (Php ${minRev.y.toLocaleString()}).`);
+
+        const maxExp = expData.reduce((a, b) => (a.y > b.y ? a : b));
+        const minExp = expData.reduce((a, b) => (a.y < b.y ? a : b));
+        insights.push(`The highest expenses were in ${maxExp.x} (Php ${maxExp.y.toLocaleString()}).`);
+        insights.push(`The lowest expenses occurred in ${minExp.x} (Php ${minExp.y.toLocaleString()}).`);
+
+        // Revenue vs Expense Volatility
+        const revVolatility = revData.map((v, i, arr) => i > 0 ? Math.abs(v.y - arr[i - 1].y) : 0).reduce((a, b) => a + b, 0);
+        const expVolatility = expData.map((v, i, arr) => i > 0 ? Math.abs(v.y - arr[i - 1].y) : 0).reduce((a, b) => a + b, 0);
+
+        if (revVolatility > expVolatility) {
+          insights.push("Revenue has shown more variability than expenses over the reporting period.");
+        } else if (revVolatility < expVolatility) {
+          insights.push("Expenses have fluctuated more than revenue, possibly due to inconsistent cost drivers.");
+        } else {
+          insights.push("Revenue and expenses have fluctuated at a similar pace over time.");
+        }
       }
-
-      if (expQ2 > expQ1) {
-        insights.push("Expenses rose in the latest quarter. Monitoring cost controls is advised.");
-      } else if (expQ2 < expQ1) {
-        insights.push("Expenses declined recently. Cost-saving initiatives may be taking effect.");
-      } else {
-        insights.push("Expenses remained stable in the past two quarters.");
-      }
-
-      // Best/Worst quarters
-      const maxRev = revData.reduce((a, b) => (a.y > b.y ? a : b));
-      const minRev = revData.reduce((a, b) => (a.y < b.y ? a : b));
-      insights.push(`The highest revenue was recorded in ${maxRev.x} (Php ${maxRev.y.toLocaleString()}).`);
-      insights.push(`The lowest revenue occurred in ${minRev.x} (Php ${minRev.y.toLocaleString()}).`);
-
-      const maxExp = expData.reduce((a, b) => (a.y > b.y ? a : b));
-      const minExp = expData.reduce((a, b) => (a.y < b.y ? a : b));
-      insights.push(`The highest expenses were in ${maxExp.x} (Php ${maxExp.y.toLocaleString()}).`);
-      insights.push(`The lowest expenses occurred in ${minExp.x} (Php ${minExp.y.toLocaleString()}).`);
-
-      // Revenue vs Expense Volatility
-      const revVolatility = revData.map((v, i, arr) => i > 0 ? Math.abs(v.y - arr[i - 1].y) : 0).reduce((a, b) => a + b, 0);
-      const expVolatility = expData.map((v, i, arr) => i > 0 ? Math.abs(v.y - arr[i - 1].y) : 0).reduce((a, b) => a + b, 0);
-
-      if (revVolatility > expVolatility) {
-        insights.push("Revenue has shown more variability than expenses over the reporting period.");
-      } else if (revVolatility < expVolatility) {
-        insights.push("Expenses have fluctuated more than revenue, possibly due to inconsistent cost drivers.");
-      } else {
-        insights.push("Revenue and expenses have fluctuated at a similar pace over time.");
-      }
+    } else {
+      insights.push("No revenue and expense trend data available for detailed analysis.");
     }
 
     // ─── Render Insights in Three Independent Columns ───
@@ -3938,13 +3976,19 @@ app.post("/api/financial-report", async (req, res) => {
     doc.fontSize(14).text("Cashflow Analysis", { underline: true });
     doc.moveDown(1);
 
+    // MODIFIED: Check if cashflow data exists
+    const hasCashFlowData = transformedCashFlowData && transformedCashFlowData.length > 0;
+    
     // Cashflow Chart
-    if (cashFlowImage) {
+    if (cashFlowImage && hasCashFlowData) {
       const cashFlowBuffer = Buffer.from(cashFlowImage.split(",")[1], "base64");
       doc.image(cashFlowBuffer, {
         fit: [700, 200],
         align: "center",
       });
+      doc.moveDown(1.5);
+    } else {
+      displayNoDataMessage("Cashflow Chart");
       doc.moveDown(1.5);
     }
 
@@ -3953,28 +3997,37 @@ app.post("/api/financial-report", async (req, res) => {
 
     const cashflowInsights = [];
 
-    if (cashflowData.length > 0) {
+    if (hasCashFlowData) {
       const highestInflow = cashflowData.reduce((a, b) => (a.Inflow > b.Inflow ? a : b));
       const highestOutflow = cashflowData.reduce((a, b) => (a.Outflow > b.Outflow ? a : b));
 
       const inflowOnly = cashflowData.filter(q => q.Inflow > 0).map(q => q.Inflow);
       const outflowOnly = cashflowData.filter(q => q.Outflow > 0).map(q => q.Outflow);
 
-      const avgInflow = inflowOnly.reduce((a, b) => a + b, 0) / inflowOnly.length;
-      const avgOutflow = outflowOnly.reduce((a, b) => a + b, 0) / outflowOnly.length;
+      if (inflowOnly.length > 0) {
+        const avgInflow = inflowOnly.reduce((a, b) => a + b, 0) / inflowOnly.length;
+        cashflowInsights.push(`Average inflow across reporting periods is Php ${Math.round(avgInflow).toLocaleString()}.`);
+      }
+      
+      if (outflowOnly.length > 0) {
+        const avgOutflow = outflowOnly.reduce((a, b) => a + b, 0) / outflowOnly.length;
+        cashflowInsights.push(`Average outflow across reporting periods is Php ${Math.round(avgOutflow).toLocaleString()}.`);
+      }
 
       cashflowInsights.push(`The highest recorded cash inflow was in ${highestInflow.quarter} (Php ${highestInflow.Inflow.toLocaleString()}).`);
       cashflowInsights.push(`The highest recorded cash outflow was in ${highestOutflow.quarter} (Php ${highestOutflow.Outflow.toLocaleString()}).`);
 
-      cashflowInsights.push(`Average inflow across reporting periods is Php ${Math.round(avgInflow).toLocaleString()}.`);
-      cashflowInsights.push(`Average outflow across reporting periods is Php ${Math.round(avgOutflow).toLocaleString()}.`);
-
-      if (avgInflow > avgOutflow) {
-        cashflowInsights.push("Overall cash position is positive with average inflows exceeding outflows.");
-      } else if (avgInflow < avgOutflow) {
-        cashflowInsights.push("Enterprise is in a negative cashflow situation—monitor spending and improve revenue inflows.");
-      } else {
-        cashflowInsights.push("Average inflows and outflows are balanced. Sustaining this may require tight operational controls.");
+      if (inflowOnly.length > 0 && outflowOnly.length > 0) {
+        const avgInflow = inflowOnly.reduce((a, b) => a + b, 0) / inflowOnly.length;
+        const avgOutflow = outflowOnly.reduce((a, b) => a + b, 0) / outflowOnly.length;
+        
+        if (avgInflow > avgOutflow) {
+          cashflowInsights.push("Overall cash position is positive with average inflows exceeding outflows.");
+        } else if (avgInflow < avgOutflow) {
+          cashflowInsights.push("Enterprise is in a negative cashflow situation—monitor spending and improve revenue inflows.");
+        } else {
+          cashflowInsights.push("Average inflows and outflows are balanced. Sustaining this may require tight operational controls.");
+        }
       }
 
       const q1 = cashflowData[cashflowData.length - 2];
@@ -3993,7 +4046,7 @@ app.post("/api/financial-report", async (req, res) => {
         }
       }
     } else {
-      cashflowInsights.push("No available cashflow data for analysis.");
+      cashflowInsights.push("No cashflow data available for analysis.");
     }
 
     // Render Cashflow Insights
@@ -4019,9 +4072,19 @@ app.post("/api/financial-report", async (req, res) => {
     
     doc.fontSize(14).text("Net Worth (Equity) Over Time", { underline: true });
     doc.moveDown(1);
-    if (equityImage) {
+    
+    // MODIFIED: Check if equity data exists
+    const hasEquityData = selectedSEEquityTrendData && 
+                         selectedSEEquityTrendData.length > 0 && 
+                         selectedSEEquityTrendData[0]?.data && 
+                         selectedSEEquityTrendData[0].data.length > 0;
+    
+    if (equityImage && hasEquityData) {
       const equityBuffer = Buffer.from(equityImage.split(",")[1], "base64");
       doc.image(equityBuffer, { fit: [700, 200], align: "center" });
+      doc.moveDown(1.5);
+    } else {
+      displayNoDataMessage("Equity Trend Chart");
       doc.moveDown(1.5);
     }
 
@@ -4029,9 +4092,10 @@ app.post("/api/financial-report", async (req, res) => {
     doc.moveDown(0.5);
     doc.fontSize(10);
     let equityY = doc.y;
-    const equityData = selectedSEEquityTrendData[0]?.data || [];
+    const equityData = hasEquityData ? selectedSEEquityTrendData[0].data : [];
     const equityInsights = [];
-    if (equityData.length > 0) {
+    
+    if (hasEquityData) {
       const sorted = [...equityData];
       const highest = sorted.reduce((a, b) => a.y > b.y ? a : b);
       const lowest = sorted.reduce((a, b) => a.y < b.y ? a : b);
@@ -4046,8 +4110,9 @@ app.post("/api/financial-report", async (req, res) => {
       equityInsights.push("Volatility in equity levels suggests instability in net worth—sustained growth strategy needed.");
       equityInsights.push("No consistent growth trend seen—investors may require reassurance on long-term value creation.");
     } else {
-      equityInsights.push("No equity trend data available.");
+      equityInsights.push("No equity trend data available for analysis.");
     }
+    
     equityInsights.forEach((text) => {
       doc.text(`• ${text}`, insightsX, equityY, {
         width: maxWidth,
@@ -4077,7 +4142,7 @@ app.post("/api/financial-report", async (req, res) => {
         }
       });
     } else {
-      inventoryInsights.push("No inventory turnover data available.");
+      inventoryInsights.push("No inventory turnover data available for analysis.");
     }
 
     // ADDED: Add page number to third page
@@ -4096,7 +4161,7 @@ app.post("/api/financial-report", async (req, res) => {
     doc.fontSize(10);
 
     const displayRatio = (label, value) =>
-      typeof value === "string"
+      typeof value === "number" && !isNaN(value)
         ? `${label}: ${(value * 100).toFixed(2)}%`
         : `${label}: Data unavailable`;
 
