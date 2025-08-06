@@ -3346,9 +3346,42 @@ app.post("/api/adhoc-report", async (req, res) => {
       res.send(pdfBuffer);
     });
 
+    // ADDED: Declare variables for page numbering
+    let estimatedTotalPages = 4; // Most reports will have 4 pages
+    let currentPageNumber = 1;   // Track current page number
+
+    // ADDED: Helper function to add page number to current page
+    const addPageNumber = (pageNum, totalPages) => {
+      const pageWidth = doc.page.width;
+      const margin = doc.page.margins.top;
+      
+      // Save current settings
+      const currentFontSize = doc._fontSize;
+      
+      doc.fontSize(10)
+        .fillColor('gray')
+        .text(`Page ${pageNum} of ${totalPages}`, 
+              pageWidth - 120, // From right edge
+              margin - 20,     // Above content area
+              { align: 'right', width: 100 });
+      
+      doc.fontSize(currentFontSize);
+      doc.fillColor('black');
+    };
+
+    // ─── PAGE 1: TITLE AND OVERVIEW ───
+    
     // ─── Title Section ───
-    doc.fontSize(20).text(`${socialEnterpriseDetails.team_name} Analytics Report`, { align: "left" });
+    doc.fontSize(20).text(`${socialEnterpriseDetails.team_name} Analytics Report`, { align: "center" });
     doc.fontSize(12);
+
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    doc.text(`Generated as of ${formattedDate}`, { align: "left" });
 
     // Column positions
     const leftColX = 40;
@@ -3428,8 +3461,13 @@ app.post("/api/adhoc-report", async (req, res) => {
       doc.text("• None", insightX + 10, insightY);
     }
 
-    // ─── Page 2: Recurring Issues ───
+    // ADDED: Add page number to first page
+    addPageNumber(currentPageNumber, estimatedTotalPages);
+
+    // ─── PAGE 2: RECURRING ISSUES ───
     doc.addPage();
+    currentPageNumber++;
+    
     doc.fontSize(14).text("Recurring Issues", { align: "left" });
     doc.moveDown(1);
     doc.image(pieBuffer, { fit: [700, 400], align: "center", valign: "top" });
@@ -3457,7 +3495,7 @@ app.post("/api/adhoc-report", async (req, res) => {
 
     for (const item of commonChallenges) {
       const isMain = item.category === mainKeyPainPoint.category && item.comment === mainKeyPainPoint.comment;
-      const challengeText = `${item.percentage}% of recurring issues relate to ${item.category}, where evaluators cited “${item.comment}” in ${item.count} evaluations.`;
+      const challengeText = `${item.percentage}% of recurring issues relate to ${item.category}, where evaluators cited "${item.comment}" in ${item.count} evaluations.`;
 
       if (isMain) {
         doc.font("Helvetica-Bold").fillColor("red").text("Main Key Pain Point", leftX, leftYPage2);
@@ -3518,8 +3556,13 @@ app.post("/api/adhoc-report", async (req, res) => {
       if (isMain) doc.font("Helvetica").fillColor("black");
     }
 
-    // ─── Page 3: Rating Distribution ───
+    // ADDED: Add page number to second page
+    addPageNumber(currentPageNumber, estimatedTotalPages);
+
+    // ─── PAGE 3: RATING DISTRIBUTION ───
     doc.addPage();
+    currentPageNumber++; // ADDED: Increment page number
+    
     doc.fontSize(14).text("Category Score Distribution", { align: "left" });
     doc.moveDown(1);
 
@@ -3566,8 +3609,13 @@ app.post("/api/adhoc-report", async (req, res) => {
       }
     });
 
-    // ─── Page 4: Insights ───
+    // ADDED: Add page number to third page
+    addPageNumber(currentPageNumber, estimatedTotalPages);
+
+    // ─── PAGE 4: INSIGHTS ───
     doc.addPage();
+    currentPageNumber++; // ADDED: Increment page number
+    
     const page4AxisX = 40;
     const page4AxisY = doc.y;
     const page4MaxWidth = 520;
@@ -3635,9 +3683,13 @@ app.post("/api/adhoc-report", async (req, res) => {
 
       const totalHeight = titleHeight + avgLineHeight + fullInsightHeight + page4GapY;
 
-      // Add new page if needed
+      // MODIFIED: Add new page if needed with proper page numbering
       if (currentPage4Y + totalHeight > page4Height) {
+        // Add page number to current page before creating new page
+        addPageNumber(currentPageNumber, estimatedTotalPages);
+        
         doc.addPage();
+        currentPageNumber++;
         currentPage4Y = doc.y;
       }
 
@@ -3654,6 +3706,10 @@ app.post("/api/adhoc-report", async (req, res) => {
       });
       currentPage4Y += fullInsightHeight + page4GapY;
     }
+
+    // ADDED: Update estimated total pages and add page number to final page
+    estimatedTotalPages = currentPageNumber;
+    addPageNumber(currentPageNumber, estimatedTotalPages);
 
     doc.end();
   } catch (err) {
@@ -3706,13 +3762,47 @@ app.post("/api/financial-report", async (req, res) => {
       res.send(pdfBuffer);
     });
 
+    // ADDED: Declare variables for page numbering
+    let estimatedTotalPages = 4; // Most financial reports will have 4 pages
+    let currentPageNumber = 1;   // Track current page number
+
+    // ADDED: Helper function to add page number to current page
+    const addPageNumber = (pageNum, totalPages) => {
+      const pageWidth = doc.page.width;
+      const margin = doc.page.margins.top;
+      
+      // Save current settings
+      const currentFontSize = doc._fontSize;
+      
+      doc.fontSize(10)
+        .fillColor('gray')
+        .text(`Page ${pageNum} of ${totalPages}`, 
+              pageWidth - 120, // From right edge
+              margin - 20,     // Above content area
+              { align: 'right', width: 100 });
+      
+      // Restore settings
+      doc.fontSize(currentFontSize);
+      doc.fillColor('black'); // Reset to default text color
+    };
+
+    // ─── PAGE 1: TITLE & SUMMARY ───
+    
     // ─── Title & Summary ───
-    doc.fontSize(20).text(`${socialEnterpriseDetails.team_name} Financial Report`, { align: "left" });
+    doc.fontSize(20).text(`${socialEnterpriseDetails.team_name} Financial Report`, { align: "center" });
     doc.fontSize(12);
     doc.moveDown(0.5);
 
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    doc.text(`Generated as of ${formattedDate}`, { align: "left" });
+
     const leftColX = 40;
-    let leftY = 80;
+    let leftY = 90;
 
     doc.text(`Total Revenue: Php ${Number(totalRevenue).toLocaleString()}`, leftColX, leftY);
     leftY += 16;
@@ -3736,7 +3826,7 @@ app.post("/api/financial-report", async (req, res) => {
     // ─── Insights ───
     doc.fontSize(14).text("Financial Insights", { underline: true });
     doc.moveDown(0.5);
-    doc.fontSize(10);
+    doc.fontSize(9);
 
     const insightsX = 40;
     const maxWidth = 700;
@@ -3838,8 +3928,13 @@ app.post("/api/financial-report", async (req, res) => {
       columnYs[colIndex] += textHeight + 6;
     });
 
-    // ─── Cashflow Analysis Section ───
+    // ADDED: Add page number to first page
+    addPageNumber(currentPageNumber, estimatedTotalPages);
+
+    // ─── PAGE 2: CASHFLOW ANALYSIS ───
     doc.addPage();
+    currentPageNumber++; // ADDED: Increment page number
+    
     doc.fontSize(14).text("Cashflow Analysis", { underline: true });
     doc.moveDown(1);
 
@@ -3915,8 +4010,13 @@ app.post("/api/financial-report", async (req, res) => {
       cashflowY += gapY;
     });
 
-    // ─── Equity (Net Worth) Analysis ───
+    // ADDED: Add page number to second page
+    addPageNumber(currentPageNumber, estimatedTotalPages);
+
+    // ─── PAGE 3: EQUITY ANALYSIS ───
     doc.addPage();
+    currentPageNumber++; // ADDED: Increment page number
+    
     doc.fontSize(14).text("Net Worth (Equity) Over Time", { underline: true });
     doc.moveDown(1);
     if (equityImage) {
@@ -3980,8 +4080,13 @@ app.post("/api/financial-report", async (req, res) => {
       inventoryInsights.push("No inventory turnover data available.");
     }
 
-    // ─── Stakeholder Summary & Investment Outlook ───
+    // ADDED: Add page number to third page
+    addPageNumber(currentPageNumber, estimatedTotalPages);
+
+    // ─── PAGE 4: STAKEHOLDER SUMMARY & INVESTMENT OUTLOOK ───
     doc.addPage();
+    currentPageNumber++; // ADDED: Increment page number
+    
     doc.fontSize(14).text("Stakeholder Summary & Investment Outlook", { underline: true });
     doc.moveDown(1);
 
@@ -4034,6 +4139,10 @@ app.post("/api/financial-report", async (req, res) => {
       doc.text(`• ${text}`, 40, outlookY, { width: 700, align: "left" });
       outlookY += 14;
     });
+
+    // ADDED: Update estimated total pages and add page number to final page
+    estimatedTotalPages = currentPageNumber;
+    addPageNumber(currentPageNumber, estimatedTotalPages);
 
     doc.end();
   } catch (err) {
