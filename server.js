@@ -3846,13 +3846,23 @@ app.post("/api/financial-report", async (req, res) => {
                                  selectedSERevenueVsExpensesData.length > 0 &&
                                  selectedSERevenueVsExpensesData.some(series => series.data && series.data.length > 0);
     
-    if (hasRevenueExpenseData && chartImage) {
-      doc.image(chartBuffer, {
-        fit: [700, 200],
-        align: "center",
-      });
+    if (hasRevenueExpenseData && chartImage && chartBuffer) {
+      try {
+        doc.image(chartBuffer, {
+          fit: [700, 200],
+          align: "center",
+        });
+      } catch (imageError) {
+        console.warn("Error displaying revenue/expense chart:", imageError);
+        displayNoDataMessage("Revenue vs Expenses Overview");
+      }
     } else {
       displayNoDataMessage("Revenue vs Expenses Overview");
+      console.log("Missing data - Revenue/Expense chart:", { 
+        hasData: hasRevenueExpenseData, 
+        hasImage: !!chartImage,
+        hasBuffer: !!chartBuffer 
+      });
     }
 
     doc.moveDown(1.5);
@@ -3981,14 +3991,24 @@ app.post("/api/financial-report", async (req, res) => {
     
     // Cashflow Chart
     if (cashFlowImage && hasCashFlowData) {
-      const cashFlowBuffer = Buffer.from(cashFlowImage.split(",")[1], "base64");
-      doc.image(cashFlowBuffer, {
-        fit: [700, 200],
-        align: "center",
-      });
-      doc.moveDown(1.5);
+      try {
+        const cashFlowBuffer = Buffer.from(cashFlowImage.split(",")[1], "base64");
+        doc.image(cashFlowBuffer, {
+          fit: [700, 200],
+          align: "center",
+        });
+        doc.moveDown(1.5);
+      } catch (imageError) {
+        console.warn("Error displaying cashflow chart:", imageError);
+        displayNoDataMessage("Cashflow Chart");
+        doc.moveDown(1.5);
+      }
     } else {
       displayNoDataMessage("Cashflow Chart");
+      console.log("Missing data - Cashflow chart:", { 
+        hasImage: !!cashFlowImage, 
+        hasData: hasCashFlowData 
+      });
       doc.moveDown(1.5);
     }
 
@@ -4080,11 +4100,21 @@ app.post("/api/financial-report", async (req, res) => {
                          selectedSEEquityTrendData[0].data.length > 0;
     
     if (equityImage && hasEquityData) {
-      const equityBuffer = Buffer.from(equityImage.split(",")[1], "base64");
-      doc.image(equityBuffer, { fit: [700, 200], align: "center" });
-      doc.moveDown(1.5);
+      try {
+        const equityBuffer = Buffer.from(equityImage.split(",")[1], "base64");
+        doc.image(equityBuffer, { fit: [700, 200], align: "center" });
+        doc.moveDown(1.5);
+      } catch (imageError) {
+        console.warn("Error displaying equity chart:", imageError);
+        displayNoDataMessage("Equity Trend Chart");
+        doc.moveDown(1.5);
+      }
     } else {
       displayNoDataMessage("Equity Trend Chart");
+      console.log("Missing data - Equity chart:", { 
+        hasImage: !!equityImage, 
+        hasData: hasEquityData 
+      });
       doc.moveDown(1.5);
     }
 

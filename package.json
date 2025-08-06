@@ -28,6 +28,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
+    "html2canvas": "^1.4.1",
     "js-cookie": "^3.0.5",
     "ngrok": "^5.0.0-beta.2",
     "node-cron": "^4.2.1",
@@ -36,6 +37,7 @@
     "papaparse": "^5.5.3",
     "pdfkit": "^0.17.1",
     "pg": "^8.13.1",
+    "recharts": "^3.1.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
