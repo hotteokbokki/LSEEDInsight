@@ -12,14 +12,13 @@ import {
 } from "@mui/material";
 import { tokens } from "../../theme";
 import Header from "../../components/Header";
+// import "../../styles/ResetPassword.css";
 
 const PasswordReset = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
-
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");

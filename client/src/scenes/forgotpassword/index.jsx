@@ -12,6 +12,7 @@ import { tokens } from "../../theme";
 import Header from "../../components/Header";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import "../../styles/ResetPassword.css";
 
 const ForgotPassword = () => {
   const theme = useTheme();
