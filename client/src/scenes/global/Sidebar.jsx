@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ProSidebar, Menu, MenuItem } from "react-pro-sidebar";
+import "../../styles/Sidebar.css";
 import "react-pro-sidebar/dist/css/styles.css";
 import {
   Box,
@@ -13,7 +14,6 @@ import {
 } from "@mui/material";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { tokens } from "../../theme";
-import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import GridViewOutlinedIcon from "@mui/icons-material/GridViewOutlined";
 import SupervisorAccountOutlinedIcon from "@mui/icons-material/SupervisorAccountOutlined";

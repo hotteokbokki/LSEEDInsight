@@ -1,19 +1,15 @@
 import {
   Box,
   Button,
-  IconButton,
   Typography,
   useTheme,
   Chip,
-  Snackbar,
-  Alert,
   Dialog,
   DialogContent,
   DialogTitle,
   DialogActions,
-  Switch,
-  FormControlLabel,
 } from "@mui/material";
+import "../../styles/Dashboard.css";
 import { tokens } from "../../theme";
 import PersonIcon from "@mui/icons-material/Person";
 import { useAuth } from "../../context/authContext"; 
@@ -23,7 +19,7 @@ import Header from "../../components/Header";
 import { useNavigate } from "react-router-dom";
 import SEPerformanceTrendChart from "../../components/SEPerformanceTrendChart";
 import StatBox from "../../components/StatBox";
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect } from "react";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import SupervisorAccountOutlinedIcon from "@mui/icons-material/SupervisorAccountOutlined";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
@@ -34,10 +30,7 @@ import AnalyticsOutlinedIcon from "@mui/icons-material/AnalyticsOutlined";
 import BusinessIcon from "@mui/icons-material/Business";
 import PendingActionsIcon from "@mui/icons-material/PendingActions";
 import {
-  Assessment,
   Star,
-  Business,
-  EventAvailable,
 } from "@mui/icons-material";
 import axios from "axios";
 
