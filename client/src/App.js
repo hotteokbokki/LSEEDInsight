@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from "react";
 import { Box } from "@mui/material";
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthContextProvider, useAuth } from "./context/authContext";
-import ScrollToTop from "./components/ScrollToTop";
 import Login from "./scenes/login";
 import Dashboard from "./scenes/dashboard";
 import SocialEnterprise from "./scenes/socialenterprise";
@@ -16,8 +14,6 @@ import EvaluatePage from "./scenes/assess";
 import SEAnalytics from "./scenes/seanalytics";
 import MentorAnalytics from "./scenes/mentoranalytics";
 import Mentorships from "./scenes/mentorships";
-import Sidebar from "./scenes/global/Sidebar";
-import Topbar from "./scenes/global/Topbar";
 import AuditLogs from "./scenes/audit-logs";
 import Unauthorized from "./scenes/unauthorized";
 import ProfilePage from "./scenes/profile";
@@ -32,6 +28,7 @@ import FinancialAnalytics from "./scenes/financial-analytics";
 import PublicLayout from "./layouts/PublicLayout";
 import AppLayout from "./layouts/AppLayout";
 import CollaborationDashboard from "./scenes/collaborationdashboard";
+import "./index.css";
 
 const App = () => {
   const [theme, colorMode] = useMode();

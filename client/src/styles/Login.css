@@ -30,7 +30,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 15px;
   overflow-y: auto; /* Allow vertical scrolling if needed */
 }
 
@@ -41,10 +40,18 @@ body {
   background: #fff;
   padding: 40px 30px;
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-  
   margin: 20px auto;
 }
-
+.css-fi9qbm{
+    width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    -webkit-flex-direction: column;
+    -ms-flex-direction: column;
+    flex-direction: column;
+    align-content: center;
+    justify-content: center;
+}
 .container .cover {
   position: absolute;
   top: 0;
